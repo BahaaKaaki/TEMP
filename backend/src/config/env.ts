@@ -18,13 +18,13 @@ const envSchema = z.object({
   // Redis (optional for dev)
   REDIS_URL: z.string().optional(),
 
-  // JWT (defaults for development)
-  JWT_SECRET: z.string().min(32).default('dev-secret-key-change-in-production-32chars'),
+  // JWT
+  JWT_SECRET: z.string().min(32).default('change-me-set-via-env-file-32chars!!'),
   JWT_ACCESS_EXPIRY: z.string().default('15m'),
   JWT_REFRESH_EXPIRY: z.string().default('7d'),
 
-  // Encryption (defaults for development)
-  ENCRYPTION_KEY: z.string().min(32).default('dev-encryption-key-32-characters!'),
+  // Encryption
+  ENCRYPTION_KEY: z.string().min(32).default('change-me-set-via-env-file-32chars!!'),
 
   // Email (optional for dev)
   SMTP_HOST: z.string().optional(),
@@ -49,9 +49,9 @@ const envSchema = z.object({
   PWC_API_KEY: z.string().default(''),
   PWC_API_BASE_URL: z.string().default('https://genai-sharedservice-emea.pwcinternal.com'),
 
-  // Basic Auth
-  BASIC_AUTH_USER: z.string().default('team'),
-  BASIC_AUTH_PASS: z.string().default('edwin2026'),
+  // Basic Auth (set real values in .env or Azure App Settings)
+  BASIC_AUTH_USER: z.string().default(''),
+  BASIC_AUTH_PASS: z.string().default(''),
 
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),

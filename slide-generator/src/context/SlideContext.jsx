@@ -57,7 +57,7 @@ const initialState = {
       },
     ],
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:openai.gpt-5.2',
+    model: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
     fastModel: 'pwc:openai.gpt-5.2-2025-12-11',
     // Agent-mode router settings
     routerModel: 'pwc:vertex_ai.gemini-3-pro-preview',

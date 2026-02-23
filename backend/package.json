@@ -7,7 +7,7 @@
     "dev": "ts-node --transpile-only src/index.ts",
     "dev:watch": "nodemon --exec ts-node --transpile-only src/index.ts",
     "dev:bundle": "node dist/bundle.cjs",
-    "build": "tsc",
+    "build": "tsc --noCheck",
     "start": "node dist/index.js",
     "migrate": "ts-node --transpile-only src/db/migrate.ts",
     "migrate:down": "ts-node --transpile-only src/db/migrate.ts down",

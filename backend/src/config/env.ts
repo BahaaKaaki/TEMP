@@ -49,6 +49,10 @@ const envSchema = z.object({
   PWC_API_KEY: z.string().default(''),
   PWC_API_BASE_URL: z.string().default('https://genai-sharedservice-emea.pwcinternal.com'),
 
+  // Basic Auth
+  BASIC_AUTH_USER: z.string().default('team'),
+  BASIC_AUTH_PASS: z.string().default('edwin2026'),
+
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });

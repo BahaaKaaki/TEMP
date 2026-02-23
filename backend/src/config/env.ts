@@ -45,6 +45,10 @@ const envSchema = z.object({
   S3_ACCESS_KEY: z.string().optional(),
   S3_SECRET_KEY: z.string().optional(),
 
+  // AI Proxy (PwC Shared Services)
+  PWC_API_KEY: z.string().default(''),
+  PWC_API_BASE_URL: z.string().default('https://genai-sharedservice-emea.pwcinternal.com'),
+
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });

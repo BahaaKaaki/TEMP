@@ -37,3 +37,10 @@ template-screenshots/
 
 # Uploaded files
 uploads/
+
+# Deployment artifacts
+deploy-ready/
+deploy-temp/
+*.zip
+backend/public/
+app-logs/

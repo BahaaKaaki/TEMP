@@ -32,83 +32,49 @@ const initialState = {
   // UI state for AI router context highlighting
   highlightedSlideIndices: [], // Array of slide indices to highlight as context
   settings: {
-    // Provider registry: each provider has URL, key, models, and optional azure prefix
+    // Provider registry: PwC Shared Services routed through backend proxy
     providers: [
-      {
-        id: 'openai',
-        name: 'OpenAI',
-        apiUrl: 'https://api.openai.com/v1/chat/completions',
-        apiKey: '',
-        models: ['gpt-5.2', 'gpt-5.1', 'gpt-5-mini', 'o1', 'o1-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-image-1', 'dall-e-3'],
-        azurePrefix: false,
-      },
-      {
-        id: 'gemini',
-        name: 'Google Gemini',
-        apiUrl: 'https://generativelanguage.googleapis.com/v1beta',
-        apiKey: '',
-        models: ['gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-        azurePrefix: false,
-      },
-      {
-        id: 'anthropic',
-        name: 'Anthropic Claude',
-        apiUrl: 'https://api.anthropic.com/v1/messages',
-        apiKey: '',
-        models: ['claude-opus-4-6', 'claude-sonnet-4-5', 'claude-opus-4-5', 'claude-sonnet-4-20250514', 'claude-3-opus-20240229', 'claude-3-haiku-20240307'],
-        azurePrefix: false,
-      },
       {
         id: 'pwc',
         name: 'PwC Shared Services',
-        apiUrl: 'https://genai-sharedservice-emea.pwcinternal.com/chat/completions',
-        apiKey: '',
-        models: ['gpt-5.2', 'gpt-5.1', 'gpt-5-mini', 'gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'claude-sonnet-4-5', 'claude-opus-4-6', 'gpt-image-1', 'dall-e-3', 'gemini-3-pro-image-preview'],
-        azurePrefix: true,
-        authType: 'api-key',
-      },
-      {
-        id: 'bedrock',
-        name: 'AWS Bedrock',
-        apiUrl: '',
-        apiKey: '',
-        models: ['anthropic.claude-opus-4-6-v1:0', 'anthropic.claude-sonnet-4-5-20250929-v1:0', 'anthropic.claude-3-opus-20240229-v1:0'],
+        apiUrl: '/api/ai/chat',
+        apiKey: 'server-managed',
+        models: [
+          'openai.gpt-5.2-2025-12-11',
+          'openai.gpt-5.2',
+          'openai.gpt-5.2-codex',
+          'vertex_ai.anthropic.claude-opus-4-6',
+          'vertex_ai.gemini-3-pro-preview',
+          'vertex_ai.gemini-3-pro-image-preview',
+          'azure.gpt-4.1',
+          'azure.gpt-4o',
+        ],
         azurePrefix: false,
-        authType: 'bearer',
-        customHeaders: '',
-        customParams: '',
-      },
-      {
-        id: 'vertex',
-        name: 'Google Vertex AI',
-        apiUrl: '',
-        apiKey: '',
-        models: ['claude-opus-4-6', 'claude-sonnet-4-5', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-3-pro-image-preview'],
-        azurePrefix: false,
-        authType: 'bearer',
-        customHeaders: '',
-        customParams: '',
+        authType: 'server',
+        alternativeEndpoints: [
+          { label: 'responses', url: '/api/ai/responses' },
+        ],
       },
     ],
     // Model selections — format: "providerId:modelName"
-    model: 'openai:gpt-4o',
-    fastModel: '', // Fast model for workers (empty = use main model)
-    // Agent-mode router settings (fast, constrained — agent handles structure)
-    routerModel: 'gemini:gemini-3-flash-preview',
-    routerReasoningEffort: 'none', // Reasoning effort for router: 'none'|'low'|'medium'|'high'
-    routerMaxTokens: 16384, // Max output tokens for router
-    routerSearchEnabled: false, // Enable web search / grounding for router (Gemini Google Search, GPT web_search)
-    // Chatbot-mode router settings (more freedom — can think longer, use internet)
-    chatRouterModel: '', // Empty = use same as agent router
-    chatRouterReasoningEffort: 'medium', // Higher reasoning for chatbot mode
-    chatRouterMaxTokens: 16384,
-    chatRouterSearchEnabled: true, // Internet enabled by default for chatbot router
-    deepAnalysisModel: '', // Model for deep content analysis (empty = use main model)
-    deepAnalysisReasoningEffort: 'medium', // Reasoning effort for deep analysis: 'low'|'medium'|'high'
-    temperature: 0.7,
-    maxTokens: 4096,
+    model: 'pwc:openai.gpt-5.2',
+    fastModel: 'pwc:openai.gpt-5.2-2025-12-11',
+    // Agent-mode router settings
+    routerModel: 'pwc:vertex_ai.gemini-3-pro-preview',
+    routerReasoningEffort: 'low',
+    routerMaxTokens: 65536,
+    routerSearchEnabled: false,
+    // Chatbot-mode router settings
+    chatRouterModel: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
+    chatRouterReasoningEffort: 'low',
+    chatRouterMaxTokens: 65536,
+    chatRouterSearchEnabled: true,
+    deepAnalysisModel: '',
+    deepAnalysisReasoningEffort: 'medium',
+    temperature: 0.1,
+    maxTokens: 65536,
     reasoningEffort: 'low',
-    verbosity: '', // GPT-5.x text.verbosity: ''(default)|'low'|'medium'|'high'
+    verbosity: '',
     // PPTX Export settings
     pptxSystemPrompt: '', // Custom system prompt for PPTX code generation (empty = use default)
     pptxCodeExample: '', // Custom code example for AI guidance (empty = use default)
@@ -118,71 +84,71 @@ const initialState = {
     // AI Chatbot settings
     editAllBatchSize: 3, // Number of slides to process per batch in Edit All mode
     // Agent workflow settings
-    agentBatchSize: 3, // Number of slides to process per batch in agent mode
-    showAgentSteps: true, // Show detailed agent execution steps
-    showApprovalDebugInfo: false, // Show context/debug info in approval dialog (for debugging)
-    agentManagerName: 'Edwin', // Manager persona name (shown in step displays)
-    agentMinBudget: 8, // Minimum credits per agent task
-    agentMaxBudget: 30, // Maximum credits per agent task (cap)
-    agentRichResearch: false, // Send full analysis/research content to compiler (richer but more tokens)
-    agentUseSkills: false, // Inject registered skills into agent system prompt (default: off)
+    agentBatchSize: 3,
+    showAgentSteps: true,
+    showApprovalDebugInfo: true,
+    agentManagerName: 'Edwin',
+    agentMinBudget: 4,
+    agentMaxBudget: 5,
+    agentRichResearch: true,
+    agentUseSkills: false,
     // ── Work level (prompt-driven output scaling) ──
     // low = concise/minimal, medium = balanced, high = detailed, very_high = maximum depth
-    workLevelSlide: 'medium',   // Regular (chatbot) slide creation
-    workLevelAgent: 'high',     // Agentic slide creation (consulting team)
-    workLevelReport: 'high',    // Agentic report generation
-    reportModel: 'openai:gpt-5.2', // Model for report generation (Report mode)
-    reportReasoningEffort: 'medium', // Reasoning effort for report: 'none'|'low'|'medium'|'high'
-    reportMaxTokens: 32768, // Max tokens for report generation (Report mode)
-    reportSearchEnabled: false, // Whether report generation can use web search (off by default)
-    reportFormat: 'html', // Report output format: 'html' (AI generates HTML) | 'json' (AI outputs JSON, app renders HTML)
-    reportSingleCall: false, // Generate all report sections in a single API call (vs parallel chunks)
-    reportSkipCompilation: false, // Skip manager compilation — send raw worker research directly to report generation
-    imageModel: '', // Model for image generation (empty = none configured)
-    enableAgenticMode: false, // Show Deep Deck / Deep Report modes in chatbot toolbar (hidden by default)
-    // ── Web Search settings ──
-    searchEnabled: false, // Enable web search — uses model's built-in search (Gemini/GPT), or custom endpoint if configured
-    searchEndpoint: '', // Custom search endpoint URL (e.g., OpenAI Responses API)
-    searchApiKey: '', // API key for custom search endpoint
-    searchModel: '', // Model for search synthesis
-    searchContextSize: 'medium', // Search context size: 'small' | 'medium' | 'large'
-    searchMaxTokens: 128000, // Max output tokens for search results
-    searchAuthHeader: 'api-key', // Auth header type: 'api-key' | 'bearer'
-    searchIncludeSources: false, // Include source links/URLs in research output (collected at end, deduplicated)
+    workLevelSlide: 'medium',
+    workLevelAgent: 'medium',
+    workLevelReport: 'medium',
+    reportModel: 'pwc:vertex_ai.gemini-3-pro-preview',
+    reportReasoningEffort: 'low',
+    reportMaxTokens: 128000,
+    reportSearchEnabled: false,
+    reportFormat: 'json',
+    reportSingleCall: false,
+    reportSkipCompilation: false,
+    imageModel: 'pwc:vertex_ai.gemini-3-pro-image-preview',
+    enableAgenticMode: false,
+    // Web Search via backend proxy
+    searchEnabled: true,
+    searchEndpoint: '/api/ai/responses',
+    searchApiKey: 'server-managed',
+    searchModel: 'openai.gpt-5.2',
+    searchContextSize: 'medium',
+    searchMaxTokens: 32000,
+    searchAuthHeader: 'api-key',
+    searchIncludeSources: false,
     // ── Naming conventions ──
     reportNomenclaturePattern: 'yyyymmdd_S&_{name}_Report_V{version}', // Report file naming pattern
     // ── Truncation / richness limits ──
     // These control how much data flows through each pipeline stage
-    limitSearchCharsBeforeSynthesis: 12000, // Max chars of raw search results sent to synthesis LLM
-    limitSearchCharsFallback: 4000,         // Max chars kept when no synthesis budget remains
-    limitSynthesisTokens: 4096,             // Max output tokens for search synthesis calls
-    limitKnowledgeSummaryChars: 800,        // Per-item summary length in think-loop context
-    limitKnowledgeSummaryInsights: 5,       // Max insights shown per knowledge item in think-loop
-    limitKnowledgeCompileChars: 120000,     // Max total knowledge chars sent to compiler (rich mode)
-    limitKnowledgeCompileCharsStd: 80000,   // Max total knowledge chars sent to compiler (standard mode)
-    limitCompilerTokensPerSlide: 2000,      // Token budget per slide for compilation output
-    limitCompilerTokensMin: 6000,           // Minimum total compiler token budget
-    limitResearchContextChars: 20000,       // Max chars of research context sent to workers
-    limitKnowledgeStorageChars: 2000,       // Max chars stored per knowledge item from workers
-    limitSlideInstructionItems: 5,          // Max knowledge items per slide instruction
-    limitFallbackKnowledgeItems: 12,        // Max knowledge items in fallback (no-plan) mode
+    limitSearchCharsBeforeSynthesis: 120000,
+    limitSearchCharsFallback: 400000,
+    limitSynthesisTokens: 40960,
+    limitKnowledgeSummaryChars: 80000,
+    limitKnowledgeSummaryInsights: 5,
+    limitKnowledgeCompileChars: 1200000,
+    limitKnowledgeCompileCharsStd: 800000,
+    limitCompilerTokensPerSlide: 200000,
+    limitCompilerTokensMin: 60000,
+    limitResearchContextChars: 200000,
+    limitKnowledgeStorageChars: 200000,
+    limitSlideInstructionItems: 5,
+    limitFallbackKnowledgeItems: 12,
     // ── Per-role model overrides ──
     // Each role can override: model, maxTokens, reasoningEffort, temperature, searchEnabled
     // Empty string = inherit from parent (agent/report defaults)
     roleSettings: {
-      managerScope:          { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
-      managerPlanning:       { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
-      consultantAnalyzing:   { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
-      consultantResearching: { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
-      managerCompiling:      { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
-      managerReviewing:      { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
+      managerScope:          { model: '', maxTokens: '65536', reasoningEffort: '', temperature: '', searchEnabled: 'true' },
+      managerPlanning:       { model: '', maxTokens: '65536', reasoningEffort: '', temperature: '', searchEnabled: 'true' },
+      consultantAnalyzing:   { model: '', maxTokens: '65536', reasoningEffort: '', temperature: '', searchEnabled: 'true' },
+      consultantResearching: { model: '', maxTokens: '65536', reasoningEffort: '', temperature: '', searchEnabled: 'true' },
+      managerCompiling:      { model: '', maxTokens: '128000', reasoningEffort: '', temperature: '', searchEnabled: 'true' },
+      managerReviewing:      { model: '', maxTokens: '65536', reasoningEffort: '', temperature: '', searchEnabled: 'true' },
       routerAgent:           { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
       routerChatbot:         { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
-      slideCreatorAgent:     { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
-      slideCreatorChatbot:   { model: '', maxTokens: '', reasoningEffort: '', temperature: '', searchEnabled: '' },
+      slideCreatorAgent:     { model: '', maxTokens: '', reasoningEffort: 'low', temperature: '', searchEnabled: '' },
+      slideCreatorChatbot:   { model: '', maxTokens: '', reasoningEffort: 'none', temperature: '', searchEnabled: true },
       templateSwitcher:      { model: '', maxTokens: '', reasoningEffort: '', temperature: '' },
-      pptxGenerator:         { model: '', maxTokens: '', reasoningEffort: '', temperature: '' },
-      quickEdit:             { model: '', maxTokens: '', reasoningEffort: '', temperature: '' },
+      pptxGenerator:         { model: '', maxTokens: '65536', reasoningEffort: '', temperature: '' },
+      quickEdit:             { model: '', maxTokens: '8192', reasoningEffort: '', temperature: '' },
       reportGenerator:       { model: '', maxTokens: '', reasoningEffort: '', temperature: '' },
     },
     // Router/Smart Action settings

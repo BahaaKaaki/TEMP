@@ -3166,18 +3166,18 @@ function buildProviderHeaders(creds) {
   const authType = creds.authType || 'auto';
   const url = creds.apiEndpoint || '';
 
-  if (authType === 'api-key' || (authType === 'auto' && (url.includes('openai.azure.com') || creds.azurePrefix))) {
-    // Azure OpenAI / Azure-style proxy (e.g. genai-sharedservice) — uses api-key header
+  // Server-managed auth: backend proxy adds the API key — no client-side auth needed
+  if (authType === 'server') {
+    // No auth headers needed
+  } else if (authType === 'api-key' || (authType === 'auto' && (url.includes('openai.azure.com') || creds.azurePrefix))) {
     headers['api-key'] = creds.apiKey;
   } else if (authType === 'auto' && url.includes('anthropic.com')) {
     headers['x-api-key'] = creds.apiKey;
     headers['anthropic-version'] = '2023-06-01';
     headers['anthropic-dangerous-direct-browser-access'] = 'true';
   } else {
-    // Default: Bearer token (OpenAI, LiteLLM, enterprise proxies)
     headers['Authorization'] = `Bearer ${creds.apiKey}`;
   }
-  // Merge custom headers from provider config
   if (creds.customHeaders && typeof creds.customHeaders === 'object') {
     Object.assign(headers, creds.customHeaders);
   }
@@ -8993,12 +8993,14 @@ export async function webSearch(query, settings) {
 
     console.log('[webSearch] Searching:', query.substring(0, 100) + '...');
 
-    // Build headers based on auth type setting
     const headers = { 'Content-Type': 'application/json' };
-    if (settings.searchAuthHeader === 'bearer') {
-      headers['Authorization'] = `Bearer ${settings.searchApiKey}`;
-    } else {
-      headers['api-key'] = settings.searchApiKey;
+    const isServerProxy = settings.searchApiKey === 'server-managed' || (settings.searchEndpoint || '').startsWith('/api/');
+    if (!isServerProxy) {
+      if (settings.searchAuthHeader === 'bearer') {
+        headers['Authorization'] = `Bearer ${settings.searchApiKey}`;
+      } else {
+        headers['api-key'] = settings.searchApiKey;
+      }
     }
 
     const response = await fetch(settings.searchEndpoint, {
@@ -9072,12 +9074,14 @@ export async function researchWithSearch(fullPrompt, settings) {
 
     console.log('[researchWithSearch] Sending full research prompt to search endpoint...');
 
-    // Build headers based on auth type setting
     const headers = { 'Content-Type': 'application/json' };
-    if (settings.searchAuthHeader === 'bearer') {
-      headers['Authorization'] = `Bearer ${settings.searchApiKey}`;
-    } else {
-      headers['api-key'] = settings.searchApiKey;
+    const isServerProxy = settings.searchApiKey === 'server-managed' || (settings.searchEndpoint || '').startsWith('/api/');
+    if (!isServerProxy) {
+      if (settings.searchAuthHeader === 'bearer') {
+        headers['Authorization'] = `Bearer ${settings.searchApiKey}`;
+      } else {
+        headers['api-key'] = settings.searchApiKey;
+      }
     }
 
     const response = await fetch(settings.searchEndpoint, {

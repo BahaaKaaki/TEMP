@@ -1,0 +1,39 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*.sw?
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Build artifacts (sub-projects have their own .gitignore for dist/)
+*.tgz
+.cache/
+
+# Generated / temporary
+screenshot-pw.mjs
+template-screenshots/
+
+# Uploaded files
+uploads/

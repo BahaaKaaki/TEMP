@@ -1,0 +1,1344 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Digital Transformation Strategy — Meridian Financial Group</title>
+
+<!--
+  ============================================================
+  DECK METADATA
+  ============================================================
+  Topic:      Digital Transformation Strategy
+  Client:     Meridian Financial Group
+  Slides:     10
+  Templates used:
+    1. cover            — Title slide (no footer, branding + date)
+    2. executiveSummary  — 2x2 grid of theme cells with left accent border
+    3. threeCards        — 3 vertical cards with icon, number, description, impact box
+    4. bulletPoints      — Numbered key-point rows with left accent border
+    5. kpiMetrics        — Two-column: big KPI numbers left, detail items right
+    6. processFlow       — Horizontal steps with arrows between them
+    7. swotAnalysis      — 2x2 color-coded grid (green/yellow/blue/red)
+    8. prosAndCons       — Two columns: pros (green) vs cons (red) with bullet items
+    9. bigNumber         — Giant hero metric with context pill
+   10. thankYou          — Centered closing with contact info row
+
+  Design system: Strategy& Consulting — Georgia titles, Arial body
+  Colors: #111111 (heading), #A32020 (red accent), #8E1E1E (maroon),
+          #F7F9FB (surface), #4A4F57 (muted), #E6E9EE (border)
+  Slide size: 960x540px (maps to 13.333"x7.5" in PPTX)
+  ============================================================
+-->
+
+<style>
+/* === DARK PRESENTER SHELL ===
+   The outer page uses a dark background (#0d1117) so slides
+   appear as "cards" floating in a presentation viewer.
+   CSS zoom auto-scales slides to fit the viewport width. */
+*{margin:0;padding:0;box-sizing:border-box}
+html{background:#0d1117;font-family:system-ui,sans-serif}
+body{min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 0 120px}
+
+/* === SLIDE SCALER ===
+   Each .slide-wrapper centers and scales its .slide child.
+   CSS zoom is used (not transform) for crisp text rendering. */
+.slide-wrapper{margin:20px auto;position:relative}
+.slide-wrapper .slide{box-shadow:0 8px 32px rgba(0,0,0,0.5);border-radius:4px}
+
+/* === CONTROL BAR ===
+   Fixed bottom bar with glassmorphism effect.
+   Contains slide counter and download button. */
+.control-bar{position:fixed;bottom:0;left:0;right:0;height:72px;background:rgba(13,17,23,0.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;gap:20px;z-index:1000;padding:0 32px}
+.control-bar .slide-counter{color:rgba(255,255,255,0.5);font:500 13px/1 system-ui,sans-serif;letter-spacing:0.5px}
+.control-bar .btn{padding:10px 28px;border-radius:8px;font:600 13px/1 system-ui,sans-serif;cursor:pointer;border:none;transition:all 0.2s}
+.control-bar .btn-primary{background:linear-gradient(135deg,#8E1E1E 0%,#A32020 100%);color:#fff}
+.control-bar .btn-primary:hover{filter:brightness(1.15);transform:translateY(-1px)}
+
+/* === RESPONSIVE ZOOM ===
+   Scales slides to fit viewport. Max 1x at >=1024px. */
+@media(max-width:1024px){.slide-wrapper .slide{zoom:0.85}}
+@media(max-width:800px){.slide-wrapper .slide{zoom:0.6}}
+@media(max-width:520px){.slide-wrapper .slide{zoom:0.4}}
+
+/* =============================================
+   SLIDE DESIGN SYSTEM STYLESHEET
+   Strategy& Consulting — all slide CSS classes
+   ============================================= */
+
+/* ===== BASE: Every .slide is 960x540, white background ===== */
+.slide {
+  --slide-w: 960px;
+  --slide-min-h: 540px;
+  --left-x: 35px;
+  --title-w: 890px;
+  --subtitle-w: 890px;
+  --title-y: 30px;
+  --subtitle-y: 101px;
+  --frame-y: 137px;
+  --frame-w: 890px;
+  --right-bound: 925px;
+  --heading: #111111;
+  --body: #222222;
+  --muted: #4A4F57;
+  --accent: #8E1E1E;
+  --accent-hover: #A32020;
+  --accent-soft: #F8E3E3;
+  --on-accent: #FFFFFF;
+  --success: #059669;
+  --success-soft: rgba(16, 185, 129, 0.15);
+  --warning: #d97706;
+  --warning-soft: rgba(245, 158, 11, 0.15);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.15);
+  --info: #3b82f6;
+  --info-soft: rgba(59, 130, 246, 0.15);
+  --page: #FFFFFF;
+  --surface: #F7F9FB;
+  --surface-alt: #EEF2F6;
+  --border: #E6E9EE;
+  --maroon: var(--accent);
+  --red: var(--accent-hover);
+  --rose: var(--accent-soft);
+  --main: var(--heading);
+  --secondary: var(--body);
+  --meta: var(--muted);
+  --coal: var(--muted);
+  --zone1: var(--surface);
+  --zone2: var(--surface-alt);
+  --bg: var(--page);
+  --gH: 16px;
+  --gV: 12px;
+  --radius: 4px;
+  position: relative;
+  width: var(--slide-w);
+  height: var(--slide-min-h);
+  background: var(--page);
+  box-sizing: border-box;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+  color: var(--body);
+}
+
+/* ===== GLOBAL RULES ===== */
+.slide * { box-sizing: border-box; max-width: 100%; }
+.slide [class*="row"], .slide [class*="col"], .slide [class*="grid"], .slide [class*="container"] { min-width: 0; min-height: 0; }
+.slide .title, .slide .subtitle, .slide h1, .slide h2, .slide h3, .slide h4, .slide h5, .slide h6 { word-wrap: break-word; overflow-wrap: break-word; white-space: normal; }
+.slide p, .slide li, .slide span { word-wrap: break-word; overflow-wrap: break-word; hyphens: auto; }
+.slide h1, .slide h2, .slide h3, .slide h4, .slide h5, .slide h6, .slide .title, .slide [class*="title"] { color: var(--heading); }
+.slide p, .slide li, .slide td, .slide span:not([class*="title"]):not([class*="label"]) { color: var(--body); }
+.slide .subtitle, .slide .caption, .slide .meta, .slide small, .slide [class*="label"], .slide [class*="desc"] { color: var(--muted); }
+.slide .card, .slide .box, .slide .panel, .slide .cell, .slide [class*="card"], .slide [class*="box"], .slide [class*="block"], .slide [class*="item"]:not(li):not(.ba-item), .slide [class*="cell"] { background: linear-gradient(135deg, var(--page) 0%, var(--surface) 100%); border-color: var(--border); }
+.slide .card-icon-circle, .slide .timeline-marker, .slide .kpi-value, .slide .value, .slide .number { color: var(--accent); }
+
+/* ===== LAYOUT: title (absolute top), subtitle (below title), frame (content area), footer (bottom) ===== */
+.slide .title {
+  position: absolute; left: var(--left-x); top: var(--title-y); width: var(--title-w);
+  font: 400 28px/1.2 Georgia, serif; font-weight: 400 !important; color: var(--main); margin: 0;
+}
+.slide .title strong, .slide .title b, .slide h1.title strong, .slide h1.title b { font-weight: 400 !important; }
+.slide .subtitle {
+  position: absolute; left: var(--left-x); top: var(--subtitle-y); width: var(--subtitle-w);
+  font: 700 18px/1.2 Arial, sans-serif; color: var(--red); margin: 0;
+}
+.slide .frame {
+  position: absolute; left: var(--left-x); top: var(--frame-y); width: var(--frame-w); height: 353px;
+  display: flex; flex-direction: column; overflow: hidden; min-width: 0;
+}
+.slide footer.footer {
+  position: absolute; bottom: 0; left: var(--left-x); width: 890px; padding-bottom: 14px;
+  display: flex; justify-content: space-between; font-size: 10px; color: var(--meta);
+}
+
+/* ===== MASTERS: control which elements show and frame sizing ===== */
+.slide.master-standard { }
+.slide.master-standard:not(:has(.title)):not(:has(h1)) .frame { top: 35px; height: 455px; }
+.slide.master-standard:has(.title):not(:has(.subtitle)):not(:has(h2)) .frame,
+.slide.master-standard:has(h1):not(:has(.subtitle)):not(:has(h2)) .frame { top: 80px; height: 410px; }
+.slide.master-blank .frame { top: 35px; height: 455px; }
+.slide.master-blank .title, .slide.master-blank .subtitle { display: none; }
+.slide.master-titleOnly .subtitle { display: none; }
+.slide.master-titleOnly .frame { top: 90px; height: 400px; }
+.slide.master-cover .footer { display: none; }
+
+/* ===== COVER: category label, large title, branding + date at bottom ===== */
+.slide.cover-slide .frame { top: 140px; height: auto; display: flex; flex-direction: column; justify-content: flex-start; gap: 16px; }
+.slide .cover-category { font: 700 18px/1.2 Arial, sans-serif; color: var(--red); text-transform: uppercase; letter-spacing: 1px; }
+.slide .cover-title { font: 400 42px/1.15 Georgia, serif; color: var(--main); max-width: 700px; }
+.slide .cover-branding { position: absolute; left: var(--left-x); bottom: 50px; font: 700 16px/1 Arial, sans-serif; color: var(--meta); }
+.slide .cover-date { position: absolute; right: var(--left-x); bottom: 50px; font: 400 13px/1 Arial, sans-serif; color: var(--meta); }
+
+/* ===== EXECUTIVE SUMMARY: 2x2 grid of summary cells ===== */
+.slide .exec-summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px 18px; height: 100%; align-content: stretch; }
+.slide .exec-summary-grid:has(.exec-summary-cell:nth-child(5)) { grid-template-columns: repeat(3, 1fr); }
+.slide .exec-summary-cell { padding: 14px 16px; background: var(--zone1); border-radius: var(--radius); border-left: 4px solid var(--maroon); overflow: hidden; min-height: 0; }
+.slide .exec-summary-cell h4 { margin: 0 0 5px 0; font: 700 13px/1.3 Arial, sans-serif; color: var(--maroon); }
+.slide .exec-summary-cell p { margin: 0 0 2px 0; font: 400 10.5px/1.4 Arial, sans-serif; color: var(--secondary); }
+.slide .exec-summary-cell p:last-child { margin-bottom: 0; color: var(--meta); font-size: 10px; }
+
+/* ===== THREE CARDS: icon circle, card number, title, body, impact box ===== */
+.slide .card-row { display: flex; gap: var(--gH); height: 100%; min-width: 0; overflow: hidden; }
+.slide .card { flex: 1; min-width: 0; background: linear-gradient(135deg, var(--page) 0%, var(--surface) 100%); border-radius: var(--radius); padding: 18px; display: flex; flex-direction: column; gap: 10px; position: relative; border: 1px solid var(--border); border-top: 4px solid var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden; }
+.slide .card-header-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.slide .card-icon-circle { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #8E1E1E 0%, #A32020 100%); color: #ffffff; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+.slide .card-num { font: 700 32px/1 Georgia, serif; color: var(--muted); }
+.slide .card h3 { margin: 0; font: 700 16px/1.3 Arial, sans-serif; color: var(--main); }
+.slide .card p { margin: 0; font: 400 12px/1.55 Arial, sans-serif; color: var(--secondary); }
+.slide .impact-box { margin-top: auto; padding: 10px 12px; background: linear-gradient(135deg, #f0d0d0 0%, #e8bfbf 100%); border-radius: 4px; border-left: 3px solid var(--maroon); font: 600 11px/1.4 Arial, sans-serif; color: var(--maroon); }
+
+/* ===== BULLET POINTS: numbered circles + content rows ===== */
+.slide .key-points { display: flex; flex-direction: column; gap: 16px; }
+.slide .key-point { display: flex; align-items: flex-start; gap: 16px; background: linear-gradient(135deg, var(--page) 0%, var(--surface) 100%); border-radius: 8px; padding: 16px 20px; border-left: 4px solid var(--accent); }
+.slide .key-point-number { width: 36px; height: 36px; background: var(--accent); color: var(--on-accent); border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 700 16px/1 Arial, sans-serif; flex-shrink: 0; }
+.slide .key-point-content { flex: 1; min-width: 0; }
+.slide .key-point-content h4 { margin: 0 0 4px 0; font: 700 14px/1.3 Arial, sans-serif; color: var(--heading); }
+.slide .key-point-content p { margin: 0; font: 400 12px/1.5 Arial, sans-serif; color: var(--body); }
+
+/* ===== KPI METRICS: two-column with big numbers left, details right ===== */
+.slide .two-col { display: flex; gap: 24px; height: 100%; min-height: 340px; min-width: 0; overflow: hidden; }
+.slide .col-left { flex: 0 0 380px; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; overflow: hidden; }
+.slide .kpi-block { background: linear-gradient(135deg, var(--page) 0%, var(--surface) 100%); padding: 14px 18px; border-radius: var(--radius); border-left: 4px solid var(--accent); box-shadow: 0 2px 8px rgba(0,0,0,0.04); flex: 1; display: flex; flex-direction: column; justify-content: center; }
+.slide .kpi-value { font: 700 40px/1 Georgia, serif; color: var(--maroon); }
+.slide .kpi-label { margin-top: 6px; font: 500 13px/1.4 Arial, sans-serif; color: var(--meta); }
+.slide .col-right { flex: 1; min-width: 0; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; overflow: hidden; }
+.slide .detail-item { padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.slide .detail-item:last-child { border-bottom: none; }
+.slide .detail-item h4 { margin: 0 0 6px 0; font: 700 14px/1.3 Arial, sans-serif; color: var(--main); }
+.slide .detail-item p { margin: 0; font: 400 12px/1.55 Arial, sans-serif; color: var(--secondary); }
+
+/* ===== PROCESS FLOW: horizontal steps with arrows ===== */
+.slide .process-flow { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; height: 100%; padding-top: 20px; }
+.slide .process-step { flex: 1; display: flex; flex-direction: column; align-items: center; text-align: center; max-width: 150px; }
+.slide .step-number { width: 44px; height: 44px; border-radius: 50%; background: var(--maroon); color: white; display: flex; align-items: center; justify-content: center; font: 700 20px/1 Arial, sans-serif; margin-bottom: 12px; }
+.slide .step-content h4 { margin: 0 0 6px 0; font: 700 13px/1.3 Arial, sans-serif; color: var(--main); }
+.slide .step-content p { margin: 0; font: 400 11px/1.4 Arial, sans-serif; color: var(--meta); }
+.slide .process-arrow { font-size: 24px; color: var(--maroon); margin-top: 10px; flex-shrink: 0; }
+
+/* ===== SWOT ANALYSIS: 2x2 color-coded quadrants ===== */
+.slide .swot-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 12px; height: 100%; }
+.slide .swot-cell { border-radius: var(--radius); padding: 16px; border: 1px solid var(--border); }
+.slide .swot-strength { background: linear-gradient(135deg, var(--success-soft) 0%, var(--success-soft) 100%); border-color: var(--success); }
+.slide .swot-weakness { background: linear-gradient(135deg, var(--warning-soft) 0%, var(--warning-soft) 100%); border-color: var(--warning); }
+.slide .swot-opportunity { background: linear-gradient(135deg, var(--info-soft) 0%, var(--info-soft) 100%); border-color: var(--info); }
+.slide .swot-threat { background: linear-gradient(135deg, var(--danger-soft) 0%, var(--danger-soft) 100%); border-color: var(--danger); }
+.slide .swot-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.slide .swot-icon { font-size: 20px; }
+.slide .swot-header h4 { margin: 0; font: 700 14px/1.3 Arial, sans-serif; color: var(--main); }
+.slide .swot-cell ul { list-style: none; padding: 0; margin: 0; }
+.slide .swot-cell li { font: 400 11px/1.5 Arial, sans-serif; color: var(--secondary); padding: 3px 0; padding-left: 16px; position: relative; }
+.slide .swot-cell li::before { content: '\2022'; position: absolute; left: 4px; color: var(--main); font-weight: bold; }
+
+/* ===== PROS & CONS: two columns with green/red headers ===== */
+.slide .pros-cons-container { display: flex; gap: 20px; height: 100%; }
+.slide .pros-column, .slide .cons-column { flex: 1; display: flex; flex-direction: column; }
+.slide .pc-header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-radius: var(--radius) var(--radius) 0 0; margin-bottom: -1px; }
+.slide .pros-header { background: var(--success-soft); border: 1px solid var(--success-soft); }
+.slide .cons-header { background: var(--danger-soft); border: 1px solid var(--danger-soft); }
+.slide .pc-icon { font-size: 18px; font-weight: 700; }
+.slide .pros-header .pc-icon { color: var(--success); }
+.slide .cons-header .pc-icon { color: var(--danger); }
+.slide .pc-header h3 { margin: 0; font: 700 15px/1.3 Arial, sans-serif; color: var(--main); }
+.slide .pc-list { flex: 1; background: var(--zone1); border-radius: 0 0 var(--radius) var(--radius); padding: 16px; border: 1px solid var(--border); display: flex; flex-direction: column; gap: 12px; }
+.slide .pc-item { display: flex; align-items: flex-start; gap: 12px; }
+.slide .pc-bullet { width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font: 700 14px/1 Arial, sans-serif; flex-shrink: 0; margin-top: 1px; }
+.slide .pro-item .pc-bullet { background: var(--success-soft); color: var(--success); }
+.slide .con-item .pc-bullet { background: var(--danger-soft); color: var(--danger); }
+.slide .pc-item strong { display: block; font: 700 12px/1.3 Arial, sans-serif; color: var(--main); margin-bottom: 2px; }
+.slide .pc-item p { margin: 0; font: 400 11px/1.4 Arial, sans-serif; color: var(--secondary); }
+
+/* ===== BIG NUMBER: giant centered metric ===== */
+.slide.big-number-slide .frame { display: flex; align-items: center; justify-content: center; position: relative; }
+.slide.big-number-slide .frame::before { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 280px; height: 280px; background: radial-gradient(circle, rgba(142, 30, 30, 0.04) 0%, transparent 70%); border-radius: 50%; z-index: 0; }
+.slide .big-number-container { text-align: center; position: relative; z-index: 1; }
+.slide .big-number-prefix, .slide .big-number-suffix { display: inline; font: 400 52px/1 Georgia, serif; color: var(--red); vertical-align: middle; opacity: 0.85; }
+.slide .big-number-value { display: inline; font: 700 110px/1 Georgia, serif; background: linear-gradient(135deg, var(--maroon) 0%, var(--red) 50%, var(--maroon) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; letter-spacing: -3px; text-shadow: none; filter: drop-shadow(0 2px 4px rgba(142, 30, 30, 0.2)); }
+.slide .big-number-label { font: 500 24px/1.3 Arial, sans-serif; color: var(--main); margin-top: 20px; letter-spacing: -0.3px; }
+.slide .big-number-context { font: 400 15px/1.5 Arial, sans-serif; color: var(--meta); margin-top: 12px; padding: 10px 24px; background: linear-gradient(135deg, var(--zone1) 0%, rgba(247, 249, 251, 0.5) 100%); border-radius: 20px; display: inline-block; }
+
+/* ===== THANK YOU: centered with contact row ===== */
+.slide.thank-you-slide .frame { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.slide .thank-you-icon { font-size: 64px; margin-bottom: 20px; }
+.slide .thank-you-title { font: 700 48px/1.2 Georgia, serif; color: var(--main); margin-bottom: 8px; }
+.slide .thank-you-subtitle { font: 400 24px/1.3 Arial, sans-serif; color: var(--maroon); margin-bottom: 40px; }
+.slide .contact-info { display: flex; gap: 32px; justify-content: center; }
+.slide .contact-item { display: flex; align-items: center; gap: 8px; font: 400 14px/1.3 Arial, sans-serif; color: var(--meta); }
+.slide .contact-icon { font-size: 18px; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     SLIDE 1 OF 10 — TEMPLATE: cover
+     ============================================================
+     Pattern: .slide.cover-slide.master-cover
+     Structure:
+       .frame >
+         .cover-category  (uppercase red label — topic/category)
+         .cover-title     (large Georgia title — max 700px wide)
+       .cover-branding    (absolute bottom-left — company name)
+       .cover-date        (absolute bottom-right — date)
+     Notes:
+       - Uses master-cover which hides the footer
+       - No .title or .subtitle — the cover has its own title system
+       - .cover-category is bold red uppercase with letter-spacing
+       - .cover-title is 42px Georgia, the largest text on any slide
+     PPTX mapping:
+       - Category → addText at y:1.94, red, bold, Arial 18
+       - Title → addText at y:2.5, Georgia 42
+       - Branding → addText at y:6.3 left, meta color
+       - Date → addText at y:6.3 right-aligned
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide cover-slide master-cover">
+  <div class="frame">
+    <div class="cover-category">STRATEGIC ADVISORY</div>
+    <div class="cover-title">Digital Transformation Strategy</div>
+  </div>
+  <div class="cover-branding">Meridian Financial Group</div>
+  <div class="cover-date">February 2026</div>
+</div>
+</div>
+
+<!-- ============================================================
+     SLIDE 2 OF 10 — TEMPLATE: executiveSummary
+     ============================================================
+     Pattern: .slide.master-standard
+     Structure:
+       .title              (28px Georgia heading)
+       .subtitle           (18px Arial bold red)
+       .frame >
+         .exec-summary-grid >
+           .exec-summary-cell (repeated 4x for 2x2 layout)
+             h4             (cell heading — maroon, 13px bold)
+             p              (cell body — 10.5px, secondary color)
+             p:last-child   (cell meta line — 10px, muted color)
+     Notes:
+       - Grid auto-switches to 3-col when 5+ cells present
+       - Each cell has a 4px maroon left border accent
+       - Background is zone1 (#F7F9FB)
+       - Ideal for 2-6 theme summaries
+     PPTX mapping:
+       - Title/subtitle at standard positions
+       - Each cell → addShape (rounded rect) + addText calls
+       - 2x2 grid at frameY=1.90, each cell ~6.1" wide, ~2.3" tall
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide master-standard">
+  <h1 class="title">Transformation at a Glance</h1>
+  <h2 class="subtitle">Four Strategic Themes Driving Change</h2>
+  <div class="frame">
+    <div class="exec-summary-grid">
+      <div class="exec-summary-cell">
+        <h4>Cloud-First Infrastructure</h4>
+        <p>Migrate 80% of on-premise workloads to hybrid cloud by Q4 2026, reducing infrastructure costs by $12M annually.</p>
+        <p>Phase 1 migration underway — 34% complete</p>
+      </div>
+      <div class="exec-summary-cell">
+        <h4>Customer Experience Overhaul</h4>
+        <p>Unify digital channels into a single platform. Target: 40-point NPS improvement across retail and wealth segments.</p>
+        <p>RFP issued — vendor shortlist by March</p>
+      </div>
+      <div class="exec-summary-cell">
+        <h4>Data &amp; Analytics Platform</h4>
+        <p>Build enterprise data lake with real-time decisioning. Enable AI-driven credit scoring and fraud detection models.</p>
+        <p>Architecture approved — build starting Q2</p>
+      </div>
+      <div class="exec-summary-cell">
+        <h4>Workforce Enablement</h4>
+        <p>Reskill 2,400 employees on digital tools. Launch internal AI academy and embed agile ways of working across all BUs.</p>
+        <p>Pilot cohort of 200 completed training</p>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <span>Meridian Financial Group</span>
+    <span>Confidential</span>
+    <span>2</span>
+  </footer>
+</div>
+</div>
+
+<!-- ============================================================
+     SLIDE 3 OF 10 — TEMPLATE: threeCards
+     ============================================================
+     Pattern: .slide.master-standard
+     Structure:
+       .title
+       .subtitle
+       .frame >
+         .card-row >             (flex row, gap=16px, full height)
+           .card (repeated 3x)   (flex:1, border-top 4px accent)
+             .card-header-row >  (flex row, space-between)
+               .card-icon-circle (40px circle, maroon gradient, white icon)
+               .card-num        (32px Georgia, muted — "01", "02", "03")
+             h3                  (16px bold — card title)
+             p                   (12px — card description, can have multiple)
+             .impact-box         (margin-top:auto — rose gradient box with maroon text)
+     Notes:
+       - Cards fill equal width via flex:1
+       - .impact-box always sticks to the bottom (margin-top:auto)
+       - Icon uses emoji inside .card-icon-circle
+       - Supports 2-4 cards (flex adjusts naturally)
+     PPTX mapping:
+       - Each card → addShape (rect with top border) + addText for each element
+       - 3 cards: x positions ~0.48, 4.6, 8.72 — each ~3.96" wide
+       - Impact box → separate addShape with rose fill at card bottom
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide master-standard">
+  <h1 class="title">Three Pillars of Transformation</h1>
+  <h2 class="subtitle">Foundation for Sustainable Digital Growth</h2>
+  <div class="frame">
+    <div class="card-row">
+      <div class="card">
+        <div class="card-header-row">
+          <div class="card-icon-circle">&#9729;</div>
+          <div class="card-num">01</div>
+        </div>
+        <h3>Modernize Core Systems</h3>
+        <p>Replace legacy mainframe with cloud-native microservices architecture.</p>
+        <p>Enable real-time processing and API-first integration.</p>
+        <div class="impact-box">$12M annual savings + 99.95% uptime</div>
+      </div>
+      <div class="card">
+        <div class="card-header-row">
+          <div class="card-icon-circle">&#128202;</div>
+          <div class="card-num">02</div>
+        </div>
+        <h3>Unlock Data Intelligence</h3>
+        <p>Build unified data platform spanning all business lines.</p>
+        <p>Deploy ML models for credit risk, fraud, and personalization.</p>
+        <div class="impact-box">3x faster decisioning, 22% fraud reduction</div>
+      </div>
+      <div class="card">
+        <div class="card-header-row">
+          <div class="card-icon-circle">&#128101;</div>
+          <div class="card-num">03</div>
+        </div>
+        <h3>Empower the Workforce</h3>
+        <p>Reskill 2,400 employees through AI academy and agile coaching.</p>
+        <p>Embed digital-first culture with measurable adoption targets.</p>
+        <div class="impact-box">85% digital literacy target by Q4 2026</div>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <span>Meridian Financial Group</span>
+    <span>Confidential</span>
+    <span>3</span>
+  </footer>
+</div>
+</div>
+
+<!-- ============================================================
+     SLIDE 4 OF 10 — TEMPLATE: bulletPoints
+     ============================================================
+     Pattern: .slide.master-standard
+     Structure:
+       .title
+       .subtitle
+       .frame >
+         .key-points >              (flex column, gap=16px)
+           .key-point (repeated)    (flex row, left border accent, rounded bg)
+             .key-point-number      (36px circle, accent bg, white number)
+             .key-point-content >
+               h4                   (14px bold — point title)
+               p                    (12px — point description)
+     Notes:
+       - Each .key-point is a horizontal row: number circle + text
+       - 4px left border in accent color on each row
+       - Background is page→surface gradient
+       - Supports 4-7 items (gap auto-adjusts, may need smaller gap for 7)
+       - Number circle uses .accent background with white text
+     PPTX mapping:
+       - Each point → addShape (circle for number) + addText (title+desc)
+       - Start at y=1.90, each row ~0.85" tall with 0.12" gap
+       - Circle: 0.36" diameter, centered vertically in row
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide master-standard">
+  <h1 class="title">Key Findings from Discovery</h1>
+  <h2 class="subtitle">Assessment of Current Digital Maturity</h2>
+  <div class="frame">
+    <div class="key-points">
+      <div class="key-point">
+        <div class="key-point-number">1</div>
+        <div class="key-point-content">
+          <h4>Legacy Dependency Is Critical</h4>
+          <p>73% of core transactions still run on 20-year-old mainframe systems with mounting maintenance costs.</p>
+        </div>
+      </div>
+      <div class="key-point">
+        <div class="key-point-number">2</div>
+        <div class="key-point-content">
+          <h4>Customer Channels Are Fragmented</h4>
+          <p>Five separate portals serve retail, wealth, commercial, insurance, and mortgage — no unified experience.</p>
+        </div>
+      </div>
+      <div class="key-point">
+        <div class="key-point-number">3</div>
+        <div class="key-point-content">
+          <h4>Data Silos Block Innovation</h4>
+          <p>Customer data lives in 14 disconnected systems. No single view of customer exists across business lines.</p>
+        </div>
+      </div>
+      <div class="key-point">
+        <div class="key-point-number">4</div>
+        <div class="key-point-content">
+          <h4>Talent Gap Is Widening</h4>
+          <p>Only 18% of staff rate themselves as confident with digital tools. Attrition in tech roles is 2x company average.</p>
+        </div>
+      </div>
+      <div class="key-point">
+        <div class="key-point-number">5</div>
+        <div class="key-point-content">
+          <h4>Competitors Are Pulling Ahead</h4>
+          <p>Top 3 peers have already launched AI-powered advisory and real-time payments — Meridian risks falling behind.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <span>Meridian Financial Group</span>
+    <span>Confidential</span>
+    <span>4</span>
+  </footer>
+</div>
+</div>
+
+<!-- ============================================================
+     SLIDE 5 OF 10 — TEMPLATE: kpiMetrics
+     ============================================================
+     Pattern: .slide.master-standard
+     Structure:
+       .title
+       .subtitle
+       .frame >
+         .two-col >                    (flex row, gap=24px, full height)
+           .col-left (flex:0 0 380px) >
+             .kpi-block (repeated 2-4x)  (left border accent, flex:1)
+               .kpi-value               (56px Georgia bold, maroon)
+               .kpi-label               (15px, muted)
+           .col-right (flex:1) >
+             .detail-item (repeated)     (border-bottom separator)
+               h4                        (14px bold — detail title)
+               p                         (12px — detail description)
+     Notes:
+       - Left column: big numbers stacked vertically (equal height via flex:1)
+       - Right column: detail items with bottom border separators
+       - KPI values use maroon color, Georgia serif for visual weight
+       - Works with 2-4 KPI blocks and matching detail items
+     PPTX mapping:
+       - KPI blocks: x=0.48, w=4.8" — each block stacked vertically
+       - kpi-value: Georgia 44pt (scaled from 56px), maroon color
+       - Detail items: x=5.5, w=7.3" — stacked with borders
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide master-standard">
+  <h1 class="title">Transformation Impact Dashboard</h1>
+  <h2 class="subtitle">Projected Outcomes by End of Year 2</h2>
+  <div class="frame">
+    <div class="two-col">
+      <div class="col-left">
+        <div class="kpi-block">
+          <div class="kpi-value">$47M</div>
+          <div class="kpi-label">Projected Annual Savings</div>
+        </div>
+        <div class="kpi-block">
+          <div class="kpi-value">+38</div>
+          <div class="kpi-label">Net Promoter Score Uplift</div>
+        </div>
+        <div class="kpi-block">
+          <div class="kpi-value">4.2x</div>
+          <div class="kpi-label">Return on Investment</div>
+        </div>
+      </div>
+      <div class="col-right">
+        <div class="detail-item">
+          <h4>Cost Efficiency Gains</h4>
+          <p>Infrastructure costs reduced 40% through cloud migration. Manual processes automated, saving 180K staff-hours annually.</p>
+        </div>
+        <div class="detail-item">
+          <h4>Customer Satisfaction</h4>
+          <p>Unified digital experience expected to drive NPS from 22 to 60. Mobile app rating target: 4.7 stars.</p>
+        </div>
+        <div class="detail-item">
+          <h4>Revenue Acceleration</h4>
+          <p>AI-powered cross-selling projected to generate $28M in new revenue. Time-to-market for products cut by 60%.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <span>Meridian Financial Group</span>
+    <span>Confidential</span>
+    <span>5</span>
+  </footer>
+</div>
+</div>
+
+<!-- ============================================================
+     SLIDE 6 OF 10 — TEMPLATE: processFlow
+     ============================================================
+     Pattern: .slide.master-standard
+     Structure:
+       .title
+       .subtitle
+       .frame >
+         .process-flow >               (flex row, space-between, padded)
+           .process-step >             (flex column, centered, max-width 150px)
+             .step-number              (44px circle, maroon bg, white text)
+             .step-content >
+               h4                      (13px bold — step name)
+               p                       (11px muted — step description)
+           .process-arrow              (Unicode arrow, 24px, maroon)
+           .process-step > ...         (repeats with arrows between)
+     Notes:
+       - Steps and arrows alternate: step → arrow → step → arrow → step
+       - .process-arrow uses "→" character, colored maroon
+       - Steps center-align text below their number circle
+       - Supports 3-5 steps (more than 5 gets cramped)
+       - Each step maxes at 150px width — content should be concise
+     PPTX mapping:
+       - Steps spread across slide: x starts at ~1.0", spaced ~2.8" apart
+       - Circle: addShape OVAL, 0.44" diameter, maroon fill
+       - Arrow: addText "→" between steps, y aligned with circles
+       - Text: addText below circles, center-aligned
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide master-standard">
+  <h1 class="title">Implementation Methodology</h1>
+  <h2 class="subtitle">Four-Phase Delivery Approach</h2>
+  <div class="frame">
+    <div class="process-flow">
+      <div class="process-step">
+        <div class="step-number">1</div>
+        <div class="step-content">
+          <h4>Assess</h4>
+          <p>Map current state, identify gaps, define target architecture</p>
+        </div>
+      </div>
+      <div class="process-arrow">&#8594;</div>
+      <div class="process-step">
+        <div class="step-number">2</div>
+        <div class="step-content">
+          <h4>Design</h4>
+          <p>Solution blueprints, vendor selection, business case validation</p>
+        </div>
+      </div>
+      <div class="process-arrow">&#8594;</div>
+      <div class="process-step">
+        <div class="step-number">3</div>
+        <div class="step-content">
+          <h4>Build &amp; Pilot</h4>
+          <p>Agile sprints, MVP delivery, controlled pilots with feedback loops</p>
+        </div>
+      </div>
+      <div class="process-arrow">&#8594;</div>
+      <div class="process-step">
+        <div class="step-number">4</div>
+        <div class="step-content">
+          <h4>Scale</h4>
+          <p>Enterprise rollout, change management, performance monitoring</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <span>Meridian Financial Group</span>
+    <span>Confidential</span>
+    <span>6</span>
+  </footer>
+</div>
+</div>
+
+<!-- ============================================================
+     SLIDE 7 OF 10 — TEMPLATE: swotAnalysis
+     ============================================================
+     Pattern: .slide.master-standard
+     Structure:
+       .title
+       .subtitle
+       .frame >
+         .swot-grid >                         (2x2 CSS grid, gap=12px)
+           .swot-cell.swot-strength >          (green-tinted bg)
+             .swot-header > .swot-icon + h4
+             ul > li (repeated)
+           .swot-cell.swot-weakness >          (yellow/orange-tinted bg)
+             .swot-header > .swot-icon + h4
+             ul > li (repeated)
+           .swot-cell.swot-opportunity >       (blue-tinted bg)
+             .swot-header > .swot-icon + h4
+             ul > li (repeated)
+           .swot-cell.swot-threat >            (red-tinted bg)
+             .swot-header > .swot-icon + h4
+             ul > li (repeated)
+     Notes:
+       - Each quadrant has a distinct soft color + matching border
+       - strength=green, weakness=yellow, opportunity=blue, threat=red
+       - .swot-icon is an emoji (shield, warning, lightbulb, lightning)
+       - List items use CSS ::before pseudo-element for bullet dots
+       - Grid fills the full frame height (353px)
+       - Typically 3-4 items per quadrant for readability
+     PPTX mapping:
+       - 4 rounded rects in 2x2 positions, each with matching fill color
+       - Header: icon emoji + "Strengths" title in one addText
+       - List items: addText with bullet option, indented
+       - Quadrant positions: TL(0.48,1.90), TR(6.9,1.90), BL(0.48,4.5), BR(6.9,4.5)
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide master-standard">
+  <h1 class="title">Strategic Assessment</h1>
+  <h2 class="subtitle">SWOT Analysis for Digital Transformation</h2>
+  <div class="frame">
+    <div class="swot-grid">
+      <div class="swot-cell swot-strength">
+        <div class="swot-header">
+          <span class="swot-icon">&#128170;</span>
+          <h4>Strengths</h4>
+        </div>
+        <ul>
+          <li>Strong brand trust across 3.2M customers</li>
+          <li>Healthy balance sheet — $180M transformation budget</li>
+          <li>New CTO with Big Tech background hired Q3 2025</li>
+          <li>Regulatory relationships are well-established</li>
+        </ul>
+      </div>
+      <div class="swot-cell swot-weakness">
+        <div class="swot-header">
+          <span class="swot-icon">&#9888;</span>
+          <h4>Weaknesses</h4>
+        </div>
+        <ul>
+          <li>20-year-old mainframe dependency for core banking</li>
+          <li>14 disconnected data systems, no single customer view</li>
+          <li>Low digital literacy — only 18% staff confident</li>
+          <li>Siloed organization slows cross-BU collaboration</li>
+        </ul>
+      </div>
+      <div class="swot-cell swot-opportunity">
+        <div class="swot-header">
+          <span class="swot-icon">&#128161;</span>
+          <h4>Opportunities</h4>
+        </div>
+        <ul>
+          <li>Open banking APIs unlock new partnership revenue</li>
+          <li>GenAI can automate 40% of back-office operations</li>
+          <li>Wealth segment underserved digitally — $2B AUM upside</li>
+          <li>ESG data platform could differentiate in market</li>
+        </ul>
+      </div>
+      <div class="swot-cell swot-threat">
+        <div class="swot-header">
+          <span class="swot-icon">&#9889;</span>
+          <h4>Threats</h4>
+        </div>
+        <ul>
+          <li>Fintechs capturing younger demographic rapidly</li>
+          <li>Increasing regulatory requirements for AI governance</li>
+          <li>Cybersecurity threat landscape expanding</li>
+          <li>Talent war — competitors offering 20-30% premiums</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <span>Meridian Financial Group</span>
+    <span>Confidential</span>
+    <span>7</span>
+  </footer>
+</div>
+</div>
+
+<!-- ============================================================
+     SLIDE 8 OF 10 — TEMPLATE: prosAndCons
+     ============================================================
+     Pattern: .slide.master-standard
+     Structure:
+       .title
+       .subtitle
+       .frame >
+         .pros-cons-container >           (flex row, gap=20px, full height)
+           .pros-column >                 (flex:1, column)
+             .pc-header.pros-header >     (green soft bg)
+               .pc-icon                   (checkmark, green)
+               h3                         (column title)
+             .pc-list >                   (zone1 bg, bottom-rounded, flex column)
+               .pc-item.pro-item >        (flex row)
+                 .pc-bullet               (green circle with checkmark)
+                 div >
+                   strong                 (item title, 12px bold)
+                   p                      (item description, 11px)
+           .cons-column >                 (same structure, red colors)
+             .pc-header.cons-header >     (red soft bg)
+             .pc-list >
+               .pc-item.con-item >        (red bullet)
+     Notes:
+       - Two equal columns side by side
+       - Headers have soft colored backgrounds (green for pros, red for cons)
+       - Bullet circles use matching colors
+       - Works best with 3-4 items per side
+       - .pc-list has flex:1 so it fills remaining space below header
+     PPTX mapping:
+       - Two columns: left at x=0.48 w=5.9", right at x=6.7 w=5.9"
+       - Headers: addShape with colored fill + addText
+       - Items: addShape (circle bullet) + addText (title bold + body)
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide master-standard">
+  <h1 class="title">Build vs. Buy Assessment</h1>
+  <h2 class="subtitle">Custom Platform vs. Enterprise Vendor Solution</h2>
+  <div class="frame">
+    <div class="pros-cons-container">
+      <div class="pros-column">
+        <div class="pc-header pros-header">
+          <span class="pc-icon">&#10003;</span>
+          <h3>Build Custom Platform</h3>
+        </div>
+        <div class="pc-list">
+          <div class="pc-item pro-item">
+            <div class="pc-bullet">&#10003;</div>
+            <div>
+              <strong>Full Customization</strong>
+              <p>Tailor every workflow to Meridian's unique multi-line business model.</p>
+            </div>
+          </div>
+          <div class="pc-item pro-item">
+            <div class="pc-bullet">&#10003;</div>
+            <div>
+              <strong>Competitive Moat</strong>
+              <p>Proprietary tech becomes a differentiator that competitors cannot replicate.</p>
+            </div>
+          </div>
+          <div class="pc-item pro-item">
+            <div class="pc-bullet">&#10003;</div>
+            <div>
+              <strong>No Vendor Lock-in</strong>
+              <p>Full ownership of IP and roadmap — no dependency on external release cycles.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cons-column">
+        <div class="pc-header cons-header">
+          <span class="pc-icon">&#10007;</span>
+          <h3>Buy Enterprise Solution</h3>
+        </div>
+        <div class="pc-list">
+          <div class="pc-item con-item">
+            <div class="pc-bullet">&#10007;</div>
+            <div>
+              <strong>Faster Time-to-Market</strong>
+              <p>Pre-built modules cut implementation time by 40%, but limit flexibility.</p>
+            </div>
+          </div>
+          <div class="pc-item con-item">
+            <div class="pc-bullet">&#10007;</div>
+            <div>
+              <strong>Proven at Scale</strong>
+              <p>Enterprise vendors serve 500+ banks, but Meridian's needs may not align.</p>
+            </div>
+          </div>
+          <div class="pc-item con-item">
+            <div class="pc-bullet">&#10007;</div>
+            <div>
+              <strong>High Licensing Costs</strong>
+              <p>$8-12M annual licensing plus customization fees erode long-term savings.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <span>Meridian Financial Group</span>
+    <span>Confidential</span>
+    <span>8</span>
+  </footer>
+</div>
+</div>
+
+<!-- ============================================================
+     SLIDE 9 OF 10 — TEMPLATE: bigNumber
+     ============================================================
+     Pattern: .slide.master-titleOnly.big-number-slide
+     Structure:
+       .title                           (context heading)
+       .frame >                         (centered flex with radial glow ::before)
+         .big-number-container >        (centered text block)
+           .big-number-prefix           (52px Georgia, red — "$", "+", etc.)
+           .big-number-value            (110px Georgia bold, maroon gradient text)
+           .big-number-suffix           (52px Georgia, red — "M", "B", "%")
+           .big-number-label            (24px, main color — what the number means)
+           .big-number-context          (15px, muted — pill-shaped context note)
+     Notes:
+       - Uses master-titleOnly (no subtitle, taller frame)
+       - .big-number-value uses gradient text (background-clip: text)
+       - A radial glow ::before pseudo-element creates subtle emphasis
+       - Prefix/suffix are smaller and slightly transparent
+       - Context pill has rounded background for visual softness
+       - Use for 1-2 hero metrics maximum
+     PPTX mapping:
+       - Title at standard position
+       - Number: addText at center, Georgia 88pt (scaled), maroon
+       - Prefix/suffix: addText adjacent, Georgia 42pt
+       - Label: addText below number, Arial 24pt
+       - Context: addText with rounded rect shape behind it
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide master-titleOnly big-number-slide">
+  <h1 class="title">Expected Return on Transformation Investment</h1>
+  <div class="frame">
+    <div class="big-number-container">
+      <div class="big-number-prefix">$</div>
+      <div class="big-number-value">47</div>
+      <div class="big-number-suffix">M</div>
+      <div class="big-number-label">Annual Savings by Year 2</div>
+      <div class="big-number-context">From $180M investment — 4.2x ROI over 5-year horizon</div>
+    </div>
+  </div>
+  <footer class="footer">
+    <span>Meridian Financial Group</span>
+    <span>Confidential</span>
+    <span>9</span>
+  </footer>
+</div>
+</div>
+
+<!-- ============================================================
+     SLIDE 10 OF 10 — TEMPLATE: thankYou
+     ============================================================
+     Pattern: .slide.master-standard.thank-you-slide
+     Structure:
+       .title                    (hidden by visual design — optional)
+       .frame >                  (centered flex column)
+         .thank-you-icon         (64px emoji — visual anchor)
+         .thank-you-title        (48px Georgia bold — "Thank You")
+         .thank-you-subtitle     (24px Arial, maroon — CTA or tagline)
+         .contact-info >         (flex row, centered, gap=32px)
+           .contact-item >       (flex row, icon + text)
+             .contact-icon       (18px emoji)
+             span                (14px, muted — contact detail)
+     Notes:
+       - Frame uses centered flex for vertical + horizontal centering
+       - Icon is decorative, sets tone (handshake, sparkle, etc.)
+       - Title is the largest text (48px Georgia bold)
+       - Subtitle is the call-to-action in maroon
+       - Contact items displayed as a horizontal row at bottom
+       - Footer still shows on thank-you slides
+     PPTX mapping:
+       - Icon: addText at y~2.2", centered, fontSize:48
+       - Title: addText at y~3.0", Georgia 40pt, bold
+       - Subtitle: addText at y~3.8", Arial 20pt, maroon
+       - Contact row: addText items spread across bottom, y~5.5"
+     ============================================================ -->
+<div class="slide-wrapper">
+<div class="slide master-standard thank-you-slide">
+  <h1 class="title">Thank You</h1>
+  <div class="frame">
+    <div class="thank-you-icon">&#129309;</div>
+    <div class="thank-you-title">Thank You</div>
+    <div class="thank-you-subtitle">Let's accelerate the journey together</div>
+    <div class="contact-info">
+      <div class="contact-item">
+        <span class="contact-icon">&#9993;</span>
+        <span>strategy@meridianfg.com</span>
+      </div>
+      <div class="contact-item">
+        <span class="contact-icon">&#128222;</span>
+        <span>+1 (212) 555-0190</span>
+      </div>
+      <div class="contact-item">
+        <span class="contact-icon">&#127760;</span>
+        <span>meridianfg.com/transform</span>
+      </div>
+    </div>
+  </div>
+  <footer class="footer">
+    <span>Meridian Financial Group</span>
+    <span>Confidential</span>
+    <span>10</span>
+  </footer>
+</div>
+</div>
+
+<!-- ============================================================
+     CONTROL BAR — slide counter + PPTX download button
+     ============================================================ -->
+<div class="control-bar">
+  <span class="slide-counter">10 slides</span>
+  <button class="btn btn-primary" onclick="downloadPPTX()">&#11015; Download PPTX</button>
+</div>
+
+<!-- ============================================================
+     PptxGenJS — CDN loaded, then downloadPPTX() renders all 10 slides
+     ============================================================
+     IMPORTANT NOTES FOR UNDERSTANDING THIS CODE:
+     - PptxGenJS slide size: 13.333" x 7.5" (widescreen 16:9)
+     - Standard layout constants used across all slides:
+         startX = 0.48"     (left margin)
+         titleY = 0.42"     (title vertical position)
+         subtitleY = 1.40"  (subtitle vertical position)
+         frameY = 1.90"     (content area starts here)
+         frameW = 12.36"    (content area width)
+         frameH = 4.90"     (content area height)
+         footerY = 7.05"    (footer vertical position)
+     - Color palette object 'c' is defined once and reused:
+         main:'111111', secondary:'222222', red:'A32020',
+         maroon:'8E1E1E', zone1:'F7F9FB', rose:'F8E3E3',
+         meta:'4A4F57', coal:'4B4F55', border:'E6E9EE'
+     - Each slide is wrapped in an IIFE: (function(){ ... })();
+     - Slide numbering: addText for footer with single page number
+     ============================================================ -->
+<script src="https://cdn.jsdelivr.net/gh/gitbrent/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<script>
+function downloadPPTX() {
+  var pptx = new PptxGenJS();
+  pptx.defineLayout({ name:'CUSTOM', width:13.333, height:7.5 });
+  pptx.layout = 'CUSTOM';
+
+  /* --- Shared color palette --- */
+  var c = {main:'111111', secondary:'222222', red:'A32020', maroon:'8E1E1E', zone1:'F7F9FB', rose:'F8E3E3', meta:'4A4F57', coal:'4B4F55', border:'E6E9EE'};
+
+  /* --- Helper: add standard footer to a slide --- */
+  function addFooter(slide, num) {
+    slide.addText('Meridian Financial Group', {x:0.48, y:7.05, w:4, h:0.3, fontFace:'Arial', fontSize:10, color:c.meta});
+    slide.addText('Confidential', {x:5.5, y:7.05, w:2.5, h:0.3, fontFace:'Arial', fontSize:10, color:c.meta, align:'center'});
+    slide.addText(String(num), {x:10, y:7.05, w:2.8, h:0.3, fontFace:'Arial', fontSize:10, color:c.meta, align:'right'});
+  }
+
+  /* --- Helper: add title + subtitle to a slide --- */
+  function addTitleSubtitle(slide, title, subtitle) {
+    slide.addText(title, {x:0.48, y:0.42, w:12.36, h:0.8, fontFace:'Georgia', fontSize:28, color:c.main, valign:'top'});
+    if (subtitle) {
+      slide.addText(subtitle, {x:0.48, y:1.40, w:12.36, h:0.4, fontFace:'Arial', fontSize:18, color:c.red, bold:true});
+    }
+  }
+
+  /* ============================================================
+     SLIDE 1 — cover
+     No footer. Category label + large title + branding/date.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+    slide.addText('STRATEGIC ADVISORY', {x:0.48, y:1.94, w:10, h:0.35, fontFace:'Arial', fontSize:18, color:c.red, bold:true});
+    slide.addText('Digital Transformation Strategy', {x:0.48, y:2.5, w:9.7, h:1.2, fontFace:'Georgia', fontSize:42, color:c.main, valign:'top'});
+    slide.addText('Meridian Financial Group', {x:0.48, y:6.3, w:4, h:0.3, fontFace:'Arial', fontSize:16, color:c.meta, bold:true});
+    slide.addText('February 2026', {x:10.5, y:6.3, w:2.4, h:0.3, fontFace:'Arial', fontSize:13, color:c.meta, align:'right'});
+  })();
+
+  /* ============================================================
+     SLIDE 2 — executiveSummary
+     2x2 grid of summary cells with maroon left border.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+    addTitleSubtitle(slide, 'Transformation at a Glance', 'Four Strategic Themes Driving Change');
+
+    var cells = [
+      {title:'Cloud-First Infrastructure', body:'Migrate 80% of on-premise workloads to hybrid cloud by Q4 2026, reducing infrastructure costs by $12M annually.', meta:'Phase 1 migration underway \u2014 34% complete'},
+      {title:'Customer Experience Overhaul', body:'Unify digital channels into a single platform. Target: 40-point NPS improvement across retail and wealth segments.', meta:'RFP issued \u2014 vendor shortlist by March'},
+      {title:'Data & Analytics Platform', body:'Build enterprise data lake with real-time decisioning. Enable AI-driven credit scoring and fraud detection models.', meta:'Architecture approved \u2014 build starting Q2'},
+      {title:'Workforce Enablement', body:'Reskill 2,400 employees on digital tools. Launch internal AI academy and embed agile ways of working across all BUs.', meta:'Pilot cohort of 200 completed training'}
+    ];
+
+    var positions = [
+      {x:0.48, y:1.90}, {x:6.90, y:1.90},
+      {x:0.48, y:4.40}, {x:6.90, y:4.40}
+    ];
+    var cellW = 5.90, cellH = 2.30;
+
+    cells.forEach(function(item, i) {
+      var pos = positions[i];
+      slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {x:pos.x, y:pos.y, w:cellW, h:cellH, fill:{color:c.zone1}, line:{color:c.border, width:0.5}, rectRadius:0.05});
+      slide.addShape(pptx.shapes.RECTANGLE, {x:pos.x, y:pos.y, w:0.06, h:cellH, fill:{color:c.maroon}});
+      slide.addText(item.title, {x:pos.x+0.20, y:pos.y+0.15, w:cellW-0.35, h:0.30, fontFace:'Arial', fontSize:13, color:c.maroon, bold:true});
+      slide.addText(item.body, {x:pos.x+0.20, y:pos.y+0.55, w:cellW-0.35, h:0.90, fontFace:'Arial', fontSize:10.5, color:c.secondary, valign:'top'});
+      slide.addText(item.meta, {x:pos.x+0.20, y:pos.y+1.55, w:cellW-0.35, h:0.30, fontFace:'Arial', fontSize:10, color:c.meta, italic:true});
+    });
+
+    addFooter(slide, 2);
+  })();
+
+  /* ============================================================
+     SLIDE 3 — threeCards
+     3 cards: icon circle, number, title, description, impact box.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+    addTitleSubtitle(slide, 'Three Pillars of Transformation', 'Foundation for Sustainable Digital Growth');
+
+    var items = [
+      {icon:'\u2601', num:'01', title:'Modernize Core Systems', body:'Replace legacy mainframe with cloud-native microservices architecture. Enable real-time processing and API-first integration.', impact:'$12M annual savings + 99.95% uptime'},
+      {icon:'\uD83D\uDCCA', num:'02', title:'Unlock Data Intelligence', body:'Build unified data platform spanning all business lines. Deploy ML models for credit risk, fraud, and personalization.', impact:'3x faster decisioning, 22% fraud reduction'},
+      {icon:'\uD83D\uDC65', num:'03', title:'Empower the Workforce', body:'Reskill 2,400 employees through AI academy and agile coaching. Embed digital-first culture with measurable adoption targets.', impact:'85% digital literacy target by Q4 2026'}
+    ];
+
+    var cardW = 3.96, cardH = 4.70, startX = 0.48, gap = 0.24;
+    items.forEach(function(item, i) {
+      var x = startX + i * (cardW + gap);
+      var y = 1.90;
+      /* Card background */
+      slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {x:x, y:y, w:cardW, h:cardH, fill:{color:'FFFFFF'}, line:{color:c.border, width:0.5}, rectRadius:0.05});
+      /* Top accent border */
+      slide.addShape(pptx.shapes.RECTANGLE, {x:x, y:y, w:cardW, h:0.06, fill:{color:c.maroon}});
+      /* Icon circle */
+      slide.addShape(pptx.shapes.OVAL, {x:x+0.20, y:y+0.25, w:0.42, h:0.42, fill:{color:c.maroon}});
+      slide.addText(item.icon, {x:x+0.20, y:y+0.25, w:0.42, h:0.42, fontFace:'Arial', fontSize:14, color:'FFFFFF', align:'center', valign:'middle'});
+      /* Number */
+      slide.addText(item.num, {x:x+cardW-0.80, y:y+0.20, w:0.60, h:0.50, fontFace:'Georgia', fontSize:28, color:c.meta, align:'right'});
+      /* Title */
+      slide.addText(item.title, {x:x+0.20, y:y+0.90, w:cardW-0.40, h:0.40, fontFace:'Arial', fontSize:15, color:c.main, bold:true});
+      /* Body */
+      slide.addText(item.body, {x:x+0.20, y:y+1.40, w:cardW-0.40, h:1.50, fontFace:'Arial', fontSize:12, color:c.secondary, valign:'top', lineSpacing:18});
+      /* Impact box */
+      slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {x:x+0.15, y:y+cardH-0.70, w:cardW-0.30, h:0.55, fill:{color:c.rose}, line:{color:c.maroon, width:0.5}, rectRadius:0.03});
+      slide.addText(item.impact, {x:x+0.30, y:y+cardH-0.70, w:cardW-0.50, h:0.55, fontFace:'Arial', fontSize:11, color:c.maroon, bold:true, valign:'middle'});
+    });
+
+    addFooter(slide, 3);
+  })();
+
+  /* ============================================================
+     SLIDE 4 — bulletPoints
+     5 numbered rows with title + description.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+    addTitleSubtitle(slide, 'Key Findings from Discovery', 'Assessment of Current Digital Maturity');
+
+    var points = [
+      {title:'Legacy Dependency Is Critical', desc:'73% of core transactions still run on 20-year-old mainframe systems with mounting maintenance costs.'},
+      {title:'Customer Channels Are Fragmented', desc:'Five separate portals serve retail, wealth, commercial, insurance, and mortgage \u2014 no unified experience.'},
+      {title:'Data Silos Block Innovation', desc:'Customer data lives in 14 disconnected systems. No single view of customer exists across business lines.'},
+      {title:'Talent Gap Is Widening', desc:'Only 18% of staff rate themselves as confident with digital tools. Attrition in tech roles is 2x company average.'},
+      {title:'Competitors Are Pulling Ahead', desc:'Top 3 peers have already launched AI-powered advisory and real-time payments \u2014 Meridian risks falling behind.'}
+    ];
+
+    var startY = 1.90, rowH = 0.85, gap = 0.12;
+    points.forEach(function(pt, i) {
+      var y = startY + i * (rowH + gap);
+      /* Row background */
+      slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {x:0.48, y:y, w:12.36, h:rowH, fill:{color:c.zone1}, line:{color:c.border, width:0.5}, rectRadius:0.05});
+      /* Left accent */
+      slide.addShape(pptx.shapes.RECTANGLE, {x:0.48, y:y, w:0.06, h:rowH, fill:{color:c.maroon}});
+      /* Number circle */
+      slide.addShape(pptx.shapes.OVAL, {x:0.75, y:y+0.17, w:0.42, h:0.42, fill:{color:c.maroon}});
+      slide.addText(String(i+1), {x:0.75, y:y+0.17, w:0.42, h:0.42, fontFace:'Arial', fontSize:16, color:'FFFFFF', align:'center', valign:'middle', bold:true});
+      /* Title */
+      slide.addText(pt.title, {x:1.40, y:y+0.10, w:10.5, h:0.30, fontFace:'Arial', fontSize:14, color:c.main, bold:true});
+      /* Description */
+      slide.addText(pt.desc, {x:1.40, y:y+0.42, w:10.5, h:0.35, fontFace:'Arial', fontSize:12, color:c.secondary});
+    });
+
+    addFooter(slide, 4);
+  })();
+
+  /* ============================================================
+     SLIDE 5 — kpiMetrics
+     Left: 3 big KPI blocks. Right: 3 detail items.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+    addTitleSubtitle(slide, 'Transformation Impact Dashboard', 'Projected Outcomes by End of Year 2');
+
+    var kpis = [
+      {value:'$47M', label:'Projected Annual Savings'},
+      {value:'+38', label:'Net Promoter Score Uplift'},
+      {value:'4.2x', label:'Return on Investment'}
+    ];
+    var details = [
+      {title:'Cost Efficiency Gains', body:'Infrastructure costs reduced 40% through cloud migration. Manual processes automated, saving 180K staff-hours annually.'},
+      {title:'Customer Satisfaction', body:'Unified digital experience expected to drive NPS from 22 to 60. Mobile app rating target: 4.7 stars.'},
+      {title:'Revenue Acceleration', body:'AI-powered cross-selling projected to generate $28M in new revenue. Time-to-market for products cut by 60%.'}
+    ];
+
+    var kpiH = 1.20, kpiGap = 0.15;
+    kpis.forEach(function(kpi, i) {
+      var y = 1.90 + i * (kpiH + kpiGap);
+      slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {x:0.48, y:y, w:5.0, h:kpiH, fill:{color:c.zone1}, line:{color:c.border, width:0.5}, rectRadius:0.05});
+      slide.addShape(pptx.shapes.RECTANGLE, {x:0.48, y:y, w:0.06, h:kpiH, fill:{color:c.maroon}});
+      slide.addText(kpi.value, {x:0.75, y:y+0.08, w:4.5, h:0.60, fontFace:'Georgia', fontSize:34, color:c.maroon, bold:true});
+      slide.addText(kpi.label, {x:0.75, y:y+0.70, w:4.5, h:0.35, fontFace:'Arial', fontSize:13, color:c.meta});
+    });
+
+    var detailH = 1.40;
+    details.forEach(function(d, i) {
+      var y = 1.90 + i * (detailH + kpiGap);
+      slide.addText(d.title, {x:5.80, y:y+0.15, w:6.8, h:0.35, fontFace:'Arial', fontSize:14, color:c.main, bold:true});
+      slide.addText(d.body, {x:5.80, y:y+0.55, w:6.8, h:0.70, fontFace:'Arial', fontSize:12, color:c.secondary, valign:'top', lineSpacing:18});
+      if (i < details.length - 1) {
+        slide.addShape(pptx.shapes.LINE, {x:5.80, y:y+detailH, w:6.8, h:0, line:{color:c.border, width:0.5}});
+      }
+    });
+
+    addFooter(slide, 5);
+  })();
+
+  /* ============================================================
+     SLIDE 6 — processFlow
+     4 steps with arrows between them.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+    addTitleSubtitle(slide, 'Implementation Methodology', 'Four-Phase Delivery Approach');
+
+    var steps = [
+      {num:'1', title:'Assess', desc:'Map current state, identify gaps, define target architecture'},
+      {num:'2', title:'Design', desc:'Solution blueprints, vendor selection, business case validation'},
+      {num:'3', title:'Build & Pilot', desc:'Agile sprints, MVP delivery, controlled pilots with feedback loops'},
+      {num:'4', title:'Scale', desc:'Enterprise rollout, change management, performance monitoring'}
+    ];
+
+    var stepW = 2.2, spacing = 3.05, startX = 0.70;
+    steps.forEach(function(s, i) {
+      var x = startX + i * spacing;
+      var y = 2.60;
+      /* Circle */
+      slide.addShape(pptx.shapes.OVAL, {x:x+stepW/2-0.25, y:y, w:0.50, h:0.50, fill:{color:c.maroon}});
+      slide.addText(s.num, {x:x+stepW/2-0.25, y:y, w:0.50, h:0.50, fontFace:'Arial', fontSize:20, color:'FFFFFF', align:'center', valign:'middle', bold:true});
+      /* Title */
+      slide.addText(s.title, {x:x, y:y+0.70, w:stepW, h:0.35, fontFace:'Arial', fontSize:13, color:c.main, bold:true, align:'center'});
+      /* Description */
+      slide.addText(s.desc, {x:x, y:y+1.10, w:stepW, h:0.80, fontFace:'Arial', fontSize:11, color:c.meta, align:'center', valign:'top', lineSpacing:16});
+      /* Arrow between steps */
+      if (i < steps.length - 1) {
+        slide.addText('\u2192', {x:x+stepW+0.15, y:y+0.05, w:0.55, h:0.45, fontFace:'Arial', fontSize:24, color:c.maroon, align:'center', valign:'middle'});
+      }
+    });
+
+    addFooter(slide, 6);
+  })();
+
+  /* ============================================================
+     SLIDE 7 — swotAnalysis
+     2x2 color-coded quadrants with bullet lists.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+    addTitleSubtitle(slide, 'Strategic Assessment', 'SWOT Analysis for Digital Transformation');
+
+    var quadrants = [
+      {title:'\uD83D\uDCAA Strengths', items:['Strong brand trust across 3.2M customers','Healthy balance sheet \u2014 $180M transformation budget','New CTO with Big Tech background hired Q3 2025','Regulatory relationships are well-established'], fill:'D1FAE5', border:'059669', x:0.48, y:1.90},
+      {title:'\u26A0 Weaknesses', items:['20-year-old mainframe dependency for core banking','14 disconnected data systems, no single customer view','Low digital literacy \u2014 only 18% staff confident','Siloed organization slows cross-BU collaboration'], fill:'FEF3C7', border:'D97706', x:6.90, y:1.90},
+      {title:'\uD83D\uDCA1 Opportunities', items:['Open banking APIs unlock new partnership revenue','GenAI can automate 40% of back-office operations','Wealth segment underserved digitally \u2014 $2B AUM upside','ESG data platform could differentiate in market'], fill:'DBEAFE', border:'3B82F6', x:0.48, y:4.40},
+      {title:'\u26A1 Threats', items:['Fintechs capturing younger demographic rapidly','Increasing regulatory requirements for AI governance','Cybersecurity threat landscape expanding','Talent war \u2014 competitors offering 20-30% premiums'], fill:'FEE2E2', border:'DC2626', x:6.90, y:4.40}
+    ];
+
+    var qW = 5.90, qH = 2.20;
+    quadrants.forEach(function(q) {
+      slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {x:q.x, y:q.y, w:qW, h:qH, fill:{color:q.fill}, line:{color:q.border, width:1}, rectRadius:0.05});
+      slide.addText(q.title, {x:q.x+0.18, y:q.y+0.12, w:qW-0.36, h:0.35, fontFace:'Arial', fontSize:14, color:c.main, bold:true});
+      var bulletRows = q.items.map(function(item) { return {text:item, options:{bullet:{code:'2022'}, fontSize:11, color:c.secondary, lineSpacing:17}}; });
+      slide.addText(bulletRows, {x:q.x+0.18, y:q.y+0.55, w:qW-0.36, h:qH-0.70, fontFace:'Arial', valign:'top'});
+    });
+
+    addFooter(slide, 7);
+  })();
+
+  /* ============================================================
+     SLIDE 8 — prosAndCons
+     Two columns: green pros vs red cons.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+    addTitleSubtitle(slide, 'Build vs. Buy Assessment', 'Custom Platform vs. Enterprise Vendor Solution');
+
+    var colW = 5.90, headerH = 0.50;
+
+    /* --- Pros column (left) --- */
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {x:0.48, y:1.90, w:colW, h:headerH, fill:{color:'D1FAE5'}, rectRadius:0.04});
+    slide.addText('\u2713  Build Custom Platform', {x:0.65, y:1.90, w:colW-0.35, h:headerH, fontFace:'Arial', fontSize:14, color:'059669', bold:true, valign:'middle'});
+
+    var proItems = [
+      {title:'Full Customization', body:'Tailor every workflow to Meridian\'s unique multi-line business model.'},
+      {title:'Competitive Moat', body:'Proprietary tech becomes a differentiator that competitors cannot replicate.'},
+      {title:'No Vendor Lock-in', body:'Full ownership of IP and roadmap \u2014 no dependency on external release cycles.'}
+    ];
+    var itemH = 1.10, itemGap = 0.10;
+    proItems.forEach(function(item, i) {
+      var y = 2.50 + i * (itemH + itemGap);
+      slide.addShape(pptx.shapes.OVAL, {x:0.65, y:y+0.15, w:0.26, h:0.26, fill:{color:'D1FAE5'}});
+      slide.addText('\u2713', {x:0.65, y:y+0.15, w:0.26, h:0.26, fontFace:'Arial', fontSize:12, color:'059669', bold:true, align:'center', valign:'middle'});
+      slide.addText(item.title, {x:1.10, y:y+0.05, w:5.0, h:0.30, fontFace:'Arial', fontSize:12, color:c.main, bold:true});
+      slide.addText(item.body, {x:1.10, y:y+0.38, w:5.0, h:0.55, fontFace:'Arial', fontSize:11, color:c.secondary, valign:'top'});
+    });
+
+    /* --- Cons column (right) --- */
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {x:6.90, y:1.90, w:colW, h:headerH, fill:{color:'FEE2E2'}, rectRadius:0.04});
+    slide.addText('\u2717  Buy Enterprise Solution', {x:7.07, y:1.90, w:colW-0.35, h:headerH, fontFace:'Arial', fontSize:14, color:'DC2626', bold:true, valign:'middle'});
+
+    var conItems = [
+      {title:'Faster Time-to-Market', body:'Pre-built modules cut implementation time by 40%, but limit flexibility.'},
+      {title:'Proven at Scale', body:'Enterprise vendors serve 500+ banks, but Meridian\'s needs may not align.'},
+      {title:'High Licensing Costs', body:'$8-12M annual licensing plus customization fees erode long-term savings.'}
+    ];
+    conItems.forEach(function(item, i) {
+      var y = 2.50 + i * (itemH + itemGap);
+      slide.addShape(pptx.shapes.OVAL, {x:7.07, y:y+0.15, w:0.26, h:0.26, fill:{color:'FEE2E2'}});
+      slide.addText('\u2717', {x:7.07, y:y+0.15, w:0.26, h:0.26, fontFace:'Arial', fontSize:12, color:'DC2626', bold:true, align:'center', valign:'middle'});
+      slide.addText(item.title, {x:7.52, y:y+0.05, w:5.0, h:0.30, fontFace:'Arial', fontSize:12, color:c.main, bold:true});
+      slide.addText(item.body, {x:7.52, y:y+0.38, w:5.0, h:0.55, fontFace:'Arial', fontSize:11, color:c.secondary, valign:'top'});
+    });
+
+    addFooter(slide, 8);
+  })();
+
+  /* ============================================================
+     SLIDE 9 — bigNumber
+     Giant centered metric with context pill.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+    slide.addText('Expected Return on Transformation Investment', {x:0.48, y:0.42, w:12.36, h:0.8, fontFace:'Georgia', fontSize:28, color:c.main, valign:'top'});
+
+    /* Radial glow (subtle circle shape) */
+    slide.addShape(pptx.shapes.OVAL, {x:4.5, y:2.0, w:4.3, h:4.3, fill:{color:c.rose}, line:{width:0}});
+
+    /* Prefix + Number + Suffix on same line */
+    slide.addText([
+      {text:'$', options:{fontFace:'Georgia', fontSize:52, color:c.red}},
+      {text:'47', options:{fontFace:'Georgia', fontSize:88, color:c.maroon, bold:true}},
+      {text:'M', options:{fontFace:'Georgia', fontSize:52, color:c.red}}
+    ], {x:0.48, y:2.30, w:12.36, h:1.50, align:'center', valign:'middle'});
+
+    /* Label */
+    slide.addText('Annual Savings by Year 2', {x:0.48, y:4.00, w:12.36, h:0.50, fontFace:'Arial', fontSize:24, color:c.main, align:'center'});
+
+    /* Context pill */
+    slide.addShape(pptx.shapes.ROUNDED_RECTANGLE, {x:3.5, y:4.70, w:6.3, h:0.50, fill:{color:c.zone1}, rectRadius:0.25});
+    slide.addText('From $180M investment \u2014 4.2x ROI over 5-year horizon', {x:3.5, y:4.70, w:6.3, h:0.50, fontFace:'Arial', fontSize:14, color:c.meta, align:'center', valign:'middle'});
+
+    addFooter(slide, 9);
+  })();
+
+  /* ============================================================
+     SLIDE 10 — thankYou
+     Centered closing with contact row.
+     ============================================================ */
+  (function() {
+    var slide = pptx.addSlide();
+
+    /* Icon */
+    slide.addText('\uD83E\uDD1D', {x:0.48, y:1.80, w:12.36, h:0.80, fontFace:'Arial', fontSize:48, align:'center', valign:'middle'});
+    /* Title */
+    slide.addText('Thank You', {x:0.48, y:2.70, w:12.36, h:0.80, fontFace:'Georgia', fontSize:44, color:c.main, bold:true, align:'center', valign:'middle'});
+    /* Subtitle */
+    slide.addText("Let's accelerate the journey together", {x:0.48, y:3.55, w:12.36, h:0.50, fontFace:'Arial', fontSize:22, color:c.maroon, align:'center'});
+
+    /* Contact row */
+    var contactY = 5.10;
+    slide.addText('\u2709  strategy@meridianfg.com', {x:0.80, y:contactY, w:4.0, h:0.35, fontFace:'Arial', fontSize:13, color:c.meta, align:'center'});
+    slide.addText('\uD83D\uDCDE  +1 (212) 555-0190', {x:4.80, y:contactY, w:3.5, h:0.35, fontFace:'Arial', fontSize:13, color:c.meta, align:'center'});
+    slide.addText('\uD83C\uDF10  meridianfg.com/transform', {x:8.50, y:contactY, w:4.3, h:0.35, fontFace:'Arial', fontSize:13, color:c.meta, align:'center'});
+
+    addFooter(slide, 10);
+  })();
+
+  /* --- Generate and download --- */
+  pptx.writeFile({fileName: 'Meridian_Digital_Transformation.pptx'});
+}
+</script>
+
+</body>
+</html>

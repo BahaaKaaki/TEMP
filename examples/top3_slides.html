@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Strategy& Top 3 Slides</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  :root{
+    --slide-w:960pt; --slide-min-h:540pt;
+    --left-x:34.58pt; --title-w:890.08pt; --subtitle-w:890.08pt;
+    --title-y:30.33pt; --subtitle-y:100.91pt; --frame-y:136.91pt; --frame-w:890.08pt; --right-bound:924.66pt;
+    --bg:#fff; --main:#111111; --secondary:#222222; --meta:#4A4F57; --red:#A32020;
+    --zone1:#F7F9FB; --zone2:#EEF2F6; --maroon:#8E1E1E; --rose:#F8E3E3; --coal:#4B4F55;
+    --gH:16pt; --gV:12pt; --radius:4pt; --border:#E6E9EE;
+  }
+
+  html,body{
+    margin:0;padding:0;
+    background:#0d1117;
+    color:var(--main);
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Arial,sans-serif;
+    min-height:100vh;
+  }
+
+  .deck{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:48px;
+    padding:60px 20px 120px;
+  }
+
+  .slide-section{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:10pt;
+  }
+
+  .slide-label{
+    font-size:11px;
+    color:rgba(255,255,255,0.4);
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    font-family:'SF Mono',Monaco,'Courier New',monospace;
+  }
+
+  .slide{
+    position:relative;
+    width:var(--slide-w);
+    height:var(--slide-min-h);
+    margin:0 auto;
+    background:var(--bg);
+    box-sizing:border-box;
+    overflow:hidden;
+    box-shadow:0 20px 60px rgba(0,0,0,0.5),0 0 0 1px rgba(255,255,255,0.06);
+    border-radius:6px;
+    transition:transform .2s,box-shadow .2s;
+  }
+
+  .slide:hover{
+    transform:scale(1.008);
+    box-shadow:0 25px 80px rgba(0,0,0,0.6),0 0 0 1px rgba(255,255,255,0.1);
+  }
+
+  /* auto-scale slides to fill viewport */
+  @media(min-width:1100px){.deck{zoom:1.15}}
+  @media(min-width:1400px){.deck{zoom:1.35}}
+  @media(min-width:1800px){.deck{zoom:1.5}}
+
+  .title{
+    position:absolute;
+    left:var(--left-x);
+    top:var(--title-y);
+    width:var(--title-w);
+    font:400 28pt/1.2 Georgia,serif;
+    color:var(--main);
+  }
+
+  .subtitle{
+    position:absolute;
+    left:var(--left-x);
+    top:var(--subtitle-y);
+    width:var(--subtitle-w);
+    font:700 18pt/1.2 Arial,sans-serif;
+    color:var(--red);
+  }
+
+  .frame{
+    position:absolute;
+    left:var(--left-x);
+    top:var(--frame-y);
+    width:var(--frame-w);
+    height:352.91pt;
+    display:flex;
+    flex-direction:column;
+  }
+
+  footer.footer{
+    position:absolute;
+    bottom:0;
+    left:var(--left-x);
+    width:890.08pt;
+    padding-bottom:14pt;
+    display:flex;
+    justify-content:space-between;
+    font-size:10pt;
+    color:var(--meta);
+  }
+
+  /* Cover Slide */
+  .cover-slide .frame{
+    top:140pt;
+    height:auto;
+    display:flex;
+    flex-direction:column;
+    justify-content:flex-start;
+    gap:16pt;
+  }
+
+  .cover-category{
+    font:700 18pt/1.2 Arial,sans-serif;
+    color:var(--red);
+    text-transform:uppercase;
+    letter-spacing:1pt;
+  }
+
+  .cover-title{
+    font:400 42pt/1.15 Georgia,serif;
+    color:var(--main);
+    max-width:700pt;
+  }
+
+  .cover-branding{
+    position:absolute;
+    left:var(--left-x);
+    bottom:50pt;
+    font:700 16pt/1 Arial,sans-serif;
+    color:var(--meta);
+  }
+
+  .cover-date{
+    position:absolute;
+    right:var(--left-x);
+    bottom:14pt;
+    font:400 13pt/1 Arial,sans-serif;
+    color:var(--meta);
+  }
+
+  /* Three Cards Layout */
+  .card-row{
+    display:flex;
+    gap:var(--gH);
+    height:100%;
+  }
+
+  .card{
+    flex:1;
+    background:var(--zone1);
+    border-radius:var(--radius);
+    padding:18pt;
+    border-top:5pt solid var(--maroon);
+    display:flex;
+    flex-direction:column;
+    gap:10pt;
+    position:relative;
+    border:1px solid var(--border);
+  }
+
+  .card-header-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    margin-bottom:6pt;
+  }
+
+  .card-icon-circle{
+    width:40pt;
+    height:40pt;
+    border-radius:50%;
+    background:var(--rose);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:16pt;
+  }
+
+  .card-num{
+    font:700 32pt/1 Georgia,serif;
+    color:#E0E0E0;
+  }
+
+  .card h3{
+    margin:0;
+    font:700 16pt/1.3 Arial,sans-serif;
+    color:var(--main);
+  }
+
+  .card p{
+    margin:0;
+    font:400 12pt/1.55 Arial,sans-serif;
+    color:var(--secondary);
+  }
+
+  .impact-box{
+    margin-top:auto;
+    padding-top:10pt;
+    border-top:1px solid #DCDCDC;
+    font:700 11pt/1.3 Arial,sans-serif;
+    color:var(--coal);
+  }
+
+  /* Two Column KPI */
+  .two-col{
+    display:flex;
+    gap:24pt;
+    height:100%;
+  }
+
+  .col-left{
+    flex:0 0 380pt;
+    display:flex;
+    flex-direction:column;
+    gap:14pt;
+  }
+
+  .kpi-block{
+    background:var(--zone1);
+    padding:14pt 18pt;
+    border-radius:var(--radius);
+    border-left:4pt solid var(--maroon);
+  }
+
+  .kpi-value{
+    font:700 42pt/1 Georgia,serif;
+    color:var(--maroon);
+  }
+
+  .kpi-label{
+    margin-top:6pt;
+    font:400 13pt/1.4 Arial,sans-serif;
+    color:var(--meta);
+  }
+
+  .col-right{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    gap:14pt;
+  }
+
+  .detail-item{
+    padding-bottom:12pt;
+    border-bottom:1px solid var(--border);
+  }
+
+  .detail-item:last-child{
+    border-bottom:none;
+  }
+
+  .detail-item h4{
+    margin:0 0 6pt 0;
+    font:700 14pt/1.3 Arial,sans-serif;
+    color:var(--main);
+  }
+
+  .detail-item p{
+    margin:0;
+    font:400 12pt/1.55 Arial,sans-serif;
+    color:var(--secondary);
+  }
+
+  /* Bottom control bar */
+  .controls{
+    position:fixed;
+    bottom:0;left:0;right:0;
+    height:64px;
+    z-index:9999;
+    background:rgba(13,17,23,0.92);
+    backdrop-filter:blur(16px);
+    -webkit-backdrop-filter:blur(16px);
+    border-top:1px solid rgba(255,255,255,0.08);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:20px;
+  }
+
+  .controls button{
+    padding:10px 28px;
+    border:none;
+    border-radius:6px;
+    background:#8E1E1E;
+    color:#fff;
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+    transition:all 0.2s;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-family:-apple-system,sans-serif;
+  }
+
+  .controls button:hover{
+    background:#A32020;
+    transform:translateY(-1px);
+    box-shadow:0 4px 20px rgba(142,30,30,0.45);
+  }
+
+  .controls button:disabled{
+    background:#333;
+    color:#666;
+    cursor:wait;
+    transform:none;
+    box-shadow:none;
+  }
+
+  .slide-count{
+    font-size:13px;
+    color:rgba(255,255,255,0.45);
+    font-family:'SF Mono',Monaco,'Courier New',monospace;
+    letter-spacing:.5px;
+  }
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span class="slide-count">3 slides</span>
+  <button id="dl-btn" onclick="generatePPTX()">
+    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+      <polyline points="7 10 12 15 17 10"/>
+      <line x1="12" y1="15" x2="12" y2="3"/>
+    </svg>
+    Download PPTX
+  </button>
+</div>
+
+<main class="deck">
+
+  <!-- Slide 1: Cover -->
+  <div class="slide-section">
+    <div class="slide-label">Layout 1 — Cover Slide</div>
+    <div class="slide cover-slide" id="slide1">
+      <div class="frame">
+        <div class="cover-category">Digital Transformation</div>
+        <div class="cover-title">Enterprise AI Strategy Framework for Sustainable Growth</div>
+      </div>
+      <div class="cover-branding">Strategy&</div>
+      <div class="cover-date">December 2025</div>
+    </div>
+  </div>
+
+  <!-- Slide 2: Three Cards -->
+  <div class="slide-section">
+    <div class="slide-label">Layout 2 — Three-Card Pillars</div>
+    <div class="slide" id="slide2">
+      <h1 class="title">Three strategic pillars drive enterprise AI adoption at scale</h1>
+      <h2 class="subtitle">Strategic Framework</h2>
+      <div class="frame">
+        <div class="card-row">
+          <div class="card">
+            <div class="card-header-row">
+              <div class="card-icon-circle">🎯</div>
+              <div class="card-num">01</div>
+            </div>
+            <h3>Foundation Layer</h3>
+            <p>Establish robust data infrastructure with unified governance protocols across business units.</p>
+            <p style="margin-top:10pt">Modern cloud architecture enables seamless integration and real-time analytics.</p>
+            <div class="impact-box">Timeline: 6-12 months</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header-row">
+              <div class="card-icon-circle">⚙️</div>
+              <div class="card-num">02</div>
+            </div>
+            <h3>Capability Building</h3>
+            <p>Deploy AI-powered tools across customer service, operations, and strategic planning functions.</p>
+            <p style="margin-top:10pt">Center of Excellence model accelerates knowledge transfer and best practices.</p>
+            <div class="impact-box">Timeline: 12-18 months</div>
+          </div>
+
+          <div class="card">
+            <div class="card-header-row">
+              <div class="card-icon-circle">🚀</div>
+              <div class="card-num">03</div>
+            </div>
+            <h3>Scale & Optimize</h3>
+            <p>Enterprise-wide rollout with continuous improvement loops and performance benchmarking.</p>
+            <p style="margin-top:10pt">Measure ROI through productivity gains, cost savings, and revenue impact.</p>
+            <div class="impact-box">Timeline: 18-24 months</div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>Strategy&</span>
+        <span>2 / 3</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Slide 3: Two Column KPIs -->
+  <div class="slide-section">
+    <div class="slide-label">Layout 3 — KPI Metrics + Detail</div>
+    <div class="slide" id="slide3">
+      <h1 class="title">AI implementation delivers measurable returns within first year</h1>
+      <h2 class="subtitle">Performance Metrics</h2>
+      <div class="frame">
+        <div class="two-col">
+          <div class="col-left">
+            <div class="kpi-block">
+              <div class="kpi-value">47%</div>
+              <div class="kpi-label">Reduction in manual processing time</div>
+            </div>
+            <div class="kpi-block">
+              <div class="kpi-value">3.2x</div>
+              <div class="kpi-label">Return on AI investment (Year 1)</div>
+            </div>
+            <div class="kpi-block">
+              <div class="kpi-value">$12M</div>
+              <div class="kpi-label">Annual operational cost savings</div>
+            </div>
+          </div>
+          <div class="col-right">
+            <div class="detail-item">
+              <h4>Process Automation</h4>
+              <p>Intelligent document processing and workflow automation reduced manual data entry by 65%, freeing staff for higher-value activities.</p>
+            </div>
+            <div class="detail-item">
+              <h4>Customer Experience</h4>
+              <p>AI-powered chatbots handle 40% of customer inquiries with 92% satisfaction rate, reducing contact center load significantly.</p>
+            </div>
+            <div class="detail-item">
+              <h4>Predictive Analytics</h4>
+              <p>Machine learning models improved demand forecasting accuracy by 35%, optimizing inventory and reducing waste.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>Strategy&</span>
+        <span>3 / 3</span>
+      </footer>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const slidesData = [
+    // Slide 1: Cover
+    {
+      type: "cover",
+      category: "DIGITAL TRANSFORMATION",
+      mainTitle: "Enterprise AI Strategy Framework for Sustainable Growth",
+      branding: "Strategy&",
+      date: "December 2025"
+    },
+    // Slide 2: Three Cards
+    {
+      type: "three-cards",
+      headline: "Three strategic pillars drive enterprise AI adoption at scale",
+      subtitle: "Strategic Framework",
+      items: [
+        {
+          icon: "🎯",
+          num: "01",
+          title: "Foundation Layer",
+          body: "Establish robust data infrastructure with unified governance protocols across business units.\n\nModern cloud architecture enables seamless integration and real-time analytics.",
+          impact: "Timeline: 6-12 months"
+        },
+        {
+          icon: "⚙️",
+          num: "02",
+          title: "Capability Building",
+          body: "Deploy AI-powered tools across customer service, operations, and strategic planning functions.\n\nCenter of Excellence model accelerates knowledge transfer and best practices.",
+          impact: "Timeline: 12-18 months"
+        },
+        {
+          icon: "🚀",
+          num: "03",
+          title: "Scale & Optimize",
+          body: "Enterprise-wide rollout with continuous improvement loops and performance benchmarking.\n\nMeasure ROI through productivity gains, cost savings, and revenue impact.",
+          impact: "Timeline: 18-24 months"
+        }
+      ]
+    },
+    // Slide 3: Two Column KPIs
+    {
+      type: "two-column-kpi",
+      headline: "AI implementation delivers measurable returns within first year",
+      subtitle: "Performance Metrics",
+      kpis: [
+        { value: "47%", label: "Reduction in manual processing time" },
+        { value: "3.2x", label: "Return on AI investment (Year 1)" },
+        { value: "$12M", label: "Annual operational cost savings" }
+      ],
+      details: [
+        { title: "Process Automation", text: "Intelligent document processing and workflow automation reduced manual data entry by 65%, freeing staff for higher-value activities." },
+        { title: "Customer Experience", text: "AI-powered chatbots handle 40% of customer inquiries with 92% satisfaction rate, reducing contact center load significantly." },
+        { title: "Predictive Analytics", text: "Machine learning models improved demand forecasting accuracy by 35%, optimizing inventory and reducing waste." }
+      ]
+    }
+  ];
+
+  async function generatePPTX(){
+    const btn = document.getElementById('dl-btn');
+    const originalText = btn.innerText;
+
+    try{
+      if(typeof PptxGenJS === 'undefined'){
+        throw new Error('PptxGenJS library is not loaded. Please check your internet connection.');
+      }
+
+      btn.disabled = true;
+      btn.innerText = 'Generating...';
+
+      let pptx = new PptxGenJS();
+      pptx.defineLayout({ name:'STRAT_LAYOUT', width:13.333, height:7.5 });
+      pptx.layout = 'STRAT_LAYOUT';
+
+      const c = {
+        bg: 'FFFFFF',
+        main: '111111',
+        red: 'A32020',
+        maroon: '8E1E1E',
+        zone1: 'F7F9FB',
+        zone2: 'EEF2F6',
+        meta: '4A4F57',
+        rose: 'F8E3E3',
+        coal: '4B4F55',
+        border: 'E6E9EE',
+        secondary: '222222',
+        green: '2E7D32'
+      };
+
+      const totalSlides = slidesData.length;
+
+      function addMaster(slide, data, pageNum){
+        slide.addText(data.headline, {
+          x:0.48, y:0.42, w:12.36, h:0.8,
+          fontFace:'Georgia', fontSize:28, color:c.main, valign:'top'
+        });
+        slide.addText(data.subtitle, {
+          x:0.48, y:1.40, w:12.36, h:0.4,
+          fontFace:'Arial', fontSize:18, color:c.red, bold:true
+        });
+        slide.addText('Strategy&', {
+          x:0.48, y:7.05, w:2, h:0.25,
+          fontFace:'Arial', fontSize:10, color:c.meta
+        });
+        slide.addText(`${pageNum} / ${totalSlides}`, {
+          x:11.5, y:7.05, w:1.3, h:0.25,
+          fontFace:'Arial', fontSize:10, color:c.meta, align:'right'
+        });
+      }
+
+      // Render Cover Slide
+      function renderCover(slide, data){
+        slide.addText(data.category, {
+          x:0.48, y:1.94, w:10, h:0.35,
+          fontFace:'Arial', fontSize:18, color:c.red, bold:true
+        });
+        slide.addText(data.mainTitle, {
+          x:0.48, y:2.5, w:9.7, h:1.2,
+          fontFace:'Georgia', fontSize:42, color:c.main, valign:'top'
+        });
+        slide.addText(data.branding, {
+          x:0.48, y:6.8, w:3, h:0.3,
+          fontFace:'Arial', fontSize:16, color:c.meta, bold:true
+        });
+        slide.addText(data.date, {
+          x:10.9, y:7.05, w:1.9, h:0.25,
+          fontFace:'Arial', fontSize:13, color:c.meta, align:'right'
+        });
+      }
+
+      // Render Three Cards
+      function renderThreeCards(slide, data){
+        const items = data.items || [];
+        const startX = 0.48;
+        const cardW = 3.95;
+        const cardH = 4.90;
+        const gap = 0.25;
+        const cardY = 1.90;
+
+        items.forEach((d, i) =>{
+          const xPos = startX + (i * (cardW + gap));
+
+          slide.addShape('roundRect',{
+            x:xPos, y:cardY, w:cardW, h:cardH,
+            fill:c.zone1,
+            line:{ color:c.border, width:1 },
+            rectRadius:0.05
+          });
+
+          slide.addShape('rect',{
+            x:xPos, y:cardY, w:cardW, h:0.08,
+            fill:c.maroon
+          });
+
+          slide.addShape('ellipse',{
+            x:xPos + 0.25, y:cardY + 0.25, w:0.5, h:0.5,
+            fill:c.rose
+          });
+
+          slide.addText(d.icon,{
+            x:xPos + 0.25, y:cardY + 0.25, w:0.5, h:0.5,
+            fontSize:16, color:c.maroon, align:'center', bold:true
+          });
+
+          slide.addText(d.num,{
+            x:xPos + cardW - 1.25, y:cardY + 0.25, w:1, h:0.5,
+            fontFace:'Georgia', fontSize:32, color:'E0E0E0', bold:true, align:'right'
+          });
+
+          slide.addText(d.title,{
+            x:xPos + 0.25, y:cardY + 1.0, w:cardW - 0.5, h:0.4,
+            fontFace:'Arial', fontSize:16, color:c.main, bold:true
+          });
+
+          slide.addText(d.body,{
+            x:xPos + 0.25, y:cardY + 1.5, w:cardW - 0.5, h:2.5,
+            fontFace:'Arial', fontSize:12, color:c.secondary, valign:'top', lineSpacing:18
+          });
+
+          slide.addShape('line',{
+            x:xPos + 0.25, y:cardY + 4.3, w:cardW - 0.5, h:0,
+            line:{ color:'DCDCDC', width:1 }
+          });
+
+          slide.addText(d.impact,{
+            x:xPos + 0.25, y:cardY + 4.4, w:cardW - 0.5, h:0.4,
+            fontFace:'Arial', fontSize:11, color:c.coal, bold:true
+          });
+        });
+      }
+
+      // Render Two Column KPI
+      function renderTwoColumnKPI(slide, data){
+        const startY = 1.90;
+        const kpiX = 0.48;
+        const kpiW = 5.5;
+        const detailX = 6.3;
+        const detailW = 6.5;
+
+        data.kpis.forEach((kpi, i) => {
+          const yPos = startY + (i * 1.55);
+          
+          slide.addShape('roundRect',{
+            x:kpiX, y:yPos, w:kpiW, h:1.4,
+            fill:c.zone1,
+            rectRadius:0.05
+          });
+
+          slide.addShape('rect',{
+            x:kpiX, y:yPos, w:0.06, h:1.4,
+            fill:c.maroon
+          });
+
+          slide.addText(kpi.value,{
+            x:kpiX + 0.3, y:yPos + 0.15, w:2.5, h:0.7,
+            fontFace:'Georgia', fontSize:42, color:c.maroon, bold:true, valign:'middle'
+          });
+
+          slide.addText(kpi.label,{
+            x:kpiX + 0.3, y:yPos + 0.85, w:kpiW - 0.5, h:0.4,
+            fontFace:'Arial', fontSize:13, color:c.meta
+          });
+        });
+
+        data.details.forEach((detail, i) => {
+          const yPos = startY + (i * 1.55);
+
+          slide.addText(detail.title,{
+            x:detailX, y:yPos, w:detailW, h:0.35,
+            fontFace:'Arial', fontSize:14, color:c.main, bold:true
+          });
+
+          slide.addText(detail.text,{
+            x:detailX, y:yPos + 0.4, w:detailW, h:0.95,
+            fontFace:'Arial', fontSize:12, color:c.secondary, valign:'top', lineSpacing:17
+          });
+
+          if(i < data.details.length - 1){
+            slide.addShape('line',{
+              x:detailX, y:yPos + 1.45, w:detailW, h:0,
+              line:{ color:c.border, width:1 }
+            });
+          }
+        });
+      }
+
+      // Generate slides
+      slidesData.forEach((data, idx) => {
+        const slide = pptx.addSlide();
+        const pageNum = idx + 1;
+
+        switch(data.type){
+          case 'cover':
+            renderCover(slide, data);
+            break;
+          case 'three-cards':
+            addMaster(slide, data, pageNum);
+            renderThreeCards(slide, data);
+            break;
+          case 'two-column-kpi':
+            addMaster(slide, data, pageNum);
+            renderTwoColumnKPI(slide, data);
+            break;
+        }
+      });
+
+      await pptx.writeFile({ fileName:'Strategy&_Top3_Slides.pptx' });
+      btn.disabled = false;
+      btn.innerText = originalText;
+    }catch(err){
+      console.error(err);
+      alert('Error generating PPTX: ' + err.message);
+      if(btn){
+        btn.disabled = false;
+        btn.innerText = 'Retry Download';
+      }
+    }
+  }
+</script>
+
+</body>
+</html>

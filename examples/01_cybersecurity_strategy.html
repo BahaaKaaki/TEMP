@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Cybersecurity Strategy — Strategy&</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  :root{
+    --slide-w:960pt; --slide-min-h:540pt;
+    --left-x:34.58pt; --title-w:890.08pt; --subtitle-w:890.08pt;
+    --title-y:30.33pt; --subtitle-y:100.91pt; --frame-y:136.91pt; --frame-w:890.08pt; --right-bound:924.66pt;
+    --bg:#fff; --main:#111111; --secondary:#222222; --meta:#4A4F57; --red:#A32020;
+    --zone1:#F7F9FB; --zone2:#EEF2F6; --maroon:#8E1E1E; --rose:#F8E3E3; --coal:#4B4F55;
+    --gH:16pt; --gV:12pt; --radius:4pt; --border:#E6E9EE;
+  }
+  html,body{margin:0;background:#e0e0e0;color:var(--main);font-family:Arial,sans-serif;}
+  .deck{display:flex;flex-direction:column;gap:30pt;padding:30pt;padding-bottom:100px;max-width:1020pt;margin:0 auto;}
+  .slide-section{display:flex;flex-direction:column;gap:10pt;}
+  .slide-label{font-size:11pt;color:var(--meta);font-weight:bold;text-transform:uppercase;letter-spacing:1pt;padding-left:5pt;}
+  .slide{position:relative;width:var(--slide-w);height:var(--slide-min-h);margin:0 auto;border:1px solid var(--border);background:var(--bg);box-sizing:border-box;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.12);border-radius:4pt;}
+  .title{position:absolute;left:var(--left-x);top:var(--title-y);width:var(--title-w);font:400 28pt/1.2 Georgia,serif;color:var(--main);}
+  .subtitle{position:absolute;left:var(--left-x);top:var(--subtitle-y);width:var(--subtitle-w);font:700 18pt/1.2 Arial,sans-serif;color:var(--red);}
+  .frame{position:absolute;left:var(--left-x);top:var(--frame-y);width:var(--frame-w);height:352.91pt;display:flex;flex-direction:column;}
+  footer.footer{position:absolute;bottom:0;left:var(--left-x);width:890.08pt;padding-bottom:14pt;display:flex;justify-content:space-between;font-size:10pt;color:var(--meta);}
+
+  /* ========== SLIDE 1: Cover ========== */
+  .cover-slide .frame{top:140pt;height:auto;display:flex;flex-direction:column;justify-content:flex-start;gap:16pt;}
+  .cover-category{font:700 18pt/1.2 Arial,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:1pt;}
+  .cover-title{font:400 42pt/1.15 Georgia,serif;color:var(--main);max-width:700pt;}
+  .cover-branding{position:absolute;left:var(--left-x);bottom:50pt;font:700 16pt/1 Arial,sans-serif;color:var(--meta);}
+  .cover-date{position:absolute;right:var(--left-x);bottom:14pt;font:400 13pt/1 Arial,sans-serif;color:var(--meta);}
+
+  /* ========== SLIDE 2: Full-Bleed Dark (maroon background) ========== */
+  .dark-slide{background:var(--maroon);}
+  .dark-slide .title{color:#fff;}
+  .dark-slide .subtitle{color:var(--rose);}
+  .dark-slide .footer{color:rgba(255,255,255,0.6);}
+  .dark-content{display:flex;flex-direction:column;gap:28pt;height:100%;}
+  .big-statement{font:400 36pt/1.3 Georgia,serif;color:#fff;max-width:750pt;}
+  .dark-bullets{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:14pt;}
+  .dark-bullets li{font:400 16pt/1.5 Arial,sans-serif;color:rgba(255,255,255,0.9);padding-left:24pt;position:relative;}
+  .dark-bullets li::before{content:"→";position:absolute;left:0;color:var(--rose);}
+
+  /* ========== SLIDE 3: Horizontal Bar Chart ========== */
+  .bar-chart{display:flex;flex-direction:column;gap:18pt;height:100%;justify-content:center;}
+  .bar-row{display:flex;align-items:center;gap:16pt;}
+  .bar-label{flex:0 0 180pt;font:400 14pt/1.3 Arial,sans-serif;color:var(--main);text-align:right;}
+  .bar-track{flex:1;height:38pt;background:var(--zone2);border-radius:3pt;position:relative;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--maroon);border-radius:3pt;display:flex;align-items:center;justify-content:flex-end;padding-right:12pt;}
+  .bar-value{font:700 14pt/1 Arial,sans-serif;color:#fff;}
+  .bar-fill.light{background:var(--rose);}
+  .bar-fill.light .bar-value{color:var(--maroon);}
+
+  /* ========== SLIDE 4: Chevron Process Flow ========== */
+  .chevron-flow{display:flex;gap:0;height:100%;align-items:center;justify-content:center;}
+  .chevron{flex:0 0 210pt;height:90pt;position:relative;display:flex;align-items:center;justify-content:center;padding:0 30pt;}
+  .chevron-bg{position:absolute;inset:0;clip-path:polygon(0 0, calc(100% - 25pt) 0, 100% 50%, calc(100% - 25pt) 100%, 0 100%, 25pt 50%);background:var(--maroon);}
+  .chevron:first-child .chevron-bg{clip-path:polygon(0 0, calc(100% - 25pt) 0, 100% 50%, calc(100% - 25pt) 100%, 0 100%);}
+  .chevron:nth-child(2) .chevron-bg{background:#A94545;}
+  .chevron:nth-child(3) .chevron-bg{background:#C06060;}
+  .chevron:nth-child(4) .chevron-bg{background:var(--rose);}.chevron:nth-child(4) .chevron-text{color:var(--maroon);}
+  .chevron-text{position:relative;z-index:1;font:700 13pt/1.3 Arial,sans-serif;color:#fff;text-align:center;}
+
+  /* ========== SLIDE 5: Comparison Table ========== */
+  .comparison-table{width:100%;border-collapse:collapse;margin-top:10pt;}
+  .comparison-table th{background:var(--maroon);color:#fff;font:700 13pt/1.3 Arial,sans-serif;padding:14pt 16pt;text-align:left;border:1px solid var(--maroon);}
+  .comparison-table td{font:400 12pt/1.5 Arial,sans-serif;color:var(--secondary);padding:14pt 16pt;border:1px solid var(--border);background:var(--bg);}
+  .comparison-table tr:nth-child(even) td{background:var(--zone1);}
+  .comparison-table td:first-child{font-weight:700;color:var(--main);background:var(--zone1);}
+  .comparison-table .highlight{color:var(--maroon);font-weight:700;}
+
+  /* ========== SLIDE 6: Big Quote / Statement ========== */
+  .quote-slide .frame{display:flex;flex-direction:column;justify-content:center;align-items:flex-start;height:100%;}
+  .quote-mark{font:400 120pt/1 Georgia,serif;color:var(--rose);margin-bottom:-30pt;margin-left:-10pt;}
+  .quote-text{font:400 32pt/1.4 Georgia,serif;color:var(--main);max-width:750pt;margin-bottom:24pt;}
+  .quote-attribution{font:700 14pt/1.3 Arial,sans-serif;color:var(--maroon);}
+
+  /* ========== SLIDE 7: Numbered List (no icons/cards) ========== */
+  .numbered-list{display:flex;flex-direction:column;gap:20pt;height:100%;}
+  .numbered-item{display:flex;gap:20pt;align-items:flex-start;padding-bottom:18pt;border-bottom:1px solid var(--border);}
+  .numbered-item:last-child{border-bottom:none;}
+  .item-num{font:700 32pt/1 Georgia,serif;color:var(--rose);flex:0 0 50pt;}
+  .item-content h4{margin:0 0 6pt 0;font:700 16pt/1.3 Arial,sans-serif;color:var(--main);}
+  .item-content p{margin:0;font:400 13pt/1.55 Arial,sans-serif;color:var(--secondary);}
+
+  /* Controls */
+  .controls{position:fixed;bottom:20px;right:30px;display:flex;gap:12px;align-items:center;z-index:1000;}
+  button{background:#8E1E1E;color:white;border:none;padding:14px 28px;font-size:14px;cursor:pointer;border-radius:5px;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.25);transition:all 0.2s;}
+  button:hover{background-color:#6d1515;transform:translateY(-2px);box-shadow:0 6px 16px rgba(0,0,0,0.3);}
+  button:disabled{background-color:#ccc;cursor:not-allowed;transform:none;}
+  .slide-count{font-size:11px;color:var(--meta);background:white;padding:6px 12px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+</style>
+</head>
+<body>
+
+<div class="controls">
+  <span class="slide-count">7 slides ready for export</span>
+  <button id="dl-btn" onclick="generatePPTX()">Download Slides (.pptx)</button>
+</div>
+
+<main class="deck">
+
+  <!-- Slide 1: Cover -->
+  <div class="slide-section">
+    <div class="slide-label">Cover</div>
+    <div class="slide cover-slide">
+      <div class="frame">
+        <div class="cover-category">Cybersecurity</div>
+        <div class="cover-title">Enterprise Security Transformation: Zero Trust Architecture</div>
+      </div>
+      <div class="cover-branding">Strategy&</div>
+      <div class="cover-date">December 2025</div>
+    </div>
+  </div>
+
+  <!-- Slide 2: Full-Bleed Dark Background -->
+  <div class="slide-section">
+    <div class="slide-label">Executive Summary</div>
+    <div class="slide dark-slide">
+      <h1 class="title">The threat landscape has fundamentally changed</h1>
+      <h2 class="subtitle">Why Zero Trust Now</h2>
+      <div class="frame">
+        <div class="dark-content">
+          <div class="big-statement">Organizations face a critical inflection point: adapt security architecture or accept unacceptable risk exposure.</div>
+          <ul class="dark-bullets">
+            <li>Traditional perimeter-based security is ineffective against modern threats</li>
+            <li>Remote work has permanently dissolved the corporate network boundary</li>
+            <li>Regulatory requirements demand verifiable security controls</li>
+            <li>Average breach cost now exceeds $4.5M with 287-day detection time</li>
+          </ul>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>Strategy&</span>
+        <span>2 / 7</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Slide 3: Horizontal Bar Chart -->
+  <div class="slide-section">
+    <div class="slide-label">Threat Analysis</div>
+    <div class="slide">
+      <h1 class="title">Attack vectors have shifted toward identity and endpoints</h1>
+      <h2 class="subtitle">Threat Distribution by Category</h2>
+      <div class="frame">
+        <div class="bar-chart">
+          <div class="bar-row">
+            <div class="bar-label">Phishing & Social Engineering</div>
+            <div class="bar-track"><div class="bar-fill" style="width:85%"><span class="bar-value">85%</span></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Ransomware</div>
+            <div class="bar-track"><div class="bar-fill" style="width:72%"><span class="bar-value">72%</span></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Credential Theft</div>
+            <div class="bar-track"><div class="bar-fill" style="width:68%"><span class="bar-value">68%</span></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Supply Chain Attacks</div>
+            <div class="bar-track"><div class="bar-fill light" style="width:54%"><span class="bar-value">54%</span></div></div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label">Insider Threats</div>
+            <div class="bar-track"><div class="bar-fill light" style="width:41%"><span class="bar-value">41%</span></div></div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>Strategy&</span>
+        <span>3 / 7</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Slide 4: Chevron Process Flow -->
+  <div class="slide-section">
+    <div class="slide-label">Strategic Framework</div>
+    <div class="slide">
+      <h1 class="title">Zero Trust implementation follows four sequential phases</h1>
+      <h2 class="subtitle">Implementation Approach</h2>
+      <div class="frame">
+        <div class="chevron-flow">
+          <div class="chevron">
+            <div class="chevron-bg"></div>
+            <div class="chevron-text">ASSESS<br/>Current State</div>
+          </div>
+          <div class="chevron">
+            <div class="chevron-bg"></div>
+            <div class="chevron-text">DESIGN<br/>Architecture</div>
+          </div>
+          <div class="chevron">
+            <div class="chevron-bg"></div>
+            <div class="chevron-text">IMPLEMENT<br/>Controls</div>
+          </div>
+          <div class="chevron">
+            <div class="chevron-bg"></div>
+            <div class="chevron-text">OPTIMIZE<br/>& Monitor</div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>Strategy&</span>
+        <span>4 / 7</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Slide 5: Comparison Table -->
+  <div class="slide-section">
+    <div class="slide-label">Solution Comparison</div>
+    <div class="slide">
+      <h1 class="title">Zero Trust delivers measurable improvements across all security metrics</h1>
+      <h2 class="subtitle">Current vs. Target State</h2>
+      <div class="frame">
+        <table class="comparison-table">
+          <tr>
+            <th>Security Metric</th>
+            <th>Current State</th>
+            <th>Target State</th>
+            <th>Improvement</th>
+          </tr>
+          <tr>
+            <td>Mean Time to Detect</td>
+            <td>287 days</td>
+            <td class="highlight">4 hours</td>
+            <td class="highlight">99.9%</td>
+          </tr>
+          <tr>
+            <td>Unauthorized Access Attempts</td>
+            <td>12,000/month</td>
+            <td class="highlight">200/month</td>
+            <td class="highlight">98.3%</td>
+          </tr>
+          <tr>
+            <td>Successful Phishing Rate</td>
+            <td>23%</td>
+            <td class="highlight">2%</td>
+            <td class="highlight">91.3%</td>
+          </tr>
+          <tr>
+            <td>Compliance Score</td>
+            <td>68%</td>
+            <td class="highlight">96%</td>
+            <td class="highlight">+28pts</td>
+          </tr>
+        </table>
+      </div>
+      <footer class="footer">
+        <span>Strategy&</span>
+        <span>5 / 7</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Slide 6: Big Quote -->
+  <div class="slide-section">
+    <div class="slide-label">Key Insight</div>
+    <div class="slide quote-slide">
+      <h2 class="subtitle" style="top:var(--title-y);">Strategic Imperative</h2>
+      <div class="frame">
+        <div class="quote-mark">"</div>
+        <div class="quote-text">The question is no longer whether to adopt Zero Trust, but how quickly organizations can execute the transformation before their risk exposure becomes existential.</div>
+        <div class="quote-attribution">— Chief Information Security Officer, Fortune 500</div>
+      </div>
+      <footer class="footer">
+        <span>Strategy&</span>
+        <span>6 / 7</span>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Slide 7: Numbered List -->
+  <div class="slide-section">
+    <div class="slide-label">Recommendations</div>
+    <div class="slide">
+      <h1 class="title">Immediate actions to accelerate Zero Trust maturity</h1>
+      <h2 class="subtitle">Priority Recommendations</h2>
+      <div class="frame">
+        <div class="numbered-list">
+          <div class="numbered-item">
+            <div class="item-num">1</div>
+            <div class="item-content">
+              <h4>Deploy Multi-Factor Authentication Enterprise-Wide</h4>
+              <p>Require MFA for all users, devices, and applications within 90 days. Prioritize privileged accounts and external-facing systems.</p>
+            </div>
+          </div>
+          <div class="numbered-item">
+            <div class="item-num">2</div>
+            <div class="item-content">
+              <h4>Implement Network Micro-Segmentation</h4>
+              <p>Isolate critical assets and limit lateral movement. Start with crown jewel systems and expand segmentation progressively.</p>
+            </div>
+          </div>
+          <div class="numbered-item">
+            <div class="item-num">3</div>
+            <div class="item-content">
+              <h4>Establish 24/7 Security Operations Center</h4>
+              <p>Deploy SIEM/SOAR capabilities with automated response. Consider managed services to address talent gaps.</p>
+            </div>
+          </div>
+          <div class="numbered-item">
+            <div class="item-num">4</div>
+            <div class="item-content">
+              <h4>Execute Board-Level Security Governance</h4>
+              <p>Elevate cybersecurity to board agenda with quarterly risk reviews and investment oversight.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer">
+        <span>Strategy&</span>
+        <span>7 / 7</span>
+      </footer>
+    </div>
+  </div>
+
+</main>
+
+<script>
+  const slidesData = [
+    {type:"cover",category:"CYBERSECURITY",mainTitle:"Enterprise Security Transformation: Zero Trust Architecture",branding:"Strategy&",date:"December 2025"},
+    {type:"dark-statement",headline:"The threat landscape has fundamentally changed",subtitle:"Why Zero Trust Now",statement:"Organizations face a critical inflection point: adapt security architecture or accept unacceptable risk exposure.",bullets:["Traditional perimeter-based security is ineffective against modern threats","Remote work has permanently dissolved the corporate network boundary","Regulatory requirements demand verifiable security controls","Average breach cost now exceeds $4.5M with 287-day detection time"]},
+    {type:"bar-chart",headline:"Attack vectors have shifted toward identity and endpoints",subtitle:"Threat Distribution by Category",bars:[{label:"Phishing & Social Engineering",value:85},{label:"Ransomware",value:72},{label:"Credential Theft",value:68},{label:"Supply Chain Attacks",value:54,light:true},{label:"Insider Threats",value:41,light:true}]},
+    {type:"chevron-flow",headline:"Zero Trust implementation follows four sequential phases",subtitle:"Implementation Approach",phases:[{text:"ASSESS\nCurrent State"},{text:"DESIGN\nArchitecture"},{text:"IMPLEMENT\nControls"},{text:"OPTIMIZE\n& Monitor"}]},
+    {type:"comparison-table",headline:"Zero Trust delivers measurable improvements across all security metrics",subtitle:"Current vs. Target State",rows:[{metric:"Mean Time to Detect",current:"287 days",target:"4 hours",improvement:"99.9%"},{metric:"Unauthorized Access Attempts",current:"12,000/month",target:"200/month",improvement:"98.3%"},{metric:"Successful Phishing Rate",current:"23%",target:"2%",improvement:"91.3%"},{metric:"Compliance Score",current:"68%",target:"96%",improvement:"+28pts"}]},
+    {type:"quote",subtitle:"Strategic Imperative",quote:"The question is no longer whether to adopt Zero Trust, but how quickly organizations can execute the transformation before their risk exposure becomes existential.",attribution:"— Chief Information Security Officer, Fortune 500"},
+    {type:"numbered-list",headline:"Immediate actions to accelerate Zero Trust maturity",subtitle:"Priority Recommendations",items:[{num:"1",title:"Deploy Multi-Factor Authentication Enterprise-Wide",text:"Require MFA for all users, devices, and applications within 90 days. Prioritize privileged accounts and external-facing systems."},{num:"2",title:"Implement Network Micro-Segmentation",text:"Isolate critical assets and limit lateral movement. Start with crown jewel systems and expand segmentation progressively."},{num:"3",title:"Establish 24/7 Security Operations Center",text:"Deploy SIEM/SOAR capabilities with automated response. Consider managed services to address talent gaps."},{num:"4",title:"Execute Board-Level Security Governance",text:"Elevate cybersecurity to board agenda with quarterly risk reviews and investment oversight."}]}
+  ];
+
+  async function generatePPTX(){
+    const btn=document.getElementById('dl-btn');
+    const originalText=btn.innerText;
+    try{
+      btn.disabled=true;btn.innerText='Generating...';
+      let pptx=new PptxGenJS();
+      pptx.defineLayout({name:'STRAT',width:13.333,height:7.5});pptx.layout='STRAT';
+      const c={bg:'FFFFFF',main:'111111',red:'A32020',maroon:'8E1E1E',zone1:'F7F9FB',zone2:'EEF2F6',meta:'4A4F57',rose:'F8E3E3',coal:'4B4F55',border:'E6E9EE',secondary:'222222'};
+      const total=slidesData.length;
+
+      function footer(s,n){
+        s.addText('Strategy&',{x:0.48,y:7.05,w:2,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta});
+        s.addText(n+' / '+total,{x:11.5,y:7.05,w:1.3,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta,align:'right'});
+      }
+
+      function masterTitle(s,d){
+        s.addText(d.headline,{x:0.48,y:0.42,w:12.36,h:0.8,fontFace:'Georgia',fontSize:28,color:c.main});
+        s.addText(d.subtitle,{x:0.48,y:1.40,w:12.36,h:0.4,fontFace:'Arial',fontSize:18,color:c.red,bold:true});
+      }
+
+      function cover(s,d){
+        s.addText(d.category,{x:0.48,y:1.94,w:10,h:0.35,fontFace:'Arial',fontSize:18,color:c.red,bold:true});
+        s.addText(d.mainTitle,{x:0.48,y:2.5,w:9.7,h:1.2,fontFace:'Georgia',fontSize:42,color:c.main});
+        s.addText(d.branding,{x:0.48,y:6.8,w:3,h:0.3,fontFace:'Arial',fontSize:16,color:c.meta,bold:true});
+        s.addText(d.date,{x:10.9,y:7.05,w:1.9,h:0.25,fontFace:'Arial',fontSize:13,color:c.meta,align:'right'});
+      }
+
+      function darkStatement(s,d,n){
+        s.background={fill:c.maroon};
+        s.addText(d.headline,{x:0.48,y:0.42,w:12.36,h:0.8,fontFace:'Georgia',fontSize:28,color:'FFFFFF'});
+        s.addText(d.subtitle,{x:0.48,y:1.40,w:12.36,h:0.4,fontFace:'Arial',fontSize:18,color:c.rose,bold:true});
+        s.addText(d.statement,{x:0.48,y:2.1,w:10.5,h:1.2,fontFace:'Georgia',fontSize:36,color:'FFFFFF',valign:'top',lineSpacing:48});
+        let bulletY=3.6;
+        d.bullets.forEach((b,i)=>{
+          s.addText('→',{x:0.48,y:bulletY+(i*0.55),w:0.4,h:0.45,fontFace:'Arial',fontSize:16,color:c.rose});
+          s.addText(b,{x:0.9,y:bulletY+(i*0.55),w:11.5,h:0.45,fontFace:'Arial',fontSize:16,color:'FFFFFF'});
+        });
+        s.addText('Strategy&',{x:0.48,y:7.05,w:2,h:0.25,fontFace:'Arial',fontSize:10,color:'FFFFFF80'});
+        s.addText(n+' / '+total,{x:11.5,y:7.05,w:1.3,h:0.25,fontFace:'Arial',fontSize:10,color:'FFFFFF80',align:'right'});
+      }
+
+      function barChart(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const startY=2.1,barH=0.53,gap=0.35;
+        d.bars.forEach((bar,i)=>{
+          const y=startY+(i*(barH+gap));
+          s.addText(bar.label,{x:0.48,y:y,w:2.7,h:barH,fontFace:'Arial',fontSize:14,color:c.main,align:'right',valign:'middle'});
+          s.addShape('roundRect',{x:3.3,y:y,w:9.2,h:barH,fill:c.zone2,rectRadius:0.04});
+          const fillW=(bar.value/100)*9.2;
+          s.addShape('roundRect',{x:3.3,y:y,w:fillW,h:barH,fill:bar.light?c.rose:c.maroon,rectRadius:0.04});
+          s.addText(bar.value+'%',{x:3.3+fillW-0.7,y:y,w:0.6,h:barH,fontFace:'Arial',fontSize:14,color:bar.light?c.maroon:'FFFFFF',bold:true,align:'right',valign:'middle'});
+        });
+      }
+
+      function chevronFlow(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const colors=[c.maroon,'A94545','C06060',c.rose];
+        const startX=0.7,chevW=2.95,chevH=1.3,y=3.6;
+        d.phases.forEach((p,i)=>{
+          const x=startX+(i*chevW);
+          // Create chevron shape using polygon
+          const pts=[{x:0,y:0},{x:chevW-0.35,y:0},{x:chevW,y:chevH/2},{x:chevW-0.35,y:chevH},{x:0,y:chevH}];
+          if(i>0)pts.push({x:0.35,y:chevH/2});
+          s.addShape('rect',{x:x,y:y,w:chevW,h:chevH,fill:colors[i]});
+          s.addText(p.text,{x:x+0.2,y:y+0.15,w:chevW-0.4,h:chevH-0.3,fontFace:'Arial',fontSize:13,color:i===3?c.maroon:'FFFFFF',bold:true,align:'center',valign:'middle'});
+        });
+      }
+
+      function comparisonTable(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const tbl=[[{text:'Security Metric',options:{fill:c.maroon,color:'FFFFFF',bold:true}},{text:'Current State',options:{fill:c.maroon,color:'FFFFFF',bold:true}},{text:'Target State',options:{fill:c.maroon,color:'FFFFFF',bold:true}},{text:'Improvement',options:{fill:c.maroon,color:'FFFFFF',bold:true}}]];
+        d.rows.forEach((r,i)=>{
+          const rowFill=i%2===0?'FFFFFF':c.zone1;
+          tbl.push([{text:r.metric,options:{fill:c.zone1,bold:true}},{text:r.current,options:{fill:rowFill}},{text:r.target,options:{fill:rowFill,color:c.maroon,bold:true}},{text:r.improvement,options:{fill:rowFill,color:c.maroon,bold:true}}]);
+        });
+        s.addTable(tbl,{x:0.48,y:2.0,w:12.36,colW:[3.5,2.9,2.9,2.9],fontFace:'Arial',fontSize:12,color:c.secondary,border:{type:'solid',color:c.border,pt:1},align:'left',valign:'middle',rowH:0.6});
+      }
+
+      function quote(s,d,n){
+        s.addText(d.subtitle,{x:0.48,y:0.42,w:12.36,h:0.4,fontFace:'Arial',fontSize:18,color:c.red,bold:true});
+        s.addText('"',{x:0.3,y:1.8,w:1.5,h:1.5,fontFace:'Georgia',fontSize:120,color:c.rose});
+        s.addText(d.quote,{x:0.48,y:2.8,w:10.5,h:2.5,fontFace:'Georgia',fontSize:32,color:c.main,valign:'top',lineSpacing:45});
+        s.addText(d.attribution,{x:0.48,y:5.8,w:10.5,h:0.4,fontFace:'Arial',fontSize:14,color:c.maroon,bold:true});
+        footer(s,n);
+      }
+
+      function numberedList(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const startY=2.05,itemH=1.15;
+        d.items.forEach((item,i)=>{
+          const y=startY+(i*itemH);
+          s.addText(item.num,{x:0.48,y:y,w:0.7,h:0.8,fontFace:'Georgia',fontSize:32,color:c.rose,bold:true});
+          s.addText(item.title,{x:1.2,y:y,w:11,h:0.4,fontFace:'Arial',fontSize:16,color:c.main,bold:true});
+          s.addText(item.text,{x:1.2,y:y+0.4,w:11,h:0.65,fontFace:'Arial',fontSize:13,color:c.secondary,valign:'top',lineSpacing:18});
+          if(i<d.items.length-1)s.addShape('line',{x:0.48,y:y+itemH-0.1,w:12,h:0,line:{color:c.border,width:1}});
+        });
+      }
+
+      slidesData.forEach((d,i)=>{
+        const s=pptx.addSlide(),n=i+1;
+        if(d.type==='cover')cover(s,d);
+        else if(d.type==='dark-statement')darkStatement(s,d,n);
+        else if(d.type==='bar-chart')barChart(s,d,n);
+        else if(d.type==='chevron-flow')chevronFlow(s,d,n);
+        else if(d.type==='comparison-table')comparisonTable(s,d,n);
+        else if(d.type==='quote')quote(s,d,n);
+        else if(d.type==='numbered-list')numberedList(s,d,n);
+      });
+
+      await pptx.writeFile({fileName:'Cybersecurity_Strategy.pptx'});
+      btn.disabled=false;btn.innerText=originalText;
+    }catch(e){console.error(e);alert('Error: '+e.message);btn.disabled=false;btn.innerText='Retry';}
+  }
+</script>
+</body>
+</html>

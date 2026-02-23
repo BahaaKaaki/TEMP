@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>M&A Integration — Strategy&</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  :root{--slide-w:960pt;--slide-min-h:540pt;--left-x:34.58pt;--title-w:890.08pt;--subtitle-w:890.08pt;--title-y:30.33pt;--subtitle-y:100.91pt;--frame-y:136.91pt;--frame-w:890.08pt;--bg:#fff;--main:#111111;--secondary:#222222;--meta:#4A4F57;--red:#A32020;--zone1:#F7F9FB;--zone2:#EEF2F6;--maroon:#8E1E1E;--rose:#F8E3E3;--coal:#4B4F55;--gH:16pt;--gV:12pt;--radius:4pt;--border:#E6E9EE;}
+  html,body{margin:0;background:#e0e0e0;color:var(--main);font-family:Arial,sans-serif;}
+  .deck{display:flex;flex-direction:column;gap:30pt;padding:30pt;padding-bottom:100px;max-width:1020pt;margin:0 auto;}
+  .slide-section{display:flex;flex-direction:column;gap:10pt;}
+  .slide-label{font-size:11pt;color:var(--meta);font-weight:bold;text-transform:uppercase;letter-spacing:1pt;padding-left:5pt;}
+  .slide{position:relative;width:var(--slide-w);height:var(--slide-min-h);margin:0 auto;border:1px solid var(--border);background:var(--bg);box-sizing:border-box;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.12);border-radius:4pt;}
+  .title{position:absolute;left:var(--left-x);top:var(--title-y);width:var(--title-w);font:400 28pt/1.2 Georgia,serif;color:var(--main);}
+  .subtitle{position:absolute;left:var(--left-x);top:var(--subtitle-y);width:var(--subtitle-w);font:700 18pt/1.2 Arial,sans-serif;color:var(--red);}
+  .frame{position:absolute;left:var(--left-x);top:var(--frame-y);width:var(--frame-w);height:352.91pt;display:flex;flex-direction:column;}
+  footer.footer{position:absolute;bottom:0;left:var(--left-x);width:890.08pt;padding-bottom:14pt;display:flex;justify-content:space-between;font-size:10pt;color:var(--meta);}
+  .cover-slide .frame{top:140pt;height:auto;display:flex;flex-direction:column;gap:16pt;}
+  .cover-category{font:700 18pt/1.2 Arial,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:1pt;}
+  .cover-title{font:400 42pt/1.15 Georgia,serif;color:var(--main);max-width:700pt;}
+  .cover-branding{position:absolute;left:var(--left-x);bottom:50pt;font:700 16pt/1 Arial,sans-serif;color:var(--meta);}
+  .cover-date{position:absolute;right:var(--left-x);bottom:14pt;font:400 13pt/1 Arial,sans-serif;color:var(--meta);}
+
+  /* ========== SLIDE 2: Split Screen (side bar + content) ========== */
+  .split-screen{display:flex;height:100%;margin:-136.91pt -34.58pt 0;width:960pt;}
+  .split-sidebar{width:280pt;background:var(--maroon);color:#fff;padding:60pt 30pt;display:flex;flex-direction:column;justify-content:center;align-items:center;}
+  .split-big-stat{font:700 72pt/1 Georgia,serif;color:#fff;}
+  .split-stat-label{font:400 16pt/1.4 Arial,sans-serif;color:var(--rose);text-align:center;margin-top:16pt;}
+  .split-content{flex:1;padding:30pt 40pt;display:flex;flex-direction:column;gap:20pt;}
+  .split-content h2{margin:0;font:400 28pt/1.2 Georgia,serif;color:var(--main);}
+  .split-content h3{margin:0;font:700 18pt/1.2 Arial,sans-serif;color:var(--red);}
+  .split-items{display:flex;flex-direction:column;gap:16pt;margin-top:10pt;}
+  .split-item{display:flex;gap:14pt;align-items:flex-start;}
+  .split-item-marker{flex:0 0 24pt;height:24pt;background:var(--rose);color:var(--maroon);font:700 12pt/24pt Arial,sans-serif;text-align:center;border-radius:50%;}
+  .split-item-text{flex:1;}
+  .split-item-text h4{margin:0 0 4pt 0;font:700 14pt/1.3 Arial,sans-serif;color:var(--main);}
+  .split-item-text p{margin:0;font:400 12pt/1.5 Arial,sans-serif;color:var(--secondary);}
+
+  /* ========== SLIDE 3: Checklist Matrix ========== */
+  .checklist-matrix{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:0;height:100%;}
+  .matrix-header{background:var(--maroon);color:#fff;font:700 12pt/1.3 Arial,sans-serif;padding:14pt;text-align:center;}
+  .matrix-header:first-child{text-align:left;}
+  .matrix-row-header{background:var(--zone1);font:700 13pt/1.3 Arial,sans-serif;color:var(--main);padding:14pt;border-bottom:1px solid var(--border);}
+  .matrix-cell{background:var(--bg);padding:14pt;text-align:center;border-bottom:1px solid var(--border);font:400 18pt/1 Arial,sans-serif;}
+  .matrix-cell.check{color:var(--maroon);}
+  .matrix-cell.partial{color:#C06060;}
+  .matrix-cell.empty{color:var(--border);}
+
+  /* ========== SLIDE 4: Stacked Sections ========== */
+  .stacked-sections{display:flex;flex-direction:column;gap:14pt;height:100%;}
+  .stacked-row{display:flex;gap:14pt;flex:1;}
+  .section-block{flex:1;background:var(--zone1);border-radius:var(--radius);padding:16pt 20pt;border:1px solid var(--border);display:flex;flex-direction:column;}
+  .section-block.highlight{background:var(--maroon);border-color:var(--maroon);}
+  .section-block.highlight h4,.section-block.highlight p{color:#fff;}
+  .section-block.highlight h4{color:var(--rose);}
+  .section-block h4{margin:0 0 8pt 0;font:700 14pt/1.3 Arial,sans-serif;color:var(--maroon);}
+  .section-block p{margin:0;font:400 12pt/1.5 Arial,sans-serif;color:var(--secondary);}
+  .section-block .value{font:700 28pt/1 Georgia,serif;color:var(--maroon);margin-top:auto;}
+  .section-block.highlight .value{color:#fff;}
+
+  /* ========== SLIDE 5: Process Boxes with Arrows ========== */
+  .process-boxes{display:flex;gap:0;height:100%;align-items:center;justify-content:center;}
+  .process-box{width:180pt;background:var(--zone1);border:1px solid var(--border);border-radius:var(--radius);padding:20pt;text-align:center;}
+  .process-box h4{margin:0 0 10pt 0;font:700 14pt/1.3 Arial,sans-serif;color:var(--maroon);}
+  .process-box p{margin:0;font:400 11pt/1.5 Arial,sans-serif;color:var(--secondary);}
+  .process-box .days{margin-top:12pt;font:700 20pt/1 Georgia,serif;color:var(--maroon);}
+  .process-arrow{width:50pt;text-align:center;font:400 24pt/1 Arial,sans-serif;color:var(--maroon);}
+
+  /* ========== SLIDE 6: Before/After Comparison ========== */
+  .before-after{display:flex;gap:24pt;height:100%;}
+  .ba-column{flex:1;display:flex;flex-direction:column;gap:0;}
+  .ba-header{padding:16pt;font:700 16pt/1.3 Arial,sans-serif;text-align:center;}
+  .ba-column.before .ba-header{background:var(--zone2);color:var(--meta);}
+  .ba-column.after .ba-header{background:var(--maroon);color:#fff;}
+  .ba-items{display:flex;flex-direction:column;gap:0;flex:1;}
+  .ba-item{padding:14pt 16pt;border-bottom:1px solid var(--border);display:flex;gap:12pt;align-items:flex-start;}
+  .ba-column.before .ba-item{background:var(--bg);}
+  .ba-column.after .ba-item{background:var(--rose);}
+  .ba-marker{font:400 14pt/1 Arial,sans-serif;}
+  .ba-column.before .ba-marker{color:var(--meta);}
+  .ba-column.after .ba-marker{color:var(--maroon);}
+  .ba-text{font:400 12pt/1.5 Arial,sans-serif;color:var(--secondary);}
+
+  /* ========== SLIDE 7: Key Takeaways ========== */
+  .takeaways{display:flex;flex-direction:column;gap:20pt;height:100%;justify-content:center;}
+  .takeaway{display:flex;gap:20pt;align-items:flex-start;}
+  .takeaway-icon{width:60pt;height:60pt;background:var(--rose);border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 24pt/1 Georgia,serif;color:var(--maroon);}
+  .takeaway-content{flex:1;}
+  .takeaway-content h4{margin:0 0 6pt 0;font:700 16pt/1.3 Arial,sans-serif;color:var(--main);}
+  .takeaway-content p{margin:0;font:400 13pt/1.55 Arial,sans-serif;color:var(--secondary);}
+
+  .controls{position:fixed;bottom:20px;right:30px;display:flex;gap:12px;align-items:center;z-index:1000;}
+  button{background:#8E1E1E;color:white;border:none;padding:14px 28px;font-size:14px;cursor:pointer;border-radius:5px;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.25);transition:all 0.2s;}
+  button:hover{background-color:#6d1515;transform:translateY(-2px);}
+  button:disabled{background-color:#ccc;cursor:not-allowed;transform:none;}
+  .slide-count{font-size:11px;color:var(--meta);background:white;padding:6px 12px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+</style>
+</head>
+<body>
+<div class="controls">
+  <span class="slide-count">7 slides ready for export</span>
+  <button id="dl-btn" onclick="generatePPTX()">Download Slides (.pptx)</button>
+</div>
+<main class="deck">
+
+  <!-- Slide 1: Cover -->
+  <div class="slide-section">
+    <div class="slide-label">Cover</div>
+    <div class="slide cover-slide">
+      <div class="frame">
+        <div class="cover-category">M&A Integration</div>
+        <div class="cover-title">Post-Merger Integration: Capturing $240M in Synergies</div>
+      </div>
+      <div class="cover-branding">Strategy&</div>
+      <div class="cover-date">December 2025</div>
+    </div>
+  </div>
+
+  <!-- Slide 2: Split Screen -->
+  <div class="slide-section">
+    <div class="slide-label">Deal Value</div>
+    <div class="slide">
+      <div class="split-screen">
+        <div class="split-sidebar">
+          <div class="split-big-stat">$240M</div>
+          <div class="split-stat-label">Annual Run-Rate<br/>Synergies</div>
+        </div>
+        <div class="split-content">
+          <h2>Strategic acquisition creates market leader</h2>
+          <h3>Synergy Breakdown</h3>
+          <div class="split-items">
+            <div class="split-item">
+              <div class="split-item-marker">1</div>
+              <div class="split-item-text">
+                <h4>Cost Synergies: $155M</h4>
+                <p>Manufacturing consolidation, procurement leverage, shared services, and workforce optimization across overlapping functions.</p>
+              </div>
+            </div>
+            <div class="split-item">
+              <div class="split-item-marker">2</div>
+              <div class="split-item-text">
+                <h4>Revenue Synergies: $85M</h4>
+                <p>Cross-selling to combined customer base, geographic expansion, and premium product bundling opportunities.</p>
+              </div>
+            </div>
+            <div class="split-item">
+              <div class="split-item-marker">3</div>
+              <div class="split-item-text">
+                <h4>Integration Investment: $45M</h4>
+                <p>One-time costs for systems integration, facility moves, retention packages, and change management programs.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>2 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 3: Checklist Matrix -->
+  <div class="slide-section">
+    <div class="slide-label">Integration Scope</div>
+    <div class="slide">
+      <h1 class="title">Integration priorities span all functional areas</h1>
+      <h2 class="subtitle">Workstream Assessment</h2>
+      <div class="frame">
+        <div class="checklist-matrix">
+          <div class="matrix-header">Workstream</div>
+          <div class="matrix-header">Day 1</div>
+          <div class="matrix-header">100 Days</div>
+          <div class="matrix-header">Year 1</div>
+
+          <div class="matrix-row-header">Organization & Talent</div>
+          <div class="matrix-cell check">&#10003;</div>
+          <div class="matrix-cell check">&#10003;</div>
+          <div class="matrix-cell check">&#10003;</div>
+
+          <div class="matrix-row-header">Finance & Reporting</div>
+          <div class="matrix-cell check">&#10003;</div>
+          <div class="matrix-cell check">&#10003;</div>
+          <div class="matrix-cell check">&#10003;</div>
+
+          <div class="matrix-row-header">Operations & Supply Chain</div>
+          <div class="matrix-cell partial">&#9679;</div>
+          <div class="matrix-cell check">&#10003;</div>
+          <div class="matrix-cell check">&#10003;</div>
+
+          <div class="matrix-row-header">Technology & Systems</div>
+          <div class="matrix-cell partial">&#9679;</div>
+          <div class="matrix-cell partial">&#9679;</div>
+          <div class="matrix-cell check">&#10003;</div>
+
+          <div class="matrix-row-header">Sales & Customer</div>
+          <div class="matrix-cell check">&#10003;</div>
+          <div class="matrix-cell check">&#10003;</div>
+          <div class="matrix-cell check">&#10003;</div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>3 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 4: Stacked Sections -->
+  <div class="slide-section">
+    <div class="slide-label">Quick Wins</div>
+    <div class="slide">
+      <h1 class="title">$40M in savings achievable within first 100 days</h1>
+      <h2 class="subtitle">Early Value Capture</h2>
+      <div class="frame">
+        <div class="stacked-sections">
+          <div class="stacked-row">
+            <div class="section-block highlight">
+              <h4>PROCUREMENT</h4>
+              <p>Consolidate indirect spend, renegotiate top 20 supplier contracts, implement joint purchasing agreements</p>
+              <div class="value">$18M</div>
+            </div>
+            <div class="section-block">
+              <h4>WORKFORCE</h4>
+              <p>Eliminate duplicate leadership roles, rationalize corporate functions, natural attrition management</p>
+              <div class="value">$12M</div>
+            </div>
+          </div>
+          <div class="stacked-row">
+            <div class="section-block">
+              <h4>FACILITIES</h4>
+              <p>Consolidate office locations, exit short-term leases, optimize real estate footprint</p>
+              <div class="value">$6M</div>
+            </div>
+            <div class="section-block">
+              <h4>TECHNOLOGY</h4>
+              <p>Terminate redundant software licenses, consolidate vendor contracts, defer non-critical projects</p>
+              <div class="value">$4M</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>4 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 5: Process Boxes -->
+  <div class="slide-section">
+    <div class="slide-label">Timeline</div>
+    <div class="slide">
+      <h1 class="title">100-day integration follows proven methodology</h1>
+      <h2 class="subtitle">Implementation Phases</h2>
+      <div class="frame">
+        <div class="process-boxes">
+          <div class="process-box">
+            <h4>PRE-CLOSE</h4>
+            <p>Planning, clean rooms, Day 1 readiness, communications prep</p>
+            <div class="days">-30</div>
+          </div>
+          <div class="process-arrow">&#8594;</div>
+          <div class="process-box">
+            <h4>DAY 1</h4>
+            <p>Leadership, governance, legal close, customer/employee comms</p>
+            <div class="days">0</div>
+          </div>
+          <div class="process-arrow">&#8594;</div>
+          <div class="process-box">
+            <h4>STABILIZE</h4>
+            <p>Retain talent, maintain operations, validate synergies</p>
+            <div class="days">30</div>
+          </div>
+          <div class="process-arrow">&#8594;</div>
+          <div class="process-box">
+            <h4>ACCELERATE</h4>
+            <p>Quick wins, org design, detailed planning, execute</p>
+            <div class="days">100</div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>5 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 6: Before/After -->
+  <div class="slide-section">
+    <div class="slide-label">Target State</div>
+    <div class="slide">
+      <h1 class="title">Integration transforms operating model fundamentally</h1>
+      <h2 class="subtitle">Current vs. Future State</h2>
+      <div class="frame">
+        <div class="before-after">
+          <div class="ba-column before">
+            <div class="ba-header">BEFORE: Two Separate Entities</div>
+            <div class="ba-items">
+              <div class="ba-item"><span class="ba-marker">&#8722;</span><span class="ba-text">Duplicate headquarters and regional offices</span></div>
+              <div class="ba-item"><span class="ba-marker">&#8722;</span><span class="ba-text">Separate ERP systems and data warehouses</span></div>
+              <div class="ba-item"><span class="ba-marker">&#8722;</span><span class="ba-text">Independent procurement organizations</span></div>
+              <div class="ba-item"><span class="ba-marker">&#8722;</span><span class="ba-text">Competing sales teams in overlapping markets</span></div>
+              <div class="ba-item"><span class="ba-marker">&#8722;</span><span class="ba-text">Fragmented customer data and CRM systems</span></div>
+            </div>
+          </div>
+          <div class="ba-column after">
+            <div class="ba-header">AFTER: Unified Organization</div>
+            <div class="ba-items">
+              <div class="ba-item"><span class="ba-marker">&#10003;</span><span class="ba-text">Single headquarters, optimized regional footprint</span></div>
+              <div class="ba-item"><span class="ba-marker">&#10003;</span><span class="ba-text">Unified ERP platform with integrated analytics</span></div>
+              <div class="ba-item"><span class="ba-marker">&#10003;</span><span class="ba-text">Centralized procurement with scale leverage</span></div>
+              <div class="ba-item"><span class="ba-marker">&#10003;</span><span class="ba-text">Coordinated go-to-market with expanded portfolio</span></div>
+              <div class="ba-item"><span class="ba-marker">&#10003;</span><span class="ba-text">360-degree customer view driving cross-sell</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>6 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 7: Key Takeaways -->
+  <div class="slide-section">
+    <div class="slide-label">Summary</div>
+    <div class="slide">
+      <h1 class="title">Three imperatives for integration success</h1>
+      <h2 class="subtitle">Critical Success Factors</h2>
+      <div class="frame">
+        <div class="takeaways">
+          <div class="takeaway">
+            <div class="takeaway-icon">1</div>
+            <div class="takeaway-content">
+              <h4>Move Fast on Talent</h4>
+              <p>Announce leadership decisions within 48 hours of close. Uncertainty drives attrition—top performers leave first. Retention packages for critical roles must be ready Day 1.</p>
+            </div>
+          </div>
+          <div class="takeaway">
+            <div class="takeaway-icon">2</div>
+            <div class="takeaway-content">
+              <h4>Protect Customer Continuity</h4>
+              <p>Customers care about service, not synergies. Joint account teams should reach top 50 customers within first week. No disruption to delivery or support commitments.</p>
+            </div>
+          </div>
+          <div class="takeaway">
+            <div class="takeaway-icon">3</div>
+            <div class="takeaway-content">
+              <h4>Deliver Visible Quick Wins</h4>
+              <p>Early wins build momentum and credibility. Target $40M in savings by Day 100 to demonstrate integration capability and fund transformation investments.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>7 / 7</span></footer>
+    </div>
+  </div>
+
+</main>
+<script>
+  const slidesData=[
+    {type:"cover",category:"M&A INTEGRATION",mainTitle:"Post-Merger Integration: Capturing $240M in Synergies",branding:"Strategy&",date:"December 2025"},
+    {type:"split-screen",bigStat:"$240M",statLabel:"Annual Run-Rate\nSynergies",headline:"Strategic acquisition creates market leader",subtitle:"Synergy Breakdown",items:[{num:"1",title:"Cost Synergies: $155M",text:"Manufacturing consolidation, procurement leverage, shared services, and workforce optimization across overlapping functions."},{num:"2",title:"Revenue Synergies: $85M",text:"Cross-selling to combined customer base, geographic expansion, and premium product bundling opportunities."},{num:"3",title:"Integration Investment: $45M",text:"One-time costs for systems integration, facility moves, retention packages, and change management programs."}]},
+    {type:"checklist-matrix",headline:"Integration priorities span all functional areas",subtitle:"Workstream Assessment",headers:["Workstream","Day 1","100 Days","Year 1"],rows:[{label:"Organization & Talent",cells:["check","check","check"]},{label:"Finance & Reporting",cells:["check","check","check"]},{label:"Operations & Supply Chain",cells:["partial","check","check"]},{label:"Technology & Systems",cells:["partial","partial","check"]},{label:"Sales & Customer",cells:["check","check","check"]}]},
+    {type:"stacked-sections",headline:"$40M in savings achievable within first 100 days",subtitle:"Early Value Capture",sections:[[{title:"PROCUREMENT",text:"Consolidate indirect spend, renegotiate top 20 supplier contracts, implement joint purchasing agreements",value:"$18M",highlight:true},{title:"WORKFORCE",text:"Eliminate duplicate leadership roles, rationalize corporate functions, natural attrition management",value:"$12M"}],[{title:"FACILITIES",text:"Consolidate office locations, exit short-term leases, optimize real estate footprint",value:"$6M"},{title:"TECHNOLOGY",text:"Terminate redundant software licenses, consolidate vendor contracts, defer non-critical projects",value:"$4M"}]]},
+    {type:"process-boxes",headline:"100-day integration follows proven methodology",subtitle:"Implementation Phases",boxes:[{title:"PRE-CLOSE",text:"Planning, clean rooms, Day 1 readiness, communications prep",days:"-30"},{title:"DAY 1",text:"Leadership, governance, legal close, customer/employee comms",days:"0"},{title:"STABILIZE",text:"Retain talent, maintain operations, validate synergies",days:"30"},{title:"ACCELERATE",text:"Quick wins, org design, detailed planning, execute",days:"100"}]},
+    {type:"before-after",headline:"Integration transforms operating model fundamentally",subtitle:"Current vs. Future State",before:{header:"BEFORE: Two Separate Entities",items:["Duplicate headquarters and regional offices","Separate ERP systems and data warehouses","Independent procurement organizations","Competing sales teams in overlapping markets","Fragmented customer data and CRM systems"]},after:{header:"AFTER: Unified Organization",items:["Single headquarters, optimized regional footprint","Unified ERP platform with integrated analytics","Centralized procurement with scale leverage","Coordinated go-to-market with expanded portfolio","360-degree customer view driving cross-sell"]}},
+    {type:"takeaways",headline:"Three imperatives for integration success",subtitle:"Critical Success Factors",items:[{num:"1",title:"Move Fast on Talent",text:"Announce leadership decisions within 48 hours of close. Uncertainty drives attrition—top performers leave first. Retention packages for critical roles must be ready Day 1."},{num:"2",title:"Protect Customer Continuity",text:"Customers care about service, not synergies. Joint account teams should reach top 50 customers within first week. No disruption to delivery or support commitments."},{num:"3",title:"Deliver Visible Quick Wins",text:"Early wins build momentum and credibility. Target $40M in savings by Day 100 to demonstrate integration capability and fund transformation investments."}]}
+  ];
+  async function generatePPTX(){
+    const btn=document.getElementById('dl-btn');const orig=btn.innerText;
+    try{
+      btn.disabled=true;btn.innerText='Generating...';
+      let pptx=new PptxGenJS();pptx.defineLayout({name:'STRAT',width:13.333,height:7.5});pptx.layout='STRAT';
+      const c={bg:'FFFFFF',main:'111111',red:'A32020',maroon:'8E1E1E',zone1:'F7F9FB',zone2:'EEF2F6',meta:'4A4F57',rose:'F8E3E3',coal:'4B4F55',border:'E6E9EE',secondary:'222222'};
+      const total=slidesData.length;
+      function footer(s,n){s.addText('Strategy&',{x:0.48,y:7.05,w:2,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta});s.addText(n+' / '+total,{x:11.5,y:7.05,w:1.3,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta,align:'right'});}
+      function masterTitle(s,d){s.addText(d.headline,{x:0.48,y:0.42,w:12.36,h:0.8,fontFace:'Georgia',fontSize:28,color:c.main});s.addText(d.subtitle,{x:0.48,y:1.40,w:12.36,h:0.4,fontFace:'Arial',fontSize:18,color:c.red,bold:true});}
+      function cover(s,d){s.addText(d.category,{x:0.48,y:1.94,w:10,h:0.35,fontFace:'Arial',fontSize:18,color:c.red,bold:true});s.addText(d.mainTitle,{x:0.48,y:2.5,w:9.7,h:1.2,fontFace:'Georgia',fontSize:42,color:c.main});s.addText(d.branding,{x:0.48,y:6.8,w:3,h:0.3,fontFace:'Arial',fontSize:16,color:c.meta,bold:true});s.addText(d.date,{x:10.9,y:7.05,w:1.9,h:0.25,fontFace:'Arial',fontSize:13,color:c.meta,align:'right'});}
+
+      function splitScreen(s,d,n){
+        footer(s,n);
+        s.addShape('rect',{x:0,y:0,w:3.9,h:7.5,fill:c.maroon});
+        s.addText(d.bigStat,{x:0.3,y:2.5,w:3.3,h:1.2,fontFace:'Georgia',fontSize:72,color:'FFFFFF',bold:true,align:'center'});
+        s.addText(d.statLabel,{x:0.3,y:3.9,w:3.3,h:0.8,fontFace:'Arial',fontSize:16,color:c.rose,align:'center',lineSpacing:24});
+        s.addText(d.headline,{x:4.3,y:0.5,w:8.5,h:0.8,fontFace:'Georgia',fontSize:28,color:c.main});
+        s.addText(d.subtitle,{x:4.3,y:1.4,w:8.5,h:0.4,fontFace:'Arial',fontSize:18,color:c.red,bold:true});
+        let itemY=2.1;
+        d.items.forEach((item)=>{
+          s.addShape('ellipse',{x:4.3,y:itemY,w:0.35,h:0.35,fill:c.rose});
+          s.addText(item.num,{x:4.3,y:itemY+0.02,w:0.35,h:0.3,fontFace:'Arial',fontSize:12,color:c.maroon,bold:true,align:'center'});
+          s.addText(item.title,{x:4.8,y:itemY,w:7.8,h:0.35,fontFace:'Arial',fontSize:14,color:c.main,bold:true});
+          s.addText(item.text,{x:4.8,y:itemY+0.4,w:7.8,h:0.8,fontFace:'Arial',fontSize:12,color:c.secondary,valign:'top',lineSpacing:17});
+          itemY+=1.4;
+        });
+      }
+
+      function checklistMatrix(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const tbl=[[{text:d.headers[0],options:{fill:c.maroon,color:'FFFFFF',bold:true,align:'left'}},{text:d.headers[1],options:{fill:c.maroon,color:'FFFFFF',bold:true,align:'center'}},{text:d.headers[2],options:{fill:c.maroon,color:'FFFFFF',bold:true,align:'center'}},{text:d.headers[3],options:{fill:c.maroon,color:'FFFFFF',bold:true,align:'center'}}]];
+        d.rows.forEach((r)=>{
+          const row=[{text:r.label,options:{fill:c.zone1,bold:true,align:'left'}}];
+          r.cells.forEach((cell)=>{
+            row.push({text:cell==='check'?'✓':cell==='partial'?'●':'—',options:{fill:c.bg,color:cell==='check'?c.maroon:cell==='partial'?'C06060':c.border,align:'center',fontSize:18}});
+          });
+          tbl.push(row);
+        });
+        s.addTable(tbl,{x:0.48,y:2.0,w:12.36,colW:[4.5,2.5,2.5,2.5],fontFace:'Arial',fontSize:13,color:c.main,border:{type:'solid',color:c.border,pt:1},valign:'middle',rowH:0.7});
+      }
+
+      function stackedSections(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const startY=2.0,secH=2.3,gap=0.2,secW=6.05;
+        d.sections.forEach((row,ri)=>{
+          row.forEach((sec,ci)=>{
+            const x=0.48+(ci*(secW+gap)),y=startY+(ri*(secH+gap));
+            const fill=sec.highlight?c.maroon:c.zone1;
+            s.addShape('roundRect',{x,y,w:secW,h:secH,fill,line:{color:sec.highlight?c.maroon:c.border,width:1},rectRadius:0.05});
+            s.addText(sec.title,{x:x+0.25,y:y+0.2,w:secW-0.5,h:0.35,fontFace:'Arial',fontSize:14,color:sec.highlight?c.rose:c.maroon,bold:true});
+            s.addText(sec.text,{x:x+0.25,y:y+0.6,w:secW-0.5,h:1.0,fontFace:'Arial',fontSize:12,color:sec.highlight?'FFFFFF':c.secondary,valign:'top',lineSpacing:17});
+            s.addText(sec.value,{x:x+0.25,y:y+1.7,w:secW-0.5,h:0.5,fontFace:'Georgia',fontSize:28,color:sec.highlight?'FFFFFF':c.maroon,bold:true});
+          });
+        });
+      }
+
+      function processBoxes(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const boxW=2.6,boxH=2.0,arrowW=0.6,startX=0.6,y=3.0;
+        d.boxes.forEach((box,i)=>{
+          const x=startX+(i*(boxW+arrowW));
+          s.addShape('roundRect',{x,y,w:boxW,h:boxH,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+          s.addText(box.title,{x,y:y+0.2,w:boxW,h:0.35,fontFace:'Arial',fontSize:14,color:c.maroon,bold:true,align:'center'});
+          s.addText(box.text,{x:x+0.15,y:y+0.6,w:boxW-0.3,h:0.9,fontFace:'Arial',fontSize:11,color:c.secondary,align:'center',valign:'top',lineSpacing:15});
+          s.addText(box.days,{x,y:y+1.5,w:boxW,h:0.4,fontFace:'Georgia',fontSize:20,color:c.maroon,bold:true,align:'center'});
+          if(i<d.boxes.length-1)s.addText('→',{x:x+boxW+0.1,y:y+0.7,w:arrowW-0.2,h:0.5,fontFace:'Arial',fontSize:24,color:c.maroon,align:'center'});
+        });
+      }
+
+      function beforeAfter(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const colW=6,gap=0.36,y=2.0,h=4.6;
+        // Before column
+        s.addShape('rect',{x:0.48,y:y,w:colW,h:0.5,fill:c.zone2});
+        s.addText(d.before.header,{x:0.48,y:y+0.1,w:colW,h:0.4,fontFace:'Arial',fontSize:14,color:c.meta,bold:true,align:'center'});
+        d.before.items.forEach((item,i)=>{
+          const iy=y+0.6+(i*0.75);
+          s.addText('−',{x:0.58,y:iy,w:0.3,h:0.6,fontFace:'Arial',fontSize:14,color:c.meta});
+          s.addText(item,{x:0.95,y:iy+0.05,w:colW-0.6,h:0.6,fontFace:'Arial',fontSize:12,color:c.secondary,valign:'top'});
+        });
+        // After column
+        const ax=0.48+colW+gap;
+        s.addShape('rect',{x:ax,y:y,w:colW,h:0.5,fill:c.maroon});
+        s.addText(d.after.header,{x:ax,y:y+0.1,w:colW,h:0.4,fontFace:'Arial',fontSize:14,color:'FFFFFF',bold:true,align:'center'});
+        d.after.items.forEach((item,i)=>{
+          const iy=y+0.6+(i*0.75);
+          s.addShape('rect',{x:ax,y:iy,w:colW,h:0.65,fill:c.rose});
+          s.addText('✓',{x:ax+0.1,y:iy+0.05,w:0.3,h:0.55,fontFace:'Arial',fontSize:14,color:c.maroon});
+          s.addText(item,{x:ax+0.45,y:iy+0.1,w:colW-0.6,h:0.55,fontFace:'Arial',fontSize:12,color:c.secondary,valign:'top'});
+        });
+      }
+
+      function takeaways(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const startY=2.2,itemH=1.5;
+        d.items.forEach((item,i)=>{
+          const y=startY+(i*itemH);
+          s.addShape('ellipse',{x:0.48,y:y,w:0.8,h:0.8,fill:c.rose});
+          s.addText(item.num,{x:0.48,y:y+0.15,w:0.8,h:0.5,fontFace:'Georgia',fontSize:24,color:c.maroon,bold:true,align:'center'});
+          s.addText(item.title,{x:1.5,y:y,w:11,h:0.4,fontFace:'Arial',fontSize:16,color:c.main,bold:true});
+          s.addText(item.text,{x:1.5,y:y+0.45,w:11,h:0.9,fontFace:'Arial',fontSize:13,color:c.secondary,valign:'top',lineSpacing:19});
+        });
+      }
+
+      slidesData.forEach((d,i)=>{const s=pptx.addSlide(),n=i+1;
+        if(d.type==='cover')cover(s,d);
+        else if(d.type==='split-screen')splitScreen(s,d,n);
+        else if(d.type==='checklist-matrix')checklistMatrix(s,d,n);
+        else if(d.type==='stacked-sections')stackedSections(s,d,n);
+        else if(d.type==='process-boxes')processBoxes(s,d,n);
+        else if(d.type==='before-after')beforeAfter(s,d,n);
+        else if(d.type==='takeaways')takeaways(s,d,n);
+      });
+      await pptx.writeFile({fileName:'MA_Integration_Plan.pptx'});btn.disabled=false;btn.innerText=orig;
+    }catch(e){console.error(e);alert('Error: '+e.message);btn.disabled=false;btn.innerText='Retry';}
+  }
+</script>
+</body>
+</html>

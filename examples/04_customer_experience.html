@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Customer Experience — Strategy&</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  :root{--slide-w:960pt;--slide-min-h:540pt;--left-x:34.58pt;--title-w:890.08pt;--subtitle-w:890.08pt;--title-y:30.33pt;--subtitle-y:100.91pt;--frame-y:136.91pt;--frame-w:890.08pt;--bg:#fff;--main:#111111;--secondary:#222222;--meta:#4A4F57;--red:#A32020;--zone1:#F7F9FB;--zone2:#EEF2F6;--maroon:#8E1E1E;--rose:#F8E3E3;--coal:#4B4F55;--gH:16pt;--gV:12pt;--radius:4pt;--border:#E6E9EE;}
+  html,body{margin:0;background:#e0e0e0;color:var(--main);font-family:Arial,sans-serif;}
+  .deck{display:flex;flex-direction:column;gap:30pt;padding:30pt;padding-bottom:100px;max-width:1020pt;margin:0 auto;}
+  .slide-section{display:flex;flex-direction:column;gap:10pt;}
+  .slide-label{font-size:11pt;color:var(--meta);font-weight:bold;text-transform:uppercase;letter-spacing:1pt;padding-left:5pt;}
+  .slide{position:relative;width:var(--slide-w);height:var(--slide-min-h);margin:0 auto;border:1px solid var(--border);background:var(--bg);box-sizing:border-box;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.12);border-radius:4pt;}
+  .title{position:absolute;left:var(--left-x);top:var(--title-y);width:var(--title-w);font:400 28pt/1.2 Georgia,serif;color:var(--main);}
+  .subtitle{position:absolute;left:var(--left-x);top:var(--subtitle-y);width:var(--subtitle-w);font:700 18pt/1.2 Arial,sans-serif;color:var(--red);}
+  .frame{position:absolute;left:var(--left-x);top:var(--frame-y);width:var(--frame-w);height:352.91pt;display:flex;flex-direction:column;}
+  footer.footer{position:absolute;bottom:0;left:var(--left-x);width:890.08pt;padding-bottom:14pt;display:flex;justify-content:space-between;font-size:10pt;color:var(--meta);}
+  .cover-slide .frame{top:140pt;height:auto;display:flex;flex-direction:column;gap:16pt;}
+  .cover-category{font:700 18pt/1.2 Arial,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:1pt;}
+  .cover-title{font:400 42pt/1.15 Georgia,serif;color:var(--main);max-width:700pt;}
+  .cover-branding{position:absolute;left:var(--left-x);bottom:50pt;font:700 16pt/1 Arial,sans-serif;color:var(--meta);}
+  .cover-date{position:absolute;right:var(--left-x);bottom:14pt;font:400 13pt/1 Arial,sans-serif;color:var(--meta);}
+
+  /* ========== SLIDE 2: Journey Stages ========== */
+  .journey-container{display:flex;flex-direction:column;gap:20pt;height:100%;}
+  .journey-track{display:flex;align-items:center;justify-content:space-between;position:relative;padding:0 20pt;}
+  .journey-track::before{content:'';position:absolute;top:50%;left:50pt;right:50pt;height:4pt;background:linear-gradient(90deg, var(--maroon) 0%, var(--rose) 100%);transform:translateY(-50%);}
+  .journey-stage{width:100pt;text-align:center;position:relative;z-index:1;}
+  .stage-circle{width:60pt;height:60pt;border-radius:50%;background:var(--maroon);display:flex;align-items:center;justify-content:center;margin:0 auto 10pt;font:700 20pt/1 Arial,sans-serif;color:#fff;}
+  .journey-stage:nth-child(2) .stage-circle{background:#A94545;}
+  .journey-stage:nth-child(3) .stage-circle{background:#B55555;}
+  .journey-stage:nth-child(4) .stage-circle{background:#C06060;}
+  .journey-stage:nth-child(5) .stage-circle{background:var(--rose);color:var(--maroon);}
+  .stage-label{font:700 12pt/1.3 Arial,sans-serif;color:var(--main);}
+  .journey-details{display:flex;gap:16pt;margin-top:10pt;}
+  .journey-detail{flex:1;background:var(--zone1);padding:14pt;border-radius:var(--radius);border:1px solid var(--border);}
+  .journey-detail h4{margin:0 0 6pt 0;font:700 13pt/1.3 Arial,sans-serif;color:var(--maroon);}
+  .journey-detail p{margin:0;font:400 11pt/1.5 Arial,sans-serif;color:var(--secondary);}
+
+  /* ========== SLIDE 3: Large Highlight Card ========== */
+  .highlight-card{display:flex;gap:30pt;height:100%;align-items:stretch;}
+  .highlight-main{flex:0 0 400pt;background:var(--maroon);border-radius:var(--radius);padding:30pt;display:flex;flex-direction:column;justify-content:center;}
+  .highlight-stat{font:700 80pt/1 Georgia,serif;color:#fff;}
+  .highlight-label{font:400 18pt/1.4 Arial,sans-serif;color:var(--rose);margin-top:16pt;}
+  .highlight-side{flex:1;display:flex;flex-direction:column;gap:16pt;}
+  .side-item{flex:1;background:var(--zone1);border-radius:var(--radius);padding:16pt;border-left:4pt solid var(--maroon);display:flex;flex-direction:column;justify-content:center;}
+  .side-item h4{margin:0 0 6pt 0;font:700 14pt/1.3 Arial,sans-serif;color:var(--main);}
+  .side-item p{margin:0;font:400 12pt/1.5 Arial,sans-serif;color:var(--secondary);}
+  .side-item .mini-stat{margin-top:8pt;font:700 18pt/1 Georgia,serif;color:var(--maroon);}
+
+  /* ========== SLIDE 4: Horizontal Bands ========== */
+  .bands{display:flex;flex-direction:column;gap:0;height:100%;}
+  .band{flex:1;display:flex;align-items:center;padding:0 20pt;gap:30pt;}
+  .band:nth-child(odd){background:var(--zone1);}
+  .band:nth-child(even){background:var(--bg);}
+  .band-number{font:700 36pt/1 Georgia,serif;color:var(--rose);flex:0 0 60pt;text-align:center;}
+  .band-content{flex:1;}
+  .band-content h4{margin:0 0 4pt 0;font:700 15pt/1.3 Arial,sans-serif;color:var(--main);}
+  .band-content p{margin:0;font:400 12pt/1.5 Arial,sans-serif;color:var(--secondary);}
+  .band-metric{flex:0 0 120pt;text-align:right;font:700 20pt/1 Georgia,serif;color:var(--maroon);}
+
+  /* ========== SLIDE 5: Stats Row ========== */
+  .stats-row{display:flex;gap:0;height:100%;align-items:stretch;}
+  .stat-column{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;padding:20pt;border-right:1px solid var(--border);}
+  .stat-column:last-child{border-right:none;}
+  .stat-column:nth-child(odd){background:var(--zone1);}
+  .stat-value{font:700 52pt/1 Georgia,serif;color:var(--maroon);}
+  .stat-label{font:700 14pt/1.3 Arial,sans-serif;color:var(--main);margin-top:16pt;}
+  .stat-context{font:400 11pt/1.5 Arial,sans-serif;color:var(--meta);margin-top:8pt;max-width:140pt;}
+
+  /* ========== SLIDE 6: Voice of Customer ========== */
+  .voc-container{display:flex;gap:24pt;height:100%;}
+  .voc-main{flex:0 0 500pt;display:flex;flex-direction:column;justify-content:center;}
+  .voc-quote{position:relative;padding-left:40pt;}
+  .voc-quote::before{content:'"';position:absolute;left:0;top:-20pt;font:400 80pt/1 Georgia,serif;color:var(--rose);}
+  .voc-text{font:400 24pt/1.5 Georgia,serif;color:var(--main);}
+  .voc-source{margin-top:24pt;padding-top:16pt;border-top:2pt solid var(--maroon);}
+  .voc-name{font:700 14pt/1 Arial,sans-serif;color:var(--maroon);}
+  .voc-title{font:400 12pt/1 Arial,sans-serif;color:var(--meta);margin-top:4pt;}
+  .voc-sidebar{flex:1;display:flex;flex-direction:column;gap:16pt;}
+  .voc-stat{background:var(--zone1);padding:20pt;border-radius:var(--radius);text-align:center;}
+  .voc-stat .value{font:700 36pt/1 Georgia,serif;color:var(--maroon);}
+  .voc-stat .label{font:400 12pt/1.3 Arial,sans-serif;color:var(--meta);margin-top:8pt;}
+
+  /* ========== SLIDE 7: Action Checklist ========== */
+  .checklist{display:flex;flex-direction:column;gap:14pt;height:100%;}
+  .check-item{display:flex;align-items:flex-start;gap:16pt;padding:16pt;background:var(--zone1);border-radius:var(--radius);border:1px solid var(--border);}
+  .check-box{flex:0 0 28pt;height:28pt;border:3pt solid var(--maroon);border-radius:4pt;display:flex;align-items:center;justify-content:center;font:700 16pt/1 Arial,sans-serif;color:var(--maroon);}
+  .check-box.done{background:var(--maroon);color:#fff;}
+  .check-content{flex:1;}
+  .check-content h4{margin:0 0 4pt 0;font:700 14pt/1.3 Arial,sans-serif;color:var(--main);}
+  .check-content p{margin:0;font:400 12pt/1.5 Arial,sans-serif;color:var(--secondary);}
+  .check-owner{flex:0 0 100pt;font:400 11pt/1.3 Arial,sans-serif;color:var(--meta);text-align:right;}
+
+  .controls{position:fixed;bottom:20px;right:30px;display:flex;gap:12px;align-items:center;z-index:1000;}
+  button{background:#8E1E1E;color:white;border:none;padding:14px 28px;font-size:14px;cursor:pointer;border-radius:5px;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.25);transition:all 0.2s;}
+  button:hover{background-color:#6d1515;transform:translateY(-2px);}
+  button:disabled{background-color:#ccc;cursor:not-allowed;transform:none;}
+  .slide-count{font-size:11px;color:var(--meta);background:white;padding:6px 12px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+</style>
+</head>
+<body>
+<div class="controls">
+  <span class="slide-count">7 slides ready for export</span>
+  <button id="dl-btn" onclick="generatePPTX()">Download Slides (.pptx)</button>
+</div>
+<main class="deck">
+
+  <!-- Slide 1: Cover -->
+  <div class="slide-section">
+    <div class="slide-label">Cover</div>
+    <div class="slide cover-slide">
+      <div class="frame">
+        <div class="cover-category">Customer Experience</div>
+        <div class="cover-title">CX Transformation: From Transactions to Relationships</div>
+      </div>
+      <div class="cover-branding">Strategy&</div>
+      <div class="cover-date">December 2025</div>
+    </div>
+  </div>
+
+  <!-- Slide 2: Journey Stages -->
+  <div class="slide-section">
+    <div class="slide-label">Customer Journey</div>
+    <div class="slide">
+      <h1 class="title">Five stages define the end-to-end customer experience</h1>
+      <h2 class="subtitle">Journey Framework</h2>
+      <div class="frame">
+        <div class="journey-container">
+          <div class="journey-track">
+            <div class="journey-stage">
+              <div class="stage-circle">1</div>
+              <div class="stage-label">DISCOVER</div>
+            </div>
+            <div class="journey-stage">
+              <div class="stage-circle">2</div>
+              <div class="stage-label">EVALUATE</div>
+            </div>
+            <div class="journey-stage">
+              <div class="stage-circle">3</div>
+              <div class="stage-label">PURCHASE</div>
+            </div>
+            <div class="journey-stage">
+              <div class="stage-circle">4</div>
+              <div class="stage-label">USE</div>
+            </div>
+            <div class="journey-stage">
+              <div class="stage-circle">5</div>
+              <div class="stage-label">ADVOCATE</div>
+            </div>
+          </div>
+          <div class="journey-details">
+            <div class="journey-detail">
+              <h4>Awareness</h4>
+              <p>Brand discovery through digital channels, referrals, and marketing</p>
+            </div>
+            <div class="journey-detail">
+              <h4>Research</h4>
+              <p>Compare options, read reviews, engage with content</p>
+            </div>
+            <div class="journey-detail">
+              <h4>Convert</h4>
+              <p>Seamless checkout, multiple payment options, clear pricing</p>
+            </div>
+            <div class="journey-detail">
+              <h4>Onboard</h4>
+              <p>Product setup, support access, value realization</p>
+            </div>
+            <div class="journey-detail">
+              <h4>Promote</h4>
+              <p>Reviews, referrals, social sharing, loyalty programs</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>2 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 3: Large Highlight Card -->
+  <div class="slide-section">
+    <div class="slide-label">Current State</div>
+    <div class="slide">
+      <h1 class="title">NPS gap to competitors signals urgent need for transformation</h1>
+      <h2 class="subtitle">Competitive Position</h2>
+      <div class="frame">
+        <div class="highlight-card">
+          <div class="highlight-main">
+            <div class="highlight-stat">-24</div>
+            <div class="highlight-label">NPS gap vs. category leader<br/>requiring immediate action</div>
+          </div>
+          <div class="highlight-side">
+            <div class="side-item">
+              <h4>Digital Experience Gap</h4>
+              <p>Mobile app rated 3.2 stars vs. competitor average of 4.6. Web conversion 40% below benchmark.</p>
+              <div class="mini-stat">-1.4 stars</div>
+            </div>
+            <div class="side-item">
+              <h4>Service Response Time</h4>
+              <p>Average wait time of 8 minutes vs. industry best practice of under 2 minutes for chat support.</p>
+              <div class="mini-stat">4x slower</div>
+            </div>
+            <div class="side-item">
+              <h4>Personalization Maturity</h4>
+              <p>Only 15% of interactions personalized vs. 73% for CX leaders using AI-driven recommendations.</p>
+              <div class="mini-stat">58% gap</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>3 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 4: Horizontal Bands -->
+  <div class="slide-section">
+    <div class="slide-label">Strategic Priorities</div>
+    <div class="slide">
+      <h1 class="title">Four initiatives drive measurable CX improvement</h1>
+      <h2 class="subtitle">Transformation Priorities</h2>
+      <div class="frame">
+        <div class="bands">
+          <div class="band">
+            <div class="band-number">01</div>
+            <div class="band-content">
+              <h4>Rebuild Digital Foundation</h4>
+              <p>Launch redesigned mobile app and responsive web experience with modern UX principles</p>
+            </div>
+            <div class="band-metric">+1.5 stars</div>
+          </div>
+          <div class="band">
+            <div class="band-number">02</div>
+            <div class="band-content">
+              <h4>Deploy AI-Powered Service</h4>
+              <p>Implement intelligent chatbot handling 60% of inquiries with seamless human handoff</p>
+            </div>
+            <div class="band-metric">2 min wait</div>
+          </div>
+          <div class="band">
+            <div class="band-number">03</div>
+            <div class="band-content">
+              <h4>Enable Hyper-Personalization</h4>
+              <p>Build unified customer data platform powering real-time personalized recommendations</p>
+            </div>
+            <div class="band-metric">+35% conv</div>
+          </div>
+          <div class="band">
+            <div class="band-number">04</div>
+            <div class="band-content">
+              <h4>Create Loyalty Ecosystem</h4>
+              <p>Launch rewards program with partner network driving repeat purchase and referrals</p>
+            </div>
+            <div class="band-metric">+18% LTV</div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>4 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 5: Stats Row -->
+  <div class="slide-section">
+    <div class="slide-label">Target Outcomes</div>
+    <div class="slide">
+      <h1 class="title">Clear metrics define transformation success</h1>
+      <h2 class="subtitle">KPI Targets</h2>
+      <div class="frame">
+        <div class="stats-row">
+          <div class="stat-column">
+            <div class="stat-value">+42</div>
+            <div class="stat-label">NPS Target</div>
+            <div class="stat-context">From +18 to industry leadership</div>
+          </div>
+          <div class="stat-column">
+            <div class="stat-value">4.7</div>
+            <div class="stat-label">App Rating</div>
+            <div class="stat-context">Top quartile mobile experience</div>
+          </div>
+          <div class="stat-column">
+            <div class="stat-value">85%</div>
+            <div class="stat-label">FCR Rate</div>
+            <div class="stat-context">First contact resolution</div>
+          </div>
+          <div class="stat-column">
+            <div class="stat-value">2.3x</div>
+            <div class="stat-label">CLV Uplift</div>
+            <div class="stat-context">Customer lifetime value</div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>5 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 6: Voice of Customer -->
+  <div class="slide-section">
+    <div class="slide-label">Customer Insight</div>
+    <div class="slide">
+      <h1 class="title">Direct feedback validates transformation priorities</h1>
+      <h2 class="subtitle">Voice of Customer</h2>
+      <div class="frame">
+        <div class="voc-container">
+          <div class="voc-main">
+            <div class="voc-quote">
+              <div class="voc-text">I love your products, but every interaction feels like starting from scratch. Why do I have to repeat myself every time I call?</div>
+              <div class="voc-source">
+                <div class="voc-name">Sarah M., Premium Customer</div>
+                <div class="voc-title">5-year customer, $12K annual spend</div>
+              </div>
+            </div>
+          </div>
+          <div class="voc-sidebar">
+            <div class="voc-stat">
+              <div class="value">67%</div>
+              <div class="label">cite lack of personalization as top frustration</div>
+            </div>
+            <div class="voc-stat">
+              <div class="value">54%</div>
+              <div class="label">have considered switching due to poor digital experience</div>
+            </div>
+            <div class="voc-stat">
+              <div class="value">82%</div>
+              <div class="label">would pay more for seamless omnichannel service</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>6 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 7: Action Checklist -->
+  <div class="slide-section">
+    <div class="slide-label">Next Steps</div>
+    <div class="slide">
+      <h1 class="title">Immediate actions to launch the transformation</h1>
+      <h2 class="subtitle">90-Day Priorities</h2>
+      <div class="frame">
+        <div class="checklist">
+          <div class="check-item">
+            <div class="check-box done">&#10003;</div>
+            <div class="check-content">
+              <h4>Establish CX Governance</h4>
+              <p>Form cross-functional steering committee with executive sponsorship and clear decision rights</p>
+            </div>
+            <div class="check-owner">CMO + CDO<br/>Week 1</div>
+          </div>
+          <div class="check-item">
+            <div class="check-box"></div>
+            <div class="check-content">
+              <h4>Complete Journey Mapping</h4>
+              <p>Document current-state pain points and design target-state experiences for priority journeys</p>
+            </div>
+            <div class="check-owner">CX Team<br/>Week 4</div>
+          </div>
+          <div class="check-item">
+            <div class="check-box"></div>
+            <div class="check-content">
+              <h4>Select Technology Partners</h4>
+              <p>RFP for CDP, chatbot, and personalization platforms with vendor demonstrations and POCs</p>
+            </div>
+            <div class="check-owner">CTO + Proc<br/>Week 8</div>
+          </div>
+          <div class="check-item">
+            <div class="check-box"></div>
+            <div class="check-content">
+              <h4>Launch Quick Win Pilots</h4>
+              <p>Deploy chatbot for top 5 inquiries and A/B test personalized recommendations on homepage</p>
+            </div>
+            <div class="check-owner">Digital Team<br/>Week 12</div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>7 / 7</span></footer>
+    </div>
+  </div>
+
+</main>
+<script>
+  const slidesData=[
+    {type:"cover",category:"CUSTOMER EXPERIENCE",mainTitle:"CX Transformation: From Transactions to Relationships",branding:"Strategy&",date:"December 2025"},
+    {type:"journey-stages",headline:"Five stages define the end-to-end customer experience",subtitle:"Journey Framework",stages:[{num:"1",label:"DISCOVER"},{num:"2",label:"EVALUATE"},{num:"3",label:"PURCHASE"},{num:"4",label:"USE"},{num:"5",label:"ADVOCATE"}],details:[{title:"Awareness",text:"Brand discovery through digital channels, referrals, and marketing"},{title:"Research",text:"Compare options, read reviews, engage with content"},{title:"Convert",text:"Seamless checkout, multiple payment options, clear pricing"},{title:"Onboard",text:"Product setup, support access, value realization"},{title:"Promote",text:"Reviews, referrals, social sharing, loyalty programs"}]},
+    {type:"highlight-card",headline:"NPS gap to competitors signals urgent need for transformation",subtitle:"Competitive Position",mainStat:"-24",mainLabel:"NPS gap vs. category leader\nrequiring immediate action",sideItems:[{title:"Digital Experience Gap",text:"Mobile app rated 3.2 stars vs. competitor average of 4.6. Web conversion 40% below benchmark.",stat:"-1.4 stars"},{title:"Service Response Time",text:"Average wait time of 8 minutes vs. industry best practice of under 2 minutes for chat support.",stat:"4x slower"},{title:"Personalization Maturity",text:"Only 15% of interactions personalized vs. 73% for CX leaders using AI-driven recommendations.",stat:"58% gap"}]},
+    {type:"horizontal-bands",headline:"Four initiatives drive measurable CX improvement",subtitle:"Transformation Priorities",bands:[{num:"01",title:"Rebuild Digital Foundation",text:"Launch redesigned mobile app and responsive web experience with modern UX principles",metric:"+1.5 stars"},{num:"02",title:"Deploy AI-Powered Service",text:"Implement intelligent chatbot handling 60% of inquiries with seamless human handoff",metric:"2 min wait"},{num:"03",title:"Enable Hyper-Personalization",text:"Build unified customer data platform powering real-time personalized recommendations",metric:"+35% conv"},{num:"04",title:"Create Loyalty Ecosystem",text:"Launch rewards program with partner network driving repeat purchase and referrals",metric:"+18% LTV"}]},
+    {type:"stats-row",headline:"Clear metrics define transformation success",subtitle:"KPI Targets",stats:[{value:"+42",label:"NPS Target",context:"From +18 to industry leadership"},{value:"4.7",label:"App Rating",context:"Top quartile mobile experience"},{value:"85%",label:"FCR Rate",context:"First contact resolution"},{value:"2.3x",label:"CLV Uplift",context:"Customer lifetime value"}]},
+    {type:"voc",headline:"Direct feedback validates transformation priorities",subtitle:"Voice of Customer",quote:"I love your products, but every interaction feels like starting from scratch. Why do I have to repeat myself every time I call?",name:"Sarah M., Premium Customer",title:"5-year customer, $12K annual spend",stats:[{value:"67%",label:"cite lack of personalization as top frustration"},{value:"54%",label:"have considered switching due to poor digital experience"},{value:"82%",label:"would pay more for seamless omnichannel service"}]},
+    {type:"action-checklist",headline:"Immediate actions to launch the transformation",subtitle:"90-Day Priorities",items:[{done:true,title:"Establish CX Governance",text:"Form cross-functional steering committee with executive sponsorship and clear decision rights",owner:"CMO + CDO",timing:"Week 1"},{done:false,title:"Complete Journey Mapping",text:"Document current-state pain points and design target-state experiences for priority journeys",owner:"CX Team",timing:"Week 4"},{done:false,title:"Select Technology Partners",text:"RFP for CDP, chatbot, and personalization platforms with vendor demonstrations and POCs",owner:"CTO + Proc",timing:"Week 8"},{done:false,title:"Launch Quick Win Pilots",text:"Deploy chatbot for top 5 inquiries and A/B test personalized recommendations on homepage",owner:"Digital Team",timing:"Week 12"}]}
+  ];
+  async function generatePPTX(){
+    const btn=document.getElementById('dl-btn');const orig=btn.innerText;
+    try{
+      btn.disabled=true;btn.innerText='Generating...';
+      let pptx=new PptxGenJS();pptx.defineLayout({name:'STRAT',width:13.333,height:7.5});pptx.layout='STRAT';
+      const c={bg:'FFFFFF',main:'111111',red:'A32020',maroon:'8E1E1E',zone1:'F7F9FB',zone2:'EEF2F6',meta:'4A4F57',rose:'F8E3E3',coal:'4B4F55',border:'E6E9EE',secondary:'222222'};
+      const total=slidesData.length;
+      function footer(s,n){s.addText('Strategy&',{x:0.48,y:7.05,w:2,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta});s.addText(n+' / '+total,{x:11.5,y:7.05,w:1.3,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta,align:'right'});}
+      function masterTitle(s,d){s.addText(d.headline,{x:0.48,y:0.42,w:12.36,h:0.8,fontFace:'Georgia',fontSize:28,color:c.main});s.addText(d.subtitle,{x:0.48,y:1.40,w:12.36,h:0.4,fontFace:'Arial',fontSize:18,color:c.red,bold:true});}
+      function cover(s,d){s.addText(d.category,{x:0.48,y:1.94,w:10,h:0.35,fontFace:'Arial',fontSize:18,color:c.red,bold:true});s.addText(d.mainTitle,{x:0.48,y:2.5,w:9.7,h:1.2,fontFace:'Georgia',fontSize:42,color:c.main});s.addText(d.branding,{x:0.48,y:6.8,w:3,h:0.3,fontFace:'Arial',fontSize:16,color:c.meta,bold:true});s.addText(d.date,{x:10.9,y:7.05,w:1.9,h:0.25,fontFace:'Arial',fontSize:13,color:c.meta,align:'right'});}
+
+      function journeyStages(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const colors=[c.maroon,'A94545','B55555','C06060',c.rose];
+        // Track line
+        s.addShape('rect',{x:1.0,y:2.55,w:11.3,h:0.06,fill:c.rose});
+        // Stages
+        const stageW=2.3,startX=0.85;
+        d.stages.forEach((st,i)=>{
+          const x=startX+(i*stageW);
+          s.addShape('ellipse',{x:x+0.4,y:2.1,w:0.85,h:0.85,fill:colors[i]});
+          s.addText(st.num,{x:x+0.4,y:2.2,w:0.85,h:0.65,fontFace:'Arial',fontSize:20,color:i===4?c.maroon:'FFFFFF',bold:true,align:'center'});
+          s.addText(st.label,{x:x,y:3.1,w:1.65,h:0.35,fontFace:'Arial',fontSize:12,color:c.main,bold:true,align:'center'});
+        });
+        // Details
+        const detailW=2.35,detailY=3.7,detailH=2.9;
+        d.details.forEach((det,i)=>{
+          const x=0.48+(i*(detailW+0.15));
+          s.addShape('roundRect',{x,y:detailY,w:detailW,h:detailH,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+          s.addText(det.title,{x:x+0.15,y:detailY+0.15,w:detailW-0.3,h:0.35,fontFace:'Arial',fontSize:13,color:c.maroon,bold:true});
+          s.addText(det.text,{x:x+0.15,y:detailY+0.55,w:detailW-0.3,h:2.0,fontFace:'Arial',fontSize:11,color:c.secondary,valign:'top',lineSpacing:16});
+        });
+      }
+
+      function highlightCard(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        s.addShape('roundRect',{x:0.48,y:2.0,w:5.6,h:4.6,fill:c.maroon,rectRadius:0.05});
+        s.addText(d.mainStat,{x:0.8,y:2.8,w:5,h:1.5,fontFace:'Georgia',fontSize:80,color:'FFFFFF',bold:true});
+        s.addText(d.mainLabel,{x:0.8,y:4.5,w:5,h:1.2,fontFace:'Arial',fontSize:18,color:c.rose,valign:'top',lineSpacing:28});
+        const sideX=6.4,sideW=6.4,itemH=1.45;
+        d.sideItems.forEach((item,i)=>{
+          const y=2.0+(i*itemH);
+          s.addShape('roundRect',{x:sideX,y,w:sideW,h:itemH-0.1,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+          s.addShape('rect',{x:sideX,y,w:0.06,h:itemH-0.1,fill:c.maroon});
+          s.addText(item.title,{x:sideX+0.25,y:y+0.1,w:sideW-0.5,h:0.35,fontFace:'Arial',fontSize:14,color:c.main,bold:true});
+          s.addText(item.text,{x:sideX+0.25,y:y+0.5,w:sideW-1.5,h:0.7,fontFace:'Arial',fontSize:11,color:c.secondary,valign:'top',lineSpacing:15});
+          s.addText(item.stat,{x:sideX+sideW-1.4,y:y+0.6,w:1.2,h:0.5,fontFace:'Georgia',fontSize:16,color:c.maroon,bold:true,align:'right'});
+        });
+      }
+
+      function horizontalBands(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const bandH=1.15,startY=2.0;
+        d.bands.forEach((band,i)=>{
+          const y=startY+(i*bandH);
+          s.addShape('rect',{x:0.48,y,w:12.36,h:bandH-0.05,fill:i%2===0?c.zone1:c.bg});
+          s.addText(band.num,{x:0.6,y:y+0.25,w:0.8,h:0.6,fontFace:'Georgia',fontSize:36,color:c.rose,bold:true});
+          s.addText(band.title,{x:1.6,y:y+0.2,w:8,h:0.4,fontFace:'Arial',fontSize:15,color:c.main,bold:true});
+          s.addText(band.text,{x:1.6,y:y+0.6,w:8,h:0.45,fontFace:'Arial',fontSize:12,color:c.secondary});
+          s.addText(band.metric,{x:10.6,y:y+0.35,w:2,h:0.5,fontFace:'Georgia',fontSize:20,color:c.maroon,bold:true,align:'right'});
+        });
+      }
+
+      function statsRow(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const colW=3.09,startX=0.48,y=2.0,h=4.6;
+        d.stats.forEach((stat,i)=>{
+          const x=startX+(i*colW);
+          s.addShape('rect',{x,y,w:colW,h,fill:i%2===0?c.zone1:c.bg});
+          if(i<d.stats.length-1)s.addShape('line',{x:x+colW,y:y,w:0,h:h,line:{color:c.border,width:1}});
+          s.addText(stat.value,{x,y:y+1.0,w:colW,h:1,fontFace:'Georgia',fontSize:52,color:c.maroon,bold:true,align:'center'});
+          s.addText(stat.label,{x,y:y+2.3,w:colW,h:0.4,fontFace:'Arial',fontSize:14,color:c.main,bold:true,align:'center'});
+          s.addText(stat.context,{x:x+0.2,y:y+2.9,w:colW-0.4,h:0.6,fontFace:'Arial',fontSize:11,color:c.meta,align:'center'});
+        });
+      }
+
+      function voc(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        s.addText('"',{x:0.48,y:1.8,w:1,h:1.5,fontFace:'Georgia',fontSize:80,color:c.rose});
+        s.addText(d.quote,{x:1.0,y:2.4,w:6.8,h:2.5,fontFace:'Georgia',fontSize:24,color:c.main,valign:'top',lineSpacing:38});
+        s.addShape('rect',{x:1.0,y:5.0,w:4,h:0.04,fill:c.maroon});
+        s.addText(d.name,{x:1.0,y:5.2,w:6,h:0.35,fontFace:'Arial',fontSize:14,color:c.maroon,bold:true});
+        s.addText(d.title,{x:1.0,y:5.55,w:6,h:0.3,fontFace:'Arial',fontSize:12,color:c.meta});
+        const statX=8.5,statW=4.2,statH=1.3;
+        d.stats.forEach((st,i)=>{
+          const y=2.0+(i*statH);
+          s.addShape('roundRect',{x:statX,y,w:statW,h:statH-0.1,fill:c.zone1,rectRadius:0.05});
+          s.addText(st.value,{x:statX,y:y+0.1,w:statW,h:0.6,fontFace:'Georgia',fontSize:36,color:c.maroon,bold:true,align:'center'});
+          s.addText(st.label,{x:statX+0.2,y:y+0.75,w:statW-0.4,h:0.4,fontFace:'Arial',fontSize:11,color:c.meta,align:'center'});
+        });
+      }
+
+      function actionChecklist(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const itemH=1.1,startY=2.0;
+        d.items.forEach((item,i)=>{
+          const y=startY+(i*itemH);
+          s.addShape('roundRect',{x:0.48,y,w:12.36,h:itemH-0.1,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+          if(item.done){
+            s.addShape('roundRect',{x:0.65,y:y+0.2,w:0.4,h:0.4,fill:c.maroon,rectRadius:0.05});
+            s.addText('✓',{x:0.65,y:y+0.2,w:0.4,h:0.4,fontFace:'Arial',fontSize:14,color:'FFFFFF',bold:true,align:'center'});
+          }else{
+            s.addShape('roundRect',{x:0.65,y:y+0.2,w:0.4,h:0.4,fill:c.bg,line:{color:c.maroon,pt:2},rectRadius:0.05});
+          }
+          s.addText(item.title,{x:1.25,y:y+0.15,w:9,h:0.35,fontFace:'Arial',fontSize:14,color:c.main,bold:true});
+          s.addText(item.text,{x:1.25,y:y+0.5,w:9,h:0.45,fontFace:'Arial',fontSize:12,color:c.secondary});
+          s.addText(item.owner+'\n'+item.timing,{x:10.5,y:y+0.15,w:2,h:0.7,fontFace:'Arial',fontSize:11,color:c.meta,align:'right',lineSpacing:16});
+        });
+      }
+
+      slidesData.forEach((d,i)=>{const s=pptx.addSlide(),n=i+1;
+        if(d.type==='cover')cover(s,d);
+        else if(d.type==='journey-stages')journeyStages(s,d,n);
+        else if(d.type==='highlight-card')highlightCard(s,d,n);
+        else if(d.type==='horizontal-bands')horizontalBands(s,d,n);
+        else if(d.type==='stats-row')statsRow(s,d,n);
+        else if(d.type==='voc')voc(s,d,n);
+        else if(d.type==='action-checklist')actionChecklist(s,d,n);
+      });
+      await pptx.writeFile({fileName:'Customer_Experience_Strategy.pptx'});btn.disabled=false;btn.innerText=orig;
+    }catch(e){console.error(e);alert('Error: '+e.message);btn.disabled=false;btn.innerText='Retry';}
+  }
+</script>
+</body>
+</html>

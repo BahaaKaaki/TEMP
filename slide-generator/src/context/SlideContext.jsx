@@ -275,6 +275,13 @@ function loadState() {
         }
       }
 
+      // MIGRATION: update old default model to new default
+      const OLD_DEFAULT_MODELS = ['pwc:openai.gpt-5.2', 'openai:gpt-5.2', 'openai.gpt-5.2'];
+      let migratedModel = migrateModelRef(parsed.settings?.model) || initialState.settings.model;
+      if (OLD_DEFAULT_MODELS.includes(migratedModel)) {
+        migratedModel = initialState.settings.model;
+      }
+
       const loadedState = {
         ...initialState,
         ...parsed,
@@ -286,7 +293,7 @@ function loadState() {
           ...initialState.settings,
           ...parsed.settings,
           providers: mergedProviders,
-          model: migrateModelRef(parsed.settings?.model) || initialState.settings.model,
+          model: migratedModel,
           fastModel: parsed.settings?.fastModel != null ? (migrateModelRef(parsed.settings.fastModel) || '') : initialState.settings.fastModel,
           routerModel: migrateModelRef(parsed.settings?.routerModel) || initialState.settings.routerModel,
           deepAnalysisModel: parsed.settings?.deepAnalysisModel != null ? (migrateModelRef(parsed.settings.deepAnalysisModel) || '') : initialState.settings.deepAnalysisModel,

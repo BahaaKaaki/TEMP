@@ -17,7 +17,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 
 - AI slide generation via PwC Shared Services (model: `vertex_ai.anthropic.claude-opus-4-6`)
 - Backend AI proxy -- API key stays server-side, never exposed to browser
-- Basic HTTP authentication (default: `team` / `edwin2026`)
+- Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
 - Monaco-based slide editor (HTML/CSS)
 - PowerPoint (.pptx) export via PptxGenJS
@@ -76,8 +76,8 @@ The frontend never touches the PwC API directly. All AI calls go through the bac
 |---|---|---|
 | `PWC_API_KEY` | Yes | PwC Shared Services API key |
 | `PWC_API_BASE_URL` | No | PwC API base URL (defaults to EMEA endpoint) |
-| `BASIC_AUTH_USER` | No | Login username (default: `team`) |
-| `BASIC_AUTH_PASS` | No | Login password (default: `edwin2026`) |
+| `BASIC_AUTH_USER` | Yes | Login username |
+| `BASIC_AUTH_PASS` | Yes | Login password |
 | `PORT` | No | Server port (default: 3001) |
 | `NODE_ENV` | No | Environment (default: development) |
 
@@ -143,8 +143,8 @@ DNS A records required in the centrally managed Private DNS Zone `privatelink.az
 | `PORT` | `8080` |
 | `PWC_API_KEY` | (set in App Service settings) |
 | `PWC_API_BASE_URL` | `https://genai-sharedservice-emea.pwcinternal.com` |
-| `BASIC_AUTH_USER` | `team` |
-| `BASIC_AUTH_PASS` | `edwin2026` |
+| `BASIC_AUTH_USER` | (set in App Service settings) |
+| `BASIC_AUTH_PASS` | (set in App Service settings) |
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` |
 
 ## Tech Stack

@@ -832,7 +832,9 @@ async function analyzeImageWithAI(base64, mimeType, settings) {
       'Content-Type': 'application/json',
     };
 
-    if (provider.azurePrefix) {
+    if (provider.authType === 'server') {
+      // Server-managed auth: backend proxy adds the key
+    } else if (provider.azurePrefix) {
       headers['api-key'] = provider.apiKey;
     } else {
       headers['Authorization'] = `Bearer ${provider.apiKey}`;

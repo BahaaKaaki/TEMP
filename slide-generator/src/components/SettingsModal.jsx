@@ -35,7 +35,9 @@ function buildTestHeaders(provider) {
   const headers = { 'Content-Type': 'application/json' };
   const authType = provider.authType || 'auto';
   const url = provider.apiUrl || '';
-  if (authType === 'api-key' || (authType === 'auto' && (url.includes('openai.azure.com') || provider.azurePrefix))) {
+  if (authType === 'server') {
+    // Server-managed auth: backend proxy adds the key; don't override browser Basic Auth
+  } else if (authType === 'api-key' || (authType === 'auto' && (url.includes('openai.azure.com') || provider.azurePrefix))) {
     headers['api-key'] = provider.apiKey;
   } else if (authType === 'auto' && url.includes('anthropic.com')) {
     headers['x-api-key'] = provider.apiKey;

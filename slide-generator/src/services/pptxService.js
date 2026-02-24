@@ -1105,7 +1105,9 @@ CRITICAL: Your output must contain the ACTUAL text AND ACTUAL COLORS from the HT
 
       // Build auth headers based on provider type (Azure-style vs Bearer)
       const headers = { 'Content-Type': 'application/json' };
-      if (credentials.azurePrefix) {
+      if (credentials.authType === 'server') {
+        // Server-managed auth: backend proxy adds the key
+      } else if (credentials.azurePrefix) {
         headers['api-key'] = credentials.apiKey;
       } else {
         headers['Authorization'] = `Bearer ${credentials.apiKey}`;

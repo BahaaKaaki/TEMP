@@ -4331,7 +4331,9 @@ export async function generateImage(imagePrompt, settings, referenceImageDataUri
 
   // Build auth headers (same logic as text API calls)
   const headers = { 'Content-Type': 'application/json' };
-  if (provider.authType === 'api-key' || isAzureStyle) {
+  if (provider.authType === 'server') {
+    // Server-managed auth: backend proxy adds the key
+  } else if (provider.authType === 'api-key' || isAzureStyle) {
     headers['api-key'] = provider.apiKey;
   } else if (provider.authType === 'bearer') {
     headers['Authorization'] = `Bearer ${provider.apiKey}`;

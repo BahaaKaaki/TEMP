@@ -272,8 +272,13 @@ ${previewParts.join('\n\n')}`;
     setShowExportMenu(false);
   };
 
-  const handleDownloadPPTX = async () => {
-    if (state.slides.length === 0) {
+  const selectedSlideIds = state.selectedSlideIds || [];
+  const selectedCount = selectedSlideIds.length;
+  const getSelectedSlides = () => state.slides.filter(s => selectedSlideIds.includes(s.id));
+
+  const handleDownloadPPTX = async (useSelected = false) => {
+    const slides = useSelected ? getSelectedSlides() : state.slides;
+    if (slides.length === 0) {
       alert('No slides to download. Create some slides first!');
       return;
     }
@@ -330,7 +335,7 @@ ${previewParts.join('\n\n')}`;
       const allTemplates = state.customTemplates || [];
 
       await exportToPPTX(
-        state.slides,
+        slides,
         filename,
         exportSettings,
         (progress) => setExportProgress(progress),
@@ -349,8 +354,9 @@ ${previewParts.join('\n\n')}`;
     }
   };
 
-  const handleDownloadPDF = async () => {
-    if (state.slides.length === 0) {
+  const handleDownloadPDF = async (useSelected = false) => {
+    const slides = useSelected ? getSelectedSlides() : state.slides;
+    if (slides.length === 0) {
       alert('No slides to download. Create some slides first!');
       return;
     }
@@ -367,7 +373,7 @@ ${previewParts.join('\n\n')}`;
       });
 
       await exportToPDF(
-        state.slides,
+        slides,
         state.sharedCSS,
         filename,
         (progress) => setExportProgress(progress)
@@ -508,7 +514,7 @@ ${previewParts.join('\n\n')}`;
                   </button>
                   <button
                     className="header-dropdown-item"
-                    onClick={handleDownloadPPTX}
+                    onClick={() => handleDownloadPPTX(false)}
                     disabled={isExporting}
                   >
                     {isExporting ? (
@@ -528,7 +534,7 @@ ${previewParts.join('\n\n')}`;
                   </button>
                   <button
                     className="header-dropdown-item"
-                    onClick={handleDownloadPDF}
+                    onClick={() => handleDownloadPDF(false)}
                     disabled={isExporting}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -537,6 +543,36 @@ ${previewParts.join('\n\n')}`;
                     </svg>
                     PDF (.pdf)
                   </button>
+                  {selectedCount > 1 && (
+                    <>
+                      <div className="header-dropdown-divider" />
+                      <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Export {selectedCount} Selected
+                      </div>
+                      <button
+                        className="header-dropdown-item"
+                        onClick={() => handleDownloadPPTX(true)}
+                        disabled={isExporting}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                          <polyline points="13 2 13 9 20 9" />
+                        </svg>
+                        Selected as PPTX ({selectedCount})
+                      </button>
+                      <button
+                        className="header-dropdown-item"
+                        onClick={() => handleDownloadPDF(true)}
+                        disabled={isExporting}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        Selected as PDF ({selectedCount})
+                      </button>
+                    </>
+                  )}
                   <div className="header-dropdown-divider" />
                   <button
                     className="header-dropdown-item"

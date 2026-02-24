@@ -3420,6 +3420,20 @@ body {
   to { transform: rotate(360deg); }
 }
 
+/* Preview bottom bar (template switch + info) */
+.preview-bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.preview-bottom-bar .template-switch-btn {
+  font-size: 11px;
+  padding: 4px 10px;
+  gap: 4px;
+}
+
 /* Preview info bar */
 .preview-info {
   display: flex;
@@ -3429,8 +3443,8 @@ body {
   padding: 8px 12px;
   background: rgba(255,255,255,0.8);
   border-radius: 6px;
-  margin-top: 8px;
   justify-content: center;
+  flex: 1;
 }
 
 /* Scrollbar */

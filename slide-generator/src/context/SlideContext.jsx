@@ -16,6 +16,7 @@ const initialState = {
   slides: [],
   sharedCSS: DEFAULT_SHARED_CSS,
   activeSlideId: null,
+  selectedSlideIds: [],
   deckName: 'Untitled Deck',
   vibe: DEFAULT_VIBE, // Design variation within theme: 'executive' | 'bold' | 'modern'
   imageVibe: 'default', // Vibe for image-based slides (persisted across reloads)
@@ -40,12 +41,13 @@ const initialState = {
         apiUrl: '/api/ai/chat',
         apiKey: 'server-managed',
         models: [
+          'vertex_ai.gemini-3.1-pro-preview',
+          'vertex_ai.gemini-3-pro-preview',
+          'vertex_ai.gemini-3-pro-image-preview',
+          'vertex_ai.anthropic.claude-opus-4-6',
           'openai.gpt-5.2-2025-12-11',
           'openai.gpt-5.2',
           'openai.gpt-5.2-codex',
-          'vertex_ai.anthropic.claude-opus-4-6',
-          'vertex_ai.gemini-3-pro-preview',
-          'vertex_ai.gemini-3-pro-image-preview',
           'azure.gpt-4.1',
           'azure.gpt-4o',
         ],
@@ -57,15 +59,15 @@ const initialState = {
       },
     ],
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
-    fastModel: 'pwc:openai.gpt-5.2-2025-12-11',
+    model: 'pwc:vertex_ai.gemini-3.1-pro-preview',
+    fastModel: 'pwc:vertex_ai.gemini-3-pro-preview',
     // Agent-mode router settings
-    routerModel: 'pwc:vertex_ai.gemini-3-pro-preview',
+    routerModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
     routerReasoningEffort: 'low',
     routerMaxTokens: 65536,
     routerSearchEnabled: false,
     // Chatbot-mode router settings
-    chatRouterModel: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
+    chatRouterModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
     chatRouterReasoningEffort: 'low',
     chatRouterMaxTokens: 65536,
     chatRouterSearchEnabled: true,
@@ -97,7 +99,7 @@ const initialState = {
     workLevelSlide: 'medium',
     workLevelAgent: 'medium',
     workLevelReport: 'medium',
-    reportModel: 'pwc:vertex_ai.gemini-3-pro-preview',
+    reportModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
     reportReasoningEffort: 'low',
     reportMaxTokens: 128000,
     reportSearchEnabled: false,
@@ -196,6 +198,25 @@ function loadState() {
         mergedProviders = initialState.settings.providers;
       }
 
+      // Ensure saved providers include all models from initialState (new models added in code updates)
+      if (Array.isArray(mergedProviders)) {
+        const initialProviders = initialState.settings.providers;
+        mergedProviders = mergedProviders.map(savedP => {
+          const initP = initialProviders.find(ip => ip.id === savedP.id);
+          if (initP) {
+            const mergedModels = [...new Set([...(savedP.models || []), ...(initP.models || [])])];
+            return { ...savedP, models: mergedModels };
+          }
+          return savedP;
+        });
+        // Add any entirely new providers from initialState
+        for (const initP of initialProviders) {
+          if (!mergedProviders.find(p => p.id === initP.id)) {
+            mergedProviders.push(initP);
+          }
+        }
+      }
+
       // Migrate model references: old "gpt-4o" → new "openai:gpt-4o"
       const migrateModelRef = (val) => {
         if (!val || val.includes(':')) return val; // already new format or empty
@@ -275,12 +296,18 @@ function loadState() {
         }
       }
 
-      // MIGRATION: update old default model to new default
-      const OLD_DEFAULT_MODELS = ['pwc:openai.gpt-5.2', 'openai:gpt-5.2', 'openai.gpt-5.2'];
-      let migratedModel = migrateModelRef(parsed.settings?.model) || initialState.settings.model;
-      if (OLD_DEFAULT_MODELS.includes(migratedModel)) {
-        migratedModel = initialState.settings.model;
-      }
+      // MIGRATION: update old default models to new defaults across all model fields
+      const OLD_DEFAULTS = new Set([
+        'pwc:openai.gpt-5.2', 'openai:gpt-5.2', 'openai.gpt-5.2',
+        'pwc:vertex_ai.anthropic.claude-opus-4-6',
+        'pwc:openai.gpt-5.2-2025-12-11',
+        'pwc:vertex_ai.gemini-3-pro-preview',
+      ]);
+      const migrateDefault = (val, fallback) => {
+        const migrated = migrateModelRef(val) || fallback;
+        return OLD_DEFAULTS.has(migrated) ? fallback : migrated;
+      };
+      let migratedModel = migrateDefault(parsed.settings?.model, initialState.settings.model);
 
       const loadedState = {
         ...initialState,
@@ -294,10 +321,11 @@ function loadState() {
           ...parsed.settings,
           providers: mergedProviders,
           model: migratedModel,
-          fastModel: parsed.settings?.fastModel != null ? (migrateModelRef(parsed.settings.fastModel) || '') : initialState.settings.fastModel,
-          routerModel: migrateModelRef(parsed.settings?.routerModel) || initialState.settings.routerModel,
+          fastModel: migrateDefault(parsed.settings?.fastModel, initialState.settings.fastModel),
+          routerModel: migrateDefault(parsed.settings?.routerModel, initialState.settings.routerModel),
+          chatRouterModel: migrateDefault(parsed.settings?.chatRouterModel, initialState.settings.chatRouterModel),
           deepAnalysisModel: parsed.settings?.deepAnalysisModel != null ? (migrateModelRef(parsed.settings.deepAnalysisModel) || '') : initialState.settings.deepAnalysisModel,
-          reportModel: parsed.settings?.reportModel != null ? (migrateModelRef(parsed.settings.reportModel) || '') : initialState.settings.reportModel,
+          reportModel: migrateDefault(parsed.settings?.reportModel, initialState.settings.reportModel),
         },
       };
       console.log('[SlideContext] Final loaded state:', {
@@ -324,6 +352,7 @@ const ACTIONS = {
   MOVE_SLIDE: 'MOVE_SLIDE', // Combined reorder + parent change
   MOVE_SLIDES_BATCH: 'MOVE_SLIDES_BATCH', // Atomic multi-slide move (avoids stale closure in forEach)
   SET_ACTIVE_SLIDE: 'SET_ACTIVE_SLIDE',
+  SET_SELECTED_SLIDES: 'SET_SELECTED_SLIDES',
   UPDATE_SHARED_CSS: 'UPDATE_SHARED_CSS',
   UPDATE_SETTINGS: 'UPDATE_SETTINGS',
   IMPORT_SLIDES: 'IMPORT_SLIDES',
@@ -386,6 +415,7 @@ const ACTIONS = {
 // Actions that should NOT trigger history (UI-only state changes)
 const NON_UNDOABLE_ACTIONS = new Set([
   ACTIONS.SET_ACTIVE_SLIDE,
+  ACTIONS.SET_SELECTED_SLIDES,
   ACTIONS.SET_HIGHLIGHTED_SLIDES,
   ACTIONS.UPDATE_SETTINGS,
   ACTIONS.UNDO,
@@ -813,6 +843,13 @@ function slideReducer(state, action) {
       return {
         ...state,
         activeSlideId: action.payload.id,
+      };
+    }
+
+    case ACTIONS.SET_SELECTED_SLIDES: {
+      return {
+        ...state,
+        selectedSlideIds: action.payload.ids || [],
       };
     }
 
@@ -1543,7 +1580,8 @@ export function SlideProvider({ children }) {
   // Save to localStorage on state change
   useEffect(() => {
     const saveState = (stateToSave) => {
-      const stateJson = JSON.stringify(stateToSave);
+      const { selectedSlideIds, ...persistState } = stateToSave;
+      const stateJson = JSON.stringify(persistState);
       localStorage.setItem('slideGeneratorState', stateJson);
       return stateJson.length;
     };
@@ -1669,6 +1707,9 @@ export function SlideProvider({ children }) {
 
     setActiveSlide: (id) =>
       dispatch({ type: ACTIONS.SET_ACTIVE_SLIDE, payload: { id } }),
+
+    setSelectedSlides: (ids) =>
+      dispatch({ type: ACTIONS.SET_SELECTED_SLIDES, payload: { ids } }),
 
     updateSharedCSS: (css) =>
       dispatchWithHistory({ type: ACTIONS.UPDATE_SHARED_CSS, payload: { css } }),

@@ -2292,6 +2292,29 @@ export default function AIChatbot() {
               }
             }
 
+            // Section divider shortcut: direct placeholder replacement, no AI call needed
+            if (pendingSlides.length === 0 && templateId === 'sectionDivider') {
+              const dividerTitle = step.instruction || step.title || step.sectionTracker || 'Section Break';
+              const dividerSubtitle = step.subtitle || step.layoutGuidance || '';
+              const dividerNum = step.sectionNumber || String(freshState.slides.length + 1).padStart(2, '0');
+              const dividerHtml = SLIDE_TEMPLATES.sectionDivider.html
+                .replace('[01]', dividerNum)
+                .replace('[Section Title]', dividerTitle)
+                .replace('[What this section covers]', dividerSubtitle)
+                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('1 / 1', '');
+
+              pendingSlides.push({
+                title: dividerTitle,
+                html: dividerHtml,
+                type: 'divider',
+                templateId: 'sectionDivider',
+                summary: `Section: ${dividerTitle}`,
+                ...(step.sectionTracker ? { sectionLabel: step.sectionTracker } : {}),
+                ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
+              });
+            }
+
             // Template-based or freestyle (also serves as fallback if image generation failed)
             if (pendingSlides.length === 0 && templateId && template) {
               const contextForAI = buildContextForStep(step, enrichedStepPrompt, freshState);
@@ -3654,11 +3677,29 @@ Original request: ${userPrompt}`;
                     newSlides = await generateSlides(fullPrompt, createSlideState.settings, 1, createSlideState.slides, null, null, freestyleCtx);
                     if (isAborted()) break;
                   }
+                } else if (templateId === 'sectionDivider') {
+                  // Section divider shortcut: direct placeholder fill, no AI call
+                  const divTitle = topic || instruction || 'Section Break';
+                  const divSubtitle = step.params?.subtitle || '';
+                  const divNum = step.params?.sectionNumber || String(createSlideState.slides.length + 1).padStart(2, '0');
+                  const divHtml = SLIDE_TEMPLATES.sectionDivider.html
+                    .replace('[01]', divNum)
+                    .replace('[Section Title]', divTitle)
+                    .replace('[What this section covers]', divSubtitle)
+                    .replace('[Company]', createSlideState.settings.footerBranding || 'Strategy&')
+                    .replace('1 / 1', '');
+                  newSlides = [{
+                    title: divTitle,
+                    html: divHtml,
+                    type: 'divider',
+                    templateId: 'sectionDivider',
+                    summary: `Section: ${divTitle}`,
+                  }];
                 } else if (templateId && !isImageTemplate) {
                   // Use specific template
                   const template = allTemplates.find(t => t.id === templateId);
                   if (template) {
-                    addMessage('assistant', `🎨 Using template: **${template.title}**`);
+                    addMessage('assistant', `Using template: **${template.title}**`);
                     const filledHtml = await fillTemplateWithAI(template, fullPrompt, createSlideState.settings, [], { agentMode: false });
                     if (isAborted()) break;
                     newSlides = [{
@@ -3930,24 +3971,25 @@ Original request: ${userPrompt}`;
               }
 
               case 'add_separator': {
-                // Add a section separator/divider slide
+                // Add a section separator/divider slide using the proper sectionDivider template
                 const position = step.params?.position ?? -1;
                 const title = step.params?.title || 'Section Break';
                 const subtitle = step.params?.subtitle || '';
+                const sectionNum = step.params?.sectionNumber || '';
 
-                const separatorHtml = `<div class="slide separator-slide">
-  <div class="frame">
-    <div class="separator-content">
-      <h1 class="separator-title">${title}</h1>
-      ${subtitle ? `<p class="separator-subtitle">${subtitle}</p>` : ''}
-    </div>
-  </div>
-</div>`;
+                const dividerTemplate = SLIDE_TEMPLATES.sectionDivider;
+                const separatorHtml = dividerTemplate.html
+                  .replace('[01]', sectionNum || '01')
+                  .replace('[Section Title]', title)
+                  .replace('[What this section covers]', subtitle || '')
+                  .replace('[Company]', '')
+                  .replace('1 / 1', '');
 
                 actions.insertSlideAt(position, {
                   title: title,
                   html: separatorHtml,
-                  type: 'separator',
+                  type: 'divider',
+                  templateId: 'sectionDivider',
                   summary: `Section: ${title}`,
                 });
 

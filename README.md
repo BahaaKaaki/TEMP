@@ -15,7 +15,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 
 ## Features
 
-- AI slide generation via PwC Shared Services (model: `vertex_ai.anthropic.claude-opus-4-6`)
+- AI slide generation via PwC Shared Services (model: `vertex_ai.gemini-3.1-pro-preview`)
 - Backend AI proxy -- API key stays server-side, never exposed to browser
 - Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
@@ -97,12 +97,12 @@ No environment variables needed. The frontend talks to the backend proxy.
 
 | Role | Model |
 |---|---|
-| Main | `vertex_ai.anthropic.claude-opus-4-6` |
-| Fast / Workers | `openai.gpt-5.2-2025-12-11` |
-| Router | `vertex_ai.gemini-3-pro-preview` |
-| Chat Router | `vertex_ai.anthropic.claude-opus-4-6` |
+| Main | `vertex_ai.gemini-3.1-pro-preview` |
+| Fast / Workers | `vertex_ai.gemini-3-pro-preview` |
+| Router | `vertex_ai.gemini-3.1-pro-preview` |
+| Chat Router | `vertex_ai.gemini-3.1-pro-preview` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
-| Report | `vertex_ai.gemini-3-pro-preview` |
+| Report | `vertex_ai.gemini-3.1-pro-preview` |
 
 ## Azure Deployment
 

@@ -1621,6 +1621,7 @@ ${referencedSlides.map(r => `  - Index ${r.index} = Page ${r.index + 1}: "${r.ti
   const imageModeNote = preferImageSlides
     ? `\nIMAGE-BASED MODE: The user has selected image-based slides.
 TEMPLATE RULE: For every create_slide step, use templateId "image-content" (NOT freestyle, NOT regular templates).
+EXCEPTION: Cover slides (position: "start") MUST use templateId "cover", NOT "image-content".
 INSTRUCTION (content for title/subtitle): Put the SUBSTANTIVE CONTENT here — key message, data points, facts, "so what" insight.
   This feeds the text model that generates the slide title and subtitle. Be specific and rich.
   GOOD: "Three digital capability gaps limit market expansion — security (42%), cloud (38%), AI readiness (27%)"
@@ -1631,7 +1632,7 @@ LAYOUT GUIDANCE (visual for image model): Put ONLY the diagram/framework descrip
   GOOD: "3 horizontal bars descending by size, labeled with gap categories, maroon fill"
   BAD: "show how three digital gaps are limiting our expansion into new markets" (this is content, not a visual description)
 SEARCH: Include a searchQuery when real data would strengthen the title — the text model can use web search.\n`
-    : '';
+    : `\nTEMPLATE RULE: Do NOT use "image-content" or "image-full" templates. The user has NOT selected image mode. Use only standard templates (freestyle, named templates like threeCards, twoColumns, etc.).\n`;
 
   const contextInfo = `CURRENT STATE:
 - Total slides: ${slideCount}
@@ -5519,7 +5520,7 @@ function ensureSlideStructure(html) {
 
   // Skip section divider and blank-master slides — they use custom full-bleed layouts
   // without standard title/subtitle/frame structure
-  if (html.includes('section-divider-slide') || html.includes('separator-slide')) {
+  if (html.includes('section-divider-slide') || html.includes('separator-slide') || html.includes('master-blank')) {
     return html;
   }
 
@@ -6424,27 +6425,25 @@ Description: ${template.description || 'Professional consulting slide'}
 TEMPLATE HTML (use as styling reference):
 ${template.html}
 
-=== CONTENT-FIRST RULE (HIGHEST PRIORITY) ===
-1. FIRST, count every distinct item in the source slide (cards, pillars, bullets, sections, metrics).
-2. The target template's DEFAULT item count is IRRELEVANT. The content's item count is what matters.
-3. If source has 3 pillars and target template has 2 slots: ADD a 3rd slot to the template.
-   If source has 5 items and target has 3 cards: CREATE 5 cards using the same card CSS.
-   If source has 2 items and target has 4 cards: USE only 2 cards, remove the empty ones, adjust the grid CSS.
-4. NEVER drop, merge, or summarize items to fit a template's default count.
-5. Adjust the template's grid CSS (grid-template-columns, flex layout) to accommodate the actual item count.
-6. Lighten per-card text if adding more items — shorter descriptions keep it clean.
+=== CONTENT FITTING RULES (HIGHEST PRIORITY) ===
+1. Identify the MAIN PILLARS / TOP-LEVEL SECTIONS in the source (e.g. 3 strategy areas, 4 departments).
+2. PRESERVE the number of main pillars — do NOT merge or drop top-level sections.
+3. FIT content to the target template intelligently:
+   - If source has MORE items than template slots → group related items into available slots, or add slots if template allows
+   - If source has FEWER items than template slots → remove empty slots and adjust grid/layout CSS
+4. ADAPT body text to fit the visual space:
+   - Condense verbose bullets into concise points when space is tight
+   - Expand thin content with sub-bullets or brief elaboration if the target has more room
+   - Keep the SAME IDEAS and KEY MESSAGES — rewording for brevity is OK, dropping ideas is NOT
+5. The template should look well-filled — not empty, not overflowing. Use your judgment.
 
 === CRITICAL RULES ===
 1. USER INSTRUCTION IS PRIMARY - execute what the user asked for
-2. CONTENT PRESERVATION — KEEP THE EXACT SAME IDEAS, WORDING, AND COUNT:
-   - Count the items in the source slide (bullets, cards, pillars, metrics, numbered points, etc.).
-   - KEEP THE SAME NUMBER of items. The source count is the REQUIREMENT, the template count is a SUGGESTION.
-   - KEEP THE SAME WORDING. Do NOT rephrase, summarize, or rewrite the user's text. Copy it verbatim into the new structure. The user chose those words intentionally.
-   - If source has more items than template slots: ADD more slots with the same CSS classes. Adjust grid-template-columns to fit.
-   - If source has fewer items than template slots: REMOVE empty slots. Adjust grid CSS to fit.
-   - The goal: identical content, new visual layout.
-3. LEVERAGE THE TARGET TEMPLATE WELL - use its CSS classes, styling patterns, and visual structure. Actually redesign the layout to match the template's intent (cards, timelines, metrics, etc.) — but with the original text.
-4. Extract meaningful content from current slide (titles, points, metrics) — never lose data, never reword data
+2. PRESERVE ALL KEY IDEAS — same main sections, same core messages, same data points
+   - Rewording for brevity or expansion is allowed when fitting content to the template
+   - Dropping or merging top-level items is NOT allowed
+3. LEVERAGE THE TARGET TEMPLATE WELL - use its CSS classes, styling patterns, and visual structure. Actually redesign the layout to match the template's intent (cards, timelines, metrics, etc.)
+4. Extract meaningful content from current slide (titles, points, metrics) — never lose data
 5. Headlines should be business insights (up to 15 words, e.g., "Revenue grew 45% driven by three new market entries" not "Revenue Results")
 6. If the USER INSTRUCTION contains "TITLE:" or "SUBTITLE:" markers, use those for the output slide's title/subtitle
 7. If footer has page number, use slide ${positionContext ? 'position from above' : 'number'}
@@ -6748,7 +6747,7 @@ export async function transformSlideToTemplate(slideHtml, targetTemplateId, sett
     return slideHtml;
   }
 
-  const transformPrompt = `Transform this slide's content to a new layout while preserving all meaningful information.
+  const transformPrompt = `Transform this slide's content to a new layout, making smart decisions about how content fits the target structure.
 
 CURRENT SLIDE HTML:
 ${slideHtml}
@@ -6760,19 +6759,21 @@ TARGET HTML STRUCTURE:
 ${targetTemplate.html}
 
 Instructions:
-1. Count EVERY distinct item in the source slide (cards, pillars, bullets, rows, sections)
-2. The target template's default count is a SUGGESTION — the source's count is the REQUIREMENT
-3. If source has 3 items and template has 2 slots → ADD a 3rd slot with the same CSS classes
-4. If source has 5 items and template has 3 cards → CREATE 5 cards, adjust grid-template-columns
-5. If source has 2 items and template has 4 cards → USE only 2 cards, remove the empty ones, adjust grid CSS
-6. NEVER drop items to match template count — always expand the template instead
-7. Copy text VERBATIM — do not rephrase or summarize
-8. Adjust CSS grid properties to fit the actual item count cleanly
-9. If adding items makes cards too wide/narrow, lighten the text per card to compensate
-10. REPLICATE the target template's CSS classes and styling patterns
-11. Maintain the same topic and message, just change the visual presentation
-12. Keep the footer with the same page numbers
-13. Return ONLY the transformed HTML, no explanations
+1. Identify the MAIN PILLARS / TOP-LEVEL SECTIONS in the source slide (e.g. 3 cards, 4 columns, 2 comparison blocks)
+2. PRESERVE the number of main pillars — do NOT merge or drop top-level sections
+3. FIT content to the target template intelligently:
+   - If source has MORE items than template slots → group related items into the available slots, or add slots if the template structure allows it
+   - If source has FEWER items than template slots → remove empty slots and adjust the grid/layout CSS
+4. ADAPT body text to fit:
+   - Condense verbose bullets into concise points when space is tight
+   - Expand thin content with sub-bullets or brief elaboration if the target has more room
+   - Keep the SAME IDEAS and KEY MESSAGES — rewording for brevity is OK, dropping ideas is NOT
+5. REPLICATE the target template's CSS classes and styling patterns exactly
+6. Maintain the same topic, message, and tone — just change the visual presentation
+7. Keep the footer with the same page numbers
+8. Return ONLY the transformed HTML, no explanations
+
+GOAL: The target template should look well-filled — not empty, not overflowing. Use your judgment on text density.
 
 Return the transformed slide HTML that uses the EXACT ${targetTemplate.title} layout structure.`;
 

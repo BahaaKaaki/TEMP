@@ -264,6 +264,7 @@ RULES:
 - "populate/fill from storyline" → populate_slides
 - "switch/convert template" → switch_template
 - Questions without changes → answer_question
+- Greetings/small talk (hi, hello, thanks, bye) → answer_question (NEVER create slides)
 
 CRITICAL - SLIDE INDEXING:
 - slideIndex is 0-BASED: "slide 1" → slideIndex:0, "slide 2" → slideIndex:1
@@ -396,6 +397,7 @@ const INTENT_PATTERNS = {
   // OTHER actions
   storyline: /\b(storyline|narrative|story\s*points?|structure)\b/i,
   populate: /\b(populate|fill|generate\s*content|flesh\s*out)\b/i,
+  greeting: /^(hi|hello|hey|greetings|good\s*(morning|afternoon|evening|day)|howdy|sup|yo|hiya|thanks|thank\s*you|cheers|bye|goodbye)\b[!?.\s]*$/i,
   question: /^(what|how|why|when|where|who|can|could|would|should|is|are|do|does)\b/i,
   likeSlide: /\b(like|similar\s*to|same\s*as|copy|based\s*on)\s*(slide|page)?\s*#?(\d+)/i,
 };
@@ -687,7 +689,16 @@ export function routeRequest(userPrompt, context) {
     return result;
   }
 
-  // STEP 2: Questions (non-action)
+  // STEP 2a: Greetings / short conversational messages (no slide action)
+  if (INTENT_PATTERNS.greeting.test(userPrompt.trim())) {
+    result.intent = 'question';
+    result.action = 'answer_question';
+    result.understanding = 'Responding to greeting';
+    result.contextNeeded = { type: 'none', slideIndices: [], reason: 'greeting' };
+    return result;
+  }
+
+  // STEP 2b: Questions (non-action)
   if (INTENT_PATTERNS.question.test(userPrompt) &&
       !INTENT_PATTERNS.createSlide.test(userPrompt) &&
       !INTENT_PATTERNS.addSlide.test(userPrompt)) {
@@ -987,24 +998,25 @@ TODAY: ${currentDateString()}
 FIRST: DECIDE WHETHER TO ASK CLARIFYING QUESTIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-DEFAULT BEHAVIOR: BUILD THE PLAN. Do NOT ask questions unless you truly must.
+DEFAULT BEHAVIOR: BUILD THE PLAN — unless the request is too short/vague to produce good slides.
 
 SKIP QUESTIONS (just build) when:
 - The request is any kind of edit, rework, addition, or restyle ("fix this slide", "add a slide about X", "switch template", "rework slide 3")
-- The request gives a clear topic, even without deep details — just make your best judgment and build ("create slides about our Q3 performance", "make a deck on AI trends")
+- The request gives a clear topic WITH some direction or context (e.g., "create slides about our Q3 performance focusing on revenue growth", "make a deck on AI trends for the board")
 - The prompt contains "User clarification:" — the user already answered. Build now.
 - The request starts with "PRESENTATION CONTENT" — agent mode, context is complete.
 - The request includes attached documents or pasted data.
 - The deck already has slides (the user is iterating, not starting from scratch)
 
 ASK QUESTIONS when ANY of these is true:
+- The user gives only a SHORT TOPIC (1-4 words) without any context, angle, or details (e.g., "Market Analysis", "Digital Transformation", "Company Overview"). Ask what specific angle/scope they want and how many slides.
 - The user is asking to create a FULL NEW presentation from scratch AND the topic is genuinely ambiguous
-- The request is LARGE-SCALE (10+ slides, full deck, comprehensive presentation, "create everything about X") — ask 1-2 questions to confirm scope, key angles, and what to prioritize. Large requests benefit from brief alignment before building.
+- The request is LARGE-SCALE (10+ slides, full deck, comprehensive presentation, "create everything about X") — ask 1-2 questions to confirm scope, key angles, and what to prioritize.
 - You truly lack the minimum information to produce anything useful
-- Maximum 1-2 focused questions. Never more.
+- Maximum 2-3 focused questions. Never more.
 
 When asking, return ONLY a "questions" array (no "plan"). Each question: { "question": string, "options": [2-5 specific choices] }.
-Focus questions on CONTENT — what topic, what angle, what data, what scope. Do NOT ask about audience or style.
+Focus questions on CONTENT and SCOPE — what angle, what key points, how many slides. Do NOT ask about audience or style.
 
 Example:
 {
@@ -1085,6 +1097,8 @@ Keep step instructions minimal: just the Key Message + Data Points if present.
 Steps see ONLY: (1) your instruction (which gets replaced with the full stored instruction), (2) contextSlides content if provided.
 
 ACTIONS: create_slide, edit_slide, delete_slide, switch_template, answer_question
+
+CRITICAL: Greetings and small talk (hi, hello, hey, thanks, bye) MUST use answer_question. NEVER create slides for conversational messages.
 
 CRITICAL - "contextSlides" MECHANISM:
 When user references specific slides (e.g., "detail slide 3", "like page 5", "based on current slide"):
@@ -3456,6 +3470,7 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
         const response = await fetch(creds.apiEndpoint, {
           method: 'POST',
           headers,
+          credentials: 'same-origin',
           body: JSON.stringify(requestBody),
         });
         if (!response.ok) {

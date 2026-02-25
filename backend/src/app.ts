@@ -59,21 +59,23 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Basic auth (all routes below require credentials)
-app.use((req, res, next) => {
-  const header = req.headers.authorization;
-  if (!header || !header.startsWith('Basic ')) {
+// Basic auth -- only enforced when BASIC_AUTH_USER and BASIC_AUTH_PASS are configured
+if (env.BASIC_AUTH_USER && env.BASIC_AUTH_PASS) {
+  app.use((req, res, next) => {
+    const header = req.headers.authorization;
+    if (!header || !header.startsWith('Basic ')) {
+      res.setHeader('WWW-Authenticate', 'Basic realm="Edwin Slides Creator"');
+      return res.status(401).send('Authentication required');
+    }
+    const decoded = Buffer.from(header.slice(6), 'base64').toString();
+    const [user, pass] = decoded.split(':');
+    if (user === env.BASIC_AUTH_USER && pass === env.BASIC_AUTH_PASS) {
+      return next();
+    }
     res.setHeader('WWW-Authenticate', 'Basic realm="Edwin Slides Creator"');
-    return res.status(401).send('Authentication required');
-  }
-  const decoded = Buffer.from(header.slice(6), 'base64').toString();
-  const [user, pass] = decoded.split(':');
-  if (user === env.BASIC_AUTH_USER && pass === env.BASIC_AUTH_PASS) {
-    return next();
-  }
-  res.setHeader('WWW-Authenticate', 'Basic realm="Edwin Slides Creator"');
-  return res.status(401).send('Invalid credentials');
-});
+    return res.status(401).send('Invalid credentials');
+  });
+}
 
 // API routes
 app.use('/api/v1/auth', authRoutes);

@@ -254,6 +254,35 @@ export default function SmartActionCard({
     });
   };
 
+  const moveStepUp = (stepIdx) => {
+    if (stepIdx <= 0) return;
+    setEditedPlan(prev => {
+      if (!prev) return prev;
+      const newPlan = [...prev];
+      [newPlan[stepIdx - 1], newPlan[stepIdx]] = [newPlan[stepIdx], newPlan[stepIdx - 1]];
+      return newPlan;
+    });
+    setEditedGroups(null);
+  };
+
+  const moveStepDown = (stepIdx) => {
+    setEditedPlan(prev => {
+      if (!prev || stepIdx >= prev.length - 1) return prev;
+      const newPlan = [...prev];
+      [newPlan[stepIdx], newPlan[stepIdx + 1]] = [newPlan[stepIdx + 1], newPlan[stepIdx]];
+      return newPlan;
+    });
+    setEditedGroups(null);
+  };
+
+  const deleteStep = (stepIdx) => {
+    setEditedPlan(prev => {
+      if (!prev || prev.length <= 1) return prev;
+      return prev.filter((_, i) => i !== stepIdx);
+    });
+    setEditedGroups(null);
+  };
+
   // Toggle context slide for a specific step
   const toggleStepContext = (stepIdx, slideIdx) => {
     setEditedPlan(prev => {
@@ -316,6 +345,11 @@ export default function SmartActionCard({
         <span className="sac-step-action-badge" style={{ background: cfg.color }}>
           {cfg.icon} {cfg.label}
         </span>
+        <div className="sac-step-controls">
+          <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
+          <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
+          <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
+        </div>
         <div className="sac-step-content">
           <div className="sac-step-main">
             {isCreateAction ? (
@@ -1187,6 +1221,31 @@ export default function SmartActionCard({
           border-color: #6366f1;
           background: #fafbff;
         }
+
+        .sac-step-controls {
+          display: flex;
+          gap: 2px;
+          margin-left: auto;
+          flex-shrink: 0;
+        }
+        .sac-step-ctrl {
+          width: 20px;
+          height: 20px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid #e2e8f0;
+          background: white;
+          color: #94a3b8;
+          border-radius: 4px;
+          font-size: 10px;
+          cursor: pointer;
+          padding: 0;
+          line-height: 1;
+        }
+        .sac-step-ctrl:hover:not(:disabled) { background: #f1f5f9; color: #475569; }
+        .sac-step-ctrl:disabled { opacity: 0.3; cursor: default; }
+        .sac-step-ctrl-del:hover:not(:disabled) { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
         .sac-step-num {
           width: 24px;

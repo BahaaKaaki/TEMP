@@ -536,6 +536,7 @@ function getCredentialsForModel(settings, modelRef) {
       model: actualModel,
       rawModel: modelName,
       azurePrefix: provider.azurePrefix || false,
+      authType: provider.authType || 'auto',
       useResponsesAPI,
     };
   }

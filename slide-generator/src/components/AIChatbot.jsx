@@ -692,8 +692,14 @@ export default function AIChatbot() {
       addMessage('assistant', 'Storyline rejected. You can describe what you\'d like changed and I\'ll re-plan.');
     };
 
-    // Toggle an option card on/off in the clarification card
+    // Single-select: clicking an option deselects siblings in the same question block
     window.__toggleClarificationChip = (btn) => {
+      const block = btn.closest('.clarification-question-block');
+      if (block) {
+        block.querySelectorAll('.clarification-option-card.selected, .clarification-chip.selected').forEach(b => {
+          if (b !== btn) b.classList.remove('selected');
+        });
+      }
       btn.classList.toggle('selected');
     };
 
@@ -1054,8 +1060,7 @@ export default function AIChatbot() {
 
     let userPrompt = prompt.trim();
     setPrompt('');
-    const modeLabel = mode === 'edit' ? 'Edit' : mode === 'edit-all' ? 'Edit All' : mode === 'chat' ? 'Chat' : mode === 'agent' ? 'Agent' : 'Create';
-    addMessage('user', `[${modeLabel}] ${userPrompt}`);
+    addMessage('user', userPrompt);
 
     // Auto-detect vibe from prompt when in image mode
     if (useImageMode) {
@@ -1842,6 +1847,17 @@ export default function AIChatbot() {
 
         // Normal flow (no agent): show plan for user review
         const planSteps = enhancedRouteResult.plan || [];
+
+        // If the plan only has answer_question steps, auto-execute without approval
+        const isAnswerOnly = planSteps.length > 0 && planSteps.every(s => s.action === 'answer_question');
+        if (isAnswerOnly) {
+          for (const step of planSteps) {
+            addMessage('assistant', step.instruction || 'How can I help with your presentation?');
+          }
+          setIsLoading(false);
+          return;
+        }
+
         if (planSteps.length > 0) {
           let planMessage = `**📋 Execution Plan** (${planSteps.length} step${planSteps.length > 1 ? 's' : ''}):\n\n`;
           planSteps.forEach((step, i) => {
@@ -2579,10 +2595,12 @@ export default function AIChatbot() {
         const flushCreateBatch = async (batch) => {
           if (batch.length === 0) return;
 
-          // Separate image vs templated vs freestyle
+          // Separate image vs fixed-layout (cover, divider) vs templated vs freestyle
           const imageSlides = batch.filter(b => (b.step.templateId === 'image-full' || b.step.templateId === 'image-content') && settings.imageModel);
-          const templated = batch.filter(b => b.template && !imageSlides.includes(b));
-          const freestyle = batch.filter(b => !b.template && !imageSlides.includes(b));
+          const fixedLayoutIds = new Set(['sectionDivider', 'cover']);
+          const fixedSlides = batch.filter(b => fixedLayoutIds.has(b.step.templateId) && !imageSlides.includes(b));
+          const templated = batch.filter(b => b.template && !imageSlides.includes(b) && !fixedSlides.includes(b));
+          const freestyle = batch.filter(b => !b.template && !imageSlides.includes(b) && !fixedSlides.includes(b));
 
           // Bulk-generate templated slides (ONE API call for the whole batch)
           // If any step needs search, enable _extraTools on the bulk settings — the model
@@ -2694,6 +2712,59 @@ export default function AIChatbot() {
               slideDataArray: [{
                 ...result,
                 summary: generateSlideSummary(result.html, result.type, result.title),
+                ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
+                ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
+              }],
+              step: b.step,
+            });
+          }
+
+          // Fixed-layout slides (cover, section divider): direct placeholder fill, no AI call
+          for (const b of fixedSlides) {
+            const instr = b.step.instruction || '';
+            const titleMatch = instr.match(/TITLE:\s*(.+)/i);
+            const subMatch = instr.match(/SUBTITLE:\s*(.+)/i);
+            const parsedTitle = titleMatch?.[1]?.split('\n')[0]?.trim() || '';
+            const parsedSubtitle = subMatch?.[1]?.trim() || '';
+
+            let slideData;
+            if (b.step.templateId === 'cover') {
+              const coverTitle = parsedTitle || 'Untitled Presentation';
+              const coverSubtitle = parsedSubtitle || '';
+              const coverHtml = SLIDE_TEMPLATES.cover.html
+                .replace('[CATEGORY]', coverSubtitle.toUpperCase() || 'STRATEGY')
+                .replace('[Presentation Title]', coverTitle)
+                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('[Date]', new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }));
+              slideData = {
+                title: coverTitle,
+                html: coverHtml,
+                type: 'cover',
+                templateId: 'cover',
+                summary: coverTitle,
+              };
+            } else {
+              const divTitle = parsedTitle || b.step.sectionTracker || 'Section Break';
+              const divSubtitle = parsedSubtitle || '';
+              const divNum = b.step.sectionNumber || String(getFreshState().slides.length + 1).padStart(2, '0');
+              const divHtml = SLIDE_TEMPLATES.sectionDivider.html
+                .replace('[01]', divNum)
+                .replace('[Section Title]', divTitle)
+                .replace('[What this section covers]', divSubtitle)
+                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('1 / 1', '');
+              slideData = {
+                title: divTitle,
+                html: divHtml,
+                type: 'divider',
+                templateId: 'sectionDivider',
+                summary: `Section: ${divTitle}`,
+              };
+            }
+            allBatchInserts.push({
+              stepIndex: b.actualIndex,
+              slideDataArray: [{
+                ...slideData,
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               }],
@@ -5325,21 +5396,7 @@ Original request: ${userPrompt}`;
                 onChange={handleFileUpload}
                 style={{ display: 'none' }}
               />
-              <button
-                type="button"
-                className="chatbot-upload-btn"
-                onClick={() => setShowKnowledgeBase(true)}
-                title="Open Knowledge Library"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                </svg>
-                Library
-                {knowledgeBase.getCounts().total > 0 && (
-                  <span className="chatbot-action-badge">{knowledgeBase.getCounts().total}</span>
-                )}
-              </button>
+              {/* Library button hidden for now -- re-enable when knowledge base is ready */}
             </div>
 
             <div className="chatbot-action-separator" />
@@ -5352,12 +5409,12 @@ Original request: ${userPrompt}`;
                 className={`chatbot-mode-btn ${!useImageMode && !useAgenticMode && !useReportMode ? 'active' : ''}`}
                 onClick={() => { setUseImageMode(false); setUseAgenticMode(false); setUseReportMode(false); }}
                 disabled={isLoading}
-                title="Express - Fast template-based slides"
+                title="Regular - Template-based slides"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                 </svg>
-                Express
+                Regular
               </button>
               <button
                 type="button"

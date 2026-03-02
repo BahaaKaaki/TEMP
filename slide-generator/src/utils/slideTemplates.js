@@ -1439,7 +1439,7 @@ export const SLIDE_TEMPLATES = {
           <span class="swot-icon">[S Icon]</span>
           <h4>Strengths</h4>
         </div>
-        <ul>
+        <ul class="swot-list">
           <li>[Strength 1]</li>
           <li>[Strength 2]</li>
           <li>[Strength 3]</li>
@@ -1451,7 +1451,7 @@ export const SLIDE_TEMPLATES = {
           <span class="swot-icon">[W Icon]</span>
           <h4>Weaknesses</h4>
         </div>
-        <ul>
+        <ul class="swot-list">
           <li>[Weakness 1]</li>
           <li>[Weakness 2]</li>
           <li>[Weakness 3]</li>
@@ -1463,7 +1463,7 @@ export const SLIDE_TEMPLATES = {
           <span class="swot-icon">[O Icon]</span>
           <h4>Opportunities</h4>
         </div>
-        <ul>
+        <ul class="swot-list">
           <li>[Opportunity 1]</li>
           <li>[Opportunity 2]</li>
           <li>[Opportunity 3]</li>
@@ -1475,7 +1475,7 @@ export const SLIDE_TEMPLATES = {
           <span class="swot-icon">[T Icon]</span>
           <h4>Threats</h4>
         </div>
-        <ul>
+        <ul class="swot-list">
           <li>[Threat 1]</li>
           <li>[Threat 2]</li>
           <li>[Threat 3]</li>

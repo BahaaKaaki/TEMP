@@ -1062,6 +1062,24 @@ export default function AIChatbot() {
     setPrompt('');
     addMessage('user', userPrompt);
 
+    // ─── Pending plan: handle text responses to a visible SmartActionCard ───
+    // When a plan is showing and the user types instead of clicking Execute,
+    // inject the pending plan context so the router can interpret the follow-up.
+    if (pendingSmartAction && !pendingSmartAction.autoExecute) {
+      const pendingPlan = pendingSmartAction.routeResult?.plan || [];
+      const planSummary = pendingPlan.map((s, i) =>
+        `${i + 1}. ${s.action} — ${s.templateId || 'freestyle'}${s.instruction ? ': ' + s.instruction.slice(0, 80) : ''}`
+      ).join('\n');
+
+      console.log('[SmartAction] User sent follow-up to pending plan, re-routing with plan context');
+      const originalPrompt = pendingSmartAction.userPrompt;
+      setPendingSmartAction(null);
+      setExecutionStatus(null);
+      actions.setHighlightedSlides([]);
+
+      userPrompt = `Original request: ${originalPrompt}\n\nPENDING PLAN (already shown to user, awaiting approval):\n${planSummary}\n\nUser reply: ${userPrompt}`;
+    }
+
     // Auto-detect vibe from prompt when in image mode
     if (useImageMode) {
       const detected = detectVibeFromPrompt(userPrompt);
@@ -1858,36 +1876,30 @@ export default function AIChatbot() {
           return;
         }
 
-        if (planSteps.length > 0) {
-          let planMessage = `**📋 Execution Plan** (${planSteps.length} step${planSteps.length > 1 ? 's' : ''}):\n\n`;
-          planSteps.forEach((step, i) => {
-            const actionLabel = {
-              'analyze_content': '🧠 Analyze content',
-              'create_slide': '✨ Create slide',
-              'create_from_template': '✨ Create slide',
-              'edit_slide': '✏️ Edit slide',
-              'delete_slide': '🗑️ Delete slide',
-              'switch_template': '🔄 Switch template',
-            }[step.action] || step.action;
-
-            let stepDesc = `${i + 1}. ${actionLabel}`;
-            if (step.templateId) {
-              stepDesc += ` — ${step.templateId}`;
-            }
-            if (step.slideIndex !== null && step.slideIndex !== undefined) {
-              stepDesc += ` (Page ${step.slideIndex + 1})`;
-            }
-            if (step.instruction) {
-              const shortInstr = step.instruction.length > 60
-                ? step.instruction.slice(0, 60) + '...'
-                : step.instruction;
-              stepDesc += `\n   _"${shortInstr}"_`;
-            }
-            planMessage += stepDesc + '\n';
-          });
-          planMessage += '\n_Review the plan below and click **Execute** to proceed, or **Cancel** to abort._';
-          addMessage('assistant', planMessage);
-        }
+        // Text-based plan message (disabled -- SmartActionCard shows the plan visually)
+        // if (planSteps.length > 0) {
+        //   let planMessage = `**📋 Execution Plan** (${planSteps.length} step${planSteps.length > 1 ? 's' : ''}):\n\n`;
+        //   planSteps.forEach((step, i) => {
+        //     const actionLabel = {
+        //       'analyze_content': '🧠 Analyze content',
+        //       'create_slide': '✨ Create slide',
+        //       'create_from_template': '✨ Create slide',
+        //       'edit_slide': '✏️ Edit slide',
+        //       'delete_slide': '🗑️ Delete slide',
+        //       'switch_template': '🔄 Switch template',
+        //     }[step.action] || step.action;
+        //     let stepDesc = `${i + 1}. ${actionLabel}`;
+        //     if (step.templateId) stepDesc += ` — ${step.templateId}`;
+        //     if (step.slideIndex !== null && step.slideIndex !== undefined) stepDesc += ` (Page ${step.slideIndex + 1})`;
+        //     if (step.instruction) {
+        //       const shortInstr = step.instruction.length > 60 ? step.instruction.slice(0, 60) + '...' : step.instruction;
+        //       stepDesc += `\n   _"${shortInstr}"_`;
+        //     }
+        //     planMessage += stepDesc + '\n';
+        //   });
+        //   planMessage += '\n_Review the plan below and click **Execute** to proceed, or **Cancel** to abort._';
+        //   addMessage('assistant', planMessage);
+        // }
 
         // Show SmartActionCard in chat for user review/modification
         setPendingSmartAction(smartActionPayload);

@@ -540,8 +540,8 @@ export default function SmartActionCard({
         {isExecuting && <span className="sac-spinner-inline" />}
       </div>
 
-      {/* Router Debug Panel */}
-      <RouterDebugPanel
+      {/* Router Debug Panel (disabled -- uncomment to re-enable) */}
+      {/* <RouterDebugPanel
         debug={{
           ...routeResult?.routerDebug,
           detectedContextIndices: referenceSlides,
@@ -549,7 +549,7 @@ export default function SmartActionCard({
         slides={slides}
         isOpen={showDebug}
         onToggle={() => setShowDebug(!showDebug)}
-      />
+      /> */}
 
       {/* Target Slide - for edit/delete actions */}
       {(action === 'edit_slide' || action === 'delete_slide') && currentSlide && (

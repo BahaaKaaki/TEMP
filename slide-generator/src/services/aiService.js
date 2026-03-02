@@ -1004,6 +1004,7 @@ SKIP QUESTIONS (just build) when:
 - The request is any kind of edit, rework, addition, or restyle ("fix this slide", "add a slide about X", "switch template", "rework slide 3")
 - The request gives a clear topic WITH some direction or context (e.g., "create slides about our Q3 performance focusing on revenue growth", "make a deck on AI trends for the board")
 - The prompt contains "User clarification:" — the user already answered. Build now.
+- The prompt contains "PENDING PLAN" + "User reply:" — there was already a plan waiting for approval. See the PENDING PLAN section below.
 - The request starts with "PRESENTATION CONTENT" — agent mode, context is complete.
 - The request includes attached documents or pasted data.
 - The deck already has slides (the user is iterating, not starting from scratch)
@@ -1026,6 +1027,19 @@ Example:
 }
 
 If the request is clear enough → skip questions and build the plan below.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PENDING PLAN — USER REPLIED VIA TEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When the prompt contains "PENDING PLAN (already shown to user, awaiting approval)" followed by "User reply:", a plan was already generated and the user typed a response instead of clicking Execute.
+
+Interpret the user's reply naturally:
+- APPROVAL (e.g., "go ahead", "yes", "looks good", "do it", "perfect", "execute", "approved"): Return the PENDING PLAN exactly as-is (copy the same steps). Do NOT ask questions.
+- MODIFICATION (e.g., "make it 5 slides", "add a slide about risks", "change the second one to freestyle", "remove the cover"): Adjust the plan according to the feedback and return the updated plan. Use the original request as context. Do NOT ask questions.
+- CANCELLATION (e.g., "no", "cancel", "never mind", "scratch that"): Return {"plan": [{"action": "answer_question", "instruction": "Plan cancelled. What would you like to do instead?"}]}
+- UNCLEAR: Treat as a modification — combine the original request with the reply and build an appropriate plan. Do NOT ask clarifying questions (the user already has context from seeing the plan).
+
+CRITICAL: When a PENDING PLAN is present, NEVER ask clarifying questions. The user has already seen a concrete plan — just act on their reply.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 CONTEXT MODEL - IMPORTANT:

@@ -146,21 +146,6 @@ DNS A records required in the centrally managed Private DNS Zone `privatelink.az
 | `BASIC_AUTH_USER` | (set in App Service settings) |
 | `BASIC_AUTH_PASS` | (set in App Service settings) |
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` |
-| `APPLICATIONINSIGHTS_CONNECTION_STRING` | (set in App Service settings) |
-
-### Application Insights
-
-Azure Application Insights (`ai-edwin-slides`) is configured for telemetry collection. The backend auto-collects:
-
-- HTTP requests and response times
-- Dependency calls (outbound HTTP to PwC API, DB, Redis)
-- Exceptions and stack traces
-- Performance counters (CPU, memory)
-- Live metrics stream
-
-The SDK initializes at startup when `APPLICATIONINSIGHTS_CONNECTION_STRING` is present. AAD-only ingestion is enforced per PwC policy (local auth disabled).
-
-View telemetry in the Azure Portal under **Application Insights > ai-edwin-slides** -- use the **Users**, **Sessions**, and **Events** blades for usage analytics, or **Failures** and **Performance** for diagnostics.
 
 ## Tech Stack
 

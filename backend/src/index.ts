@@ -1,18 +1,3 @@
-import * as appInsights from 'applicationinsights';
-
-const aiConnStr = process.env.APPLICATIONINSIGHTS_CONNECTION_STRING;
-if (aiConnStr) {
-  appInsights.setup(aiConnStr)
-    .setAutoCollectRequests(true)
-    .setAutoCollectPerformance(true, true)
-    .setAutoCollectExceptions(true)
-    .setAutoCollectDependencies(true)
-    .setAutoCollectConsole(true, true)
-    .setUseDiskRetryCaching(true)
-    .setSendLiveMetrics(true)
-    .start();
-}
-
 import app from './app';
 import { env } from './config/env';
 import { logger } from './config/logger';

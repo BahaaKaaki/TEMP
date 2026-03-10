@@ -53,9 +53,6 @@ const envSchema = z.object({
   BASIC_AUTH_USER: z.string().default(''),
   BASIC_AUTH_PASS: z.string().default(''),
 
-  // Application Insights (set in Azure App Settings)
-  APPLICATIONINSIGHTS_CONNECTION_STRING: z.string().optional(),
-
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });

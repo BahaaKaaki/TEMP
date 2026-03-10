@@ -422,8 +422,8 @@ export default function SlidePreview({ onSwitchToCode }) {
       if (!html.includes('class="slide"') && !html.includes("class='slide'")) {
         html = `<div class="slide">${html}</div>`;
       }
-      // Ensure section-divider slides have the blank master class
-      if (html.includes('section-divider-slide') && !html.includes('master-blank')) {
+      // Ensure section-divider and separator slides have the blank master class
+      if ((html.includes('section-divider-slide') || html.includes('separator-slide')) && !html.includes('master-blank')) {
         html = html.replace(/class="slide([^"]*)"/, 'class="slide master-blank$1"');
       }
       // Inject vibe attribute for CSS styling
@@ -996,50 +996,6 @@ export default function SlidePreview({ onSwitchToCode }) {
           </button>
         </div>
 
-        <div className="toolbar-separator" />
-
-        {/* Template Switch Button */}
-        <div style={{ position: 'relative' }} ref={templatePickerRef}>
-          <button
-            className="template-switch-btn"
-            onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-            disabled={isTransforming}
-            title="Switch to a different template layout"
-          >
-            {isTransforming ? (
-              <>
-                <span className="spinner" style={{ width: 14, height: 14 }} />
-                Switching...
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <rect x="3" y="3" width="7" height="7" />
-                  <rect x="14" y="3" width="7" height="7" />
-                  <rect x="14" y="14" width="7" height="7" />
-                  <rect x="3" y="14" width="7" height="7" />
-                </svg>
-                Switch Template
-              </>
-            )}
-          </button>
-
-          {showTemplatePicker && (
-            <div className="template-switch-popover">
-              <h4>Switch to Template</h4>
-              <TemplatePicker
-                selectedTemplate={null}
-                onSelect={handleTemplateSwitch}
-                showFreestyle={false}
-                compact={false}
-                title=""
-                slideHtml={activeSlide?.html}
-                currentTemplateId={activeSlide?.templateId}
-              />
-            </div>
-          )}
-        </div>
-
         {/* Zoom Controls */}
         <div className="zoom-controls">
           <button
@@ -1358,18 +1314,61 @@ export default function SlidePreview({ onSwitchToCode }) {
         )}
       </div>
 
-      {/* Slide Info */}
-      <div className="preview-info">
-        <span>Slide {state.slides.findIndex(s => s.id === activeSlide.id) + 1} of {state.slides.length}</span>
-        <span>|</span>
-        <span>Type: {activeSlide.type}</span>
-        <span>|</span>
-        <span>Updated: {new Date(activeSlide.updatedAt).toLocaleTimeString()}</span>
-        {pendingCommentsCount > 0 && (
-          <span className="pending-instructions-badge" onClick={() => setShowCommentPanel(true)}>
-            📝 {pendingCommentsCount} instruction{pendingCommentsCount > 1 ? 's' : ''}
-          </span>
-        )}
+      {/* Bottom bar: Template Switch + Slide Info */}
+      <div className="preview-bottom-bar">
+        <div style={{ position: 'relative' }} ref={templatePickerRef}>
+          <button
+            className="template-switch-btn"
+            onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+            disabled={isTransforming}
+            title="Switch to a different template layout"
+          >
+            {isTransforming ? (
+              <>
+                <span className="spinner" style={{ width: 14, height: 14 }} />
+                Switching...
+              </>
+            ) : (
+              <>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+                  <rect x="3" y="3" width="7" height="7" />
+                  <rect x="14" y="3" width="7" height="7" />
+                  <rect x="14" y="14" width="7" height="7" />
+                  <rect x="3" y="14" width="7" height="7" />
+                </svg>
+                Switch Template
+              </>
+            )}
+          </button>
+
+          {showTemplatePicker && (
+            <div className="template-switch-popover" style={{ bottom: '100%', top: 'auto', marginBottom: 8 }}>
+              <h4>Switch to Template</h4>
+              <TemplatePicker
+                selectedTemplate={null}
+                onSelect={handleTemplateSwitch}
+                showFreestyle={false}
+                compact={false}
+                title=""
+                slideHtml={activeSlide?.html}
+                currentTemplateId={activeSlide?.templateId}
+              />
+            </div>
+          )}
+        </div>
+
+        <div className="preview-info">
+          <span>Slide {state.slides.findIndex(s => s.id === activeSlide.id) + 1} of {state.slides.length}</span>
+          <span>|</span>
+          <span>Type: {activeSlide.type}</span>
+          <span>|</span>
+          <span>Updated: {new Date(activeSlide.updatedAt).toLocaleTimeString()}</span>
+          {pendingCommentsCount > 0 && (
+            <span className="pending-instructions-badge" onClick={() => setShowCommentPanel(true)}>
+              {pendingCommentsCount} instruction{pendingCommentsCount > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Widget Context Menu */}

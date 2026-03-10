@@ -692,8 +692,14 @@ export default function AIChatbot() {
       addMessage('assistant', 'Storyline rejected. You can describe what you\'d like changed and I\'ll re-plan.');
     };
 
-    // Toggle an option card on/off in the clarification card
+    // Single-select: clicking an option deselects siblings in the same question block
     window.__toggleClarificationChip = (btn) => {
+      const block = btn.closest('.clarification-question-block');
+      if (block) {
+        block.querySelectorAll('.clarification-option-card.selected, .clarification-chip.selected').forEach(b => {
+          if (b !== btn) b.classList.remove('selected');
+        });
+      }
       btn.classList.toggle('selected');
     };
 
@@ -1054,8 +1060,25 @@ export default function AIChatbot() {
 
     let userPrompt = prompt.trim();
     setPrompt('');
-    const modeLabel = mode === 'edit' ? 'Edit' : mode === 'edit-all' ? 'Edit All' : mode === 'chat' ? 'Chat' : mode === 'agent' ? 'Agent' : 'Create';
-    addMessage('user', `[${modeLabel}] ${userPrompt}`);
+    addMessage('user', userPrompt);
+
+    // ─── Pending plan: handle text responses to a visible SmartActionCard ───
+    // When a plan is showing and the user types instead of clicking Execute,
+    // inject the pending plan context so the router can interpret the follow-up.
+    if (pendingSmartAction && !pendingSmartAction.autoExecute) {
+      const pendingPlan = pendingSmartAction.routeResult?.plan || [];
+      const planSummary = pendingPlan.map((s, i) =>
+        `${i + 1}. ${s.action} — ${s.templateId || 'freestyle'}${s.instruction ? ': ' + s.instruction.slice(0, 80) : ''}`
+      ).join('\n');
+
+      console.log('[SmartAction] User sent follow-up to pending plan, re-routing with plan context');
+      const originalPrompt = pendingSmartAction.userPrompt;
+      setPendingSmartAction(null);
+      setExecutionStatus(null);
+      actions.setHighlightedSlides([]);
+
+      userPrompt = `Original request: ${originalPrompt}\n\nPENDING PLAN (already shown to user, awaiting approval):\n${planSummary}\n\nUser reply: ${userPrompt}`;
+    }
 
     // Auto-detect vibe from prompt when in image mode
     if (useImageMode) {
@@ -1842,36 +1865,41 @@ export default function AIChatbot() {
 
         // Normal flow (no agent): show plan for user review
         const planSteps = enhancedRouteResult.plan || [];
-        if (planSteps.length > 0) {
-          let planMessage = `**📋 Execution Plan** (${planSteps.length} step${planSteps.length > 1 ? 's' : ''}):\n\n`;
-          planSteps.forEach((step, i) => {
-            const actionLabel = {
-              'analyze_content': '🧠 Analyze content',
-              'create_slide': '✨ Create slide',
-              'create_from_template': '✨ Create slide',
-              'edit_slide': '✏️ Edit slide',
-              'delete_slide': '🗑️ Delete slide',
-              'switch_template': '🔄 Switch template',
-            }[step.action] || step.action;
 
-            let stepDesc = `${i + 1}. ${actionLabel}`;
-            if (step.templateId) {
-              stepDesc += ` — ${step.templateId}`;
-            }
-            if (step.slideIndex !== null && step.slideIndex !== undefined) {
-              stepDesc += ` (Page ${step.slideIndex + 1})`;
-            }
-            if (step.instruction) {
-              const shortInstr = step.instruction.length > 60
-                ? step.instruction.slice(0, 60) + '...'
-                : step.instruction;
-              stepDesc += `\n   _"${shortInstr}"_`;
-            }
-            planMessage += stepDesc + '\n';
-          });
-          planMessage += '\n_Review the plan below and click **Execute** to proceed, or **Cancel** to abort._';
-          addMessage('assistant', planMessage);
+        // If the plan only has answer_question steps, auto-execute without approval
+        const isAnswerOnly = planSteps.length > 0 && planSteps.every(s => s.action === 'answer_question');
+        if (isAnswerOnly) {
+          for (const step of planSteps) {
+            addMessage('assistant', step.instruction || 'How can I help with your presentation?');
+          }
+          setIsLoading(false);
+          return;
         }
+
+        // Text-based plan message (disabled -- SmartActionCard shows the plan visually)
+        // if (planSteps.length > 0) {
+        //   let planMessage = `**📋 Execution Plan** (${planSteps.length} step${planSteps.length > 1 ? 's' : ''}):\n\n`;
+        //   planSteps.forEach((step, i) => {
+        //     const actionLabel = {
+        //       'analyze_content': '🧠 Analyze content',
+        //       'create_slide': '✨ Create slide',
+        //       'create_from_template': '✨ Create slide',
+        //       'edit_slide': '✏️ Edit slide',
+        //       'delete_slide': '🗑️ Delete slide',
+        //       'switch_template': '🔄 Switch template',
+        //     }[step.action] || step.action;
+        //     let stepDesc = `${i + 1}. ${actionLabel}`;
+        //     if (step.templateId) stepDesc += ` — ${step.templateId}`;
+        //     if (step.slideIndex !== null && step.slideIndex !== undefined) stepDesc += ` (Page ${step.slideIndex + 1})`;
+        //     if (step.instruction) {
+        //       const shortInstr = step.instruction.length > 60 ? step.instruction.slice(0, 60) + '...' : step.instruction;
+        //       stepDesc += `\n   _"${shortInstr}"_`;
+        //     }
+        //     planMessage += stepDesc + '\n';
+        //   });
+        //   planMessage += '\n_Review the plan below and click **Execute** to proceed, or **Cancel** to abort._';
+        //   addMessage('assistant', planMessage);
+        // }
 
         // Show SmartActionCard in chat for user review/modification
         setPendingSmartAction(smartActionPayload);
@@ -2292,6 +2320,29 @@ export default function AIChatbot() {
               }
             }
 
+            // Section divider shortcut: direct placeholder replacement, no AI call needed
+            if (pendingSlides.length === 0 && templateId === 'sectionDivider') {
+              const dividerTitle = step.instruction || step.title || step.sectionTracker || 'Section Break';
+              const dividerSubtitle = step.subtitle || step.layoutGuidance || '';
+              const dividerNum = step.sectionNumber || String(freshState.slides.length + 1).padStart(2, '0');
+              const dividerHtml = SLIDE_TEMPLATES.sectionDivider.html
+                .replace('[01]', dividerNum)
+                .replace('[Section Title]', dividerTitle)
+                .replace('[What this section covers]', dividerSubtitle)
+                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('1 / 1', '');
+
+              pendingSlides.push({
+                title: dividerTitle,
+                html: dividerHtml,
+                type: 'divider',
+                templateId: 'sectionDivider',
+                summary: `Section: ${dividerTitle}`,
+                ...(step.sectionTracker ? { sectionLabel: step.sectionTracker } : {}),
+                ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
+              });
+            }
+
             // Template-based or freestyle (also serves as fallback if image generation failed)
             if (pendingSlides.length === 0 && templateId && template) {
               const contextForAI = buildContextForStep(step, enrichedStepPrompt, freshState);
@@ -2556,10 +2607,12 @@ export default function AIChatbot() {
         const flushCreateBatch = async (batch) => {
           if (batch.length === 0) return;
 
-          // Separate image vs templated vs freestyle
+          // Separate image vs fixed-layout (cover, divider) vs templated vs freestyle
           const imageSlides = batch.filter(b => (b.step.templateId === 'image-full' || b.step.templateId === 'image-content') && settings.imageModel);
-          const templated = batch.filter(b => b.template && !imageSlides.includes(b));
-          const freestyle = batch.filter(b => !b.template && !imageSlides.includes(b));
+          const fixedLayoutIds = new Set(['sectionDivider', 'cover']);
+          const fixedSlides = batch.filter(b => fixedLayoutIds.has(b.step.templateId) && !imageSlides.includes(b));
+          const templated = batch.filter(b => b.template && !imageSlides.includes(b) && !fixedSlides.includes(b));
+          const freestyle = batch.filter(b => !b.template && !imageSlides.includes(b) && !fixedSlides.includes(b));
 
           // Bulk-generate templated slides (ONE API call for the whole batch)
           // If any step needs search, enable _extraTools on the bulk settings — the model
@@ -2671,6 +2724,59 @@ export default function AIChatbot() {
               slideDataArray: [{
                 ...result,
                 summary: generateSlideSummary(result.html, result.type, result.title),
+                ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
+                ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
+              }],
+              step: b.step,
+            });
+          }
+
+          // Fixed-layout slides (cover, section divider): direct placeholder fill, no AI call
+          for (const b of fixedSlides) {
+            const instr = b.step.instruction || '';
+            const titleMatch = instr.match(/TITLE:\s*(.+)/i);
+            const subMatch = instr.match(/SUBTITLE:\s*(.+)/i);
+            const parsedTitle = titleMatch?.[1]?.split('\n')[0]?.trim() || '';
+            const parsedSubtitle = subMatch?.[1]?.trim() || '';
+
+            let slideData;
+            if (b.step.templateId === 'cover') {
+              const coverTitle = parsedTitle || 'Untitled Presentation';
+              const coverSubtitle = parsedSubtitle || '';
+              const coverHtml = SLIDE_TEMPLATES.cover.html
+                .replace('[CATEGORY]', coverSubtitle.toUpperCase() || 'STRATEGY')
+                .replace('[Presentation Title]', coverTitle)
+                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('[Date]', new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }));
+              slideData = {
+                title: coverTitle,
+                html: coverHtml,
+                type: 'cover',
+                templateId: 'cover',
+                summary: coverTitle,
+              };
+            } else {
+              const divTitle = parsedTitle || b.step.sectionTracker || 'Section Break';
+              const divSubtitle = parsedSubtitle || '';
+              const divNum = b.step.sectionNumber || String(getFreshState().slides.length + 1).padStart(2, '0');
+              const divHtml = SLIDE_TEMPLATES.sectionDivider.html
+                .replace('[01]', divNum)
+                .replace('[Section Title]', divTitle)
+                .replace('[What this section covers]', divSubtitle)
+                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('1 / 1', '');
+              slideData = {
+                title: divTitle,
+                html: divHtml,
+                type: 'divider',
+                templateId: 'sectionDivider',
+                summary: `Section: ${divTitle}`,
+              };
+            }
+            allBatchInserts.push({
+              stepIndex: b.actualIndex,
+              slideDataArray: [{
+                ...slideData,
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               }],
@@ -3654,11 +3760,29 @@ Original request: ${userPrompt}`;
                     newSlides = await generateSlides(fullPrompt, createSlideState.settings, 1, createSlideState.slides, null, null, freestyleCtx);
                     if (isAborted()) break;
                   }
+                } else if (templateId === 'sectionDivider') {
+                  // Section divider shortcut: direct placeholder fill, no AI call
+                  const divTitle = topic || instruction || 'Section Break';
+                  const divSubtitle = step.params?.subtitle || '';
+                  const divNum = step.params?.sectionNumber || String(createSlideState.slides.length + 1).padStart(2, '0');
+                  const divHtml = SLIDE_TEMPLATES.sectionDivider.html
+                    .replace('[01]', divNum)
+                    .replace('[Section Title]', divTitle)
+                    .replace('[What this section covers]', divSubtitle)
+                    .replace('[Company]', createSlideState.settings.footerBranding || 'Strategy&')
+                    .replace('1 / 1', '');
+                  newSlides = [{
+                    title: divTitle,
+                    html: divHtml,
+                    type: 'divider',
+                    templateId: 'sectionDivider',
+                    summary: `Section: ${divTitle}`,
+                  }];
                 } else if (templateId && !isImageTemplate) {
                   // Use specific template
                   const template = allTemplates.find(t => t.id === templateId);
                   if (template) {
-                    addMessage('assistant', `🎨 Using template: **${template.title}**`);
+                    addMessage('assistant', `Using template: **${template.title}**`);
                     const filledHtml = await fillTemplateWithAI(template, fullPrompt, createSlideState.settings, [], { agentMode: false });
                     if (isAborted()) break;
                     newSlides = [{
@@ -3930,24 +4054,25 @@ Original request: ${userPrompt}`;
               }
 
               case 'add_separator': {
-                // Add a section separator/divider slide
+                // Add a section separator/divider slide using the proper sectionDivider template
                 const position = step.params?.position ?? -1;
                 const title = step.params?.title || 'Section Break';
                 const subtitle = step.params?.subtitle || '';
+                const sectionNum = step.params?.sectionNumber || '';
 
-                const separatorHtml = `<div class="slide separator-slide">
-  <div class="frame">
-    <div class="separator-content">
-      <h1 class="separator-title">${title}</h1>
-      ${subtitle ? `<p class="separator-subtitle">${subtitle}</p>` : ''}
-    </div>
-  </div>
-</div>`;
+                const dividerTemplate = SLIDE_TEMPLATES.sectionDivider;
+                const separatorHtml = dividerTemplate.html
+                  .replace('[01]', sectionNum || '01')
+                  .replace('[Section Title]', title)
+                  .replace('[What this section covers]', subtitle || '')
+                  .replace('[Company]', '')
+                  .replace('1 / 1', '');
 
                 actions.insertSlideAt(position, {
                   title: title,
                   html: separatorHtml,
-                  type: 'separator',
+                  type: 'divider',
+                  templateId: 'sectionDivider',
                   summary: `Section: ${title}`,
                 });
 
@@ -5283,21 +5408,7 @@ Original request: ${userPrompt}`;
                 onChange={handleFileUpload}
                 style={{ display: 'none' }}
               />
-              <button
-                type="button"
-                className="chatbot-upload-btn"
-                onClick={() => setShowKnowledgeBase(true)}
-                title="Open Knowledge Library"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
-                  <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
-                </svg>
-                Library
-                {knowledgeBase.getCounts().total > 0 && (
-                  <span className="chatbot-action-badge">{knowledgeBase.getCounts().total}</span>
-                )}
-              </button>
+              {/* Library button hidden for now -- re-enable when knowledge base is ready */}
             </div>
 
             <div className="chatbot-action-separator" />
@@ -5310,12 +5421,12 @@ Original request: ${userPrompt}`;
                 className={`chatbot-mode-btn ${!useImageMode && !useAgenticMode && !useReportMode ? 'active' : ''}`}
                 onClick={() => { setUseImageMode(false); setUseAgenticMode(false); setUseReportMode(false); }}
                 disabled={isLoading}
-                title="Express - Fast template-based slides"
+                title="Regular - Template-based slides"
               >
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                 </svg>
-                Express
+                Regular
               </button>
               <button
                 type="button"

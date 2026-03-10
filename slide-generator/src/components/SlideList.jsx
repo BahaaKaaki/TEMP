@@ -15,7 +15,11 @@ export default function SlideList() {
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
   const [validatingSlide, setValidatingSlide] = useState(null);
   const [dragTarget, setDragTarget] = useState(null); // { id, position: 'before'|'after'|'child' }
-  const [selectedSlides, setSelectedSlides] = useState(new Set());
+  const selectedSlides = new Set(state.selectedSlideIds || []);
+  const setSelectedSlides = (setOrFn) => {
+    const newSet = typeof setOrFn === 'function' ? setOrFn(selectedSlides) : setOrFn;
+    actions.setSelectedSlides([...newSet]);
+  };
   const lastClickedIndexRef = useRef(null);
   const slideListRef = useRef(null);
   const hoverTimeoutRef = useRef(null);

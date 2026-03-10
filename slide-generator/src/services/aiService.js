@@ -264,6 +264,7 @@ RULES:
 - "populate/fill from storyline" → populate_slides
 - "switch/convert template" → switch_template
 - Questions without changes → answer_question
+- Greetings/small talk (hi, hello, thanks, bye) → answer_question (NEVER create slides)
 
 CRITICAL - SLIDE INDEXING:
 - slideIndex is 0-BASED: "slide 1" → slideIndex:0, "slide 2" → slideIndex:1
@@ -396,6 +397,7 @@ const INTENT_PATTERNS = {
   // OTHER actions
   storyline: /\b(storyline|narrative|story\s*points?|structure)\b/i,
   populate: /\b(populate|fill|generate\s*content|flesh\s*out)\b/i,
+  greeting: /^(hi|hello|hey|greetings|good\s*(morning|afternoon|evening|day)|howdy|sup|yo|hiya|thanks|thank\s*you|cheers|bye|goodbye)\b[!?.\s]*$/i,
   question: /^(what|how|why|when|where|who|can|could|would|should|is|are|do|does)\b/i,
   likeSlide: /\b(like|similar\s*to|same\s*as|copy|based\s*on)\s*(slide|page)?\s*#?(\d+)/i,
 };
@@ -687,7 +689,16 @@ export function routeRequest(userPrompt, context) {
     return result;
   }
 
-  // STEP 2: Questions (non-action)
+  // STEP 2a: Greetings / short conversational messages (no slide action)
+  if (INTENT_PATTERNS.greeting.test(userPrompt.trim())) {
+    result.intent = 'question';
+    result.action = 'answer_question';
+    result.understanding = 'Responding to greeting';
+    result.contextNeeded = { type: 'none', slideIndices: [], reason: 'greeting' };
+    return result;
+  }
+
+  // STEP 2b: Questions (non-action)
   if (INTENT_PATTERNS.question.test(userPrompt) &&
       !INTENT_PATTERNS.createSlide.test(userPrompt) &&
       !INTENT_PATTERNS.addSlide.test(userPrompt)) {
@@ -987,24 +998,26 @@ TODAY: ${currentDateString()}
 FIRST: DECIDE WHETHER TO ASK CLARIFYING QUESTIONS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-DEFAULT BEHAVIOR: BUILD THE PLAN. Do NOT ask questions unless you truly must.
+DEFAULT BEHAVIOR: BUILD THE PLAN — unless the request is too short/vague to produce good slides.
 
 SKIP QUESTIONS (just build) when:
 - The request is any kind of edit, rework, addition, or restyle ("fix this slide", "add a slide about X", "switch template", "rework slide 3")
-- The request gives a clear topic, even without deep details — just make your best judgment and build ("create slides about our Q3 performance", "make a deck on AI trends")
+- The request gives a clear topic WITH some direction or context (e.g., "create slides about our Q3 performance focusing on revenue growth", "make a deck on AI trends for the board")
 - The prompt contains "User clarification:" — the user already answered. Build now.
+- The prompt contains "PENDING PLAN" + "User reply:" — there was already a plan waiting for approval. See the PENDING PLAN section below.
 - The request starts with "PRESENTATION CONTENT" — agent mode, context is complete.
 - The request includes attached documents or pasted data.
 - The deck already has slides (the user is iterating, not starting from scratch)
 
 ASK QUESTIONS when ANY of these is true:
+- The user gives only a SHORT TOPIC (1-4 words) without any context, angle, or details (e.g., "Market Analysis", "Digital Transformation", "Company Overview"). Ask what specific angle/scope they want and how many slides.
 - The user is asking to create a FULL NEW presentation from scratch AND the topic is genuinely ambiguous
-- The request is LARGE-SCALE (10+ slides, full deck, comprehensive presentation, "create everything about X") — ask 1-2 questions to confirm scope, key angles, and what to prioritize. Large requests benefit from brief alignment before building.
+- The request is LARGE-SCALE (10+ slides, full deck, comprehensive presentation, "create everything about X") — ask 1-2 questions to confirm scope, key angles, and what to prioritize.
 - You truly lack the minimum information to produce anything useful
-- Maximum 1-2 focused questions. Never more.
+- Maximum 2-3 focused questions. Never more.
 
 When asking, return ONLY a "questions" array (no "plan"). Each question: { "question": string, "options": [2-5 specific choices] }.
-Focus questions on CONTENT — what topic, what angle, what data, what scope. Do NOT ask about audience or style.
+Focus questions on CONTENT and SCOPE — what angle, what key points, how many slides. Do NOT ask about audience or style.
 
 Example:
 {
@@ -1014,6 +1027,19 @@ Example:
 }
 
 If the request is clear enough → skip questions and build the plan below.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PENDING PLAN — USER REPLIED VIA TEXT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+When the prompt contains "PENDING PLAN (already shown to user, awaiting approval)" followed by "User reply:", a plan was already generated and the user typed a response instead of clicking Execute.
+
+Interpret the user's reply naturally:
+- APPROVAL (e.g., "go ahead", "yes", "looks good", "do it", "perfect", "execute", "approved"): Return the PENDING PLAN exactly as-is (copy the same steps). Do NOT ask questions.
+- MODIFICATION (e.g., "make it 5 slides", "add a slide about risks", "change the second one to freestyle", "remove the cover"): Adjust the plan according to the feedback and return the updated plan. Use the original request as context. Do NOT ask questions.
+- CANCELLATION (e.g., "no", "cancel", "never mind", "scratch that"): Return {"plan": [{"action": "answer_question", "instruction": "Plan cancelled. What would you like to do instead?"}]}
+- UNCLEAR: Treat as a modification — combine the original request with the reply and build an appropriate plan. Do NOT ask clarifying questions (the user already has context from seeing the plan).
+
+CRITICAL: When a PENDING PLAN is present, NEVER ask clarifying questions. The user has already seen a concrete plan — just act on their reply.
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 CONTEXT MODEL - IMPORTANT:
@@ -1085,6 +1111,8 @@ Keep step instructions minimal: just the Key Message + Data Points if present.
 Steps see ONLY: (1) your instruction (which gets replaced with the full stored instruction), (2) contextSlides content if provided.
 
 ACTIONS: create_slide, edit_slide, delete_slide, switch_template, answer_question
+
+CRITICAL: Greetings and small talk (hi, hello, hey, thanks, bye) MUST use answer_question. NEVER create slides for conversational messages.
 
 CRITICAL - "contextSlides" MECHANISM:
 When user references specific slides (e.g., "detail slide 3", "like page 5", "based on current slide"):
@@ -1621,6 +1649,7 @@ ${referencedSlides.map(r => `  - Index ${r.index} = Page ${r.index + 1}: "${r.ti
   const imageModeNote = preferImageSlides
     ? `\nIMAGE-BASED MODE: The user has selected image-based slides.
 TEMPLATE RULE: For every create_slide step, use templateId "image-content" (NOT freestyle, NOT regular templates).
+EXCEPTION: Cover slides (position: "start") MUST use templateId "cover", NOT "image-content".
 INSTRUCTION (content for title/subtitle): Put the SUBSTANTIVE CONTENT here — key message, data points, facts, "so what" insight.
   This feeds the text model that generates the slide title and subtitle. Be specific and rich.
   GOOD: "Three digital capability gaps limit market expansion — security (42%), cloud (38%), AI readiness (27%)"
@@ -1631,7 +1660,7 @@ LAYOUT GUIDANCE (visual for image model): Put ONLY the diagram/framework descrip
   GOOD: "3 horizontal bars descending by size, labeled with gap categories, maroon fill"
   BAD: "show how three digital gaps are limiting our expansion into new markets" (this is content, not a visual description)
 SEARCH: Include a searchQuery when real data would strengthen the title — the text model can use web search.\n`
-    : '';
+    : `\nTEMPLATE RULE: Do NOT use "image-content" or "image-full" templates. The user has NOT selected image mode. Use only standard templates (freestyle, named templates like threeCards, twoColumns, etc.).\n`;
 
   const contextInfo = `CURRENT STATE:
 - Total slides: ${slideCount}
@@ -3455,6 +3484,7 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
         const response = await fetch(creds.apiEndpoint, {
           method: 'POST',
           headers,
+          credentials: 'same-origin',
           body: JSON.stringify(requestBody),
         });
         if (!response.ok) {
@@ -5519,7 +5549,7 @@ function ensureSlideStructure(html) {
 
   // Skip section divider and blank-master slides — they use custom full-bleed layouts
   // without standard title/subtitle/frame structure
-  if (html.includes('section-divider-slide') || html.includes('separator-slide')) {
+  if (html.includes('section-divider-slide') || html.includes('separator-slide') || html.includes('master-blank')) {
     return html;
   }
 
@@ -6424,27 +6454,25 @@ Description: ${template.description || 'Professional consulting slide'}
 TEMPLATE HTML (use as styling reference):
 ${template.html}
 
-=== CONTENT-FIRST RULE (HIGHEST PRIORITY) ===
-1. FIRST, count every distinct item in the source slide (cards, pillars, bullets, sections, metrics).
-2. The target template's DEFAULT item count is IRRELEVANT. The content's item count is what matters.
-3. If source has 3 pillars and target template has 2 slots: ADD a 3rd slot to the template.
-   If source has 5 items and target has 3 cards: CREATE 5 cards using the same card CSS.
-   If source has 2 items and target has 4 cards: USE only 2 cards, remove the empty ones, adjust the grid CSS.
-4. NEVER drop, merge, or summarize items to fit a template's default count.
-5. Adjust the template's grid CSS (grid-template-columns, flex layout) to accommodate the actual item count.
-6. Lighten per-card text if adding more items — shorter descriptions keep it clean.
+=== CONTENT FITTING RULES (HIGHEST PRIORITY) ===
+1. Identify the MAIN PILLARS / TOP-LEVEL SECTIONS in the source (e.g. 3 strategy areas, 4 departments).
+2. PRESERVE the number of main pillars — do NOT merge or drop top-level sections.
+3. FIT content to the target template intelligently:
+   - If source has MORE items than template slots → group related items into available slots, or add slots if template allows
+   - If source has FEWER items than template slots → remove empty slots and adjust grid/layout CSS
+4. ADAPT body text to fit the visual space:
+   - Condense verbose bullets into concise points when space is tight
+   - Expand thin content with sub-bullets or brief elaboration if the target has more room
+   - Keep the SAME IDEAS and KEY MESSAGES — rewording for brevity is OK, dropping ideas is NOT
+5. The template should look well-filled — not empty, not overflowing. Use your judgment.
 
 === CRITICAL RULES ===
 1. USER INSTRUCTION IS PRIMARY - execute what the user asked for
-2. CONTENT PRESERVATION — KEEP THE EXACT SAME IDEAS, WORDING, AND COUNT:
-   - Count the items in the source slide (bullets, cards, pillars, metrics, numbered points, etc.).
-   - KEEP THE SAME NUMBER of items. The source count is the REQUIREMENT, the template count is a SUGGESTION.
-   - KEEP THE SAME WORDING. Do NOT rephrase, summarize, or rewrite the user's text. Copy it verbatim into the new structure. The user chose those words intentionally.
-   - If source has more items than template slots: ADD more slots with the same CSS classes. Adjust grid-template-columns to fit.
-   - If source has fewer items than template slots: REMOVE empty slots. Adjust grid CSS to fit.
-   - The goal: identical content, new visual layout.
-3. LEVERAGE THE TARGET TEMPLATE WELL - use its CSS classes, styling patterns, and visual structure. Actually redesign the layout to match the template's intent (cards, timelines, metrics, etc.) — but with the original text.
-4. Extract meaningful content from current slide (titles, points, metrics) — never lose data, never reword data
+2. PRESERVE ALL KEY IDEAS — same main sections, same core messages, same data points
+   - Rewording for brevity or expansion is allowed when fitting content to the template
+   - Dropping or merging top-level items is NOT allowed
+3. LEVERAGE THE TARGET TEMPLATE WELL - use its CSS classes, styling patterns, and visual structure. Actually redesign the layout to match the template's intent (cards, timelines, metrics, etc.)
+4. Extract meaningful content from current slide (titles, points, metrics) — never lose data
 5. Headlines should be business insights (up to 15 words, e.g., "Revenue grew 45% driven by three new market entries" not "Revenue Results")
 6. If the USER INSTRUCTION contains "TITLE:" or "SUBTITLE:" markers, use those for the output slide's title/subtitle
 7. If footer has page number, use slide ${positionContext ? 'position from above' : 'number'}
@@ -6748,7 +6776,7 @@ export async function transformSlideToTemplate(slideHtml, targetTemplateId, sett
     return slideHtml;
   }
 
-  const transformPrompt = `Transform this slide's content to a new layout while preserving all meaningful information.
+  const transformPrompt = `Transform this slide's content to a new layout, making smart decisions about how content fits the target structure.
 
 CURRENT SLIDE HTML:
 ${slideHtml}
@@ -6760,19 +6788,21 @@ TARGET HTML STRUCTURE:
 ${targetTemplate.html}
 
 Instructions:
-1. Count EVERY distinct item in the source slide (cards, pillars, bullets, rows, sections)
-2. The target template's default count is a SUGGESTION — the source's count is the REQUIREMENT
-3. If source has 3 items and template has 2 slots → ADD a 3rd slot with the same CSS classes
-4. If source has 5 items and template has 3 cards → CREATE 5 cards, adjust grid-template-columns
-5. If source has 2 items and template has 4 cards → USE only 2 cards, remove the empty ones, adjust grid CSS
-6. NEVER drop items to match template count — always expand the template instead
-7. Copy text VERBATIM — do not rephrase or summarize
-8. Adjust CSS grid properties to fit the actual item count cleanly
-9. If adding items makes cards too wide/narrow, lighten the text per card to compensate
-10. REPLICATE the target template's CSS classes and styling patterns
-11. Maintain the same topic and message, just change the visual presentation
-12. Keep the footer with the same page numbers
-13. Return ONLY the transformed HTML, no explanations
+1. Identify the MAIN PILLARS / TOP-LEVEL SECTIONS in the source slide (e.g. 3 cards, 4 columns, 2 comparison blocks)
+2. PRESERVE the number of main pillars — do NOT merge or drop top-level sections
+3. FIT content to the target template intelligently:
+   - If source has MORE items than template slots → group related items into the available slots, or add slots if the template structure allows it
+   - If source has FEWER items than template slots → remove empty slots and adjust the grid/layout CSS
+4. ADAPT body text to fit:
+   - Condense verbose bullets into concise points when space is tight
+   - Expand thin content with sub-bullets or brief elaboration if the target has more room
+   - Keep the SAME IDEAS and KEY MESSAGES — rewording for brevity is OK, dropping ideas is NOT
+5. REPLICATE the target template's CSS classes and styling patterns exactly
+6. Maintain the same topic, message, and tone — just change the visual presentation
+7. Keep the footer with the same page numbers
+8. Return ONLY the transformed HTML, no explanations
+
+GOAL: The target template should look well-filled — not empty, not overflowing. Use your judgment on text density.
 
 Return the transformed slide HTML that uses the EXACT ${targetTemplate.title} layout structure.`;
 

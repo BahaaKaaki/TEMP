@@ -3156,26 +3156,29 @@
   color: var(--secondary);
 }
 
-.slide .exec-h-right ul {
+.slide .exec-h-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-.slide .exec-h-right li {
-  font: 400 11px/1.5 Arial, sans-serif;
+.slide .exec-h-list li {
+  font: 400 13px/1.6 Arial, sans-serif;
   color: var(--secondary);
-  padding: 3px 0 3px 14px;
+  padding: 3px 0 3px 16px;
   position: relative;
 }
 
-.slide .exec-h-right li::before {
+.slide .exec-h-list li::before {
   content: '';
   position: absolute;
   left: 0;
-  top: 9px;
-  width: 5px;
-  height: 5px;
+  top: 11px;
+  width: 6px;
+  height: 6px;
   background: var(--maroon);
   border-radius: 50%;
 }

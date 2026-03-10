@@ -1887,7 +1887,7 @@ export const SLIDE_TEMPLATES = {
           <div class="exec-h-label">[Insight phrase, e.g. "Revenue grew 23% YoY"]</div>
         </div>
         <div class="exec-h-right">
-          <ul>
+          <ul class="exec-h-list">
             <li>[Key point 1]</li>
             <li>[Key point 2]</li>
             <li>[Key point 3]</li>
@@ -1900,7 +1900,7 @@ export const SLIDE_TEMPLATES = {
           <div class="exec-h-label">[Insight phrase, e.g. "Cost pressure from three drivers"]</div>
         </div>
         <div class="exec-h-right">
-          <ul>
+          <ul class="exec-h-list">
             <li>[Key point 1]</li>
             <li>[Key point 2]</li>
             <li>[Key point 3]</li>
@@ -1913,7 +1913,7 @@ export const SLIDE_TEMPLATES = {
           <div class="exec-h-label">[Insight phrase, e.g. "Double down on digital channel"]</div>
         </div>
         <div class="exec-h-right">
-          <ul>
+          <ul class="exec-h-list">
             <li>[Key point 1]</li>
             <li>[Key point 2]</li>
             <li>[Key point 3]</li>

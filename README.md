@@ -24,6 +24,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
 - Web search via PwC Responses API
+- Freestyle slide generation with component-catalog design system and validation loop
 
 ## Prerequisites
 

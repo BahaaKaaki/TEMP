@@ -5099,6 +5099,115 @@ export const LAYOUT_GUIDANCE_MAP = {
   },
 };
 
+// ============================================
+// FREESTYLE VALIDATION
+// ============================================
+
+const APPROVED_CLASSES = new Set([
+  // Layout primitives
+  'card-row', 'grid-2x2', 'grid-3x2', 'two-col', 'split-layout',
+  'process-flow', 'timeline-container', 'key-points', 'comparison-table',
+  // Content components
+  'card', 'card-header-row', 'card-icon-circle', 'card-num', 'impact-box',
+  'grid-cell', 'grid-3x2-item', 'col-left', 'col-right',
+  'split-left', 'split-right', 'split-callout',
+  'process-step', 'process-arrow', 'step-number', 'step-content',
+  'timeline-row', 'timeline-marker', 'timeline-content',
+  'key-point', 'key-point-number', 'key-point-content',
+  'stat-highlight', 'stat-main', 'stat-number', 'stat-label',
+  'kpi-block', 'kpi-value', 'kpi-label',
+  'detail-item', 'visual-placeholder',
+  // Lists
+  'content-list', 'exec-bullet-list', 'styled-list', 'insight-list', 'check-list',
+  // Structural (always valid)
+  'slide', 'title', 'subtitle', 'frame', 'footer',
+  'master-standard', 'master-blank', 'master-cover',
+  'cover-slide', 'cover-category', 'cover-title', 'cover-branding', 'cover-date',
+  // Modifiers
+  'compact', 'four-cards', 'two-cards',
+]);
+
+const PARENT_CHILD_RULES = {
+  'card': ['card-row'],
+  'grid-cell': ['grid-2x2'],
+  'grid-3x2-item': ['grid-3x2'],
+  'col-left': ['two-col'],
+  'col-right': ['two-col'],
+  'split-left': ['split-layout'],
+  'split-right': ['split-layout'],
+  'process-step': ['process-flow'],
+  'process-arrow': ['process-flow'],
+  'timeline-row': ['timeline-container'],
+  'key-point': ['key-points'],
+  'impact-box': ['card'],
+  'split-callout': ['split-left', 'split-right'],
+};
+
+const LIST_CLASSES = new Set([
+  'content-list', 'exec-bullet-list', 'styled-list', 'insight-list', 'check-list',
+]);
+
+function validateFreestyleHTML(html) {
+  const issues = [];
+
+  const classMatches = html.match(/class="([^"]+)"/g) || [];
+  const usedClasses = new Set();
+  classMatches.forEach(match => {
+    const classes = match.replace('class="', '').replace('"', '').split(/\s+/);
+    classes.forEach(cls => {
+      if (cls.trim()) usedClasses.add(cls.trim());
+    });
+  });
+
+  // Check for unknown classes
+  for (const cls of usedClasses) {
+    if (!APPROVED_CLASSES.has(cls)) {
+      issues.push(`Unknown class "${cls}" — not in the component catalog. Use only approved classes.`);
+    }
+  }
+
+  // Check bare lists (ul/ol without a list class)
+  const listTagRegex = /<(ul|ol)(\s[^>]*)?\s*>/gi;
+  let listMatch;
+  while ((listMatch = listTagRegex.exec(html)) !== null) {
+    const tagAttrs = listMatch[2] || '';
+    const classMatch = tagAttrs.match(/class="([^"]+)"/);
+    if (!classMatch) {
+      issues.push(`<${listMatch[1]}> element has no class — every list must use one of: content-list, exec-bullet-list, styled-list, insight-list, check-list`);
+    } else {
+      const listClasses = classMatch[1].split(/\s+/);
+      const hasListClass = listClasses.some(c => LIST_CLASSES.has(c));
+      if (!hasListClass) {
+        issues.push(`<${listMatch[1]} class="${classMatch[1]}"> — missing a list style class. Use one of: content-list, exec-bullet-list, styled-list, insight-list, check-list`);
+      }
+    }
+  }
+
+  // Check parent-child composition rules
+  for (const [child, allowedParents] of Object.entries(PARENT_CHILD_RULES)) {
+    const childPattern = new RegExp(`class="[^"]*\\b${child}\\b[^"]*"`, 'g');
+    if (childPattern.test(html)) {
+      const hasParent = allowedParents.some(parent => {
+        const parentPattern = new RegExp(`class="[^"]*\\b${parent}\\b[^"]*"`);
+        return parentPattern.test(html);
+      });
+      if (!hasParent) {
+        issues.push(`"${child}" found without a parent ${allowedParents.map(p => `"${p}"`).join(' or ')} — wrap it in the correct container`);
+      }
+    }
+  }
+
+  // Check basic slide structure
+  if (!/<h1\s[^>]*class="[^"]*\btitle\b/.test(html) && !html.includes('cover-slide')) {
+    issues.push('Missing h1.title — every slide needs an insight-driven headline');
+  }
+  if (!/<div\s[^>]*class="[^"]*\bframe\b/.test(html) && !html.includes('cover-slide') && !html.includes('master-blank')) {
+    issues.push('Missing div.frame — content must be inside the frame container');
+  }
+
+  return issues;
+}
+
 export async function generateSlides(prompt, settings, slideCount = 3, existingSlides = [], templateId = null, customTemplate = null, contextInfo = null) {
   // Apply slideCreator role overrides if configured
   const scRole = settings.roleSettings?.slideCreator || {};
@@ -5392,6 +5501,41 @@ IMPORTANT: You MUST output valid HTML slides. Do NOT return JSON. Generate the s
       let retryContent;
       retryContent = await callGeminiAPI(settings, activeSystemPrompt, retryPrompt);
       content = retryContent;
+    }
+
+    // Freestyle validation + one-shot correction loop
+    if (isFreestyle && !template) {
+      const validationIssues = validateFreestyleHTML(content);
+      if (validationIssues.length > 0) {
+        console.log('%c[Freestyle] Validation found %d issue(s), requesting correction',
+          'color:#d97706; font-weight:bold', validationIssues.length, validationIssues);
+
+        const correctionPrompt = `The HTML you generated has these issues:
+${validationIssues.map((issue, i) => `${i + 1}. ${issue}`).join('\n')}
+
+Fix ONLY these issues. Keep all content, titles, and structure otherwise unchanged.
+Return the corrected slide(s) as raw HTML.
+
+Original HTML:
+${content}`;
+
+        try {
+          const corrected = await callGeminiAPI(settings, activeSystemPrompt, correctionPrompt);
+          const correctedIssues = validateFreestyleHTML(corrected);
+          if (correctedIssues.length < validationIssues.length) {
+            console.log('%c[Freestyle] Correction resolved %d of %d issues',
+              'color:#059669; font-weight:bold',
+              validationIssues.length - correctedIssues.length, validationIssues.length);
+            content = corrected;
+          } else {
+            console.log('[Freestyle] Correction did not improve — keeping original');
+          }
+        } catch (correctionErr) {
+          console.warn('[Freestyle] Correction call failed, keeping original:', correctionErr.message?.slice(0, 100));
+        }
+      } else {
+        console.log('%c[Freestyle] Validation passed — no issues found', 'color:#059669');
+      }
     }
 
     // Parse the generated HTML into individual slides

@@ -3464,6 +3464,7 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
       useResponsesAPI: creds.useResponsesAPI,
       bodyModel: requestBody.model,
       authType: headers['api-key'] ? 'api-key' : headers['x-api-key'] ? 'x-api-key' : 'Bearer',
+      tools: requestBody.tools || 'none',
     });
 
     // Retry on transient connection / 5xx errors (NOT 429 — rate limits should fail fast)
@@ -3509,6 +3510,13 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
         const data = await response.json();
         console.log('[callGeminiAPI/non-Gemini] Response status:', data.status || 'ok',
           'model:', creds.model, 'useResponsesAPI:', creds.useResponsesAPI);
+        const vGroundAll = data.vertex_ai_grounding_metadata || [];
+        const allQueries = vGroundAll.flatMap(g => g.webSearchQueries || []);
+        if (allQueries.length > 0) {
+          console.log('%c[Web Search] CONFIRMED — %d queries executed', 'color:#059669; font-weight:bold', allQueries.length, allQueries);
+        } else if (requestBody.tools?.length > 0) {
+          console.warn('[Web Search] tools were sent but no grounding metadata in response');
+        }
         const content = parseAPIResponseContent(data, creds);
         if (!content || content.trim() === '') {
           console.warn('[callGeminiAPI/non-Gemini] Empty content from', creds.model,
@@ -3592,7 +3600,7 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
     temperature: body.generationConfig.temperature ?? null,
     endpoint: endpoint?.slice(0, 80),
   };
-  console.log(`%c[API→] ${_geminiReqParams.model}  max_tokens=${_geminiReqParams.max_tokens}  reasoning=${_geminiReqParams.reasoning}  thinkingConfig=${JSON.stringify(_geminiReqParams.thinkingConfig)}  temp=${_geminiReqParams.temperature}`, 'color:#6a9fb5');
+  console.log(`%c[API→] ${_geminiReqParams.model}  max_tokens=${_geminiReqParams.max_tokens}  reasoning=${_geminiReqParams.reasoning}  thinkingConfig=${JSON.stringify(_geminiReqParams.thinkingConfig)}  temp=${_geminiReqParams.temperature}  tools=${JSON.stringify(body.tools || 'none')}`, 'color:#6a9fb5');
   // Expose for audit log consumers (same as non-Gemini path)
   agentChat._lastRequestParams = _geminiReqParams;
 
@@ -3682,6 +3690,15 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
   }
 
   const candidate = data.candidates?.[0];
+  const grounding = candidate?.groundingMetadata || data.vertex_ai_grounding_metadata?.[0];
+  if (grounding) {
+    console.log('%c[Gemini API] Web search CONFIRMED', 'color:#059669; font-weight:bold', {
+      searchQueries: grounding.webSearchQueries || grounding.searchQueries,
+    });
+  } else if (body.tools?.some(t => t.googleSearch)) {
+    console.warn('[Gemini API] googleSearch tool was sent but NO groundingMetadata in response — search may not have fired');
+  }
+
   if (!candidate) {
     console.error('[Gemini API] No candidates in response:', JSON.stringify(data, null, 2));
     throw new Error('Gemini returned no candidates — the request may have been filtered. Try a different model.');
@@ -3830,6 +3847,11 @@ function buildRequestBody(settings, messages) {
   // Always send max_tokens — reasoning models need it too (ensure integer for proxy compat)
   if (maxTokens) body.max_tokens = parseInt(maxTokens, 10) || maxTokens;
 
+  // Extra tools (e.g., web_search_preview for search-enabled slide creation)
+  if (settings._extraTools?.length > 0) {
+    body.tools = settings._extraTools;
+  }
+
   // Merge custom params from provider config
   if (creds.customParams && typeof creds.customParams === 'object') {
     Object.assign(body, creds.customParams);
@@ -3842,6 +3864,7 @@ function buildRequestBody(settings, messages) {
     reasoning_effort: body.reasoning_effort,
     messageCount: body.messages?.length,
     totalInputChars: body.messages?.reduce((s, m) => s + (m.content?.length || 0), 0),
+    tools: body.tools?.length || 0,
   });
   return body;
 }

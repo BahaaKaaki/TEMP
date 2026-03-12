@@ -2967,21 +2967,33 @@ body {
   line-height: 1.4;
 }
 
-/* Per-Slide AI Prompt */
-/* Quick Action Buttons */
+/* Slide + Quick Actions side-by-side */
+.slide-main-area {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  width: 100%;
+}
+
+.slide-main-area > .slide-preview-wrapper {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Quick Action Buttons — vertical sidebar */
 .slide-quick-actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 12px;
-  padding: 0 2px;
+  flex-direction: column;
+  gap: 5px;
+  flex-shrink: 0;
+  padding-top: 24px;
 }
 
 .slide-quick-action-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 10px;
+  padding: 5px 10px;
   font-size: 11px;
   font-weight: 500;
   border: 1px solid var(--border, #e2e8f0);
@@ -3023,7 +3035,8 @@ body {
 
 .slide-ai-prompt-form {
   display: flex;
-  gap: 12px;
+  gap: 8px;
+  align-items: center;
 }
 
 .slide-ai-prompt-form input {
@@ -3428,10 +3441,12 @@ body {
   margin-top: 8px;
 }
 
-.preview-bottom-bar .template-switch-btn {
-  font-size: 11px;
-  padding: 4px 10px;
-  gap: 4px;
+.slide-ai-prompt-form .template-switch-btn {
+  font-size: 12px;
+  padding: 8px 12px;
+  gap: 5px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 /* Preview info bar */

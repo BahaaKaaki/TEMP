@@ -126,6 +126,86 @@ const COMPLETE_TRANSLATION_EXAMPLE = {
 }`
 };
 
+// Block-header three-cards variant (maroon banner with number + title, bullet list body)
+const BLOCK_HEADER_CARDS_EXAMPLE = {
+  html: `<div class="slide master-standard">
+  <h1 class="title">AI adoption delivers measurable yield and sustainability improvements</h1>
+  <h2 class="subtitle">Impact &amp; ROI</h2>
+  <div class="frame">
+    <div class="card-row three-cards-d">
+      <div class="card">
+        <div class="block-header"><span class="block-num">01</span><h3>Increased Crop Yields</h3></div>
+        <div class="block-body">
+          <ul>
+            <li><strong>Peak Potential:</strong> AI-driven precision farming and continuous monitoring push plants to their maximum output.</li>
+            <li><strong>Optimized Cycles:</strong> Predictive analytics and automated irrigation align perfectly with crop demand.</li>
+            <li><strong>Impact:</strong> Up to 25% yield increase</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="block-header"><span class="block-num">02</span><h3>Resource Efficiency</h3></div>
+        <div class="block-body">
+          <ul>
+            <li><strong>Dynamic Control:</strong> Sensor-driven control loops replace rigid schedules, drastically cutting chemical usage.</li>
+            <li><strong>Targeted Application:</strong> Smart systems trigger irrigation only when needed and enable micro-dosing of fertilizers.</li>
+            <li><strong>Impact:</strong> 40-70% water savings</li>
+          </ul>
+        </div>
+      </div>
+      <div class="card">
+        <div class="block-header"><span class="block-num">03</span><h3>Operational Cost Savings</h3></div>
+        <div class="block-body">
+          <ul>
+            <li><strong>Lower Expenses:</strong> Precision application of inputs and automated scouting directly reduce operational costs.</li>
+            <li><strong>Labor Reduction:</strong> Early pest detection and optimized resource allocation minimize manual labor requirements.</li>
+            <li><strong>Impact:</strong> 15-25% lower input costs</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>`,
+
+  code: `function(pptx, slideNum, totalSlides) {
+  const slide = pptx.addSlide();
+  const c = {main:'111111',secondary:'222222',red:'A32020',maroon:'8E1E1E',zone1:'F7F9FB',rose:'F8E3E3',meta:'4A4F57',coal:'4B4F55',border:'E6E9EE'};
+
+  slide.addText("AI adoption delivers measurable yield and sustainability improvements", {x:0.48, y:0.42, w:12.36, h:0.8, fontFace:'Georgia', fontSize:28, color:c.main, valign:'top'});
+  slide.addText("Impact & ROI", {x:0.48, y:1.40, w:12.36, h:0.4, fontFace:'Arial', fontSize:18, color:c.red, bold:true});
+
+  const items = [
+    {num:'01', title:'Increased Crop Yields', bullets:['Peak Potential: AI-driven precision farming and continuous monitoring push plants to their maximum output.','Optimized Cycles: Predictive analytics and automated irrigation align perfectly with crop demand.','Impact: Up to 25% yield increase']},
+    {num:'02', title:'Resource Efficiency', bullets:['Dynamic Control: Sensor-driven control loops replace rigid schedules, drastically cutting chemical usage.','Targeted Application: Smart systems trigger irrigation only when needed and enable micro-dosing of fertilizers.','Impact: 40-70% water savings']},
+    {num:'03', title:'Operational Cost Savings', bullets:['Lower Expenses: Precision application of inputs and automated scouting directly reduce operational costs.','Labor Reduction: Early pest detection and optimized resource allocation minimize manual labor requirements.','Impact: 15-25% lower input costs']}
+  ];
+
+  const startX = 0.48, cardW = 3.95, cardH = 4.90, gap = 0.25, cardY = 1.90, headerH = 0.45;
+
+  items.forEach((d, i) => {
+    const xPos = startX + (i * (cardW + gap));
+    // Card background
+    slide.addShape('roundRect', {x:xPos, y:cardY, w:cardW, h:cardH, fill:{color:c.zone1}, line:{color:c.border, width:0.5}, rectRadius:0.05});
+    // Maroon header banner — number and title as ONE text box, wrap:false prevents "01" splitting
+    slide.addText(d.num + '   ' + d.title, {
+      x:xPos, y:cardY, w:cardW, h:headerH,
+      fontFace:'Arial', fontSize:11, bold:true, color:'FFFFFF',
+      valign:'middle', margin:0, wrap:false, isTextBox:true,
+      fill:{color:c.maroon}
+    });
+    // Bullet list — join items with newline, bullet:true gives native PowerPoint bullets
+    slide.addText(d.bullets.join('\\n'), {
+      x:xPos + 0.15, y:cardY + headerH + 0.1, w:cardW - 0.3, h:cardH - headerH - 0.2,
+      fontFace:'Arial', fontSize:10, color:c.secondary, valign:'top',
+      bullet:true, paraSpaceAfter:6
+    });
+  });
+
+  slide.addText('Strategy&', {x:0.48, y:7.05, w:2, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta});
+  slide.addText(slideNum + ' / ' + totalSlides, {x:11.5, y:7.05, w:1.3, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta, align:'right'});
+}`
+};
+
 // KPI Translation Example - complete input/output
 const KPI_TRANSLATION_EXAMPLE = {
   html: `<div class="slide">
@@ -893,6 +973,9 @@ async function generateBatchPPTXCode(slides, startIndex, totalSlides, settings) 
     if (html.includes('cover-slide') || html.includes('cover-title') || html.includes('cover-category')) {
       return 'cover';
     }
+    if (html.includes('block-header') && html.includes('block-body')) {
+      return 'block-header-cards';
+    }
     if (html.includes('card-row') || html.includes('three-cards') || (html.includes('card') && html.includes('card-num'))) {
       return 'three-cards';
     }
@@ -926,7 +1009,11 @@ async function generateBatchPPTXCode(slides, startIndex, totalSlides, settings) 
     } else {
       // Generic: add the appropriate generic example
       let key, name, code;
-      if (layoutType === 'three-cards') {
+      if (layoutType === 'block-header-cards') {
+        key = 'generic_block_header_cards';
+        name = 'Block Header Cards Layout';
+        code = BLOCK_HEADER_CARDS_EXAMPLE.code;
+      } else if (layoutType === 'three-cards') {
         key = 'generic_three_cards';
         name = 'Three Cards Layout';
         code = COMPLETE_TRANSLATION_EXAMPLE.code;

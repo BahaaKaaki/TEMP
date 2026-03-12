@@ -1019,9 +1019,11 @@
 }
 
 /* ===== GENERIC LIST FALLBACK — catches any <ul> or <ol> not using a specific class ===== */
-/* This prevents browser-default bullets from appearing unstyled */
-.slide .frame ul:not([class]),
-.slide .frame ol:not([class]) {
+/* Wrapped in :where() so any component-scoped list rule (e.g. .exec-v-body li,
+   .card ul > li, .block-body ul li) automatically wins via higher specificity.
+   This prevents the fallback from bleeding into nested component contexts. */
+.slide :where(.frame) :where(ul:not([class])),
+.slide :where(.frame) :where(ol:not([class])) {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -1031,8 +1033,8 @@
   width: 100%;
 }
 
-.slide .frame ul:not([class]) > li,
-.slide .frame ol:not([class]) > li {
+.slide :where(.frame) :where(ul:not([class]) > li),
+.slide :where(.frame) :where(ol:not([class]) > li) {
   position: relative;
   padding: 8px 14px 8px 30px;
   font: 400 13px/1.6 Arial, sans-serif;
@@ -1042,7 +1044,7 @@
   border-left: 3px solid var(--accent);
 }
 
-.slide .frame ul:not([class]) > li::before {
+.slide :where(.frame) :where(ul:not([class]) > li)::before {
   content: '';
   position: absolute;
   left: 12px;
@@ -1053,15 +1055,15 @@
   border-radius: 50%;
 }
 
-.slide .frame ol:not([class]) {
+.slide :where(.frame) :where(ol:not([class])) {
   counter-reset: slide-ol;
 }
 
-.slide .frame ol:not([class]) > li {
+.slide :where(.frame) :where(ol:not([class]) > li) {
   counter-increment: slide-ol;
 }
 
-.slide .frame ol:not([class]) > li::before {
+.slide :where(.frame) :where(ol:not([class]) > li)::before {
   content: counter(slide-ol, decimal-leading-zero);
   position: absolute;
   left: 6px;
@@ -1070,8 +1072,8 @@
   color: var(--accent);
 }
 
-.slide .frame ul:not([class]) > li strong,
-.slide .frame ol:not([class]) > li strong {
+.slide :where(.frame) :where(ul:not([class]) > li) strong,
+.slide :where(.frame) :where(ol:not([class]) > li) strong {
   font-weight: 600;
   color: var(--heading);
 }
@@ -1094,9 +1096,12 @@
 .slide .grid-cell ul > li,
 .slide .grid-cell ol > li {
   position: relative;
-  padding-left: 14px;
+  padding: 0 0 0 14px;
   font: 400 11px/1.5 Arial, sans-serif;
   color: var(--body);
+  background: none;
+  border-left: none;
+  border-radius: 0;
 }
 
 .slide .card ul > li::before,
@@ -4793,6 +4798,10 @@
   color: var(--secondary);
 }
 
+/* Disabled: content-list should render consistently regardless of parent container.
+   These overrides stripped card styling from content-list inside split-left,
+   causing left/right visual inconsistency in split-layout slides.
+
 .slide .split-left .content-list {
   margin: 0;
   padding-left: 0;
@@ -4817,6 +4826,7 @@
   background: linear-gradient(135deg, var(--maroon) 0%, var(--red) 100%);
   border-radius: 50%;
 }
+*/
 
 .slide .split-right {
   flex: 1;
@@ -6094,11 +6104,26 @@
 }
 .slide .card-row .block-body { flex: 1; }
 .slide .card-row .block-body ul {
-  margin: 0; padding: 0 0 0 16px; list-style: disc;
+  margin: 0; padding: 0; list-style: none;
 }
 .slide .card-row .block-body ul li {
+  position: relative;
+  padding: 0 0 0 14px;
   font: 400 11px/1.5 Arial, sans-serif; color: var(--body, #333);
   margin-bottom: 4px;
+  background: none;
+  border-left: none;
+  border-radius: 0;
+}
+.slide .card-row .block-body ul li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  width: 4px;
+  height: 4px;
+  background: var(--accent);
+  border-radius: 50%;
 }
 
 /* Two Cards D */

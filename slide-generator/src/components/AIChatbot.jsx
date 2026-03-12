@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch } from '../services/aiService';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
@@ -2556,12 +2556,14 @@ export default function AIChatbot() {
             });
 
             const switchInstruction = step.instruction || 'Keep the same content but use the new template layout';
+            const deckCtx = buildDeckContextForSwitch(freshState.slides, slideIdx);
             const transformedHtml = await improveSlideWithTemplate(
               slideToSwitch.html,
               switchInstruction,
               targetTemplate,
               settings,
-              { slideNumber: slideIdx + 1, totalSlides: freshState.slides.length }
+              { slideNumber: slideIdx + 1, totalSlides: freshState.slides.length },
+              deckCtx,
             );
 
             const isValid = transformedHtml &&
@@ -3899,13 +3901,14 @@ Original request: ${userPrompt}`;
                   break;
                 }
 
-                // Use improveSlideWithTemplate which properly converts to new template
+                const legacyDeckCtx = buildDeckContextForSwitch(switchState.slides, slideIndex);
                 const transformedHtml = await improveSlideWithTemplate(
                   slide.html,
                   instruction,
                   template,
                   switchState.settings,
-                  { slideNumber: slideIndex + 1, totalSlides: switchState.slides.length }
+                  { slideNumber: slideIndex + 1, totalSlides: switchState.slides.length },
+                  legacyDeckCtx,
                 );
                 if (isAborted()) break;
 

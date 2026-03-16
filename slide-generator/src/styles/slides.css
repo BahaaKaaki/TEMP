@@ -1079,10 +1079,12 @@
 }
 
 /* ===== LIST INSIDE CARDS — polished nested bullets ===== */
-.slide .card ul,
-.slide .card ol,
-.slide .grid-cell ul,
-.slide .grid-cell ol {
+/* :not([class]) prevents these from overriding component list classes
+   (content-list, exec-bullet-list, styled-list, insight-list, check-list) */
+.slide .card ul:not([class]),
+.slide .card ol:not([class]),
+.slide .grid-cell ul:not([class]),
+.slide .grid-cell ol:not([class]) {
   list-style: none;
   padding: 0;
   margin: 4px 0 0 0;
@@ -1091,10 +1093,10 @@
   gap: 5px;
 }
 
-.slide .card ul > li,
-.slide .card ol > li,
-.slide .grid-cell ul > li,
-.slide .grid-cell ol > li {
+.slide .card ul:not([class]) > li,
+.slide .card ol:not([class]) > li,
+.slide .grid-cell ul:not([class]) > li,
+.slide .grid-cell ol:not([class]) > li {
   position: relative;
   padding: 0 0 0 14px;
   font: 400 11px/1.5 Arial, sans-serif;
@@ -1104,8 +1106,8 @@
   border-radius: 0;
 }
 
-.slide .card ul > li::before,
-.slide .grid-cell ul > li::before {
+.slide .card ul:not([class]) > li::before,
+.slide .grid-cell ul:not([class]) > li::before {
   content: '';
   position: absolute;
   left: 0;
@@ -1116,10 +1118,10 @@
   border-radius: 50%;
 }
 
-.slide .card ul > li strong,
-.slide .card ol > li strong,
-.slide .grid-cell ul > li strong,
-.slide .grid-cell ol > li strong {
+.slide .card ul:not([class]) > li strong,
+.slide .card ol:not([class]) > li strong,
+.slide .grid-cell ul:not([class]) > li strong,
+.slide .grid-cell ol:not([class]) > li strong {
   font-weight: 600;
   color: var(--heading);
 }
@@ -3081,32 +3083,26 @@
 }
 
 .slide .exec-v-body ul {
-  list-style: none;
-  padding: 0;
+  list-style: disc;
+  padding: 0 0 0 16px;
   margin: 0;
 }
 
 .slide .exec-v-body li {
-  font: 400 11px/1.5 Arial, sans-serif;
-  color: var(--secondary);
-  padding: 5px 0 5px 14px;
-  position: relative;
-  border-bottom: 1px solid var(--border);
-}
-
-.slide .exec-v-body li:last-child {
-  border-bottom: none;
+  font: 400 12px/1.5 Arial, sans-serif;
+  color: var(--body);
+  padding: 2px 0;
+  background: none;
+  border-left: none;
+  border-radius: 0;
 }
 
 .slide .exec-v-body li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 11px;
-  width: 5px;
-  height: 5px;
-  background: var(--maroon);
-  border-radius: 50%;
+  content: none;
+}
+
+.slide .exec-v-body li::marker {
+  color: var(--accent);
 }
 
 /* ===== EXECUTIVE SUMMARY — HORIZONTAL ROWS ===== */
@@ -3162,27 +3158,26 @@
 }
 
 .slide .exec-h-right ul {
-  list-style: none;
-  padding: 0;
+  list-style: disc;
+  padding: 0 0 0 16px;
   margin: 0;
 }
 
 .slide .exec-h-right li {
-  font: 400 11px/1.5 Arial, sans-serif;
-  color: var(--secondary);
-  padding: 3px 0 3px 14px;
-  position: relative;
+  font: 400 12px/1.5 Arial, sans-serif;
+  color: var(--body);
+  padding: 2px 0;
+  background: none;
+  border-left: none;
+  border-radius: 0;
 }
 
 .slide .exec-h-right li::before {
-  content: '';
-  position: absolute;
-  left: 0;
-  top: 9px;
-  width: 5px;
-  height: 5px;
-  background: var(--maroon);
-  border-radius: 50%;
+  content: none;
+}
+
+.slide .exec-h-right li::marker {
+  color: var(--accent);
 }
 
 /* ===== COMPETITIVE LANDSCAPE ===== */

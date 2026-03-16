@@ -5,25 +5,19 @@ import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../servic
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage } from '../services/pptxTemplateService';
 
 // ─── Utility helpers ────────────────────────────────────────────────────────
-const REASONING_MODELS = ['gpt-5', 'gpt-5.1', 'gpt-5.2', 'gpt-5-mini', 'o1', 'o1-mini', 'o1-preview'];
-const GPT5_MODELS = ['gpt-5', 'gpt-5.1', 'gpt-5.2', 'gpt-5-mini'];
-
 function stripProviderPrefix(model) {
   if (!model) return model;
   const idx = model.indexOf(':');
   return idx === -1 ? model : model.slice(idx + 1);
 }
-function isReasoningModel(model) {
-  const modelName = stripProviderPrefix(model);
-  return REASONING_MODELS.some(rm => modelName.toLowerCase().includes(rm.toLowerCase()));
-}
-function isGPT5Model(model) {
-  const modelName = stripProviderPrefix(model);
-  return GPT5_MODELS.some(gm => modelName.toLowerCase().includes(gm.toLowerCase()));
-}
+function isReasoningModel(model) { return /\b(gpt-5|o1|o3)\b/i.test(stripProviderPrefix(model)); }
+function isGPT5Model(model) { return /\bgpt-5/i.test(stripProviderPrefix(model)); }
 function buildTestBody(model, actualModel, providerUrl) {
-  if (isGPT5Model(model) && providerUrl?.includes('api.openai.com')) {
-    return { model: actualModel, input: 'Say OK', max_output_tokens: 16 };
+  if (isGPT5Model(model)) {
+    const isDirectOpenAI = providerUrl?.includes('api.openai.com');
+    return isDirectOpenAI
+      ? { model: actualModel, input: 'Say OK', max_output_tokens: 16 }
+      : { model: actualModel, messages: [{ role: 'user', content: 'Say OK' }], max_tokens: 16 };
   }
   return { model: actualModel, messages: [{ role: 'user', content: 'Say OK' }], max_tokens: 10 };
 }

@@ -153,11 +153,19 @@ export default function StorylineWorkspace({ isOpen, onClose }) {
     }
   };
 
-  // Get available templates (built-in + custom)
-  const availableTemplates = [
-    ...Object.values(SLIDE_TEMPLATES).filter(t => !state.deletedSystemTemplates?.includes(t.id)),
-    ...(state.customTemplates || []),
-  ];
+  // Get available templates (built-in + custom), deduplicated by id
+  const availableTemplates = (() => {
+    const raw = [
+      ...Object.values(SLIDE_TEMPLATES).filter(t => !state.deletedSystemTemplates?.includes(t.id)),
+      ...(state.customTemplates || []),
+    ];
+    const seen = new Set();
+    return raw.filter(t => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+  })();
 
   const storyline = state.storyline || [];
 

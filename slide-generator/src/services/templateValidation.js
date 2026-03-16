@@ -22,8 +22,9 @@ export const VALIDATION_STEPS = {
   VISUAL_INSPECTION: 'visual_inspection',    // Step 3: Does HTML screenshot look correct?
 };
 
-// Gemini models
-const GEMINI_MODELS = ['gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash'];
+// Pattern-based model detection -- covers current and future versions
+function isGeminiModel(model) { return /\bgemini-/i.test(model || ''); }
+function isGPT5Model(model) { return /\bgpt-5/i.test(model || ''); }
 
 // Extract the actual response text from Gemini parts, skipping thinking/thought parts
 function extractGeminiResponseText(parts) {
@@ -31,17 +32,6 @@ function extractGeminiResponseText(parts) {
   const responseParts = parts.filter(p => !p.thought);
   const targetParts = responseParts.length > 0 ? responseParts : parts;
   return targetParts.map(p => p.text).filter(Boolean).join('');
-}
-
-// GPT-5.x models use max_completion_tokens instead of max_tokens
-const GPT5_MODELS = ['gpt-5', 'gpt-5.1', 'gpt-5.2', 'gpt-5-turbo'];
-
-function isGeminiModel(model) {
-  return GEMINI_MODELS.some(gm => model.toLowerCase().includes(gm.toLowerCase()));
-}
-
-function isGPT5Model(model) {
-  return GPT5_MODELS.some(gm => model.toLowerCase().includes(gm.toLowerCase()));
 }
 
 /**

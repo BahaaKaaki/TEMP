@@ -534,14 +534,10 @@ export const DEFAULT_PPTX_CODE_EXAMPLE = `[
   }
 ]`;
 
-// Models that support reasoning_effort parameter
-const REASONING_MODELS = ['gpt-5', 'gpt-5.1', 'gpt-5.2', 'gpt-5-turbo', 'o1', 'o1-mini', 'o1-preview'];
-
-// GPT 5.x models use max_completion_tokens instead of max_tokens
-const GPT5_MODELS = ['gpt-5', 'gpt-5.1', 'gpt-5.2', 'gpt-5-turbo'];
-
-// Gemini models use Google's API format
-const GEMINI_MODELS = ['gemini-3-pro-preview', 'gemini-3-flash-preview', 'gemini-2.5-pro', 'gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-pro', 'gemini'];
+// Pattern-based model detection -- covers current and future versions
+function isReasoningModel(model) { return /\b(gpt-5|o1|o3)\b/i.test(model || ''); }
+function isGPT5Model(model) { return /\bgpt-5/i.test(model || ''); }
+function isGeminiModel(model) { return /\bgemini-/i.test(model || ''); }
 
 // Extract the actual response text from Gemini parts, skipping thinking/thought parts
 function extractGeminiResponseText(parts) {
@@ -549,19 +545,6 @@ function extractGeminiResponseText(parts) {
   const responseParts = parts.filter(p => !p.thought);
   const targetParts = responseParts.length > 0 ? responseParts : parts;
   return targetParts.map(p => p.text).filter(Boolean).join('');
-}
-
-function isReasoningModel(model) {
-  return REASONING_MODELS.some(rm => model.toLowerCase().includes(rm.toLowerCase()));
-}
-
-function isGPT5Model(model) {
-  return GPT5_MODELS.some(gm => model.toLowerCase().includes(gm.toLowerCase()));
-}
-
-function isGeminiModel(model) {
-  if (!model) return false;
-  return GEMINI_MODELS.some(gm => model.toLowerCase().includes(gm.toLowerCase()));
 }
 
 function isClaudeModel(model) {

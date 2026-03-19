@@ -24,7 +24,9 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
 - Web search via PwC Responses API
-- Freestyle slide generation with component-catalog design system and validation loop
+- Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
+- Auto-fetch available models from PwC Shared Services `/models` endpoint with grouped vendor display
+- Deck-aware template switching with pillar preservation and optional user guidance
 
 ## Prerequisites
 
@@ -94,7 +96,11 @@ No environment variables needed. The frontend talks to the backend proxy.
 | `POST /api/ai/responses` | PwC `/v1/responses` | Search / Responses API |
 | `GET /api/ai/models` | PwC `/models` | List available models |
 
-## Default Model Configuration
+## Model Configuration
+
+Models are auto-fetched from the PwC Shared Services `/models` endpoint on first load and cached locally for 24 hours. The Settings UI groups models by vendor (Gemini, Claude, OpenAI, Azure) with capability tags (fast, pro, image, code, preview). A "Refresh from API" button allows manual re-fetch.
+
+**Default assignments:**
 
 | Role | Model |
 |---|---|
@@ -104,6 +110,8 @@ No environment variables needed. The frontend talks to the backend proxy.
 | Chat Router | `vertex_ai.gemini-3.1-pro-preview` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
+
+Each role can be overridden individually in Settings > Roles.
 
 ## Azure Deployment
 

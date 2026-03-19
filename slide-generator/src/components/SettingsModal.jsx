@@ -5,25 +5,19 @@ import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../servic
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage } from '../services/pptxTemplateService';
 
 // ─── Utility helpers ────────────────────────────────────────────────────────
-const REASONING_MODELS = ['gpt-5', 'gpt-5.1', 'gpt-5.2', 'gpt-5-mini', 'o1', 'o1-mini', 'o1-preview'];
-const GPT5_MODELS = ['gpt-5', 'gpt-5.1', 'gpt-5.2', 'gpt-5-mini'];
-
 function stripProviderPrefix(model) {
   if (!model) return model;
   const idx = model.indexOf(':');
   return idx === -1 ? model : model.slice(idx + 1);
 }
-function isReasoningModel(model) {
-  const modelName = stripProviderPrefix(model);
-  return REASONING_MODELS.some(rm => modelName.toLowerCase().includes(rm.toLowerCase()));
-}
-function isGPT5Model(model) {
-  const modelName = stripProviderPrefix(model);
-  return GPT5_MODELS.some(gm => modelName.toLowerCase().includes(gm.toLowerCase()));
-}
+function isReasoningModel(model) { return /\b(gpt-5|o1|o3)\b/i.test(stripProviderPrefix(model)); }
+function isGPT5Model(model) { return /\bgpt-5/i.test(stripProviderPrefix(model)); }
 function buildTestBody(model, actualModel, providerUrl) {
-  if (isGPT5Model(model) && providerUrl?.includes('api.openai.com')) {
-    return { model: actualModel, input: 'Say OK', max_output_tokens: 16 };
+  if (isGPT5Model(model)) {
+    const isDirectOpenAI = providerUrl?.includes('api.openai.com');
+    return isDirectOpenAI
+      ? { model: actualModel, input: 'Say OK', max_output_tokens: 16 }
+      : { model: actualModel, messages: [{ role: 'user', content: 'Say OK' }], max_tokens: 16 };
   }
   return { model: actualModel, messages: [{ role: 'user', content: 'Say OK' }], max_tokens: 10 };
 }
@@ -131,10 +125,158 @@ const LIMIT_DEFS = [
   { key: 'limitFallbackKnowledgeItems', label: 'Fallback Knowledge (count)', desc: 'Knowledge items in no-plan mode', default: 12, group: 'Workers' },
 ];
 
+// ─── Model classification helpers ───────────────────────────────────────────
+//
+// Platform = hosting platform (Gemini, Claude, OpenAI, Azure, Bedrock, etc.)
+// Capability = what the model does (chat, image, embedding, audio, code, reasoning)
+
+const PLATFORM_RULES = [
+  { prefix: 'vertex_ai.gemini',    platform: 'Gemini' },
+  { prefix: 'vertex_ai.imagen',    platform: 'Gemini' },
+  { prefix: 'vertex_ai.text-',     platform: 'Gemini' },
+  { prefix: 'vertex_ai.anthropic', platform: 'Claude' },
+  { prefix: 'vertex_ai.meta',      platform: 'Meta' },
+  { prefix: 'bedrock.anthropic',   platform: 'Claude' },
+  { prefix: 'bedrock.amazon',      platform: 'Bedrock' },
+  { prefix: 'bedrock.openai',      platform: 'Bedrock' },
+  { prefix: 'bedrock.cohere',      platform: 'Bedrock' },
+  { prefix: 'bedrock.mistral',     platform: 'Bedrock' },
+  { prefix: 'openai.',             platform: 'OpenAI' },
+  { prefix: 'azure.',              platform: 'Azure' },
+  { prefix: 'anthropic.',          platform: 'Claude' },
+  { prefix: 'gemini',              platform: 'Gemini' },
+  { prefix: 'claude',              platform: 'Claude' },
+  { prefix: 'gpt-',                platform: 'OpenAI' },
+];
+
+function getModelPlatform(id) {
+  const lower = id.toLowerCase();
+  for (const { prefix, platform } of PLATFORM_RULES) {
+    if (lower.startsWith(prefix)) return platform;
+  }
+  return 'Other';
+}
+
+function getModelCapability(id) {
+  const lower = id.toLowerCase();
+  // Embedding models
+  if (/embed|text-embedding/.test(lower)) return 'embedding';
+  // Image generation models
+  if (/dall-e|imagen|gpt-image|nova-canvas|flash-image/.test(lower)) return 'image';
+  if (/image-preview/.test(lower)) return 'image';
+  // Audio / realtime / TTS / transcription models
+  if (/whisper|gpt-audio|realtime|transcribe|-tts/.test(lower)) return 'audio';
+  // Codex (code-specialized) models
+  if (/codex/.test(lower)) return 'code';
+  // Reranking models
+  if (/rerank/.test(lower)) return 'rerank';
+  // Deep research
+  if (/deep-research/.test(lower)) return 'reasoning';
+  // Reasoning models (o-series: o1, o3, o4)
+  if (/\bo[134]-/.test(lower) || /^(openai|azure)\.(o[134])$/.test(lower)) return 'reasoning';
+  // Everything else is a chat/LLM model
+  return 'chat';
+}
+
+function getModelTier(id) {
+  const lower = id.toLowerCase();
+  if (/opus/.test(lower)) return 'pro';
+  if (/pro/.test(lower)) return 'pro';
+  if (/sonnet/.test(lower)) return 'standard';
+  if (/nano/.test(lower)) return 'fast';
+  if (/mini/.test(lower)) return 'fast';
+  if (/flash-lite|flash_lite/.test(lower)) return 'fast';
+  if (/flash/.test(lower)) return 'fast';
+  if (/lite/.test(lower)) return 'fast';
+  if (/haiku/.test(lower)) return 'fast';
+  return null;
+}
+
+function getModelTag(id) {
+  const cap = getModelCapability(id);
+  if (cap !== 'chat') return cap;
+  return getModelTier(id);
+}
+
+function extractSortVersion(name) {
+  const nums = [];
+  const re = /(\d+)(?:\.(\d+))?/g;
+  let m;
+  while ((m = re.exec(name)) !== null) {
+    nums.push(parseFloat(m[0]));
+  }
+  return nums.length > 0 ? Math.max(...nums) : 0;
+}
+
+function groupAndSortModels(models) {
+  const groups = {};
+  for (const id of models) {
+    const platform = getModelPlatform(id);
+    if (!groups[platform]) groups[platform] = [];
+    groups[platform].push(id);
+  }
+  const tierOrder = { pro: 0, standard: 1, fast: 2 };
+  const capOrder = { chat: 0, reasoning: 1, code: 2, image: 3, audio: 4, embedding: 5, rerank: 6 };
+  for (const platform of Object.keys(groups)) {
+    groups[platform].sort((a, b) => {
+      const capA = capOrder[getModelCapability(a)] ?? 9;
+      const capB = capOrder[getModelCapability(b)] ?? 9;
+      if (capA !== capB) return capA - capB;
+      const tierA = tierOrder[getModelTier(a)] ?? 1.5;
+      const tierB = tierOrder[getModelTier(b)] ?? 1.5;
+      if (tierA !== tierB) return tierA - tierB;
+      return extractSortVersion(b) - extractSortVersion(a);
+    });
+  }
+  return groups;
+}
+
+function filterModelsForRole(models, role) {
+  const filtered = models.filter(id => {
+    if (id === 'all-proxy-models') return false;
+    // The app auto-detects the /responses endpoint; hide duplicate *-responses variants
+    if (/-responses$/.test(id)) return false;
+    return true;
+  });
+  if (!role) return filtered;
+  return filtered.filter(id => {
+    const cap = getModelCapability(id);
+    switch (role) {
+      case 'image':
+        return cap === 'image';
+      case 'chat':
+      case 'fast':
+      case 'thinking':
+        return cap === 'chat' || cap === 'reasoning' || cap === 'code';
+      default:
+        return true;
+    }
+  });
+}
+
+const TAG_COLORS = {
+  pro: { bg: '#FFF3E0', color: '#E65100' },
+  standard: { bg: '#E8EAF6', color: '#283593' },
+  fast: { bg: '#E3F2FD', color: '#1565C0' },
+  image: { bg: '#F3E5F5', color: '#6A1B9A' },
+  audio: { bg: '#FFF8E1', color: '#F57F17' },
+  code: { bg: '#E8F5E9', color: '#2E7D32' },
+  embedding: { bg: '#EFEBE9', color: '#4E342E' },
+  reasoning: { bg: '#FCE4EC', color: '#C62828' },
+  rerank: { bg: '#E0F7FA', color: '#00695C' },
+};
+
 // ─── Shared sub-components ──────────────────────────────────────────────────
 
-function ModelPicker({ value, onChange, providers, label, allowEmpty, emptyLabel }) {
+function ModelPicker({ value, onChange, providers, label, allowEmpty, emptyLabel, role }) {
   const { providerId, modelName } = parseModelRef(value);
+  const selectedProvider = providers.find(p => p.id === providerId);
+  const allModels = selectedProvider?.models || [];
+  const models = filterModelsForRole(allModels, role);
+  const grouped = groupAndSortModels(models);
+  const platformOrder = ['Gemini', 'Claude', 'OpenAI', 'Azure', 'Bedrock', 'Meta', 'Other'];
+  const sortedPlatforms = platformOrder.filter(v => grouped[v]?.length > 0);
+
   return (
     <div style={{ marginBottom: 6 }}>
       {label && <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4, color: 'var(--text-secondary)' }}>{label}</div>}
@@ -144,7 +286,8 @@ function ModelPicker({ value, onChange, providers, label, allowEmpty, emptyLabel
           onChange={(e) => {
             if (!e.target.value) { onChange(''); return; }
             const prov = providers.find(p => p.id === e.target.value);
-            onChange(`${e.target.value}:${prov?.models?.[0] || ''}`);
+            const provModels = filterModelsForRole(prov?.models || [], role);
+            onChange(`${e.target.value}:${provModels?.[0] || ''}`);
           }}
           style={{ flex: 1, fontSize: 12 }}
         >
@@ -164,9 +307,20 @@ function ModelPicker({ value, onChange, providers, label, allowEmpty, emptyLabel
           disabled={!providerId}
         >
           <option value="">Select model...</option>
-          {(providers.find(p => p.id === providerId)?.models || []).map(m => (
-            <option key={m} value={m}>{m}</option>
-          ))}
+          {sortedPlatforms.length > 1
+            ? sortedPlatforms.map(platform => (
+                <optgroup key={platform} label={platform}>
+                  {grouped[platform].map(m => {
+                    const tag = getModelTag(m);
+                    return <option key={m} value={m}>{m}{tag ? ` [${tag}]` : ''}</option>;
+                  })}
+                </optgroup>
+              ))
+            : models.map(m => {
+                const tag = getModelTag(m);
+                return <option key={m} value={m}>{m}{tag ? ` [${tag}]` : ''}</option>;
+              })
+          }
         </select>
       </div>
     </div>
@@ -230,6 +384,51 @@ export default function SettingsModal({ onClose }) {
   const [pptxTemplateLoading, setPptxTemplateLoading] = useState(false);
   const [expandedAdvanced, setExpandedAdvanced] = useState({});
   const [newEndpointInput, setNewEndpointInput] = useState({});
+  const [fetchedModels, setFetchedModels] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('pwc_fetched_models') || 'null'); } catch { return null; }
+  });
+  const [modelFetchStatus, setModelFetchStatus] = useState(null);
+
+  const fetchModelsFromAPI = useCallback(async () => {
+    setModelFetchStatus({ type: 'loading', message: 'Fetching models...' });
+    try {
+      const res = await fetch('/api/ai/models');
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      const modelIds = (data.data || data || [])
+        .map(m => m.id || m.model || m)
+        .filter(id => typeof id === 'string' && id.length > 0);
+      if (modelIds.length === 0) throw new Error('No models returned');
+      localStorage.setItem('pwc_fetched_models', JSON.stringify(modelIds));
+      localStorage.setItem('pwc_fetched_models_ts', Date.now().toString());
+      setFetchedModels(modelIds);
+      setModelFetchStatus({ type: 'success', message: `Loaded ${modelIds.length} models` });
+      const pwcProvider = settings.providers?.find(p => p.id === 'pwc');
+      if (pwcProvider) {
+        const existingSet = new Set(pwcProvider.models);
+        const merged = [...pwcProvider.models];
+        for (const id of modelIds) {
+          if (!existingSet.has(id)) merged.push(id);
+        }
+        if (merged.length > pwcProvider.models.length) {
+          setSettings(s => ({
+            ...s,
+            providers: s.providers.map(p => p.id === 'pwc' ? { ...p, models: merged } : p),
+          }));
+        }
+      }
+      setTimeout(() => setModelFetchStatus(null), 3000);
+    } catch (err) {
+      setModelFetchStatus({ type: 'error', message: err.message });
+    }
+  }, [settings.providers]);
+
+  // Auto-fetch on mount if cache is older than 24h
+  useEffect(() => {
+    const ts = parseInt(localStorage.getItem('pwc_fetched_models_ts') || '0', 10);
+    const staleAfterMs = 24 * 60 * 60 * 1000;
+    if (!ts || Date.now() - ts > staleAfterMs) fetchModelsFromAPI();
+  }, []);
 
   // Ensure roleSettings exists with all keys
   useEffect(() => {
@@ -527,13 +726,37 @@ export default function SettingsModal({ onClose }) {
                   </label>
                 </div>
                 <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label style={{ fontSize: 11 }}>Models</label>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
-                    {p.models.map(m => (
-                      <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--zone3)', borderRadius: 4, padding: '2px 8px', fontSize: 11 }}>
-                        {m}
-                        <span style={{ cursor: 'pointer', color: 'var(--text-muted)', fontWeight: 700 }} onClick={() => removeModelFromProvider(p.id, m)}>×</span>
+                  <label style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    Models
+                    {p.authType === 'server' && (
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ fontSize: 10, padding: '1px 6px', lineHeight: 1.4 }}
+                        onClick={fetchModelsFromAPI}
+                        disabled={modelFetchStatus?.type === 'loading'}
+                      >
+                        {modelFetchStatus?.type === 'loading' ? 'Fetching...' : 'Refresh from API'}
+                      </button>
+                    )}
+                    {modelFetchStatus && (
+                      <span style={{ fontSize: 10, color: modelFetchStatus.type === 'success' ? '#28a745' : modelFetchStatus.type === 'error' ? '#dc3545' : '#17a2b8' }}>
+                        {modelFetchStatus.message}
                       </span>
+                    )}
+                  </label>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
+                    {Object.entries(groupAndSortModels(p.models)).map(([vendor, vendorModels]) => (
+                      vendorModels.map(m => {
+                        const tag = getModelTag(m);
+                        const tagStyle = tag && TAG_COLORS[tag] ? { background: TAG_COLORS[tag].bg, color: TAG_COLORS[tag].color, fontSize: 9, padding: '0 4px', borderRadius: 2, marginLeft: 4 } : null;
+                        return (
+                          <span key={m} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, background: 'var(--zone3)', borderRadius: 4, padding: '2px 8px', fontSize: 11 }}>
+                            {m}
+                            {tagStyle && <span style={tagStyle}>{tag}</span>}
+                            <span style={{ cursor: 'pointer', color: 'var(--text-muted)', fontWeight: 700 }} onClick={() => removeModelFromProvider(p.id, m)}>×</span>
+                          </span>
+                        );
+                      })
                     ))}
                   </div>
                   <div style={{ display: 'flex', gap: 4 }}>
@@ -585,7 +808,7 @@ export default function SettingsModal({ onClose }) {
           <span style={{ fontWeight: 700, fontSize: 14 }}>Default LLM</span>
           <span style={{ fontSize: 10, color: '#888' }}>primary model for all tasks</span>
         </div>
-        <ModelPicker value={settings.model || ''} onChange={v => setSettings({ ...settings, model: v })} providers={providers} />
+        <ModelPicker value={settings.model || ''} onChange={v => setSettings({ ...settings, model: v })} providers={providers} role="chat" />
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
           <div style={{ flex: 1, minWidth: 100 }}>
             <label style={labelSmall}>Reasoning</label>
@@ -624,7 +847,7 @@ export default function SettingsModal({ onClose }) {
           <span style={{ fontWeight: 600, fontSize: 13 }}>Fast Model</span>
           <span style={{ fontSize: 10, color: '#999' }}>template selection, quick assessments</span>
         </div>
-        <ModelPicker value={settings.fastModel || ''} onChange={v => setSettings({ ...settings, fastModel: v })} providers={providers} allowEmpty emptyLabel="Use Default model" />
+        <ModelPicker value={settings.fastModel || ''} onChange={v => setSettings({ ...settings, fastModel: v })} providers={providers} allowEmpty emptyLabel="Use Default model" role="fast" />
         {settings.fastModel && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
             <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => testModelRef(settings.fastModel, 'fast')}>Test</button>
@@ -639,7 +862,7 @@ export default function SettingsModal({ onClose }) {
           <span style={{ fontWeight: 600, fontSize: 13 }}>Thinking Model</span>
           <span style={{ fontSize: 10, color: '#999' }}>deep analysis, document understanding, compilation</span>
         </div>
-        <ModelPicker value={settings.deepAnalysisModel || ''} onChange={v => setSettings({ ...settings, deepAnalysisModel: v })} providers={providers} allowEmpty emptyLabel="Use Default model" />
+        <ModelPicker value={settings.deepAnalysisModel || ''} onChange={v => setSettings({ ...settings, deepAnalysisModel: v })} providers={providers} allowEmpty emptyLabel="Use Default model" role="thinking" />
         {settings.deepAnalysisModel && (
           <>
             <div style={{ marginTop: 4 }}>
@@ -662,7 +885,7 @@ export default function SettingsModal({ onClose }) {
           <span style={{ fontWeight: 600, fontSize: 13 }}>Image Model</span>
           <span style={{ fontSize: 10, color: '#999' }}>image generation (if supported)</span>
         </div>
-        <ModelPicker value={settings.imageModel || ''} onChange={v => setSettings({ ...settings, imageModel: v })} providers={providers} allowEmpty emptyLabel="None configured" />
+        <ModelPicker value={settings.imageModel || ''} onChange={v => setSettings({ ...settings, imageModel: v })} providers={providers} allowEmpty emptyLabel="None configured" role="image" />
         {settings.imageModel && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
             <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => testModelRef(settings.imageModel, 'image')}>Test</button>
@@ -813,9 +1036,9 @@ export default function SettingsModal({ onClose }) {
                       </div>
                     </div>
                   ) : isSpecial ? (
-                    <ModelPicker value={curModel || ''} onChange={v => setRoleValue(role.key, 'model', v)} providers={providers} allowEmpty emptyLabel="Use Default model" />
+                    <ModelPicker value={curModel || ''} onChange={v => setRoleValue(role.key, 'model', v)} providers={providers} allowEmpty emptyLabel="Use Default model" role="chat" />
                   ) : (
-                    <ModelPicker value={curModel || ''} onChange={v => setRoleValue(role.key, 'model', v)} providers={providers} allowEmpty emptyLabel="Inherit" />
+                    <ModelPicker value={curModel || ''} onChange={v => setRoleValue(role.key, 'model', v)} providers={providers} allowEmpty emptyLabel="Inherit" role="chat" />
                   )}
 
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>

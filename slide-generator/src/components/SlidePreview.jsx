@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useSlides } from '../context/SlideContext';
-import { improveSlide, transformSlideToTemplate, transformElementToWidget, hasAnyApiKey, generateImageSlide, extractImageDataUri } from '../services/aiService';
+import { improveSlide, transformSlideToTemplate, transformElementToWidget, hasAnyApiKey, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch } from '../services/aiService';
 import { exportSingleSlideToPPTX, testPPTXCodeGeneration } from '../services/pptxService';
 import { exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
@@ -914,7 +914,6 @@ export default function SlidePreview({ onSwitchToCode }) {
   const handleTemplateSwitch = async (templateId) => {
     if (!templateId || !activeSlide) return;
 
-    // Check provider key for the model that will be used (same logic as router)
     const switchModelRef = state.settings.fastModel || state.settings.model || '';
     const switchProviderId = switchModelRef.includes(':') ? switchModelRef.split(':')[0] : '';
     const switchProvider = (state.settings.providers || []).find(p => p.id === switchProviderId);
@@ -929,15 +928,26 @@ export default function SlidePreview({ onSwitchToCode }) {
     setError('');
 
     try {
-      // Check if it's a custom template
       const customTemplate = state.customTemplates?.find(t => t.id === templateId);
-      // Use fast model for template switching
       const fastSettings = {
         ...state.settings,
         model: state.settings.fastModel || state.settings.model,
       };
-      const transformedHtml = await transformSlideToTemplate(activeSlide.html, templateId, fastSettings, customTemplate);
+
+      const currentIndex = state.slides.findIndex(s => s.id === activeSlide.id);
+      const deckContext = buildDeckContextForSwitch(state.slides, currentIndex);
+      const slidePosition = {
+        slideNumber: currentIndex + 1,
+        totalSlides: state.slides.length,
+      };
+      const userGuidance = slidePrompt.trim() || null;
+
+      const transformedHtml = await transformSlideToTemplate(
+        activeSlide.html, templateId, fastSettings, customTemplate,
+        slidePosition, deckContext, userGuidance,
+      );
       actions.updateSlide(activeSlide.id, { html: transformedHtml, type: templateId, templateId: templateId });
+      if (userGuidance) setSlidePrompt('');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -1122,6 +1132,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         </button>
       </div>
 
+      <div className="slide-main-area">
       <div className="slide-preview-wrapper" ref={previewWrapperRef}>
         {/* Inject CSS */}
         <style>{getBaseCSS() + '\n' + combinedCSS + '\n' + getEditModeCSS(isEditMode) + '\n' + getVisualEditModeCSS(isVisualEditMode) + '\n' + VIBE_AWARE_CSS + '\n:root { ' + getVibeCSS(state.vibe) + ' }'}</style>
@@ -1269,8 +1280,9 @@ export default function SlidePreview({ onSwitchToCode }) {
           </button>
         ))}
       </div>
+      </div>
 
-      {/* Per-Slide AI Prompt */}
+      {/* Per-Slide AI Prompt + Switch Template */}
       <div className="slide-ai-prompt">
         <form className="slide-ai-prompt-form" onSubmit={handleImproveSlide}>
           <input
@@ -1281,14 +1293,14 @@ export default function SlidePreview({ onSwitchToCode }) {
               (activeSlide?.templateId === 'image-full' || activeSlide?.templateId === 'image-content'
                 || (activeSlide?.html && (activeSlide.html.includes('slide-image-full') || activeSlide.html.includes('frame-image'))))
                 ? `Regenerate image...${state.imageVibe && state.imageVibe !== 'default' ? ` [vibe: ${state.imageVibe}]` : ''} (e.g., 'Make it a 2x2 matrix', 'Add more detail')`
-                : "Improve this slide... (e.g., 'Add more data points', 'Make it more visual')"
+                : "Improve or guide template switch... (e.g., 'Keep 3 columns', 'Make it more visual')"
             }
-            disabled={isImproving}
+            disabled={isImproving || isTransforming}
           />
           <button
             type="submit"
             className="btn btn-primary btn-sm"
-            disabled={isImproving || !slidePrompt.trim()}
+            disabled={isImproving || isTransforming || !slidePrompt.trim()}
           >
             {isImproving ? (
               <>
@@ -1306,6 +1318,51 @@ export default function SlidePreview({ onSwitchToCode }) {
               </>
             )}
           </button>
+          <div style={{ position: 'relative' }} ref={templatePickerRef}>
+            <button
+              type="button"
+              className="template-switch-btn"
+              onClick={() => setShowTemplatePicker(!showTemplatePicker)}
+              disabled={isTransforming || isImproving}
+              title={slidePrompt.trim() ? 'Switch template with your guidance' : 'Switch to a different template layout'}
+            >
+              {isTransforming ? (
+                <>
+                  <span className="spinner" style={{ width: 14, height: 14 }} />
+                  Switching...
+                </>
+              ) : (
+                <>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                  Switch
+                </>
+              )}
+            </button>
+            {showTemplatePicker && (
+              <div className="template-switch-popover" style={{ bottom: '100%', top: 'auto', marginBottom: 8 }}>
+                <h4>Switch to Template{slidePrompt.trim() ? ' (with guidance)' : ''}</h4>
+                {slidePrompt.trim() && (
+                  <div style={{ fontSize: 11, color: '#666', padding: '4px 8px', background: 'rgba(142, 30, 30, 0.05)', borderRadius: 4, marginBottom: 8 }}>
+                    Guidance: "{slidePrompt.trim()}"
+                  </div>
+                )}
+                <TemplatePicker
+                  selectedTemplate={null}
+                  onSelect={handleTemplateSwitch}
+                  showFreestyle={false}
+                  compact={false}
+                  title=""
+                  slideHtml={activeSlide?.html}
+                  currentTemplateId={activeSlide?.templateId}
+                />
+              </div>
+            )}
+          </div>
         </form>
         {error && (
           <div style={{ marginTop: 8, fontSize: 12, color: 'var(--danger)' }}>
@@ -1314,49 +1371,8 @@ export default function SlidePreview({ onSwitchToCode }) {
         )}
       </div>
 
-      {/* Bottom bar: Template Switch + Slide Info */}
+      {/* Bottom bar: Slide Info */}
       <div className="preview-bottom-bar">
-        <div style={{ position: 'relative' }} ref={templatePickerRef}>
-          <button
-            className="template-switch-btn"
-            onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-            disabled={isTransforming}
-            title="Switch to a different template layout"
-          >
-            {isTransforming ? (
-              <>
-                <span className="spinner" style={{ width: 14, height: 14 }} />
-                Switching...
-              </>
-            ) : (
-              <>
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
-                  <rect x="3" y="3" width="7" height="7" />
-                  <rect x="14" y="3" width="7" height="7" />
-                  <rect x="14" y="14" width="7" height="7" />
-                  <rect x="3" y="14" width="7" height="7" />
-                </svg>
-                Switch Template
-              </>
-            )}
-          </button>
-
-          {showTemplatePicker && (
-            <div className="template-switch-popover" style={{ bottom: '100%', top: 'auto', marginBottom: 8 }}>
-              <h4>Switch to Template</h4>
-              <TemplatePicker
-                selectedTemplate={null}
-                onSelect={handleTemplateSwitch}
-                showFreestyle={false}
-                compact={false}
-                title=""
-                slideHtml={activeSlide?.html}
-                currentTemplateId={activeSlide?.templateId}
-              />
-            </div>
-          )}
-        </div>
-
         <div className="preview-info">
           <span>Slide {state.slides.findIndex(s => s.id === activeSlide.id) + 1} of {state.slides.length}</span>
           <span>|</span>

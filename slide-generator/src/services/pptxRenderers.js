@@ -387,12 +387,23 @@ export function renderThreeCards(pptx, slideData, slideNum, totalSlides) {
   const gap = 0.22;
 
   cards.forEach((card, i) => {
-    if (i >= 3) return; // Max 3 cards
+    if (i >= 3) return;
 
     const x = startX + i * (cardW + gap);
+    const hasBlockHeader = !!card.querySelector('.block-header');
     const icon = card.querySelector('.card-icon-circle')?.textContent?.trim() || '';
-    const num = card.querySelector('.card-num')?.textContent?.trim() || `0${i + 1}`;
-    const cardTitle = card.querySelector('h3')?.textContent?.trim() || '';
+    const num = card.querySelector('.block-num')?.textContent?.trim()
+      || card.querySelector('.card-num')?.textContent?.trim()
+      || `0${i + 1}`;
+    const cardTitle = (hasBlockHeader
+      ? card.querySelector('.block-header h3')
+      : card.querySelector('h3'))?.textContent?.trim() || '';
+    let listItems = Array.from(card.querySelectorAll(hasBlockHeader ? '.block-body li' : 'li'))
+      .map(li => li.textContent?.trim()).filter(Boolean);
+    if (listItems.length === 0 && hasBlockHeader) {
+      listItems = Array.from(card.querySelectorAll('.block-body p'))
+        .map(p => p.textContent?.trim()).filter(Boolean);
+    }
     const cardBody = card.querySelector('p')?.textContent?.trim() || '';
     const impact = card.querySelector('.impact-box')?.textContent?.trim() || '';
 
@@ -404,59 +415,96 @@ export function renderThreeCards(pptx, slideData, slideNum, totalSlides) {
       rectRadius: 0.05
     });
 
-    // Top border accent
-    slide.addShape('rect', {
-      x, y: cardY, w: cardW, h: 0.07,
-      fill: { color: COLORS.maroon },
-      line: { width: 0 }
-    });
-
-    // Icon circle
-    if (icon) {
-      slide.addShape('ellipse', {
-        x: x + 0.15, y: cardY + 0.2, w: 0.5, h: 0.5,
+    if (hasBlockHeader) {
+      // Maroon header banner with number + title as a single textbox
+      const headerH = 0.45;
+      slide.addText(num + '   ' + cardTitle, {
+        x, y: cardY, w: cardW, h: headerH,
+        fontFace: 'Arial', fontSize: 11, bold: true, color: COLORS.white,
+        valign: 'middle', margin: 0, wrap: false, isTextBox: true,
         fill: { color: COLORS.maroon }
       });
-      slide.addText(icon, {
-        x: x + 0.15, y: cardY + 0.2, w: 0.5, h: 0.5,
-        fontFace: 'Arial', fontSize: 16, color: COLORS.white, align: 'center', valign: 'middle'
-      });
-    }
 
-    // Number
-    slide.addText(num, {
-      x: x + cardW - 0.6, y: cardY + 0.25, w: 0.5, h: 0.4,
-      fontFace: 'Georgia', fontSize: 14, color: COLORS.meta, align: 'right'
-    });
+      const bulletY = cardY + headerH + 0.12;
+      const bulletH = cardH - headerH - 0.2;
+      if (listItems.length > 0) {
+        slide.addText(listItems.join('\n'), {
+          x: x + 0.15, y: bulletY, w: cardW - 0.3, h: bulletH,
+          fontFace: 'Arial', fontSize: 10, color: COLORS.secondary, valign: 'top',
+          bullet: true, paraSpaceAfter: 6
+        });
+      } else {
+        const bodyText = card.querySelector('.block-body')?.textContent?.trim() || '';
+        if (bodyText) {
+          slide.addText(bodyText, {
+            x: x + 0.15, y: bulletY, w: cardW - 0.3, h: bulletH,
+            fontFace: 'Arial', fontSize: 10, color: COLORS.secondary, valign: 'top'
+          });
+        }
+      }
+    } else {
+      // Top border accent
+      slide.addShape('rect', {
+        x, y: cardY, w: cardW, h: 0.07,
+        fill: { color: COLORS.maroon },
+        line: { width: 0 }
+      });
 
-    // Card title
-    if (cardTitle) {
-      slide.addText(cardTitle, {
-        x: x + 0.15, y: cardY + 0.85, w: cardW - 0.3, h: 0.5,
-        fontFace: 'Arial', fontSize: 14, color: COLORS.main, bold: true
-      });
-    }
+      // Icon circle
+      if (icon) {
+        slide.addShape('ellipse', {
+          x: x + 0.15, y: cardY + 0.2, w: 0.5, h: 0.5,
+          fill: { color: COLORS.maroon }
+        });
+        slide.addText(icon, {
+          x: x + 0.15, y: cardY + 0.2, w: 0.5, h: 0.5,
+          fontFace: 'Arial', fontSize: 16, color: COLORS.white, align: 'center', valign: 'middle'
+        });
+      }
 
-    // Card body
-    if (cardBody) {
-      slide.addText(cardBody, {
-        x: x + 0.15, y: cardY + 1.4, w: cardW - 0.3, h: 2.0,
-        fontFace: 'Arial', fontSize: 11, color: COLORS.secondary, valign: 'top'
+      // Number
+      slide.addText(num, {
+        x: x + cardW - 0.7, y: cardY + 0.2, w: 0.6, h: 0.4,
+        fontFace: 'Georgia', fontSize: 14, color: COLORS.meta, align: 'right'
       });
-    }
 
-    // Impact box at bottom
-    if (impact) {
-      slide.addShape('roundRect', {
-        x: x + 0.1, y: cardY + cardH - 0.8, w: cardW - 0.2, h: 0.6,
-        fill: { color: COLORS.rose },
-        line: { width: 0 },
-        rectRadius: 0.03
-      });
-      slide.addText(impact, {
-        x: x + 0.15, y: cardY + cardH - 0.75, w: cardW - 0.3, h: 0.5,
-        fontFace: 'Arial', fontSize: 10, color: COLORS.maroon, align: 'center', valign: 'middle'
-      });
+      // Card title
+      if (cardTitle) {
+        slide.addText(cardTitle, {
+          x: x + 0.15, y: cardY + 0.85, w: cardW - 0.3, h: 0.5,
+          fontFace: 'Arial', fontSize: 14, color: COLORS.main, bold: true
+        });
+      }
+
+      // Card body: prefer list items, fall back to paragraph
+      const bodyY = cardY + 1.4;
+      const bodyH = impact ? 1.6 : 2.5;
+      if (listItems.length > 0) {
+        slide.addText(listItems.join('\n'), {
+          x: x + 0.15, y: bodyY, w: cardW - 0.3, h: bodyH,
+          fontFace: 'Arial', fontSize: 10, color: COLORS.secondary, valign: 'top',
+          bullet: true, paraSpaceAfter: 6
+        });
+      } else if (cardBody) {
+        slide.addText(cardBody, {
+          x: x + 0.15, y: bodyY, w: cardW - 0.3, h: bodyH,
+          fontFace: 'Arial', fontSize: 11, color: COLORS.secondary, valign: 'top'
+        });
+      }
+
+      // Impact box at bottom
+      if (impact) {
+        slide.addShape('roundRect', {
+          x: x + 0.1, y: cardY + cardH - 0.8, w: cardW - 0.2, h: 0.6,
+          fill: { color: COLORS.rose },
+          line: { width: 0 },
+          rectRadius: 0.03
+        });
+        slide.addText(impact, {
+          x: x + 0.15, y: cardY + cardH - 0.75, w: cardW - 0.3, h: 0.5,
+          fontFace: 'Arial', fontSize: 10, color: COLORS.maroon, align: 'center', valign: 'middle'
+        });
+      }
     }
   });
 

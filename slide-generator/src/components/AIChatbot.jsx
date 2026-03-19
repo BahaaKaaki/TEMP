@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch } from '../services/aiService';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
@@ -692,14 +692,8 @@ export default function AIChatbot() {
       addMessage('assistant', 'Storyline rejected. You can describe what you\'d like changed and I\'ll re-plan.');
     };
 
-    // Single-select: clicking an option deselects siblings in the same question block
+    // Multi-select: clicking an option toggles it independently
     window.__toggleClarificationChip = (btn) => {
-      const block = btn.closest('.clarification-question-block');
-      if (block) {
-        block.querySelectorAll('.clarification-option-card.selected, .clarification-chip.selected').forEach(b => {
-          if (b !== btn) b.classList.remove('selected');
-        });
-      }
       btn.classList.toggle('selected');
     };
 
@@ -2369,11 +2363,12 @@ export default function AIChatbot() {
                 ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
               });
             } else if (pendingSlides.length === 0) {
-              // Freestyle - pass layoutGuidance from router step if available
-              const freestyleContextInfo = step.layoutGuidance
-                ? { layoutGuidance: step.layoutGuidance }
-                : null;
-              const newSlides = await generateSlides(enrichedStepPrompt, stepSettings, 1, freshState.slides, null, null, freestyleContextInfo);
+              // Freestyle - build full context (contextFromStep, contextSlides) same as template path
+              const freestyleContext = buildContextForStep(step, enrichedStepPrompt, freshState);
+              const freestyleContextInfo = {
+                ...(step.layoutGuidance ? { layoutGuidance: step.layoutGuidance } : {}),
+              };
+              const newSlides = await generateSlides(freestyleContext, stepSettings, 1, freshState.slides, null, null, freestyleContextInfo);
               for (const slide of newSlides) {
                 const title = extractTitleFromHTML(slide.html) || slide.title || 'Untitled Slide';
                 pendingSlides.push({
@@ -2381,6 +2376,7 @@ export default function AIChatbot() {
                   html: slide.html,
                   type: slide.type,
                   summary: generateSlideSummary(slide.html, slide.type, title),
+                  ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
                   ...(step.sectionTracker ? { sectionLabel: step.sectionTracker } : {}),
                   ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
                 });
@@ -2556,12 +2552,14 @@ export default function AIChatbot() {
             });
 
             const switchInstruction = step.instruction || 'Keep the same content but use the new template layout';
+            const deckCtx = buildDeckContextForSwitch(freshState.slides, slideIdx);
             const transformedHtml = await improveSlideWithTemplate(
               slideToSwitch.html,
               switchInstruction,
               targetTemplate,
               settings,
-              { slideNumber: slideIdx + 1, totalSlides: freshState.slides.length }
+              { slideNumber: slideIdx + 1, totalSlides: freshState.slides.length },
+              deckCtx,
             );
 
             const isValid = transformedHtml &&
@@ -2814,6 +2812,7 @@ export default function AIChatbot() {
                 html: slide.html,
                 type: slide.type,
                 summary: generateSlideSummary(slide.html, slide.type, title),
+                ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               };
@@ -2888,11 +2887,15 @@ export default function AIChatbot() {
             // "freestyle" is not a real template — treat it as null
             const isFreestyleBatch = !templateId || templateId === 'freestyle';
             const template = isFreestyleBatch ? null : SLIDE_TEMPLATES[templateId];
-            const contextForAI = template ? buildContextForStep(step, enrichedPrompt, freshState) : enrichedPrompt;
+            if (!isFreestyleBatch && !template) {
+              console.warn(`[SmartAction] Router picked templateId "${templateId}" but it was not found in SLIDE_TEMPLATES — falling through to freestyle`);
+            }
+            // Always build full context (contextFromStep, contextSlides) for both template and freestyle
+            const contextForAI = buildContextForStep(step, enrichedPrompt, freshState);
 
             createBatch.push({
               stepIndex, actualIndex, step, template,
-              enrichedPrompt: template ? contextForAI : enrichedPrompt,
+              enrichedPrompt: contextForAI,
               settings: batchStepSettings,
             });
 
@@ -3702,6 +3705,7 @@ Original request: ${userPrompt}`;
                     html: slide.html,
                     type: slide.type,
                     summary: slide.summary,
+                    ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
                   });
                 }
 
@@ -3814,6 +3818,7 @@ Original request: ${userPrompt}`;
                     type: slide.type,
                     templateId: slide.templateId,
                     summary: slide.summary,
+                    ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
                   });
                 }
 
@@ -3849,6 +3854,7 @@ Original request: ${userPrompt}`;
                       type: slide.type || 'freestyle',
                       templateId: 'freestyle',
                       summary: slide.summary || instruction,
+                      ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
                     });
                   }
                   addMessage('assistant', `➕ Created slide: "${freestyleSlides[0]?.title || 'Untitled'}"`);
@@ -3899,13 +3905,14 @@ Original request: ${userPrompt}`;
                   break;
                 }
 
-                // Use improveSlideWithTemplate which properly converts to new template
+                const legacyDeckCtx = buildDeckContextForSwitch(switchState.slides, slideIndex);
                 const transformedHtml = await improveSlideWithTemplate(
                   slide.html,
                   instruction,
                   template,
                   switchState.settings,
-                  { slideNumber: slideIndex + 1, totalSlides: switchState.slides.length }
+                  { slideNumber: slideIndex + 1, totalSlides: switchState.slides.length },
+                  legacyDeckCtx,
                 );
                 if (isAborted()) break;
 
@@ -4187,6 +4194,7 @@ Original request: ${userPrompt}`;
                         html: slides[0].html,
                         type: slides[0].type,
                         summary: desc,
+                        ...(slides[0].customCSS ? { customCSS: slides[0].customCSS } : {}),
                       });
                     }
                     setProgress(prev => ({
@@ -4205,6 +4213,7 @@ Original request: ${userPrompt}`;
                       html: slide.html,
                       type: slide.type,
                       summary: slide.summary,
+                      ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
                     });
                   }
                   addMessage('assistant', `➕ Created ${slides.length} new slides about "${topic}".`);

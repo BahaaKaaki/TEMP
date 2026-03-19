@@ -3156,20 +3156,26 @@
   color: var(--secondary);
 }
 
-.slide .exec-h-right ul {
+.slide .frame .exec-h-right ul {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
 }
 
-.slide .exec-h-right li {
+.slide .frame .exec-h-right ul > li {
   font: 400 11px/1.5 Arial, sans-serif;
   color: var(--secondary);
   padding: 3px 0 3px 14px;
   position: relative;
+  background: none;
+  border: none;
+  border-radius: 0;
 }
 
-.slide .exec-h-right li::before {
+.slide .frame .exec-h-right ul > li::before {
   content: '';
   position: absolute;
   left: 0;

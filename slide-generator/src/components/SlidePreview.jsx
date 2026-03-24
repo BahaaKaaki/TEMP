@@ -216,19 +216,37 @@ export default function SlidePreview({ onSwitchToCode }) {
   const handleZoomFit = useCallback(() => {
     if (previewWrapperRef.current) {
       const container = previewWrapperRef.current;
-      const containerWidth = container.clientWidth - 48; // padding
-      const containerHeight = container.clientHeight - 48;
+      const style = getComputedStyle(container);
+      const padX = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+      const padY = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom);
+      const containerWidth = container.clientWidth - padX;
+      const containerHeight = container.clientHeight - padY;
       const slideWidth = 960;
       const slideHeight = 540;
       const fitZoom = Math.min(containerWidth / slideWidth, containerHeight / slideHeight);
-      // Round to 2 decimal places
-      setZoom(Math.round(fitZoom * 100) / 100);
+      setZoom(Math.max(0.1, Math.round(fitZoom * 100) / 100));
     }
   }, []);
 
   const handleZoomReset = useCallback(() => {
     setZoom(DEFAULT_ZOOM);
   }, []);
+
+  // Auto-fit zoom when the preview container appears, resizes, or the active slide changes
+  useEffect(() => {
+    const wrapper = previewWrapperRef.current;
+    if (!wrapper) return;
+
+    const timer = setTimeout(() => handleZoomFit(), 50);
+
+    const ro = new ResizeObserver(() => handleZoomFit());
+    ro.observe(wrapper);
+
+    return () => {
+      clearTimeout(timer);
+      ro.disconnect();
+    };
+  }, [handleZoomFit, activeSlide?.id]);
 
   // Context menu handlers for widget insertion
   const handleContextMenu = useCallback((e) => {

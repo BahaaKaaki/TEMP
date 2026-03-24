@@ -114,6 +114,16 @@ Left column (40-50%) holds a summary, key takeaway, or a single large metric. Ri
 
 CSS grid with 2-3 columns, auto rows. Each cell is a small card with an icon-like indicator (a colored dot, a number badge, or an accent-bordered box), a bold label, and a short description. Good for feature lists, capability maps, evaluation criteria.
 
+## Source citations
+
+When the slide content references data, statistics, or research findings, add a brief source attribution in the footer. Replace the brand span with the source:
+
+```html
+<footer class="footer"><span>Source: IEA World Energy Outlook, 2025</span><span>[Page#]</span></footer>
+```
+
+Keep sources to **5-15 words maximum**. Examples: "Source: Bloomberg NEF", "McKinsey Global Institute, 2024", "Company annual report, FY2025". Never write full sentences in the source line. If no external data is cited, keep the brand name in the footer instead.
+
 ## Anti-patterns -- DO NOT do these
 
 1. **Plain bullet list.** Never output a bare `<ul><li>` list with no visual treatment. Every list item needs structure: background, border, icon/number marker, or card wrapper.

@@ -44,3 +44,15 @@ deploy-temp/
 *.zip
 backend/public/
 app-logs/
+
+# BMAD / project docs
+_bmad/
+CHAT_CONTEXT.md
+PROJECT_REFERENCE.md
+
+# Cursor
+.cursor/
+
+# Temp diff files
+temp_diff*.txt
+temp_stash_diff*.txt

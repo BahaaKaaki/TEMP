@@ -520,7 +520,7 @@ export default function SlideList() {
 
                     {/* Slide thumbnail - key forces re-render on content change */}
                     <div className="slide-item-thumbnail">
-                      <SlideThumbnail html={slide.html} vibe={state.vibe} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id}-${slide.updatedAt || ''}`} />
+                      <SlideThumbnail html={slide.html} customCSS={slide.customCSS} vibe={state.vibe} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id}-${slide.updatedAt || ''}`} />
                       {/* Child indicator */}
                       {slide.hasChildren && (
                         <div className="slide-children-badge" title="Has sub-slides">
@@ -695,19 +695,19 @@ function injectSectionAttribute(html, sectionLabel) {
 }
 
 // Mini thumbnail component (scaled down)
-function SlideThumbnail({ html, vibe = 'default', darkMode = false, sectionLabel }) {
-  // Ensure section-divider slides have the blank master class
+function SlideThumbnail({ html, customCSS, vibe = 'default', darkMode = false, sectionLabel }) {
   let safeHtml = html;
   if (safeHtml && safeHtml.includes('section-divider-slide') && !safeHtml.includes('master-blank')) {
     safeHtml = safeHtml.replace(/class="slide([^"]*)"/, 'class="slide master-blank$1"');
   }
   let vibeHtml = injectVibeAttribute(safeHtml, vibe, darkMode);
   vibeHtml = injectSectionAttribute(vibeHtml, sectionLabel);
+  const cssTag = customCSS ? `<style>${customCSS}</style>` : '';
   return (
     <div className="thumbnail-wrapper">
       <div
         className="thumbnail-slide"
-        dangerouslySetInnerHTML={{ __html: vibeHtml }}
+        dangerouslySetInnerHTML={{ __html: cssTag + vibeHtml }}
       />
     </div>
   );

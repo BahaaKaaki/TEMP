@@ -411,29 +411,30 @@ export default function TemplatePicker({
       const viewportHeight = window.innerHeight;
       const viewportWidth = window.innerWidth;
 
-      // Position dropdown above the trigger button if near bottom of screen
-      // Leave room for the preview panel (420px wide) to the right
+      const dropdownHeight = Math.min(400, viewportHeight - 80);
       const spaceBelow = viewportHeight - rect.bottom;
-      const dropdownHeight = Math.min(400, viewportHeight - 120);
+      const spaceAbove = rect.top;
 
-      let top, bottom;
-      if (spaceBelow < dropdownHeight + 20) {
-        // Position above the trigger - dropdown opens upward
-        bottom = viewportHeight - rect.top + 8;
-        top = 'auto';
-      } else {
-        // Position below the trigger
+      let top, bottom, maxHeight;
+      if (spaceBelow >= dropdownHeight + 20) {
         top = rect.bottom + 8;
         bottom = 'auto';
+        maxHeight = Math.min(dropdownHeight, viewportHeight - top - 20);
+      } else if (spaceAbove >= dropdownHeight + 20) {
+        bottom = viewportHeight - rect.top + 8;
+        top = 'auto';
+        maxHeight = Math.min(dropdownHeight, spaceAbove - 20);
+      } else {
+        // Neither side has enough room -- center vertically and cap height
+        top = Math.max(20, (viewportHeight - dropdownHeight) / 2);
+        bottom = 'auto';
+        maxHeight = viewportHeight - 40;
       }
 
-      // Calculate right position to keep preview panel visible
-      // Preview panel is 420px, dropdown is ~240px, gap is 8px
-      const totalWidth = 240 + 8 + 420;
       const rightEdge = viewportWidth - rect.right;
-      const right = Math.max(20, Math.min(rightEdge - 10, viewportWidth - totalWidth - 20));
+      const right = Math.max(20, Math.min(rightEdge - 10, viewportWidth - 680));
 
-      setDropdownPosition({ top, bottom, right });
+      setDropdownPosition({ top, bottom, right, maxHeight });
     }
   }, [isOpen, compact]);
 
@@ -582,6 +583,8 @@ export default function TemplatePicker({
                 top: dropdownPosition.top === 'auto' ? 'auto' : dropdownPosition.top,
                 bottom: dropdownPosition.bottom === 'auto' ? 'auto' : dropdownPosition.bottom,
                 right: dropdownPosition.right,
+                maxHeight: dropdownPosition.maxHeight || 400,
+                overflow: 'auto',
               }}
             >
               <div className="template-picker-dropdown">

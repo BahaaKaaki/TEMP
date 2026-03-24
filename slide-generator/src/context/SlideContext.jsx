@@ -59,7 +59,7 @@ const initialState = {
       },
     ],
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:vertex_ai.gemini-3.1-pro-preview',
+    model: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
     fastModel: 'pwc:vertex_ai.gemini-3-pro-preview',
     // Agent-mode router settings
     routerModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',

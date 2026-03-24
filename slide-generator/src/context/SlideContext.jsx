@@ -302,6 +302,7 @@ function loadState() {
         'pwc:vertex_ai.anthropic.claude-opus-4-6',
         'pwc:openai.gpt-5.2-2025-12-11',
         'pwc:vertex_ai.gemini-3-pro-preview',
+        'pwc:vertex_ai.gemini-3.1-pro-preview',
       ]);
       const migrateDefault = (val, fallback) => {
         const migrated = migrateModelRef(val) || fallback;

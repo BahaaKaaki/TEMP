@@ -2982,7 +2982,15 @@ body {
   overflow: hidden;
 }
 
-.slide-main-area > .slide-preview-wrapper {
+.slide-content-column {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.slide-content-column > .slide-preview-wrapper {
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -3036,7 +3044,7 @@ body {
   width: 100%;
   background: white;
   border-radius: 8px;
-  padding: 8px 80px 8px 12px;
+  padding: 8px 12px;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   margin-top: 6px;
   flex-shrink: 0;

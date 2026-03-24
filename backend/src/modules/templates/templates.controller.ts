@@ -1,8 +1,64 @@
-import { Response, NextFunction } from 'express';
+import fs from 'fs';
+import path from 'path';
+import { Request, Response, NextFunction } from 'express';
 import { z } from 'zod';
 import * as templateService from './templates.service';
 import { AuthRequest } from '../../common/types/index';
 import { ApiError } from '../../common/middleware/error.middleware';
+
+const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+const PPTX_MASTER_PATH = path.join(UPLOADS_DIR, 'pptx-master.pptx');
+const PPTX_META_PATH = path.join(UPLOADS_DIR, 'pptx-master.meta.json');
+
+type MulterRequest = Request & { file?: Express.Multer.File };
+
+/** POST /api/templates/pptx-master — after multer saves pptx-master.pptx */
+export function uploadPptxMaster(req: Request, res: Response, next: NextFunction): void {
+  try {
+    const file = (req as MulterRequest).file;
+    if (!file) {
+      res.status(400).json({ error: 'No file uploaded' });
+      return;
+    }
+    const meta = { fileName: file.originalname, size: file.size };
+    fs.writeFileSync(PPTX_META_PATH, JSON.stringify(meta), 'utf8');
+    res.json({ success: true, fileName: file.originalname, size: file.size });
+  } catch (error) {
+    next(error);
+  }
+}
+
+/** GET /api/templates/pptx-master */
+export function downloadPptxMaster(_req: Request, res: Response, next: NextFunction): void {
+  try {
+    if (!fs.existsSync(PPTX_MASTER_PATH)) {
+      res.status(404).json({ error: 'No PPTX master template uploaded' });
+      return;
+    }
+    let displayName = 'pptx-master.pptx';
+    try {
+      if (fs.existsSync(PPTX_META_PATH)) {
+        const raw = fs.readFileSync(PPTX_META_PATH, 'utf8');
+        const meta = JSON.parse(raw) as { fileName?: string };
+        if (meta.fileName && typeof meta.fileName === 'string') {
+          displayName = meta.fileName;
+        }
+      }
+    } catch {
+      // ignore invalid meta
+    }
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+    );
+    res.setHeader('X-Pptx-Template-Name', encodeURIComponent(displayName));
+    res.sendFile(path.resolve(PPTX_MASTER_PATH), (err) => {
+      if (err) next(err);
+    });
+  } catch (error) {
+    next(error);
+  }
+}
 
 // Validation schemas
 const createTemplateSchema = z.object({

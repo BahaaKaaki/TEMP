@@ -326,7 +326,7 @@ body {
 }
 
 .vibe-selector-btn {
-  display: flex;
+  display: none !important;
   align-items: center;
   gap: 6px;
 }
@@ -3040,6 +3040,8 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   margin-top: 6px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .slide-ai-prompt-form {
@@ -5774,7 +5776,7 @@ body {
   padding: 16px;
   width: 500px;
   max-width: calc(100vw - 40px);
-  z-index: 1000;
+  z-index: 1050;
   max-height: 70vh;
   overflow-y: auto;
 }
@@ -5788,7 +5790,7 @@ body {
 
 /* Vibe Switch Button (similar to template switch) */
 .vibe-switch-btn {
-  display: flex;
+  display: none !important;
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
@@ -5825,6 +5827,7 @@ body {
 
 /* Vibe switch popover */
 .vibe-switch-popover {
+  display: none !important;
   position: absolute;
   top: 100%;
   left: 0;
@@ -5929,6 +5932,7 @@ body {
 
 /* Header Vibe Menu (global vibe selector) */
 .vibe-header-menu {
+  display: none !important;
   position: absolute;
   top: 100%;
   left: 0;

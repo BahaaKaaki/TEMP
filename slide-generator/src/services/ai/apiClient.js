@@ -311,10 +311,11 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
     const endpoint = creds.apiEndpoint || '(unknown)';
     const hostMatch = endpoint.match(/\/\/([^/]+)/);
     const host = hostMatch ? hostMatch[1] : endpoint;
+    const modelLabel = creds.model || '(unknown model)';
     const connErr = new Error(
       lastError?.status >= 500
-        ? `Server error ${lastError.status} from ${host} after ${MAX_RETRIES + 1} attempts. The API server may be temporarily unavailable.`
-        : `Could not connect to ${host}. Check your network connection, VPN, and that the endpoint URL is correct. (${lastError?.message || 'unknown error'})`
+        ? `Server error ${lastError.status} from ${host} (model: ${modelLabel}) after ${MAX_RETRIES + 1} attempts. The API server may be temporarily unavailable.`
+        : `Could not connect to ${host} (model: ${modelLabel}). Check your network connection, VPN, and that the endpoint URL is correct. (${lastError?.message || 'unknown error'})`
     );
     connErr.status = lastError?.status;
     throw connErr;

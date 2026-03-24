@@ -12,6 +12,52 @@ const DB_NAME = 'pptxTemplateDB';
 const DB_STORE = 'templates';
 const DB_KEY = 'baseTemplate';
 
+// ── Server sync (persists across browsers when backend is available) ─────────
+
+/**
+ * POST multipart field "template" to store the PPTX master on the server.
+ * @param {ArrayBuffer} arrayBuffer
+ * @param {string} fileName
+ * @returns {Promise<{ success: boolean, fileName: string, size: number }>}
+ */
+export async function uploadTemplateToServer(arrayBuffer, fileName) {
+  const blob = new Blob([arrayBuffer], {
+    type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  });
+  const form = new FormData();
+  form.append('template', blob, fileName || 'template.pptx');
+  const res = await fetch('/api/templates/pptx-master', { method: 'POST', body: form });
+  if (!res.ok) {
+    const text = await res.text();
+    let msg = text;
+    try {
+      const j = JSON.parse(text);
+      msg = typeof j.error === 'string' ? j.error : j.error?.message || text;
+    } catch {
+      // keep text
+    }
+    throw new Error(typeof msg === 'string' ? msg : text || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+/**
+ * GET stored PPTX master from the server.
+ * @returns {Promise<{ data: ArrayBuffer, fileName: string } | null>}
+ */
+export async function loadTemplateFromServer() {
+  const res = await fetch('/api/templates/pptx-master', { method: 'GET' });
+  if (res.status === 404) return null;
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text || `HTTP ${res.status}`);
+  }
+  const data = await res.arrayBuffer();
+  const enc = res.headers.get('X-Pptx-Template-Name');
+  const fileName = enc ? decodeURIComponent(enc) : 'pptx-master.pptx';
+  return { data, fileName };
+}
+
 // ── IndexedDB helpers ──────────────────────────────────────────────────────
 
 function openDB() {
@@ -25,7 +71,7 @@ function openDB() {
 
 export async function saveTemplateToStorage(arrayBuffer, fileName) {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
+  await new Promise((resolve, reject) => {
     const tx = db.transaction(DB_STORE, 'readwrite');
     tx.objectStore(DB_STORE).put({ data: arrayBuffer, fileName, savedAt: Date.now() }, DB_KEY);
     tx.oncomplete = () => {
@@ -34,9 +80,33 @@ export async function saveTemplateToStorage(arrayBuffer, fileName) {
     };
     tx.onerror = () => reject(tx.error);
   });
+  try {
+    await uploadTemplateToServer(arrayBuffer, fileName);
+  } catch (e) {
+    console.warn('[PPTX Template] Server upload failed:', e.message);
+  }
 }
 
 export async function loadTemplateFromStorage() {
+  try {
+    const serverTemplate = await loadTemplateFromServer();
+    if (serverTemplate) {
+      console.log(
+        '[PPTX Template] Loaded template from server:',
+        serverTemplate.fileName,
+        serverTemplate.data?.byteLength,
+        'bytes'
+      );
+      return {
+        data: serverTemplate.data,
+        fileName: serverTemplate.fileName,
+        savedAt: Date.now(),
+      };
+    }
+  } catch (e) {
+    console.warn('[PPTX Template] Server template unavailable, trying local:', e.message);
+  }
+
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(DB_STORE, 'readonly');

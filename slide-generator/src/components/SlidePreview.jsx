@@ -1239,12 +1239,12 @@ export default function SlidePreview({ onSwitchToCode }) {
       {/* Quick Action Buttons */}
       <div className="slide-quick-actions">
         {[
-          { label: 'Inspect & Fix', icon: '🔍', prompt: 'Inspect this slide for visual issues: overlapping elements, text overflow, clipped content, misaligned items. Fix ALL layout issues found. DO NOT change any text content — preserve every word exactly as-is. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Fix Overlap', icon: '📐', prompt: 'Fix overlapping or overflowing elements. Adjust spacing, reduce font sizes, or simplify the visual layout so everything fits within 890×353px. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Fill Space', icon: '↕️', prompt: 'The slide has too much empty space. Expand card heights, increase spacing, add visual breathing room. DO NOT add new text content or change existing text — only adjust the visual sizing and spacing. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Lighter', icon: '✨', prompt: 'Make the visual design lighter and more minimal. Reduce decorative elements, increase white space, simplify borders/shadows. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Denser', icon: '📐', prompt: 'Make the layout more compact and space-efficient. Tighten spacing between elements, reduce padding, use the available frame space more efficiently. DO NOT change, add, or remove any text content — only adjust visual density and spacing. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Bolder', icon: '💪', prompt: 'Make the visual design more impactful. Use stronger contrast, bigger numbers, bolder visual weight. DO NOT change any text content — only adjust visual styling and emphasis. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Auto-Fix', icon: '🔍', prompt: 'Inspect this slide for visual issues: overlapping elements, text overflow, clipped content, misaligned items. Fix ALL layout issues found. DO NOT change any text content — preserve every word exactly as-is. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Fix Overlaps', icon: '📐', prompt: 'Fix overlapping or overflowing elements. Adjust spacing, reduce font sizes, or simplify the visual layout so everything fits within the frame. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Expand', icon: '↕️', prompt: 'The slide has too much empty space. Expand card heights, increase spacing, add visual breathing room, use the full frame area. DO NOT add new text content or change existing text — only adjust the visual sizing and spacing. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Simplify', icon: '✨', prompt: 'Make the visual design lighter and more minimal. Reduce decorative elements, increase white space, simplify borders/shadows. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Compact', icon: '📏', prompt: 'Make the layout more compact and space-efficient. Tighten spacing between elements, reduce padding, use the available frame space more efficiently. DO NOT change, add, or remove any text content — only adjust visual density and spacing. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Emphasize', icon: '💪', prompt: 'Make the visual design more impactful. Use stronger contrast, bigger numbers, bolder visual weight. DO NOT change any text content — only adjust visual styling and emphasis. Keep h1, h2, h3, h4 text identical.' },
         ].map(({ label, icon, prompt }) => (
           <button
             key={label}

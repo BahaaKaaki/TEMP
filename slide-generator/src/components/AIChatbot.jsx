@@ -2310,7 +2310,7 @@ export default function AIChatbot() {
                 }
               } catch (imgErr) {
                 console.warn(`[SmartAction] Image generation failed, falling back to freestyle:`, imgErr.message);
-                // Fall through to freestyle below
+                addMessage('assistant', `⚠️ Image generation failed: ${imgErr.message}. Using text layout instead.`);
               }
             }
 
@@ -2734,8 +2734,13 @@ export default function AIChatbot() {
             const instr = b.step.instruction || '';
             const titleMatch = instr.match(/TITLE:\s*(.+)/i);
             const subMatch = instr.match(/SUBTITLE:\s*(.+)/i);
-            const parsedTitle = titleMatch?.[1]?.split('\n')[0]?.trim() || '';
-            const parsedSubtitle = subMatch?.[1]?.trim() || '';
+            let parsedTitle = titleMatch?.[1]?.split('\n')[0]?.trim() || '';
+            let parsedSubtitle = subMatch?.[1]?.trim() || '';
+            // Fallback: use the full instruction as title when no TITLE: marker
+            if (!parsedTitle && instr) {
+              const cleaned = instr.replace(/SUBTITLE:\s*.*/i, '').trim();
+              parsedTitle = cleaned.split('\n')[0].trim().substring(0, 80);
+            }
 
             let slideData;
             if (b.step.templateId === 'cover') {
@@ -5451,6 +5456,18 @@ Original request: ${userPrompt}`;
                 </svg>
                 Image
               </button>
+              {/* Style preference */}
+              <select
+                className="chatbot-mode-select"
+                value={state.settings.slideStylePreference || 'auto'}
+                onChange={(e) => actions.updateSettings({ slideStylePreference: e.target.value })}
+                title="Slide style preference"
+                style={{ fontSize: 11, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', marginLeft: 4 }}
+              >
+                <option value="auto">Auto</option>
+                <option value="templates">Templates</option>
+                <option value="freestyle">Freestyle</option>
+              </select>
               {state.settings.enableAgenticMode && (
                 <>
                   <button

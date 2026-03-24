@@ -1491,59 +1491,6 @@ export const SLIDE_TEMPLATES = {
 </div>`,
   },
 
-  executiveSummary: {
-    id: 'executiveSummary',
-    title: 'Executive Summary',
-    type: 'executiveSummary',
-    master: 'standard',
-    description: 'Executive summary with key themes in a clean grid',
-    note: 'Clean grid of section themes with burgundy titles and brief insights. Use to preview deck structure or summarize key findings. Works for 2-6 items.',
-    thumbnail: 'executiveSummary',
-    category: 'Opening',
-    html: `<div class="slide master-standard">
-  <h1 class="title">[Executive summary heading]</h1>
-  <h2 class="subtitle">[Governing thought]</h2>
-  <div class="frame">
-    <div class="exec-summary-grid">
-      <div class="exec-summary-cell">
-        <h4>[Insight-driven phrase, e.g. "Digital up 40% YoY"]</h4>
-        <p>[Key insight with data]</p>
-        <p>[Supporting detail]</p>
-      </div>
-      <div class="exec-summary-cell">
-        <h4>[Insight phrase, e.g. "Margins squeezed by input costs"]</h4>
-        <p>[Key insight with data]</p>
-        <p>[Supporting detail]</p>
-      </div>
-      <div class="exec-summary-cell">
-        <h4>[Insight phrase, e.g. "Three levers to unlock growth"]</h4>
-        <p>[Key insight with data]</p>
-        <p>[Supporting detail]</p>
-      </div>
-      <div class="exec-summary-cell">
-        <h4>[Insight phrase, e.g. "Talent gap widening in key roles"]</h4>
-        <p>[Key insight with data]</p>
-        <p>[Supporting detail]</p>
-      </div>
-      <div class="exec-summary-cell">
-        <h4>[Insight phrase]</h4>
-        <p>[Key insight with data]</p>
-        <p>[Supporting detail]</p>
-      </div>
-      <div class="exec-summary-cell">
-        <h4>[Insight phrase]</h4>
-        <p>[Key insight with data]</p>
-        <p>[Supporting detail]</p>
-      </div>
-    </div>
-  </div>
-  <footer class="footer">
-    <span>[Company]</span>
-    <span>1 / 1</span>
-  </footer>
-</div>`,
-  },
-
   thankYou: {
     id: 'thankYou',
     title: 'Thank You',

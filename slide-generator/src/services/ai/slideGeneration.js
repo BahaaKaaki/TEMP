@@ -925,6 +925,7 @@ export function extractTitleFromHTML(html) {
     /<div[^>]*class=["'][^"']*card-title[^"']*["'][^>]*>([^<]+)<\/div>/i,
     // Section headers
     /<div[^>]*class=["'][^"']*section-header[^"']*["'][^>]*>([^<]+)<\/div>/i,
+    /<div[^>]*class=["'][^"']*section-divider-title[^"']*["'][^>]*>([^<]+)<\/div>/i,
   ];
 
   for (const pattern of patterns) {

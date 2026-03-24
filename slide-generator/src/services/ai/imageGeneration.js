@@ -31,6 +31,8 @@ export async function generateImage(imagePrompt, settings, referenceImageDataUri
     throw new Error(`No API key configured for "${providerId}" provider. Add it in Settings to use image generation.`);
   }
 
+  console.log(`[ImageGen] Generating image with model ${modelName} via provider ${providerId}`);
+
   const apiUrl = provider.apiUrl || '';
   const isAzureStyle = provider.azurePrefix || apiUrl.includes('openai.azure.com');
 

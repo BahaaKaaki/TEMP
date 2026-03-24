@@ -13,7 +13,7 @@ import { standardLimiter } from './common/middleware/rate-limit.middleware';
 import authRoutes from './modules/auth/auth.routes';
 import organizationsRoutes from './modules/organizations/organizations.routes';
 import themesRoutes from './modules/themes/themes.routes';
-import templatesRoutes from './modules/templates/templates.routes';
+import templatesRoutes, { pptxMasterTemplatesRouter } from './modules/templates/templates.routes';
 import aiProxyRoutes from './modules/ai-proxy/ai-proxy.routes';
 
 const app = express();
@@ -78,6 +78,7 @@ if (env.BASIC_AUTH_USER && env.BASIC_AUTH_PASS) {
 }
 
 // API routes
+app.use('/api/templates', pptxMasterTemplatesRouter);
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/organizations', organizationsRoutes);
 app.use('/api/v1/themes', themesRoutes);

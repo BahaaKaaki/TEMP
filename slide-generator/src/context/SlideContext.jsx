@@ -3,13 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
 // Import full CSS as raw string so it's available in state for AI and exports
 import SLIDES_CSS from '../styles/slides.css?raw';
-import { DEFAULT_VIBE } from '../utils/vibes';
-
 const SlideContext = createContext(null);
 
 // Default shared CSS - contains the full slide theme CSS
 // This is the single source of truth for all slide styling
 const DEFAULT_SHARED_CSS = SLIDES_CSS;
+
+// Bump when default-model migration should run once for saved decks (see loadState).
+const SETTINGS_VERSION = 2;
 
 // Initial state
 const initialState = {
@@ -18,7 +19,7 @@ const initialState = {
   activeSlideId: null,
   selectedSlideIds: [],
   deckName: 'Untitled Deck',
-  vibe: DEFAULT_VIBE, // Design variation within theme: 'executive' | 'bold' | 'modern'
+  vibe: 'default', // Design variation within theme: 'executive' | 'bold' | 'modern'
   imageVibe: 'default', // Vibe for image-based slides (persisted across reloads)
   darkMode: false, // Independent dark mode toggle (applies to all slides)
   deckVersions: [], // Array of { id, name, timestamp, slides, sharedCSS }
@@ -94,6 +95,7 @@ const initialState = {
     agentMaxBudget: 5,
     agentRichResearch: true,
     agentUseSkills: false,
+    slideStylePreference: 'auto', // 'auto' | 'templates' | 'freestyle'
     // ── Work level (prompt-driven output scaling) ──
     // low = concise/minimal, medium = balanced, high = detailed, very_high = maximum depth
     workLevelSlide: 'medium',
@@ -162,6 +164,7 @@ const initialState = {
     freestyleGuide: '', // Custom component guide for freestyle slide/template generation
     // Branding
     footerBranding: 'Strategy&', // Footer left text (firm name | topic). E.g., "Strategy&", "PwC | Digital Transformation"
+    _settingsVersion: SETTINGS_VERSION,
   },
 };
 
@@ -296,16 +299,22 @@ function loadState() {
         }
       }
 
-      // MIGRATION: update old default models to new defaults across all model fields
-      const OLD_DEFAULTS = new Set([
-        'pwc:openai.gpt-5.2', 'openai:gpt-5.2', 'openai.gpt-5.2',
-        'pwc:vertex_ai.anthropic.claude-opus-4-6',
-        'pwc:openai.gpt-5.2-2025-12-11',
-        'pwc:vertex_ai.gemini-3-pro-preview',
-        'pwc:vertex_ai.gemini-3.1-pro-preview',
-      ]);
+      // MIGRATION: one-time update of old default models to current defaults.
+      // Uses a version stamp so migration only runs once per version bump,
+      // preserving any manual model selections the user makes afterward.
+      const savedVersion = parsed.settings?._settingsVersion || 0;
+      const needsMigration = savedVersion < SETTINGS_VERSION;
+
       const migrateDefault = (val, fallback) => {
+        if (!needsMigration) return migrateModelRef(val) || val || fallback;
+        // Only replace if the value matches an old default that should be upgraded
         const migrated = migrateModelRef(val) || fallback;
+        const OLD_DEFAULTS = new Set([
+          'pwc:openai.gpt-5.2', 'openai:gpt-5.2', 'openai.gpt-5.2',
+          'pwc:openai.gpt-5.2-2025-12-11',
+          'pwc:vertex_ai.gemini-3-pro-preview',
+          'pwc:vertex_ai.gemini-3.1-pro-preview',
+        ]);
         return OLD_DEFAULTS.has(migrated) ? fallback : migrated;
       };
       let migratedModel = migrateDefault(parsed.settings?.model, initialState.settings.model);
@@ -321,6 +330,7 @@ function loadState() {
           ...initialState.settings,
           ...parsed.settings,
           providers: mergedProviders,
+          _settingsVersion: SETTINGS_VERSION,
           model: migratedModel,
           fastModel: migrateDefault(parsed.settings?.fastModel, initialState.settings.fastModel),
           routerModel: migrateDefault(parsed.settings?.routerModel, initialState.settings.routerModel),

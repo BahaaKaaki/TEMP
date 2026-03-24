@@ -19,7 +19,7 @@ Every slide has this skeleton:
 
 - `h1.title` -- Georgia 28px. States a "so what" business insight with a verb.
 - `h2.subtitle` -- Arial bold 18px, accent color. Noun phrase only, no verbs.
-- `div.frame` -- **890 x 353 px**. All content lives here. This is your canvas.
+- `div.frame` -- **904 x 366 px**. All content lives here. This is your canvas.
 - `footer` -- bottom of slide.
 
 The `.slide`, `.title`, `.subtitle`, `.frame`, and `.footer` classes are styled by the base CSS. Do NOT restyle them. Your custom CSS applies only inside `.frame`.
@@ -48,7 +48,7 @@ Use `var(--token)` for all colors. Never hardcode hex, rgb, or named colors.
 | Negative/decline | `var(--danger)` |
 | Negative bg | `var(--danger-soft)` |
 
-Fonts: Georgia serif for display numbers and emphasis. Arial sans-serif for body text (12-14px), headings (14-18px bold), and labels.
+Fonts: Georgia serif for display numbers and emphasis. Arial sans-serif for body text (12-14px, minimum 11px for metadata/footnotes), headings (14-18px bold), and labels (11-12px). Never go below 10px for any element.
 
 ## Output format
 

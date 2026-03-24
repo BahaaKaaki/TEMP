@@ -60,14 +60,14 @@ const initialState = {
     ],
     // Model selections — format: "providerId:modelName"
     model: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
-    fastModel: 'pwc:vertex_ai.gemini-3-pro-preview',
+    fastModel: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
     // Agent-mode router settings
-    routerModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
+    routerModel: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
     routerReasoningEffort: 'low',
     routerMaxTokens: 65536,
     routerSearchEnabled: false,
     // Chatbot-mode router settings
-    chatRouterModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
+    chatRouterModel: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
     chatRouterReasoningEffort: 'low',
     chatRouterMaxTokens: 65536,
     chatRouterSearchEnabled: true,

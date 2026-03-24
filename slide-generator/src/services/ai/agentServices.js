@@ -1,7 +1,7 @@
 import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { getCredentials, buildProviderHeaders, parseModelRef, findProvider } from './models.js';
-import { callGeminiAPI, buildRequestBody, parseAPIResponseContent, _acquireApiSlot, _releaseApiSlot, _apiState } from './apiClient.js';
+import { callWithModelFallback, buildRequestBody, parseAPIResponseContent, _acquireApiSlot, _releaseApiSlot, _apiState } from './apiClient.js';
 import { LEAN_ROUTER_PROMPT } from './constants.js';
 import { safeJSONParse } from './router.js';
 
@@ -62,7 +62,7 @@ function(pptx, slideData, slideNum, totalSlides) { YOUR_CODE_HERE }`;
   try {
     let content;
 
-    content = await callGeminiAPI(settings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Clean up code blocks
     content = content
@@ -157,7 +157,7 @@ Answer based on the context provided above. Be specific and quote actual content
   try {
     let content;
 
-    content = await callGeminiAPI(settings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     return content;
   } catch (error) {
@@ -280,7 +280,7 @@ export async function agentChat(prompt, settings, options = {}) {
       // Use existing Gemini API handler — merge options maxTokens + reasoningEffort into settings
       const mergedReasoning = reasoningEffort || settings.reasoningEffort || 'low';
       console.log(`%c[agentChat→Gemini] model=${creds.model}  reasoningEffort=${mergedReasoning}  maxTokens=${maxTokens}  search=${!!effectiveSettings._extraTools?.length}`, 'color:#6a9fb5');
-      content = await callGeminiAPI({ ...effectiveSettings, maxTokens, reasoningEffort: mergedReasoning }, systemPrompt, prompt);
+      content = await callWithModelFallback({ ...effectiveSettings, maxTokens, reasoningEffort: mergedReasoning }, systemPrompt, prompt);
     } else {
       const messages = [
         { role: 'system', content: systemPrompt },
@@ -665,7 +665,7 @@ ${documentContent}`;
 
     let analysis;
 
-    analysis = await callGeminiAPI(analysisSettings, systemPrompt, userPrompt);
+    analysis = await callWithModelFallback(analysisSettings, systemPrompt, userPrompt);
 
     console.log('[AnalyzeContent] Analysis complete, length:', analysis.length);
 
@@ -801,7 +801,7 @@ Return JSON only.`;
   try {
     let content;
 
-    content = await callGeminiAPI(settings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Parse JSON with repair for common AI response issues
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();

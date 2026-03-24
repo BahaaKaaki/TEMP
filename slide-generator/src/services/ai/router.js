@@ -3,7 +3,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { selectBestTemplate, randomizeFamilyVariant, estimateItemCount } from '../templateEmbeddings';
 import { parseModelRef, findProvider, getCredentials } from './models.js';
-import { callGeminiAPI, callRouterWithImages } from './apiClient.js';
+import { callWithModelFallback, callRouterWithImages } from './apiClient.js';
 
 // ============================================
 // RULE-BASED ROUTER (No API call needed)
@@ -1462,10 +1462,11 @@ USER REQUEST: "${routerPrompt}"`;
             pendingImages
           );
         } else {
-          response = await callGeminiAPI(
+          response = await callWithModelFallback(
             routerSettings,
             getRouterSystemPrompt(),
-            contextInfo
+            contextInfo,
+            { role: 'text' }
           );
         }
 
@@ -1488,7 +1489,6 @@ USER REQUEST: "${routerPrompt}"`;
         }
         break; // Got a valid response
       } catch (routerErr) {
-        // 429 = rate limit — fail immediately, retrying worsens congestion
         if (routerErr.isRateLimit) {
           console.warn(`[AI Router] Rate limited — failing fast (no retry/fallback)`);
           throw routerErr;
@@ -1505,21 +1505,7 @@ USER REQUEST: "${routerPrompt}"`;
           console.warn(`[AI Router] Retryable error on attempt ${attempt + 1}:`, routerErr.message);
           continue;
         }
-        // All retries exhausted — try fallback to main model if different (not on rate limit)
-        const mainModel = settings.model;
-        if (mainModel && mainModel !== routerModelRef) {
-          console.warn(`[AI Router] Router model "${routerModelRef}" failed after retries: ${routerErr.message.slice(0, 200)}`);
-          console.log(`[AI Router] Falling back to main model: ${mainModel}`);
-          try {
-            console.warn(`[AI Router] Model "${routerModelRef}" failed, falling back to "${mainModel}"`);
-            const fallbackRouterSettings = { ...routerSettings, model: mainModel };
-            response = await callGeminiAPI(fallbackRouterSettings, getRouterSystemPrompt(), contextInfo);
-            break; // Fallback succeeded
-          } catch (fallbackErr) {
-            console.error(`[AI Router] Fallback model "${mainModel}" also failed:`, fallbackErr.message.slice(0, 200));
-          }
-        }
-        throw routerErr; // Non-retryable error, no fallback available
+        throw routerErr;
       }
     }
 

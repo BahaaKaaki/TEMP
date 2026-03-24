@@ -4,7 +4,7 @@ import { audit } from '../../utils/auditLog';
 import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
 import { searchTemplatesByEmbedding, searchTemplatesByKeywords, selectBestTemplate, randomizeFamilyVariant, estimateItemCount } from '../templateEmbeddings';
 import { getCredentials } from './models.js';
-import { callGeminiAPI, getFastModelSettings } from './apiClient.js';
+import { callWithModelFallback, getFastModelSettings } from './apiClient.js';
 import { CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
 import { extractSingleSlide, flattenNestedFrames, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
@@ -106,7 +106,7 @@ Return ONLY the HTML wrapped in <div class="slide">...</div>. The layout MUST ma
   try {
     let content;
 
-    content = await callGeminiAPI(settings, freestyleSystemPrompt, templatePrompt);
+    content = await callWithModelFallback(settings, freestyleSystemPrompt, templatePrompt);
 
     // Clean up code blocks
     content = content
@@ -418,7 +418,7 @@ You can use a known pattern name (2x2, 3-cards, bullets, split, kpi-row, timelin
   try {
     let response;
 
-    response = await callGeminiAPI(fastSettings, 'You are a template selection expert. Always respond with valid JSON.', selectionPrompt);
+    response = await callWithModelFallback(fastSettings, 'You are a template selection expert. Always respond with valid JSON.', selectionPrompt);
 
     // Parse JSON response with repair for common AI response issues
     let parsed;
@@ -610,7 +610,7 @@ RESPOND AS JSON ARRAY ONLY:
   try {
     let response;
 
-    response = await callGeminiAPI(fastSettings, 'Respond ONLY with JSON array.', planningPrompt);
+    response = await callWithModelFallback(fastSettings, 'Respond ONLY with JSON array.', planningPrompt);
 
     // Clean and parse the JSON response with repair for common AI response issues
     let cleanedResponse = response.trim();
@@ -910,33 +910,8 @@ Return ONLY the filled HTML, no explanations.`;
   try {
     let content;
 
-    // Primary attempt with the configured model
     console.log('[fillTemplateWithAI] Calling model:', settings.model, 'template:', template.id);
-    try {
-      content = await callGeminiAPI(settings, DEFAULT_SYSTEM_PROMPT, fillPrompt);
-    } catch (primaryErr) {
-      // Don't fall back on rate limit — the proxy is overloaded, a different model won't help
-      if (primaryErr.isRateLimit) {
-        console.warn(`[fillTemplateWithAI] Rate limited — not attempting fallback model`);
-        throw primaryErr;
-      }
-      // If the role model differs from the global default, fall back to the default model
-      const fallbackModel = settings._defaultModel;
-      const currentModel = settings.model;
-      if (fallbackModel && fallbackModel !== currentModel) {
-        console.warn(`[fillTemplateWithAI] Model "${currentModel}" failed: ${primaryErr.message.slice(0, 200)}`);
-        console.log(`[fillTemplateWithAI] Falling back to default model: ${fallbackModel}`);
-        const fallbackSettings = { ...settings, model: fallbackModel };
-        try {
-          content = await callGeminiAPI(fallbackSettings, DEFAULT_SYSTEM_PROMPT, fillPrompt);
-        } catch (fallbackErr) {
-          console.error(`[fillTemplateWithAI] Fallback model "${fallbackModel}" also failed:`, fallbackErr.message.slice(0, 200));
-          throw primaryErr; // Throw original error — both failed
-        }
-      } else {
-        throw primaryErr; // No fallback available
-      }
-    }
+    content = await callWithModelFallback(settings, DEFAULT_SYSTEM_PROMPT, fillPrompt);
 
     // Extract single slide (AI may return both template example and filled - take the last one)
     content = extractSingleSlide(content) || '';
@@ -1198,33 +1173,8 @@ Return ONLY the HTML slides separated by <!-- SLIDE_SEPARATOR -->, no explanatio
   try {
     let content;
 
-    // Primary attempt with the configured model (callGeminiAPI handles both Gemini and non-Gemini)
     console.log('[fillTemplatesBulk] Calling model:', settings.model, 'slides:', slideSpecs.length);
-    try {
-      content = await callGeminiAPI(settings, DEFAULT_SYSTEM_PROMPT, bulkPrompt);
-    } catch (primaryErr) {
-      // Don't fall back on rate limit — proxy is overloaded, different model won't help
-      if (primaryErr.isRateLimit) {
-        console.warn(`[fillTemplatesBulk] Rate limited — not attempting fallback model`);
-        throw primaryErr;
-      }
-      // Fall back to default model if role model differs
-      const fallbackModel = settings._defaultModel;
-      const currentModel = settings.model;
-      if (fallbackModel && fallbackModel !== currentModel) {
-        console.warn(`[fillTemplatesBulk] Model "${currentModel}" failed: ${primaryErr.message.slice(0, 200)}`);
-        console.log(`[fillTemplatesBulk] Falling back to default model: ${fallbackModel}`);
-        const fallbackSettings = { ...settings, model: fallbackModel };
-        try {
-          content = await callGeminiAPI(fallbackSettings, DEFAULT_SYSTEM_PROMPT, bulkPrompt);
-        } catch (fallbackErr) {
-          console.error(`[fillTemplatesBulk] Fallback model "${fallbackModel}" also failed:`, fallbackErr.message.slice(0, 200));
-          throw primaryErr;
-        }
-      } else {
-        throw primaryErr;
-      }
-    }
+    content = await callWithModelFallback(settings, DEFAULT_SYSTEM_PROMPT, bulkPrompt);
 
     // Split response by separator
     const slides = content.split(/<!--\s*SLIDE_SEPARATOR\s*-->/).map(s => s.trim()).filter(Boolean);

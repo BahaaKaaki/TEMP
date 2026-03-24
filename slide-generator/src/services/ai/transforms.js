@@ -1,7 +1,7 @@
 import { debugLog, LogLevel } from '../../utils/debugLog';
 import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
 import { getCredentials, buildProviderHeaders } from './models.js';
-import { callGeminiAPI, buildRequestBody, parseAPIResponseContent } from './apiClient.js';
+import { callWithModelFallback, buildRequestBody, parseAPIResponseContent } from './apiClient.js';
 
 // Transform element content into a widget format using GPT
 // This takes the existing content of an element and transforms it into a specified widget type
@@ -137,7 +137,7 @@ INSTRUCTIONS:
   try {
     let content;
 
-    content = await callGeminiAPI(settings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Clean up markdown blocks first
     content = content

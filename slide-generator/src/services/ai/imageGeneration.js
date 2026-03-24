@@ -2,7 +2,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
 import { parseModelRef, findProvider, getCredentials, buildProviderHeaders, buildGeminiEndpoint, buildGeminiHeaders, isGemini3Model, isGemini25Model, extractGeminiResponseText } from './models.js';
-import { callGeminiAPI } from './apiClient.js';
+import { callWithModelFallback, getFallbackModels } from './apiClient.js';
 import { TITLE_HEADER_RULES } from './constants.js';
 
 // ============================================
@@ -25,6 +25,32 @@ export async function generateImage(imagePrompt, settings, referenceImageDataUri
     throw new Error('No image model configured. Set imageModel in Settings (e.g., "pwc:gemini-3-pro-image-preview").');
   }
 
+  try {
+    return await _generateImageInner(imagePrompt, settings, referenceImageDataUri, imageModelRef);
+  } catch (err) {
+    if (err.message?.includes('rate limit') || err.message?.includes('429')) throw err;
+
+    const { providerId, modelName } = parseModelRef(imageModelRef);
+    const fallbacks = getFallbackModels(settings, providerId, modelName, 'image');
+    if (fallbacks.length === 0) throw err;
+
+    console.warn(`[ImageGen] Primary model "${modelName}" failed: ${err.message.slice(0, 150)}`);
+
+    for (const fb of fallbacks) {
+      try {
+        const fbRef = `${providerId}:${fb}`;
+        console.log(`[ImageGen] Trying fallback image model: ${fbRef}`);
+        return await _generateImageInner(imagePrompt, { ...settings, imageModel: fbRef }, referenceImageDataUri, fbRef);
+      } catch (fbErr) {
+        if (fbErr.message?.includes('rate limit') || fbErr.message?.includes('429')) throw fbErr;
+        console.warn(`[ImageGen] Fallback "${fb}" also failed: ${fbErr.message.slice(0, 100)}`);
+      }
+    }
+    throw err;
+  }
+}
+
+async function _generateImageInner(imagePrompt, settings, referenceImageDataUri, imageModelRef) {
   const { providerId, modelName } = parseModelRef(imageModelRef);
   const provider = findProvider(settings, providerId);
   if (!provider?.apiKey) {
@@ -583,7 +609,7 @@ Return ONLY valid JSON: {"title": "...", "subtitle": "...", "footer": ""}`;
     // Run image generation and text generation in parallel (pass reference image if editing)
     const [imageDataUri, textContent] = await Promise.all([
       generateImage(imagePrompt, settings, existingImageDataUri || null),
-      callGeminiAPI(settings, 'You are a Strategy& consulting presentation writer. Return only valid JSON.', textPrompt),
+      callWithModelFallback(settings, 'You are a Strategy& consulting presentation writer. Return only valid JSON.', textPrompt),
     ]);
 
     // Parse text response — use textInstruction (content-only) as fallback, not cleanInstruction

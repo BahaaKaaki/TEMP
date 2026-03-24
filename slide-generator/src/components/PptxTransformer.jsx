@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useContext } from 'react';
 import { analyzePptx, transformPptx, buildColorMap, generateThemeGrid, refineColorMapWithAI } from '../services/pptxTransformService';
 import { loadTemplateFromStorage } from '../services/pptxTemplateService';
-import { callGeminiAPI, hasAnyApiKey } from '../services/aiService';
+import { callWithModelFallback, hasAnyApiKey } from '../services/aiService';
 import SlideContext from '../context/SlideContext';
 
 // ── Color swatch component ──────────────────────────────────────────────────
@@ -346,7 +346,7 @@ export default function PptxTransformer({ onClose }) {
         headerSizePt,
         contentArea,
         colorGuidance: colorGuidance.trim(),
-        callAI: needsAI ? (sys, usr) => callGeminiAPI(settings, sys, usr) : null,
+        callAI: needsAI ? (sys, usr) => callWithModelFallback(settings, sys, usr) : null,
         aiStructure: useAiStructure,
         aiColors: useAiColors,
         enableResize,

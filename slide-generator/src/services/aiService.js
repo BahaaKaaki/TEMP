@@ -41,6 +41,7 @@ export {
 // ── apiClient.js — API calls, concurrency, request/response ──────────────────
 export {
   callGeminiAPI,
+  callWithModelFallback,
   setApiMaxConcurrent,
 } from './ai/apiClient.js';
 

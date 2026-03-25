@@ -196,6 +196,37 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf) {
   }
   console.log('[PPTX Template] Using slideLayout' + targetLayoutNum);
 
+  // ── Step 3b: Strip footer placeholders from template layout & master ────
+  // The template may contain built-in footer/date/slideNum shapes that
+  // conflict with our addFooter() calls. Remove them so we have one source
+  // of truth for footer content.
+  const stripFooterPlaceholders = (xml) => {
+    return xml.replace(/<p:sp\b[^>]*>[\s\S]*?<\/p:sp>/g, (match) => {
+      if (/<p:ph[^>]+type="(ftr|dt|sldNum)"/.test(match)) return '';
+      return match;
+    });
+  };
+
+  const layoutPath = `ppt/slideLayouts/slideLayout${targetLayoutNum}.xml`;
+  if (tplZip.files[layoutPath]) {
+    const layoutXml = await tplZip.files[layoutPath].async('string');
+    const cleaned = stripFooterPlaceholders(layoutXml);
+    if (cleaned !== layoutXml) {
+      tplZip.file(layoutPath, cleaned);
+      console.log('[PPTX Template] Stripped footer placeholders from slideLayout' + targetLayoutNum);
+    }
+  }
+
+  const masterPath = 'ppt/slideMasters/slideMaster1.xml';
+  if (tplZip.files[masterPath]) {
+    const masterXml = await tplZip.files[masterPath].async('string');
+    const cleaned = stripFooterPlaceholders(masterXml);
+    if (cleaned !== masterXml) {
+      tplZip.file(masterPath, cleaned);
+      console.log('[PPTX Template] Stripped footer placeholders from slideMaster1');
+    }
+  }
+
   // ── Step 4: Copy generated slides into template ─────────────────────────
   for (let i = 0; i < slideCount; i++) {
     const slideNum = i + 1;

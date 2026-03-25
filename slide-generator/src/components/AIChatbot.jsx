@@ -2805,12 +2805,14 @@ export default function AIChatbot() {
               let coverTitle = parsedTitle || 'Untitled Presentation';
               let coverSubtitle = parsedSubtitle || '';
 
-              // Validate cover title against search facts using fast model
-              if (searchRawContext && settings.fastModel) {
+              // Validate cover title and derive category using fast model
+              let coverCategory = '';
+              if (settings.fastModel) {
                 try {
-                  const fixPrompt = `You are a fact-checker. The user searched the web and got these results:\n\n${searchRawContext.substring(0, 3000)}\n\nThe router generated this cover slide title: "${coverTitle}"\nAnd subtitle: "${coverSubtitle}"\n\nToday's date is ${currentDateString()}.\n\nCheck if the title/subtitle contain any WRONG dates or factual errors compared to the search results. If so, return a corrected version. If they are correct, return them as-is.\n\nRespond in EXACTLY this JSON format (no markdown):\n{"title":"corrected title here","subtitle":"corrected subtitle here"}`;
-                  const fastSettings = { ...settings, model: settings.fastModel, maxTokens: 200, temperature: 0.1 };
-                  const fixResult = await callWithModelFallback(fastSettings, 'You fix factual errors in slide titles. Return only JSON.', fixPrompt, { role: 'text' });
+                  const contextBlock = searchRawContext ? `\nWeb search results:\n${searchRawContext.substring(0, 3000)}\n` : '';
+                  const fixPrompt = `You are a presentation cover-page editor.${contextBlock}\nThe router generated this cover slide title: "${coverTitle}"\nAnd subtitle: "${coverSubtitle}"\n\nToday's date is ${currentDateString()}.\n\nDo two things:\n1. Check if the title/subtitle contain any WRONG dates or factual errors. If so, correct them.\n2. Generate a short 2-3 word CATEGORY label that describes the topic (e.g. GEOPOLITICAL ANALYSIS, MARKET OVERVIEW, DIGITAL STRATEGY, SITUATION BRIEFING, INDUSTRY OUTLOOK). This appears as a small tag above the title.\n\nRespond in EXACTLY this JSON format (no markdown):\n{"title":"corrected title","subtitle":"corrected subtitle","category":"SHORT CATEGORY LABEL"}`;
+                  const fastSettings = { ...settings, model: settings.fastModel, maxTokens: 250, temperature: 0.2 };
+                  const fixResult = await callWithModelFallback(fastSettings, 'You fix factual errors in slide titles and generate category labels. Return only JSON.', fixPrompt, { role: 'text' });
                   const fixJson = fixResult?.match(/\{[\s\S]*\}/)?.[0];
                   if (fixJson) {
                     const fixed = JSON.parse(fixJson);
@@ -2819,13 +2821,14 @@ export default function AIChatbot() {
                       coverTitle = fixed.title;
                     }
                     if (fixed.subtitle) coverSubtitle = fixed.subtitle;
+                    if (fixed.category) coverCategory = fixed.category.toUpperCase();
                   }
                 } catch (fixErr) {
-                  console.warn('[SmartAction] Cover title validation failed (non-critical):', fixErr.message);
+                  console.warn('[SmartAction] Cover validation failed (non-critical):', fixErr.message);
                 }
               }
               const coverHtml = SLIDE_TEMPLATES.cover.html
-                .replace('[CATEGORY]', coverSubtitle ? coverSubtitle.toUpperCase() : '')
+                .replace('[CATEGORY]', coverCategory || (coverSubtitle ? coverSubtitle.toUpperCase() : ''))
                 .replace('[Presentation Title]', coverTitle)
                 .replace('[Company]', settings.footerBranding || 'Strategy&')
                 .replace('[Date]', new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }));

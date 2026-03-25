@@ -310,16 +310,8 @@ const COVER_TRANSLATION_EXAMPLE = {
     x: 0.48, y: 2.64, w: 9.7, h: 2.0,
     fontFace: 'Georgia', fontSize: 42, color: '111111', valign: 'top', lineSpacingMultiple: 1.15
   });
-  // Branding (bottom-left)
-  slide.addText('Strategy&', {
-    x: 0.48, y: 6.6, w: 3, h: 0.4,
-    fontFace: 'Arial', fontSize: 16, color: '4A4F57', bold: true
-  });
-  // Date (bottom-right)
-  slide.addText('December 2025', {
-    x: 10.0, y: 6.6, w: 2.83, h: 0.4,
-    fontFace: 'Arial', fontSize: 13, color: '4A4F57', align: 'right'
-  });
+  // Footer (branding + page number — handled by addFooter, do NOT duplicate)
+  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -1280,7 +1272,6 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides, masterName) {
     pptxSlide.addShape('rect', {x:0, y:0, w:13.333, h:7.5, fill:{color:'FFFFFF'}});
     const category = getText(doc, '.cover-category') || '';
     const coverTitle = getText(doc, '.cover-title') || getText(doc, '.title') || 'Presentation';
-    const branding = getText(doc, '.cover-branding') || '';
     if (category) {
       pptxSlide.addText(category.toUpperCase(), {
         x: 0.48, y: 1.94, w: 12.36, h: 0.5,
@@ -1291,12 +1282,6 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides, masterName) {
       x: 0.48, y: 2.64, w: 9.7, h: 2.0,
       fontFace: 'Georgia', fontSize: 42, color: COLORS.main, valign: 'top'
     });
-    if (branding) {
-      pptxSlide.addText(branding, {
-        x: 0.48, y: 6.6, w: 3, h: 0.4,
-        fontFace: 'Arial', fontSize: 16, color: COLORS.meta, bold: true
-      });
-    }
     addFooter(pptxSlide, slideNum, totalSlides);
     return;
   }
@@ -1760,6 +1745,11 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       try {
         renderInfo.generatedFunction(pptx, i + 1, totalSlides);
         rendered = true;
+        // AI path strips footer from HTML, so source text is lost — extract from original HTML
+        const aiSlide = pptx.slides?.[pptx.slides.length - 1];
+        if (aiSlide && slide.html) {
+          addSourceNote(aiSlide, slide.html);
+        }
       } catch (err) {
         console.warn(`AI-generated code error for slide ${i + 1}:`, err);
       }
@@ -1945,6 +1935,11 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
         if (Array.isArray(slideFunctions) && typeof slideFunctions[0] === 'function') {
           slideFunctions[0](pptx, slideNumber, totalSlides);
           rendered = true;
+          // AI path strips footer from HTML, so source text is lost — extract from original HTML
+          const aiSlide = pptx.slides?.[pptx.slides.length - 1];
+          if (aiSlide && slide.html) {
+            addSourceNote(aiSlide, slide.html);
+          }
         } else {
           console.warn('[PPTX Single] AI did not return valid function array, using fallback');
         }

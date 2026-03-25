@@ -1429,6 +1429,7 @@ USER REQUEST: "${routerPrompt}"`;
   // Pre-search: call the search endpoint BEFORE routing so the plan uses current data.
   // This is critical because the router model (e.g., Opus) may not support inline search tools.
   let routerSearchContext = '';
+  let routerSearchRawText = '';
   if (searchAvailable && settings.searchEnabled && settings.searchEndpoint && settings.searchModel && !agentMode) {
     try {
       const searchQuery = `${routerPrompt} latest ${currentDateString()}`;
@@ -1459,7 +1460,8 @@ USER REQUEST: "${routerPrompt}"`;
           }
         }
         if (resultText.trim()) {
-          routerSearchContext = `\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\n${resultText.trim().substring(0, 6000)}\n=== END SEARCH RESULTS ===\nIMPORTANT: Use the search results above to inform your plan with CURRENT, accurate data and dates. Do not rely on outdated training knowledge.\n`;
+          routerSearchRawText = resultText.trim();
+          routerSearchContext = `\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\n${routerSearchRawText.substring(0, 6000)}\n=== END SEARCH RESULTS ===\nIMPORTANT: Use the search results above to inform your plan with CURRENT, accurate data and dates. Do not rely on outdated training knowledge.\n`;
           console.log('[Router Search] Pre-search returned', resultText.length, 'chars for router context');
         }
       } else {
@@ -1795,6 +1797,13 @@ USER REQUEST: "${routerPrompt}"`;
         parsedResponse: parsed,
       },
     };
+
+    // Attach pre-search context so downstream slide generation can use it
+    // for ALL slides (including cover/dividers that lack their own searchQuery).
+    if (routerSearchRawText) {
+      result.searchRawContext = routerSearchRawText.substring(0, 8000);
+      console.log('[Router Search] Attached searchRawContext to route result:', result.searchRawContext.length, 'chars');
+    }
 
     const searchSteps = result.plan?.filter(s => s.searchQuery) || [];
     if (searchSteps.length > 0) {

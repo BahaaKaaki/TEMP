@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, callWithModelFallback, webSearch } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, callWithModelFallback, webSearch, currentDateString } from '../services/aiService';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
@@ -1996,6 +1996,12 @@ export default function AIChatbot() {
       const freshState = getFreshState();
       const capturedDeckName = freshState.deckName;
 
+      // Pre-search key facts from router — threaded into every slide for grounding
+      const searchRawContext = routeResult.searchRawContext || '';
+      if (searchRawContext) {
+        console.log('[SmartAction] Router search context available for all slides:', searchRawContext.length, 'chars');
+      }
+
       console.log('[SmartAction] Executing plan with', totalSteps, 'steps, parallel batch size:', parallelBatchSize, planSteps);
       console.log('[SmartAction] Captured deck:', capturedDeckName);
 
@@ -2065,6 +2071,14 @@ export default function AIChatbot() {
       };
 
       // Helper: build context string for a step, including contextSlides, contextFromStep, and content
+      // Build a grounding block from router pre-search to attach to every slide prompt.
+      // This ensures even slides without their own searchQuery (cover, dividers)
+      // get access to current factual context.
+      const buildSearchFactsBlock = () => {
+        if (!searchRawContext) return '';
+        return `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n${searchRawContext.substring(0, 4000)}\n=== END KEY FACTS ===\nIMPORTANT: Use ONLY dates, names, and facts from the above search context. Do NOT use outdated information from training data.\n`;
+      };
+
       const buildContextForStep = (step, stepPromptWithVibe, baseState) => {
         let contextIndices = step.contextSlides?.length > 0
           ? step.contextSlides
@@ -2299,21 +2313,23 @@ export default function AIChatbot() {
             const pendingSlides = [];
 
             let stepSettings = settings;
-            let enrichedStepPrompt = stepPromptWithVibe;
+            // Inject router-level search facts into every slide's prompt for grounding
+            let enrichedStepPrompt = stepPromptWithVibe + buildSearchFactsBlock();
             if (step.searchQuery && settings.searchEnabled) {
-              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${step.searchQuery.substring(0, 80)}"`);
+              const datedQuery = `${step.searchQuery} ${currentDateString()}`;
+              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${datedQuery.substring(0, 100)}"`);
               try {
-                const searchResult = await webSearch(step.searchQuery, settings);
+                const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  enrichedStepPrompt = `${stepPromptWithVibe}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${step.searchQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  enrichedStepPrompt = `${stepPromptWithVibe}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
                 } else {
-                  enrichedStepPrompt = `${stepPromptWithVibe}\n\n[Note: web search was attempted for "${step.searchQuery}" but returned no results. Use your best knowledge.]`;
+                  enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned no results`);
                 }
               } catch (searchErr) {
                 console.warn(`[SmartAction] Step ${stepIndex}: search failed:`, searchErr.message);
-                enrichedStepPrompt = `${stepPromptWithVibe}\n\n[Note: web search failed. Use your best knowledge.]`;
+                enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
               }
             }
 
@@ -2755,14 +2771,14 @@ export default function AIChatbot() {
             });
           }
 
-          // Fixed-layout slides (cover, section divider): direct placeholder fill, no AI call
+          // Fixed-layout slides (cover, section divider): direct placeholder fill
+          // Cover titles are validated against search facts to prevent date hallucination
           for (const b of fixedSlides) {
             const instr = b.step.instruction || '';
             const titleMatch = instr.match(/TITLE:\s*(.+)/i);
             const subMatch = instr.match(/SUBTITLE:\s*(.+)/i);
             let parsedTitle = titleMatch?.[1]?.split('\n')[0]?.trim() || '';
             let parsedSubtitle = subMatch?.[1]?.trim() || '';
-            // Fallback: use the full instruction as title when no TITLE: marker
             if (!parsedTitle && instr) {
               const cleaned = instr.replace(/SUBTITLE:\s*.*/i, '').trim();
               parsedTitle = cleaned.split('\n')[0].trim().substring(0, 80);
@@ -2770,8 +2786,28 @@ export default function AIChatbot() {
 
             let slideData;
             if (b.step.templateId === 'cover') {
-              const coverTitle = parsedTitle || 'Untitled Presentation';
-              const coverSubtitle = parsedSubtitle || '';
+              let coverTitle = parsedTitle || 'Untitled Presentation';
+              let coverSubtitle = parsedSubtitle || '';
+
+              // Validate cover title against search facts using fast model
+              if (searchRawContext && settings.fastModel) {
+                try {
+                  const fixPrompt = `You are a fact-checker. The user searched the web and got these results:\n\n${searchRawContext.substring(0, 3000)}\n\nThe router generated this cover slide title: "${coverTitle}"\nAnd subtitle: "${coverSubtitle}"\n\nToday's date is ${currentDateString()}.\n\nCheck if the title/subtitle contain any WRONG dates or factual errors compared to the search results. If so, return a corrected version. If they are correct, return them as-is.\n\nRespond in EXACTLY this JSON format (no markdown):\n{"title":"corrected title here","subtitle":"corrected subtitle here"}`;
+                  const fastSettings = { ...settings, model: settings.fastModel, maxTokens: 200, temperature: 0.1 };
+                  const fixResult = await callWithModelFallback(fastSettings, 'You fix factual errors in slide titles. Return only JSON.', fixPrompt, { role: 'text' });
+                  const fixJson = fixResult?.match(/\{[\s\S]*\}/)?.[0];
+                  if (fixJson) {
+                    const fixed = JSON.parse(fixJson);
+                    if (fixed.title && fixed.title !== coverTitle) {
+                      console.log(`[SmartAction] Cover title corrected: "${coverTitle}" → "${fixed.title}"`);
+                      coverTitle = fixed.title;
+                    }
+                    if (fixed.subtitle) coverSubtitle = fixed.subtitle;
+                  }
+                } catch (fixErr) {
+                  console.warn('[SmartAction] Cover title validation failed (non-critical):', fixErr.message);
+                }
+              }
               const coverHtml = SLIDE_TEMPLATES.cover.html
                 .replace('[CATEGORY]', coverSubtitle.toUpperCase() || 'STRATEGY')
                 .replace('[Presentation Title]', coverTitle)
@@ -2900,20 +2936,22 @@ export default function AIChatbot() {
             });
 
             let batchStepSettings = settings;
-            let enrichedPrompt = stepPromptWithVibeLocal;
+            // Inject router-level search facts into every slide's prompt for grounding
+            let enrichedPrompt = stepPromptWithVibeLocal + buildSearchFactsBlock();
             if (step.searchQuery && settings.searchEnabled) {
-              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${step.searchQuery.substring(0, 80)}"`);
+              const datedQuery = `${step.searchQuery} ${currentDateString()}`;
+              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${datedQuery.substring(0, 100)}"`);
               try {
-                const searchResult = await webSearch(step.searchQuery, settings);
+                const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  enrichedPrompt = `${stepPromptWithVibeLocal}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${step.searchQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  enrichedPrompt = `${stepPromptWithVibeLocal}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
                 } else {
-                  enrichedPrompt = `${stepPromptWithVibeLocal}\n\n[Note: web search was attempted for "${step.searchQuery}" but returned no results. Use your best knowledge.]`;
+                  enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
                 }
               } catch (searchErr) {
                 console.warn(`[SmartAction] Step ${actualIndex}: search failed:`, searchErr.message);
-                enrichedPrompt = `${stepPromptWithVibeLocal}\n\n[Note: web search failed. Use your best knowledge.]`;
+                enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
               }
             }
 
@@ -3077,6 +3115,38 @@ Original request: ${userPrompt}`;
             console.error('[SmartAction] Replanning failed, continuing with original plan:', replanErr);
             // Fall through to continue executing original groups
           }
+        }
+      }
+
+      // Post-generation consistency check: verify dates/facts across all created slides
+      if (searchRawContext && createdSlides.length >= 2 && settings.fastModel) {
+        try {
+          const freshCheck = getFreshState();
+          const slideSnapshot = freshCheck.slides.map((s, i) => `[Slide ${i + 1}] "${s.title}"`).join('\n');
+          const checkPrompt = `Today is ${currentDateString()}. Based on web search results:\n${searchRawContext.substring(0, 2000)}\n\nHere are the slide titles in a deck:\n${slideSnapshot}\n\nDo any slide titles contain WRONG years or dates that contradict the search results? If yes, list which slide number and what the corrected title should be. If all are correct, respond with "ALL_CORRECT".`;
+          const checkSettings = { ...settings, model: settings.fastModel, maxTokens: 300, temperature: 0.1 };
+          const checkResult = await callWithModelFallback(checkSettings, 'You verify factual consistency in slide decks. Be concise.', checkPrompt, { role: 'text' });
+
+          if (checkResult && !checkResult.includes('ALL_CORRECT')) {
+            console.log('[Consistency] Found potential issues:', checkResult.substring(0, 300));
+            const corrections = [...checkResult.matchAll(/\[?Slide\s*(\d+)\]?[^"]*"([^"]+)"/gi)];
+            for (const match of corrections) {
+              const slideIdx = parseInt(match[1], 10) - 1;
+              const correctedTitle = match[2];
+              const slide = freshCheck.slides[slideIdx];
+              if (slide && correctedTitle && slide.title !== correctedTitle) {
+                console.log(`[Consistency] Correcting slide ${slideIdx + 1} title: "${slide.title}" → "${correctedTitle}"`);
+                const updatedHtml = slide.html.replace(slide.title, correctedTitle);
+                if (updatedHtml !== slide.html) {
+                  actions.updateSlide(freshCheck.slides[slideIdx].id, { title: correctedTitle, html: updatedHtml });
+                }
+              }
+            }
+          } else {
+            console.log('[Consistency] All slide titles verified correct');
+          }
+        } catch (checkErr) {
+          console.warn('[Consistency] Post-gen check failed (non-critical):', checkErr.message);
         }
       }
 

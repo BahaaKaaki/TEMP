@@ -121,8 +121,7 @@ const COMPLETE_TRANSLATION_EXAMPLE = {
     slide.addText(d.impact, {x:xPos + 0.25, y:cardY + 4.4, w:cardW - 0.5, h:0.4, fontFace:'Arial', fontSize:11, color:c.coal, bold:true});
   });
 
-  slide.addText('Strategy&', {x:0.48, y:7.05, w:2, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta});
-  slide.addText(slideNum + ' / ' + totalSlides, {x:11.5, y:7.05, w:1.3, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta, align:'right'});
+  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -201,8 +200,7 @@ const BLOCK_HEADER_CARDS_EXAMPLE = {
     });
   });
 
-  slide.addText('Strategy&', {x:0.48, y:7.05, w:2, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta});
-  slide.addText(slideNum + ' / ' + totalSlides, {x:11.5, y:7.05, w:1.3, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta, align:'right'});
+  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -283,8 +281,7 @@ const KPI_TRANSLATION_EXAMPLE = {
     }
   });
 
-  slide.addText('Strategy&', {x:0.48, y:7.05, w:2, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta});
-  slide.addText(slideNum + ' / ' + totalSlides, {x:11.5, y:7.05, w:1.3, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta, align:'right'});
+  addFooter(slide, slideNum, totalSlides);
 }`
 };
 

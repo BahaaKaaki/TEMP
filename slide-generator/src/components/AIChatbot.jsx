@@ -2809,7 +2809,7 @@ export default function AIChatbot() {
                 }
               }
               const coverHtml = SLIDE_TEMPLATES.cover.html
-                .replace('[CATEGORY]', coverSubtitle.toUpperCase() || 'STRATEGY')
+                .replace('[CATEGORY]', coverSubtitle ? coverSubtitle.toUpperCase() : '')
                 .replace('[Presentation Title]', coverTitle)
                 .replace('[Company]', settings.footerBranding || 'Strategy&')
                 .replace('[Date]', new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }));
@@ -3115,38 +3115,6 @@ Original request: ${userPrompt}`;
             console.error('[SmartAction] Replanning failed, continuing with original plan:', replanErr);
             // Fall through to continue executing original groups
           }
-        }
-      }
-
-      // Post-generation consistency check: verify dates/facts across all created slides
-      if (searchRawContext && createdSlides.length >= 2 && settings.fastModel) {
-        try {
-          const freshCheck = getFreshState();
-          const slideSnapshot = freshCheck.slides.map((s, i) => `[Slide ${i + 1}] "${s.title}"`).join('\n');
-          const checkPrompt = `Today is ${currentDateString()}. Based on web search results:\n${searchRawContext.substring(0, 2000)}\n\nHere are the slide titles in a deck:\n${slideSnapshot}\n\nDo any slide titles contain WRONG years or dates that contradict the search results? If yes, list which slide number and what the corrected title should be. If all are correct, respond with "ALL_CORRECT".`;
-          const checkSettings = { ...settings, model: settings.fastModel, maxTokens: 300, temperature: 0.1 };
-          const checkResult = await callWithModelFallback(checkSettings, 'You verify factual consistency in slide decks. Be concise.', checkPrompt, { role: 'text' });
-
-          if (checkResult && !checkResult.includes('ALL_CORRECT')) {
-            console.log('[Consistency] Found potential issues:', checkResult.substring(0, 300));
-            const corrections = [...checkResult.matchAll(/\[?Slide\s*(\d+)\]?[^"]*"([^"]+)"/gi)];
-            for (const match of corrections) {
-              const slideIdx = parseInt(match[1], 10) - 1;
-              const correctedTitle = match[2];
-              const slide = freshCheck.slides[slideIdx];
-              if (slide && correctedTitle && slide.title !== correctedTitle) {
-                console.log(`[Consistency] Correcting slide ${slideIdx + 1} title: "${slide.title}" → "${correctedTitle}"`);
-                const updatedHtml = slide.html.replace(slide.title, correctedTitle);
-                if (updatedHtml !== slide.html) {
-                  actions.updateSlide(freshCheck.slides[slideIdx].id, { title: correctedTitle, html: updatedHtml });
-                }
-              }
-            }
-          } else {
-            console.log('[Consistency] All slide titles verified correct');
-          }
-        } catch (checkErr) {
-          console.warn('[Consistency] Post-gen check failed (non-critical):', checkErr.message);
         }
       }
 

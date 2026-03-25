@@ -94,25 +94,27 @@ export const SLIDE_TEMPLATES = {
   slide.addShape('rect', {x:0, y:0, w:13.333, h:7.5, fill:{color:'FFFFFF'}});
 
   // Extract content from HTML
-  let category = 'STRATEGY';
+  let category = '';
   let title = 'Presentation Title';
   let branding = 'Strategy&';
   let date = '';
 
   if (slideData && slideData.html) {
     const { getText } = parseHTML(slideData.html);
-    category = getText('.cover-category') || 'STRATEGY';
+    category = getText('.cover-category') || '';
     title = getText('.cover-title') || getText('.title') || 'Presentation Title';
     branding = getText('.cover-branding') || 'Strategy&';
     date = getText('.cover-date') || '';
   }
 
-  // Category label (burgundy, uppercase, spaced)
-  slide.addText(category.toUpperCase(), {
-    x: 0.48, y: 1.94, w: 12.36, h: 0.5,
-    fontFace: 'Arial', fontSize: 18, color: COLORS.red,
-    bold: true, charSpacing: 1.5
-  });
+  // Category label (burgundy, uppercase, spaced) -- only if non-empty
+  if (category) {
+    slide.addText(category.toUpperCase(), {
+      x: 0.48, y: 1.94, w: 12.36, h: 0.5,
+      fontFace: 'Arial', fontSize: 18, color: COLORS.red,
+      bold: true, charSpacing: 1.5
+    });
+  }
 
   // Main title (large Georgia, dark)
   slide.addText(title, {

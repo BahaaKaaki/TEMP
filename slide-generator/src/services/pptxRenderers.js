@@ -140,6 +140,7 @@ export function addSourceNote(slide, html) {
 
   // Look for source/footnote elements by class name (order: most specific first)
   const selectors = [
+    'footer .source',
     '.graph-source',
     '.exhibit-source',
     '.chart-source',

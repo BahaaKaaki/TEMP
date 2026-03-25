@@ -473,7 +473,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       // Inject dynamic page number based on position in deck
       const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
       if (slideIndex >= 0) {
-        html = injectPageNumber(html, slideIndex + 1);
+        html = injectPageNumber(html, slideIndex + 1, state.slides.length);
       }
       slideRef.current.innerHTML = html;
       if (isEditMode) {
@@ -1932,14 +1932,15 @@ function injectSubSectionToHtml(html, subSectionLabel, sectionLabel) {
   );
 }
 
-// Dynamically inject the correct page number into the footer
-function injectPageNumber(html, pageNumber) {
+// Dynamically inject the correct page number into the footer.
+// Targets the LAST <span> inside <footer class="footer">, which works for both
+// two-span (brand + page) and three-span (brand + source + page) layouts.
+function injectPageNumber(html, pageNumber, totalSlides) {
   if (!html || !pageNumber) return html;
-  // Match footer with two spans: <footer class="footer"><span>Brand</span><span>N</span></footer>
-  // Replace the second span's content with the actual page number
+  const pageText = totalSlides ? `${pageNumber} / ${totalSlides}` : String(pageNumber);
   return html.replace(
-    /(<footer[^>]*class="[^"]*footer[^"]*"[^>]*>\s*<span>[^<]*<\/span>\s*<span>)[^<]*(<\/span>)/i,
-    `$1${pageNumber}$2`
+    /(<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*<span(?:\s[^>]*)?>)[^<]*(<\/span>\s*<\/footer>)/i,
+    `$1${pageText}$2`
   );
 }
 
@@ -1964,7 +1965,7 @@ function FullscreenModal({ slides, currentSlideId, vibe, combinedCSS, onClose, o
   if (currentSlide?.subSectionLabel && slideHtml) {
     slideHtml = injectSubSectionToHtml(slideHtml, currentSlide.subSectionLabel, currentSlide.sectionLabel);
   }
-  slideHtml = injectPageNumber(slideHtml, currentIndex + 1);
+  slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length);
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < slides.length - 1;
 

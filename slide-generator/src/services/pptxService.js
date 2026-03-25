@@ -120,8 +120,6 @@ const COMPLETE_TRANSLATION_EXAMPLE = {
     slide.addShape('line', {x:xPos + 0.25, y:cardY + 4.3, w:cardW - 0.5, h:0, line:{color:'DCDCDC', width:1}});
     slide.addText(d.impact, {x:xPos + 0.25, y:cardY + 4.4, w:cardW - 0.5, h:0.4, fontFace:'Arial', fontSize:11, color:c.coal, bold:true});
   });
-
-  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -199,8 +197,6 @@ const BLOCK_HEADER_CARDS_EXAMPLE = {
       bullet:true, paraSpaceAfter:6
     });
   });
-
-  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -280,8 +276,6 @@ const KPI_TRANSLATION_EXAMPLE = {
       slide.addShape('line', {x:detailX, y:yPos + 1.45, w:detailW, h:0, line:{color:c.border, width:1}});
     }
   });
-
-  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -310,8 +304,6 @@ const COVER_TRANSLATION_EXAMPLE = {
     x: 0.48, y: 2.64, w: 9.7, h: 2.0,
     fontFace: 'Georgia', fontSize: 42, color: '111111', valign: 'top', lineSpacingMultiple: 1.15
   });
-  // Footer (branding + page number — handled by addFooter, do NOT duplicate)
-  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -362,9 +354,6 @@ function(pptx, slideNum, totalSlides) {
   // Rounded rect: slide.addShape('roundRect', { x, y, w, h, fill: { color: 'HEX' }, rectRadius: 0.05 });
   // Circle: slide.addShape('ellipse', { x, y, w, h, fill: { color: 'HEX' } });
   // Line: slide.addShape('line', { x, y, w, h, line: { color: 'HEX', width: 1 } });
-
-  // ========== FOOTER ==========
-  addFooter(slide, slideNum, totalSlides);
 }`;
 
 // Export translation examples for preview UI
@@ -447,8 +436,9 @@ AUTO-CHARTS: If you see <div class="auto-chart" data-chart='JSON'>, extract the 
   // For donut: slide.addChart(pptx.charts.DOUGHNUT, chartData, {...})
   If unsure how to use addChart, render bars as rectangles (shapes) instead — that always works.
 
-FOOTER: The footer is handled separately by addFooter(). Do NOT render any <footer> HTML element content.
-Skip any text like "Strategy&" or page numbers that come from the footer — they are injected automatically.
+FOOTER: The footer (branding, page numbers) is inherited from the PPTX slide master template.
+Do NOT render any <footer> HTML element content. Do NOT add any "Strategy&" text or page numbers.
+Do NOT call addFooter() — it is a no-op. The template handles all footer content automatically.
 
 OUTPUT: Return ONLY a JavaScript array of functions, no markdown.`;
 
@@ -517,9 +507,6 @@ export const DEFAULT_PPTX_CODE_EXAMPLE = `[
         fontFace: 'Arial', fontSize: 11, color: '7a1818', bold: true
       });
     });
-
-    // Footer (always add)
-    addFooter(slide, slideNum, totalSlides);
   }
 ]`;
 
@@ -1137,9 +1124,6 @@ OUTPUT FORMAT (return ONLY this JavaScript array, no markdown):
     // Extract text from YOUR HTML above and create addText calls
     // USE COLORS FROM INLINE STYLES when present, otherwise use c.xxx defaults
     // Example: if HTML has <span style="color: #FF0000">text</span> → use color:'FF0000'
-
-    // Footer (always add) - use addFooter helper
-    addFooter(slide, slideNum, totalSlides);
   }
 ]
 
@@ -1282,7 +1266,6 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides, masterName) {
       x: 0.48, y: 2.64, w: 9.7, h: 2.0,
       fontFace: 'Georgia', fontSize: 42, color: COLORS.main, valign: 'top'
     });
-    addFooter(pptxSlide, slideNum, totalSlides);
     return;
   }
 
@@ -1309,7 +1292,6 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides, masterName) {
         fontFace: 'Arial', fontSize: 16, color: COLORS.meta
       });
     }
-    addFooter(pptxSlide, slideNum, totalSlides);
     return;
   }
 
@@ -1503,8 +1485,6 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides, masterName) {
 
   // Source/footnote
   addSourceNote(pptxSlide, slide.html);
-
-  addFooter(pptxSlide, slideNum, totalSlides);
 }
 
 // Main export function - ALWAYS uses AI for full-fidelity export

@@ -48,18 +48,10 @@ export function setFooterBranding(branding) {
   _footerBranding = branding || 'Strategy&';
 }
 
-// Helper: Add standard footer
-export function addFooter(slide, slideNum, totalSlides, branding) {
-  branding = branding || _footerBranding;
-  slide.addText(branding, {
-    x: 0.48, y: 7.05, w: 2, h: 0.25,
-    fontFace: 'Arial', fontSize: 10, color: COLORS.meta
-  });
-  slide.addText(`${slideNum} / ${totalSlides}`, {
-    x: 11.5, y: 7.05, w: 1.3, h: 0.25,
-    fontFace: 'Arial', fontSize: 10, color: COLORS.meta, align: 'right'
-  });
-}
+// No-op: footer branding and page numbers come from the PPTX slide master
+// template. Kept as a callable stub so AI-generated code that references
+// addFooter() doesn't throw at runtime.
+export function addFooter() {}
 
 // Helper: Add section tracker tabs (maroon section tab + grey sub-section tab)
 export function addSectionTracker(slide, sectionLabel, subSectionLabel) {

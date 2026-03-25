@@ -2079,6 +2079,21 @@ export default function AIChatbot() {
         return `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n${searchRawContext.substring(0, 4000)}\n=== END KEY FACTS ===\nIMPORTANT: Use ONLY dates, names, and facts from the above search context. Do NOT use outdated information from training data.\n`;
       };
 
+      // Auto-derive a search query for content slides when the router omitted searchQuery.
+      // Skips cover and section dividers (no factual data needed).
+      const skipSearchTemplates = new Set(['cover', 'sectionDivider']);
+      const deriveSearchQuery = (step) => {
+        if (step.searchQuery) return step.searchQuery;
+        if (!settings.searchEnabled || !searchRawContext) return null;
+        if (skipSearchTemplates.has(step.templateId)) return null;
+        const instr = step.instruction || '';
+        const titleMatch = instr.match(/TITLE:\s*(.+)/i);
+        const title = titleMatch?.[1]?.split('\n')[0]?.trim();
+        if (title && title.length > 10) return title;
+        if (instr.length > 20) return instr.substring(0, 120);
+        return null;
+      };
+
       const buildContextForStep = (step, stepPromptWithVibe, baseState) => {
         let contextIndices = step.contextSlides?.length > 0
           ? step.contextSlides
@@ -2315,9 +2330,10 @@ export default function AIChatbot() {
             let stepSettings = settings;
             // Inject router-level search facts into every slide's prompt for grounding
             let enrichedStepPrompt = stepPromptWithVibe + buildSearchFactsBlock();
-            if (step.searchQuery && settings.searchEnabled) {
-              const datedQuery = `${step.searchQuery} ${currentDateString()}`;
-              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${datedQuery.substring(0, 100)}"`);
+            const effectiveSearchQuery = deriveSearchQuery(step);
+            if (effectiveSearchQuery && settings.searchEnabled) {
+              const datedQuery = `${effectiveSearchQuery} ${currentDateString()}`;
+              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
@@ -2938,9 +2954,10 @@ export default function AIChatbot() {
             let batchStepSettings = settings;
             // Inject router-level search facts into every slide's prompt for grounding
             let enrichedPrompt = stepPromptWithVibeLocal + buildSearchFactsBlock();
-            if (step.searchQuery && settings.searchEnabled) {
-              const datedQuery = `${step.searchQuery} ${currentDateString()}`;
-              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${datedQuery.substring(0, 100)}"`);
+            const effectiveBatchQuery = deriveSearchQuery(step);
+            if (effectiveBatchQuery && settings.searchEnabled) {
+              const datedQuery = `${effectiveBatchQuery} ${currentDateString()}`;
+              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {

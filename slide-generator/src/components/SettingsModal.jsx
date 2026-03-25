@@ -926,7 +926,7 @@ export default function SettingsModal({ onClose }) {
           <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label style={{ fontSize: 11 }}>Model</label>
-              <input type="text" value={settings.searchModel || ''} onChange={(e) => setSettings({ ...settings, searchModel: e.target.value })} placeholder="openai.gpt-5.2" style={{ fontSize: 12 }} />
+              <input type="text" value={settings.searchModel || ''} onChange={(e) => setSettings({ ...settings, searchModel: e.target.value })} placeholder="openai.gpt-5.4" style={{ fontSize: 12 }} />
             </div>
             <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
               <label style={{ fontSize: 11 }}>API Key</label>

@@ -2,7 +2,7 @@ import { SLIDE_TEMPLATES } from '../../utils/slideTemplates';
 import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { getCredentials } from './models.js';
-import { callGeminiAPI } from './apiClient.js';
+import { callWithModelFallback } from './apiClient.js';
 import { TITLE_HEADER_RULES } from './constants.js';
 import { safeJSONParse } from './router.js';
 import { extractSlideContentForAI } from './slideContext.js';
@@ -80,7 +80,7 @@ Return ONLY the JSON array, no explanation.`;
   try {
     let content;
 
-    content = await callGeminiAPI(settings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Parse JSON from response with repair for common AI response issues
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -218,7 +218,7 @@ Return ONLY the JSON array.`;
   try {
     let content;
 
-    content = await callGeminiAPI(settings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Parse JSON with repair for common AI response issues
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -354,7 +354,7 @@ Return ONLY the JSON object.`;
   try {
     let content;
 
-    content = await callGeminiAPI(settings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Parse JSON with repair for common AI response issues
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -440,7 +440,7 @@ Return ONLY the JSON array with templateId, title, subtitle for each story point
   try {
     let content;
 
-    content = await callGeminiAPI(settings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Parse JSON with repair for common AI response issues
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
@@ -648,7 +648,7 @@ Return ONLY the completed HTML.`;
     // Use higher token limit to avoid truncation on complex templates
     const contentSettings = { ...settings, maxTokens: Math.max(settings.maxTokens || 4096, 8192) };
 
-    content = await callGeminiAPI(contentSettings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(contentSettings, systemPrompt, userPrompt);
 
     // Clean up
     content = content
@@ -983,7 +983,7 @@ Output the filled slide HTML only.`;
     // Use higher token limit for slide content to avoid truncation on complex templates
     const contentSettings = { ...settings, maxTokens: Math.max(settings.maxTokens || 4096, 8192) };
 
-    content = await callGeminiAPI(contentSettings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(contentSettings, systemPrompt, userPrompt);
 
     // Clean up AI response - remove markdown, explanatory text, placeholders
     content = content

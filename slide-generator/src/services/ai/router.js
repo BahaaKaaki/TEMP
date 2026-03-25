@@ -3,7 +3,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { selectBestTemplate, randomizeFamilyVariant, estimateItemCount } from '../templateEmbeddings';
 import { parseModelRef, findProvider, getCredentials } from './models.js';
-import { callGeminiAPI, callRouterWithImages } from './apiClient.js';
+import { callWithModelFallback, callRouterWithImages } from './apiClient.js';
 
 // ============================================
 // RULE-BASED ROUTER (No API call needed)
@@ -1271,7 +1271,7 @@ ${referencedSlides.map(r => `  - Index ${r.index} = Page ${r.index + 1}: "${r.ti
 `
     : '';
 
-  const searchAvailable = !!(settings.searchEnabled && settings.searchEndpoint && settings.searchApiKey);
+  const searchAvailable = !!(settings.searchEnabled && settings.searchEndpoint && settings.searchApiKey) || !!effectiveSearchEnabled;
 
   // ── Condense agent-generated prompts for the router ──
   // Agent prompts contain verbose per-slide instructions (~30-50K chars) that overwhelm the router.
@@ -1399,6 +1399,7 @@ SEARCH: Include a searchQuery when real data would strengthen the title — the 
 - Storyline: ${storylineSummary || 'none'}
 - Max parallel steps per group: ${parallelBatchSize}
 - Web search available: ${searchAvailable ? 'YES — add "searchQuery" to steps that need real-time or specific data' : 'NO — do not add searchQuery'}
+- Slide style preference: ${settings.slideStylePreference === 'freestyle' ? 'FREESTYLE — always use templateId "freestyle" for create_slide steps (except cover/sectionDivider)' : settings.slideStylePreference === 'templates' ? 'TEMPLATES — always use a named template for create_slide steps, never "freestyle"' : 'AUTO — choose the best template or freestyle based on content'}
 ${layoutSummary ? `- LAYOUTS ALREADY IN DECK: ${layoutSummary} — DO NOT repeat the most-used layouts. Pick different templates and content shapes for new slides.` : ''}
 ${agentModeNote}${imageModeNote}${documentSection}
 SLIDE TITLES:
@@ -1461,10 +1462,11 @@ USER REQUEST: "${routerPrompt}"`;
             pendingImages
           );
         } else {
-          response = await callGeminiAPI(
+          response = await callWithModelFallback(
             routerSettings,
             getRouterSystemPrompt(),
-            contextInfo
+            contextInfo,
+            { role: 'text' }
           );
         }
 
@@ -1487,7 +1489,6 @@ USER REQUEST: "${routerPrompt}"`;
         }
         break; // Got a valid response
       } catch (routerErr) {
-        // 429 = rate limit — fail immediately, retrying worsens congestion
         if (routerErr.isRateLimit) {
           console.warn(`[AI Router] Rate limited — failing fast (no retry/fallback)`);
           throw routerErr;
@@ -1504,20 +1505,7 @@ USER REQUEST: "${routerPrompt}"`;
           console.warn(`[AI Router] Retryable error on attempt ${attempt + 1}:`, routerErr.message);
           continue;
         }
-        // All retries exhausted — try fallback to main model if different (not on rate limit)
-        const mainModel = settings.model;
-        if (mainModel && mainModel !== routerModelRef) {
-          console.warn(`[AI Router] Router model "${routerModelRef}" failed after retries: ${routerErr.message.slice(0, 200)}`);
-          console.log(`[AI Router] Falling back to main model: ${mainModel}`);
-          try {
-            const fallbackRouterSettings = { ...routerSettings, model: mainModel };
-            response = await callGeminiAPI(fallbackRouterSettings, getRouterSystemPrompt(), contextInfo);
-            break; // Fallback succeeded
-          } catch (fallbackErr) {
-            console.error(`[AI Router] Fallback model "${mainModel}" also failed:`, fallbackErr.message.slice(0, 200));
-          }
-        }
-        throw routerErr; // Non-retryable error, no fallback available
+        throw routerErr;
       }
     }
 

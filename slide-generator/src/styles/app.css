@@ -326,7 +326,7 @@ body {
 }
 
 .vibe-selector-btn {
-  display: flex;
+  display: none !important;
   align-items: center;
   gap: 6px;
 }
@@ -2982,7 +2982,15 @@ body {
   overflow: hidden;
 }
 
-.slide-main-area > .slide-preview-wrapper {
+.slide-content-column {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.slide-content-column > .slide-preview-wrapper {
   flex: 1;
   min-width: 0;
   min-height: 0;
@@ -3040,6 +3048,8 @@ body {
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
   margin-top: 6px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 
 .slide-ai-prompt-form {
@@ -5764,8 +5774,7 @@ body {
 /* Template switch modal/popover */
 .template-switch-popover {
   position: absolute;
-  top: 100%;
-  left: 0;
+  right: 0;
   margin-top: 8px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
@@ -5774,7 +5783,7 @@ body {
   padding: 16px;
   width: 500px;
   max-width: calc(100vw - 40px);
-  z-index: 1000;
+  z-index: 1050;
   max-height: 70vh;
   overflow-y: auto;
 }
@@ -5788,7 +5797,7 @@ body {
 
 /* Vibe Switch Button (similar to template switch) */
 .vibe-switch-btn {
-  display: flex;
+  display: none !important;
   align-items: center;
   gap: 6px;
   padding: 6px 10px;
@@ -5825,6 +5834,7 @@ body {
 
 /* Vibe switch popover */
 .vibe-switch-popover {
+  display: none !important;
   position: absolute;
   top: 100%;
   left: 0;
@@ -5929,6 +5939,7 @@ body {
 
 /* Header Vibe Menu (global vibe selector) */
 .vibe-header-menu {
+  display: none !important;
   position: absolute;
   top: 100%;
   left: 0;

@@ -3,7 +3,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
 import { getCredentials } from './models.js';
-import { callGeminiAPI } from './apiClient.js';
+import { callWithModelFallback } from './apiClient.js';
 import { CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
 import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext } from './slideContext.js';
@@ -53,7 +53,7 @@ Keep reasoning under 20 words.`;
   try {
     let content;
 
-    content = await callGeminiAPI(
+    content = await callWithModelFallback(
       { ...settings, temperature: 0.1, maxTokens: 200 },
       'You analyze editing instructions. Respond only in JSON.',
       analysisPrompt
@@ -304,7 +304,7 @@ ${TITLE_HEADER_RULES}
   try {
     let content;
 
-    content = await callGeminiAPI(settings, EDIT_SYSTEM_PROMPT, userPrompt);
+    content = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, userPrompt);
 
     // Check if GPT requested more context (max 1 retry)
     const contextRequest = detectContextRequest(content);
@@ -329,7 +329,7 @@ ${additionalContext}
 Now please modify the slide as requested.`;
 
         let retryContent;
-        retryContent = await callGeminiAPI(settings, EDIT_SYSTEM_PROMPT, retryPrompt);
+        retryContent = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, retryPrompt);
         content = retryContent;
       } else {
         // Context not available - retry and tell AI to proceed without it
@@ -340,7 +340,7 @@ Now please modify the slide as requested.`;
 NOTE: You requested additional context ("${contextRequest.reason}") but that information is not available in the system. Please proceed with modifying the slide using your best judgment and the information already provided. Do not request more context - modify the slide now.`;
 
         let retryContent;
-        retryContent = await callGeminiAPI(settings, EDIT_SYSTEM_PROMPT, retryPrompt);
+        retryContent = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, retryPrompt);
         content = retryContent;
       }
     }
@@ -555,7 +555,7 @@ Return ONLY the transformed HTML.`;
   try {
     let content;
 
-    content = await callGeminiAPI(settings, EDIT_SYSTEM_PROMPT, userPrompt);
+    content = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, userPrompt);
 
     // Extract single slide (AI may return both original and transformed - take the last one)
     content = extractSingleSlide(content);
@@ -665,7 +665,7 @@ Return ONLY the modified HTML for the current slide.`;
   try {
     let content;
 
-    content = await callGeminiAPI(settings, EDIT_SYSTEM_PROMPT, userPrompt);
+    content = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, userPrompt);
 
     // Extract single slide (AI may return multiple versions - take the last one)
     content = extractSingleSlide(content);
@@ -739,7 +739,7 @@ Return the modified HTML for ALL slides in this EXACT format:
   try {
     let content;
 
-    content = await callGeminiAPI(settings, EDIT_SYSTEM_PROMPT, userPrompt);
+    content = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, userPrompt);
 
     // Clean up
     content = content
@@ -811,7 +811,7 @@ function(pptx, slideNum, totalSlides) {
     let content;
     const systemPrompt = 'You are a JavaScript code generator specializing in PptxGenJS. Return only valid JavaScript code, no markdown or explanations.';
 
-    content = await callGeminiAPI(settings, systemPrompt, exportPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, exportPrompt);
 
     // Clean up
     content = content

@@ -22,11 +22,6 @@ export const TEMPLATE_FAMILIES = {
     description: 'Cover slides, title slides, section openers, working placeholders',
     templates: ['cover', 'blank', 'instructionSlide'],
   },
-  'agenda-nav': {
-    qualifier: 'Executive Overview',
-    description: 'Executive overview, content structure, numbered section preview',
-    templates: ['executiveSummary'],
-  },
   'cards-columns': {
     qualifier: 'Card Columns',
     description: 'Multi-column cards (2, 3, 4 cards) with icons and content, column boxes',
@@ -84,8 +79,8 @@ export const TEMPLATE_FAMILIES = {
   },
   'summary-recap': {
     qualifier: 'Summary Recap',
-    description: 'Executive summaries, key points, takeaways, recommendations, insights',
-    templates: ['executiveSummaryVertical', 'executiveSummaryHorizontal', 'insightToAction', 'recommendationSummary'],
+    description: 'Executive summaries, key points, takeaways, recommendations, insights, executive overview',
+    templates: ['executiveSummary', 'executiveSummaryVertical', 'executiveSummaryHorizontal', 'insightToAction', 'recommendationSummary'],
   },
   'closing-cta': {
     qualifier: 'Closing CTA',
@@ -386,7 +381,7 @@ export const TEMPLATE_QUALIFICATIONS = {
     keywords: ['four', 'quadrant', 'grid', '2x2', 'categories', 'four-part', 'color-coded', 'framework', 'matrix'],
   },
   executiveSummary: {
-    family: 'agenda-nav',
+    family: 'summary-recap',
     layoutSummary: 'Numbered executive summary',
     designSummary: 'Numbered section preview',
     description: 'Numbered summary of key sections with titles and descriptions. Each item previews an upcoming slide or section. Use as executive summary, content structure guide, or roadmap.',
@@ -751,7 +746,7 @@ function scoreTemplate(templateId, qual, analysis) {
   if (signals.includes('has-process-text') && family === 'process-flow') score += 5;
   if (signals.includes('has-comparison') && family === 'comparison') score += 10;
   // Exec summary content → boost exec summary templates
-  if (signals.includes('has-exec-summary') && (family === 'agenda-nav' || family === 'summary-recap')) {
+  if (signals.includes('has-exec-summary') && family === 'summary-recap') {
     const execIds = new Set(VARIANT_GROUPS.executiveSummary || []);
     if (execIds.has(templateId)) score += 15;
   }
@@ -1477,8 +1472,7 @@ export async function findBestTemplate(userRequest, settings) {
  * This adds variety so presentations don't always use threeCards — they might
  * get threeCardsB or threeCardsC. But a threeCards will NEVER become a twoCards.
  *
- * Uses weighted random: the originally-selected template gets 2x weight
- * so it's still the most likely pick, but siblings get a fair shot.
+ * Uses uniform random: each variant in the group has equal probability.
  */
 export function randomizeFamilyVariant(result) {
   if (!result?.templateId) return result;
@@ -1486,13 +1480,8 @@ export function randomizeFamilyVariant(result) {
   const siblings = _variantIndex[result.templateId];
   if (!siblings || siblings.length <= 1) return result;
 
-  // Build weighted pool: selected template gets 2 entries, siblings get 1
-  const pool = [];
-  for (const id of siblings) {
-    if (!SLIDE_TEMPLATES[id]) continue;
-    pool.push(id);
-    if (id === result.templateId) pool.push(id); // double weight for original
-  }
+  // Equal weight for all variants in the group
+  const pool = siblings.filter(id => SLIDE_TEMPLATES[id]);
 
   const pick = pool[Math.floor(Math.random() * pool.length)];
 

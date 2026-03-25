@@ -58,7 +58,7 @@ export async function callRouterWithImages(settings, systemPrompt, contextInfo, 
 
   if (imageContent.length === 0) {
     // Fallback to text-only if images couldn't be processed
-    return callGeminiAPI(settings, systemPrompt, contextInfo);
+    return callWithModelFallback(settings, systemPrompt, contextInfo, { role: 'text' });
   }
 
   // Build the prompt with image context
@@ -311,10 +311,11 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
     const endpoint = creds.apiEndpoint || '(unknown)';
     const hostMatch = endpoint.match(/\/\/([^/]+)/);
     const host = hostMatch ? hostMatch[1] : endpoint;
+    const modelLabel = creds.model || '(unknown model)';
     const connErr = new Error(
       lastError?.status >= 500
-        ? `Server error ${lastError.status} from ${host} after ${MAX_RETRIES + 1} attempts. The API server may be temporarily unavailable.`
-        : `Could not connect to ${host}. Check your network connection, VPN, and that the endpoint URL is correct. (${lastError?.message || 'unknown error'})`
+        ? `Server error ${lastError.status} from ${host} (model: ${modelLabel}) after ${MAX_RETRIES + 1} attempts. The API server may be temporarily unavailable.`
+        : `Could not connect to ${host} (model: ${modelLabel}). Check your network connection, VPN, and that the endpoint URL is correct. (${lastError?.message || 'unknown error'})`
     );
     connErr.status = lastError?.status;
     throw connErr;
@@ -670,6 +671,59 @@ export function parseAPIResponseContent(data, creds) {
   }
   // Chat Completions format
   return data.choices?.[0]?.message?.content || '';
+}
+
+// ─── Model fallback across provider's available models ────────────────────
+// When a model fails (non-rate-limit), try other models from the same
+// provider before giving up. Uses the live /api/ai/models list when available.
+
+export function getFallbackModels(settings, providerId, failedModel, role) {
+  let models = [];
+  try {
+    const cached = localStorage.getItem('pwc_fetched_models');
+    if (cached) models = JSON.parse(cached);
+  } catch (_) { /* ignore parse errors */ }
+
+  if (!models.length) {
+    const provider = findProvider(settings, providerId);
+    models = provider?.models || [];
+  }
+
+  return models.filter(m => {
+    if (m === failedModel) return false;
+    if (role !== 'image' && m.includes('image')) return false;
+    if (role === 'image' && !m.includes('image')) return false;
+    return true;
+  });
+}
+
+export async function callWithModelFallback(settings, systemPrompt, userPrompt, opts = {}) {
+  const modelRef = settings.model;
+  const { providerId, modelName } = parseModelRef(modelRef);
+
+  try {
+    return await callGeminiAPI(settings, systemPrompt, userPrompt);
+  } catch (err) {
+    if (err.isRateLimit) throw err;
+
+    const fallbacks = getFallbackModels(settings, providerId, modelName, opts.role);
+    if (fallbacks.length === 0) throw err;
+
+    console.warn(`[ModelFallback] Primary model "${modelName}" failed: ${err.message.slice(0, 150)}`);
+
+    for (const fallbackModel of fallbacks) {
+      try {
+        const ref = `${providerId}:${fallbackModel}`;
+        console.log(`[ModelFallback] Trying fallback: ${ref}`);
+        const fbSettings = { ...settings, model: ref };
+        return await callGeminiAPI(fbSettings, systemPrompt, userPrompt);
+      } catch (fbErr) {
+        if (fbErr.isRateLimit) throw fbErr;
+        console.warn(`[ModelFallback] "${fallbackModel}" also failed: ${fbErr.message.slice(0, 100)}`);
+      }
+    }
+    throw err;
+  }
 }
 
 // Helper to get settings for fast model calls (assessments, template selection)

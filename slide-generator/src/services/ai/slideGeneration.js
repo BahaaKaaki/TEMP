@@ -4,7 +4,7 @@ import { audit } from '../../utils/auditLog';
 import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
 import FREESTYLE_SLIDE_GUIDE from '../../guides/freestyle-slide-guide.md?raw';
 import { getCredentials } from './models.js';
-import { callGeminiAPI } from './apiClient.js';
+import { callWithModelFallback } from './apiClient.js';
 import { CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, getWorkLevelInstructions } from './constants.js';
 import { generateSlideSummary, buildDeckContext } from './slideContext.js';
 import { currentDateString } from './router.js';
@@ -376,7 +376,7 @@ Return the slide(s) as raw HTML, separated by a blank line between each slide.`;
   try {
     let content;
 
-    content = await callGeminiAPI(settings, activeSystemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, activeSystemPrompt, userPrompt);
 
     // Safety check: if AI returned JSON instead of HTML, retry once with clear instruction
     const isJsonResponse = content.trim().startsWith('{') && content.trim().endsWith('}');
@@ -388,7 +388,7 @@ Return the slide(s) as raw HTML, separated by a blank line between each slide.`;
 IMPORTANT: You MUST output valid HTML slides. Do NOT return JSON. Generate the slides now using your best judgment. If you don't have specific data, create realistic consulting content.`;
 
       let retryContent;
-      retryContent = await callGeminiAPI(settings, activeSystemPrompt, retryPrompt);
+      retryContent = await callWithModelFallback(settings, activeSystemPrompt, retryPrompt);
       content = retryContent;
     }
 
@@ -414,7 +414,7 @@ Original output:
 ${content}`;
 
         try {
-          const corrected = await callGeminiAPI(settings, activeSystemPrompt, correctionPrompt);
+          const corrected = await callWithModelFallback(settings, activeSystemPrompt, correctionPrompt);
           const corrStyleMatch = corrected.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
           const corrCSS = corrStyleMatch
             ? corrStyleMatch.map(s => s.replace(/<\/?style[^>]*>/gi, '').trim()).join('\n')
@@ -925,6 +925,7 @@ export function extractTitleFromHTML(html) {
     /<div[^>]*class=["'][^"']*card-title[^"']*["'][^>]*>([^<]+)<\/div>/i,
     // Section headers
     /<div[^>]*class=["'][^"']*section-header[^"']*["'][^>]*>([^<]+)<\/div>/i,
+    /<div[^>]*class=["'][^"']*section-divider-title[^"']*["'][^>]*>([^<]+)<\/div>/i,
   ];
 
   for (const pattern of patterns) {

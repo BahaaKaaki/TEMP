@@ -1151,6 +1151,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       </div>
 
       <div className="slide-main-area">
+      <div className="slide-content-column">
       <div className="slide-preview-wrapper" ref={previewWrapperRef}>
         {/* Inject CSS */}
         <style>{getBaseCSS() + '\n' + combinedCSS + '\n' + getEditModeCSS(isEditMode) + '\n' + getVisualEditModeCSS(isVisualEditMode) + '\n' + VIBE_AWARE_CSS + '\n:root { ' + getVibeCSS(state.vibe) + ' }'}</style>
@@ -1234,70 +1235,6 @@ export default function SlidePreview({ onSwitchToCode }) {
           <CommentPanel slideId={activeSlide.id} />
         </div>
 
-      </div>
-
-      {/* Quick Action Buttons */}
-      <div className="slide-quick-actions">
-        {[
-          { label: 'Inspect & Fix', icon: '🔍', prompt: 'Inspect this slide for visual issues: overlapping elements, text overflow, clipped content, misaligned items. Fix ALL layout issues found. DO NOT change any text content — preserve every word exactly as-is. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Fix Overlap', icon: '📐', prompt: 'Fix overlapping or overflowing elements. Adjust spacing, reduce font sizes, or simplify the visual layout so everything fits within 890×353px. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Fill Space', icon: '↕️', prompt: 'The slide has too much empty space. Expand card heights, increase spacing, add visual breathing room. DO NOT add new text content or change existing text — only adjust the visual sizing and spacing. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Lighter', icon: '✨', prompt: 'Make the visual design lighter and more minimal. Reduce decorative elements, increase white space, simplify borders/shadows. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Denser', icon: '📐', prompt: 'Make the layout more compact and space-efficient. Tighten spacing between elements, reduce padding, use the available frame space more efficiently. DO NOT change, add, or remove any text content — only adjust visual density and spacing. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Bolder', icon: '💪', prompt: 'Make the visual design more impactful. Use stronger contrast, bigger numbers, bolder visual weight. DO NOT change any text content — only adjust visual styling and emphasis. Keep h1, h2, h3, h4 text identical.' },
-        ].map(({ label, icon, prompt }) => (
-          <button
-            key={label}
-            className="slide-quick-action-btn"
-            disabled={isImproving}
-            onClick={async () => {
-              setSlidePrompt(prompt);
-              setIsImproving(true);
-              setError('');
-              try {
-                const isImg = activeSlide.templateId === 'image-full' || activeSlide.templateId === 'image-content'
-                  || (activeSlide.html && (activeSlide.html.includes('slide-image-full') || activeSlide.html.includes('frame-image')));
-                if (isImg && state.settings.imageModel) {
-                  const imageMode = activeSlide.templateId === 'image-full' ? 'full' : 'content';
-                  const slideIdx = state.slides.findIndex(s => s.id === activeSlide.id);
-                  const existingImage = extractImageDataUri(activeSlide.html);
-                  const imageResult = await generateImageSlide(prompt, state.settings, imageMode, {
-                    layoutGuidance: prompt,
-                    vibe: state.imageVibe || state.vibe,
-                    footerBranding: state.settings.footerBranding || 'Strategy&',
-                    slideNumber: slideIdx + 1,
-                    totalSlides: state.slides.length,
-                    existingImageDataUri: existingImage,
-                  });
-                  actions.updateSlide(activeSlide.id, {
-                    html: imageResult.html,
-                    title: imageResult.title || activeSlide.title,
-                    templateId: activeSlide.templateId,
-                    type: activeSlide.type,
-                  });
-                } else {
-                  const slideInfo = { html: activeSlide.html };
-                  const fastSettings = { ...state.settings, model: state.settings.fastModel || state.settings.model };
-                  const result = await improveSlide(slideInfo, prompt, fastSettings);
-                  const improvedHtml = result?.html || result;
-                  const newCustomCSS = result?.customCSS;
-                  const updateData = { html: improvedHtml };
-                  if (newCustomCSS) updateData.customCSS = newCustomCSS;
-                  actions.updateSlide(activeSlide.id, updateData);
-                }
-                setSlidePrompt('');
-              } catch (err) {
-                setError(err.message);
-              } finally {
-                setIsImproving(false);
-              }
-            }}
-          >
-            <span className="quick-action-icon">{icon}</span>
-            {label}
-          </button>
-        ))}
-      </div>
       </div>
 
       {/* Per-Slide AI Prompt + Switch Template */}
@@ -1387,6 +1324,71 @@ export default function SlidePreview({ onSwitchToCode }) {
             {error}
           </div>
         )}
+      </div>
+      </div>
+
+      {/* Quick Action Buttons */}
+      <div className="slide-quick-actions">
+        {[
+          { label: 'Auto-Fix', icon: '🔍', prompt: 'Inspect this slide for visual issues: overlapping elements, text overflow, clipped content, misaligned items. Fix ALL layout issues found. DO NOT change any text content — preserve every word exactly as-is. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Fix Overlaps', icon: '📐', prompt: 'Fix overlapping or overflowing elements. Adjust spacing, reduce font sizes, or simplify the visual layout so everything fits within the frame. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Expand', icon: '↕️', prompt: 'The slide has too much empty space. Expand card heights, increase spacing, add visual breathing room, use the full frame area. DO NOT add new text content or change existing text — only adjust the visual sizing and spacing. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Simplify', icon: '✨', prompt: 'Make the visual design lighter and more minimal. Reduce decorative elements, increase white space, simplify borders/shadows. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Compact', icon: '📏', prompt: 'Make the layout more compact and space-efficient. Tighten spacing between elements, reduce padding, use the available frame space more efficiently. DO NOT change, add, or remove any text content — only adjust visual density and spacing. Keep h1, h2, h3, h4 text identical.' },
+          { label: 'Emphasize', icon: '💪', prompt: 'Make the visual design more impactful. Use stronger contrast, bigger numbers, bolder visual weight. DO NOT change any text content — only adjust visual styling and emphasis. Keep h1, h2, h3, h4 text identical.' },
+        ].map(({ label, icon, prompt }) => (
+          <button
+            key={label}
+            className="slide-quick-action-btn"
+            disabled={isImproving}
+            onClick={async () => {
+              setSlidePrompt(prompt);
+              setIsImproving(true);
+              setError('');
+              try {
+                const isImg = activeSlide.templateId === 'image-full' || activeSlide.templateId === 'image-content'
+                  || (activeSlide.html && (activeSlide.html.includes('slide-image-full') || activeSlide.html.includes('frame-image')));
+                if (isImg && state.settings.imageModel) {
+                  const imageMode = activeSlide.templateId === 'image-full' ? 'full' : 'content';
+                  const slideIdx = state.slides.findIndex(s => s.id === activeSlide.id);
+                  const existingImage = extractImageDataUri(activeSlide.html);
+                  const imageResult = await generateImageSlide(prompt, state.settings, imageMode, {
+                    layoutGuidance: prompt,
+                    vibe: state.imageVibe || state.vibe,
+                    footerBranding: state.settings.footerBranding || 'Strategy&',
+                    slideNumber: slideIdx + 1,
+                    totalSlides: state.slides.length,
+                    existingImageDataUri: existingImage,
+                  });
+                  actions.updateSlide(activeSlide.id, {
+                    html: imageResult.html,
+                    title: imageResult.title || activeSlide.title,
+                    templateId: activeSlide.templateId,
+                    type: activeSlide.type,
+                  });
+                } else {
+                  const slideInfo = { html: activeSlide.html };
+                  const fastSettings = { ...state.settings, model: state.settings.fastModel || state.settings.model };
+                  const result = await improveSlide(slideInfo, prompt, fastSettings);
+                  const improvedHtml = result?.html || result;
+                  const newCustomCSS = result?.customCSS;
+                  const updateData = { html: improvedHtml };
+                  if (newCustomCSS) updateData.customCSS = newCustomCSS;
+                  actions.updateSlide(activeSlide.id, updateData);
+                }
+                setSlidePrompt('');
+              } catch (err) {
+                setError(err.message);
+              } finally {
+                setIsImproving(false);
+              }
+            }}
+          >
+            <span className="quick-action-icon">{icon}</span>
+            {label}
+          </button>
+        ))}
+      </div>
       </div>
 
       {/* Bottom bar: Slide Info */}

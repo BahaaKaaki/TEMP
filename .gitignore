@@ -56,3 +56,9 @@ PROJECT_REFERENCE.md
 # Temp diff files
 temp_diff*.txt
 temp_stash_diff*.txt
+
+# Deploy comparison artifacts
+deploy-compare/
+
+# BMAD output
+_bmad-output/

@@ -48,10 +48,16 @@ export function setFooterBranding(branding) {
   _footerBranding = branding || 'Strategy&';
 }
 
-// No-op: footer branding and page numbers come from the PPTX slide master
-// template. Kept as a callable stub so AI-generated code that references
-// addFooter() doesn't throw at runtime.
-export function addFooter() {}
+// Page-number only: branding ("Strategy&") comes from the slide master
+// template. We only add the "X / Y" page counter since the template's
+// built-in sldNum placeholder cannot render that format.
+export function addFooter(slide, slideNum, totalSlides) {
+  if (!slide || !slideNum) return;
+  slide.addText(`${slideNum} / ${totalSlides}`, {
+    x: 11.5, y: 7.05, w: 1.3, h: 0.25,
+    fontFace: 'Arial', fontSize: 10, color: COLORS.meta, align: 'right'
+  });
+}
 
 // Helper: Add section tracker tabs (maroon section tab + grey sub-section tab)
 export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
@@ -159,7 +165,7 @@ export function addSourceNote(slide, html) {
   const combined = texts.join(' | ');
   slide.addText(combined, {
     x: 2.5, y: 7.05, w: 8.5, h: 0.25,
-    fontFace: 'Arial', fontSize: 8, italic: true, color: COLORS.meta, align: 'center'
+    fontFace: 'Arial', fontSize: 8, italic: true, color: COLORS.meta, align: 'left'
   });
 }
 

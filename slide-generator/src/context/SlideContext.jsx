@@ -10,7 +10,7 @@ const SlideContext = createContext(null);
 const DEFAULT_SHARED_CSS = SLIDES_CSS;
 
 // Bump when default-model migration should run once for saved decks (see loadState).
-const SETTINGS_VERSION = 2;
+const SETTINGS_VERSION = 4;
 
 // Initial state
 const initialState = {
@@ -45,12 +45,14 @@ const initialState = {
           'vertex_ai.gemini-3.1-pro-preview',
           'vertex_ai.gemini-3-pro-preview',
           'vertex_ai.gemini-3-pro-image-preview',
+          'bedrock.anthropic.claude-opus-4-6',
           'vertex_ai.anthropic.claude-opus-4-6',
+          'openai.gpt-5.4-nano',
+          'openai.gpt-5.4-mini',
           'openai.gpt-5.2-2025-12-11',
           'openai.gpt-5.2',
           'openai.gpt-5.2-codex',
           'azure.gpt-4.1',
-          'azure.gpt-4o',
         ],
         azurePrefix: false,
         authType: 'server',
@@ -60,15 +62,15 @@ const initialState = {
       },
     ],
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
-    fastModel: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
+    model: 'pwc:bedrock.anthropic.claude-opus-4-6',
+    fastModel: 'pwc:openai.gpt-5.4-nano',
     // Agent-mode router settings
-    routerModel: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
+    routerModel: 'pwc:bedrock.anthropic.claude-opus-4-6',
     routerReasoningEffort: 'low',
     routerMaxTokens: 65536,
     routerSearchEnabled: false,
     // Chatbot-mode router settings
-    chatRouterModel: 'pwc:vertex_ai.anthropic.claude-opus-4-6',
+    chatRouterModel: 'pwc:bedrock.anthropic.claude-opus-4-6',
     chatRouterReasoningEffort: 'low',
     chatRouterMaxTokens: 65536,
     chatRouterSearchEnabled: true,
@@ -79,8 +81,9 @@ const initialState = {
     reasoningEffort: 'low',
     verbosity: '',
     // PPTX Export settings
-    pptxSystemPrompt: '', // Custom system prompt for PPTX code generation (empty = use default)
-    pptxCodeExample: '', // Custom code example for AI guidance (empty = use default)
+    pptxModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
+    pptxSystemPrompt: '',
+    pptxCodeExample: '',
     pptxBatchSize: 10, // Number of slides to process per API call
     pptxParallelBatches: 3, // Number of batches to process in parallel (concurrent API calls)
     pptxGenerateOnCreate: false, // If true, generate PPTX code when slide is created (caches it)
@@ -299,25 +302,46 @@ function loadState() {
         }
       }
 
-      // MIGRATION: one-time update of old default models to current defaults.
-      // Uses a version stamp so migration only runs once per version bump,
-      // preserving any manual model selections the user makes afterward.
+      // MIGRATION: update old/stale default models to current defaults.
+      // Strategy: bump SETTINGS_VERSION whenever defaults change. On load,
+      // if the saved version is behind, replace any model value that matches
+      // a known old default OR the previous version's defaults with the new one.
+      // User-chosen values that aren't in OLD_DEFAULTS are preserved.
       const savedVersion = parsed.settings?._settingsVersion || 0;
       const needsMigration = savedVersion < SETTINGS_VERSION;
 
-      const migrateDefault = (val, fallback) => {
+      if (needsMigration) {
+        console.log('[SlideContext] Migration needed: saved v%d -> v%d', savedVersion, SETTINGS_VERSION);
+        console.log('[SlideContext] Saved models:', {
+          model: parsed.settings?.model,
+          fastModel: parsed.settings?.fastModel,
+          routerModel: parsed.settings?.routerModel,
+          chatRouterModel: parsed.settings?.chatRouterModel,
+          reportModel: parsed.settings?.reportModel,
+        });
+      }
+
+      const OLD_DEFAULTS = new Set([
+        'pwc:openai.gpt-5.2', 'openai:gpt-5.2', 'openai.gpt-5.2',
+        'pwc:openai.gpt-5.2-2025-12-11',
+        'pwc:vertex_ai.gemini-3-pro-preview',
+        'pwc:vertex_ai.gemini-3.1-pro-preview',
+        'pwc:vertex_ai.anthropic.claude-opus-4-6',
+        'pwc:bedrock.anthropic.claude-opus-4-6',
+        'pwc:azure.gpt-4o',
+        'pwc:openai.gpt-5-mini',
+      ]);
+
+      const migrateDefault = (val, fallback, fieldName) => {
         if (!needsMigration) return migrateModelRef(val) || val || fallback;
-        // Only replace if the value matches an old default that should be upgraded
         const migrated = migrateModelRef(val) || fallback;
-        const OLD_DEFAULTS = new Set([
-          'pwc:openai.gpt-5.2', 'openai:gpt-5.2', 'openai.gpt-5.2',
-          'pwc:openai.gpt-5.2-2025-12-11',
-          'pwc:vertex_ai.gemini-3-pro-preview',
-          'pwc:vertex_ai.gemini-3.1-pro-preview',
-        ]);
-        return OLD_DEFAULTS.has(migrated) ? fallback : migrated;
+        const result = OLD_DEFAULTS.has(migrated) ? fallback : migrated;
+        if (migrated !== result) {
+          console.log('[SlideContext] Migrated %s: %s -> %s', fieldName, migrated, result);
+        }
+        return result;
       };
-      let migratedModel = migrateDefault(parsed.settings?.model, initialState.settings.model);
+      let migratedModel = migrateDefault(parsed.settings?.model, initialState.settings.model, 'model');
 
       const loadedState = {
         ...initialState,
@@ -332,17 +356,24 @@ function loadState() {
           providers: mergedProviders,
           _settingsVersion: SETTINGS_VERSION,
           model: migratedModel,
-          fastModel: migrateDefault(parsed.settings?.fastModel, initialState.settings.fastModel),
-          routerModel: migrateDefault(parsed.settings?.routerModel, initialState.settings.routerModel),
-          chatRouterModel: migrateDefault(parsed.settings?.chatRouterModel, initialState.settings.chatRouterModel),
+          fastModel: migrateDefault(parsed.settings?.fastModel, initialState.settings.fastModel, 'fastModel'),
+          routerModel: migrateDefault(parsed.settings?.routerModel, initialState.settings.routerModel, 'routerModel'),
+          chatRouterModel: migrateDefault(parsed.settings?.chatRouterModel, initialState.settings.chatRouterModel, 'chatRouterModel'),
           deepAnalysisModel: parsed.settings?.deepAnalysisModel != null ? (migrateModelRef(parsed.settings.deepAnalysisModel) || '') : initialState.settings.deepAnalysisModel,
-          reportModel: migrateDefault(parsed.settings?.reportModel, initialState.settings.reportModel),
+          reportModel: migrateDefault(parsed.settings?.reportModel, initialState.settings.reportModel, 'reportModel'),
+          pptxModel: needsMigration && !parsed.settings?.pptxModel
+            ? initialState.settings.pptxModel
+            : (parsed.settings?.pptxModel || initialState.settings.pptxModel),
         },
       };
-      console.log('[SlideContext] Final loaded state:', {
-        deckName: loadedState.deckName,
-        slideCount: loadedState.slides?.length || 0,
-        firstSlideTitle: loadedState.slides?.[0]?.title || '(none)',
+      console.log('[SlideContext] Final models:', {
+        model: loadedState.settings.model,
+        pptxModel: loadedState.settings.pptxModel,
+        fastModel: loadedState.settings.fastModel,
+        routerModel: loadedState.settings.routerModel,
+        chatRouterModel: loadedState.settings.chatRouterModel,
+        reportModel: loadedState.settings.reportModel,
+        migrated: needsMigration,
       });
       return loadedState;
     }

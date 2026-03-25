@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, callWithModelFallback, webSearch } from '../services/aiService';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
@@ -1138,6 +1138,32 @@ export default function AIChatbot() {
       return;
     }
 
+    // Auto-name deck from first user prompt (fire-and-forget)
+    if (currentState.deckName === 'Untitled Deck' || !currentState.deckName) {
+      const namingText = userPrompt.trim();
+      (async () => {
+        try {
+          const fastSettings = {
+            ...currentState.settings,
+            model: currentState.settings.fastModel || currentState.settings.model,
+            maxTokens: 50,
+            temperature: 0.3,
+          };
+          const title = await callWithModelFallback(
+            fastSettings,
+            'Generate a concise deck title (3-6 words, no quotes, no punctuation at end) for a presentation. Return ONLY the title text.',
+            namingText
+          );
+          const clean = (title || '').trim().replace(/^["']|["']$/g, '').replace(/[.!?]$/, '').trim();
+          if (clean && clean.length > 2 && clean.length < 80 && stateRef.current.deckName === 'Untitled Deck') {
+            actions.setDeckName(clean);
+          }
+        } catch (e) {
+          console.warn('[AutoName] Failed to generate deck title:', e.message);
+        }
+      })();
+    }
+
     // Parse vibe from prompt - user can say "in executive vibe" or "use modern style"
     const { selectedVibe, cleanedPrompt: promptWithoutVibe } = parseVibeFromPrompt(userPrompt);
     if (selectedVibe) {
@@ -2272,19 +2298,23 @@ export default function AIChatbot() {
 
             const pendingSlides = [];
 
-            // If step needs search, inject search tool into generation settings (one call instead of two)
             let stepSettings = settings;
             let enrichedStepPrompt = stepPromptWithVibe;
             if (step.searchQuery && settings.searchEnabled) {
-              stepSettings = {
-                ...settings,
-                _extraTools: [{
-                  type: 'web_search_preview',
-                  search_context_size: settings.searchContextSize || 'medium',
-                }],
-              };
-              enrichedStepPrompt = `${stepPromptWithVibe}\n\n[SEARCH THE WEB for: "${step.searchQuery}" — use real data, numbers, and facts from your search results. Be executive, not wordy.]`;
-              console.log(`[SmartAction] Step ${stepIndex}: inline search enabled for "${step.searchQuery.substring(0, 80)}"`);
+              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${step.searchQuery.substring(0, 80)}"`);
+              try {
+                const searchResult = await webSearch(step.searchQuery, settings);
+                if (searchResult) {
+                  enrichedStepPrompt = `${stepPromptWithVibe}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${step.searchQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
+                } else {
+                  enrichedStepPrompt = `${stepPromptWithVibe}\n\n[Note: web search was attempted for "${step.searchQuery}" but returned no results. Use your best knowledge.]`;
+                  console.log(`[SmartAction] Step ${stepIndex}: search returned no results`);
+                }
+              } catch (searchErr) {
+                console.warn(`[SmartAction] Step ${stepIndex}: search failed:`, searchErr.message);
+                enrichedStepPrompt = `${stepPromptWithVibe}\n\n[Note: web search failed. Use your best knowledge.]`;
+              }
             }
 
             // Image slide handling — check before template/freestyle branch
@@ -2613,19 +2643,15 @@ export default function AIChatbot() {
           const freestyle = batch.filter(b => !b.template && !imageSlides.includes(b) && !fixedSlides.includes(b));
 
           // Bulk-generate templated slides (ONE API call for the whole batch)
-          // If any step needs search, enable _extraTools on the bulk settings — the model
-          // searches inline while generating all slides in a single call.
-          const hasSearchSteps = batch.some(b => b.settings?._extraTools?.length > 0);
-          const bulkSettings = hasSearchSteps
-            ? { ...settings, _extraTools: [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }] }
-            : settings;
+          // Search results are already injected into each step's enrichedPrompt
+          const bulkSettings = settings;
           let templatedResults = []; // Array of { b, html }
           if (templated.length > 0) {
             const bulkSpecs = templated.map(b => ({
               template: b.template,
               instruction: b.enrichedPrompt,
             }));
-            console.log(`[SmartAction] Bulk generating ${templated.length} slides in one API call${hasSearchSteps ? ' (with search)' : ''}`);
+            console.log(`[SmartAction] Bulk generating ${templated.length} slides in one API call`);
             try {
               const bulkHtmls = await fillTemplatesBulkWithAI(bulkSpecs, bulkSettings, { agentMode: !!fromAgent });
               templatedResults = templated.map((b, i) => ({ b, html: bulkHtmls[i] || null }));
@@ -2873,19 +2899,22 @@ export default function AIChatbot() {
               message: `Step ${actualIndex + 1}/${totalSteps}: Creating slide${step.templateId ? ` (${step.templateId})` : ' (freestyle)'}...`,
             });
 
-            // If step needs search, inject search tool into generation settings (one call instead of two)
             let batchStepSettings = settings;
             let enrichedPrompt = stepPromptWithVibeLocal;
             if (step.searchQuery && settings.searchEnabled) {
-              batchStepSettings = {
-                ...settings,
-                _extraTools: [{
-                  type: 'web_search_preview',
-                  search_context_size: settings.searchContextSize || 'medium',
-                }],
-              };
-              enrichedPrompt = `${stepPromptWithVibeLocal}\n\n[SEARCH THE WEB for: "${step.searchQuery}" — use real data, numbers, and facts from your search results. Be executive, not wordy.]`;
-              console.log(`[SmartAction] Step ${actualIndex}: inline search enabled for "${step.searchQuery.substring(0, 80)}"`);
+              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${step.searchQuery.substring(0, 80)}"`);
+              try {
+                const searchResult = await webSearch(step.searchQuery, settings);
+                if (searchResult) {
+                  enrichedPrompt = `${stepPromptWithVibeLocal}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${step.searchQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
+                } else {
+                  enrichedPrompt = `${stepPromptWithVibeLocal}\n\n[Note: web search was attempted for "${step.searchQuery}" but returned no results. Use your best knowledge.]`;
+                }
+              } catch (searchErr) {
+                console.warn(`[SmartAction] Step ${actualIndex}: search failed:`, searchErr.message);
+                enrichedPrompt = `${stepPromptWithVibeLocal}\n\n[Note: web search failed. Use your best knowledge.]`;
+              }
             }
 
             const templateId = step.templateId;
@@ -5501,41 +5530,7 @@ Original request: ${userPrompt}`;
               )}
             </div>
 
-            <div className="chatbot-action-separator" />
-
-            {/* ─── Tools Group: Storyline + Flows ─── */}
-            <div className="chatbot-action-group">
-              <button
-                type="button"
-                className="chatbot-upload-btn"
-                onClick={() => setShowStorylineWorkspace(true)}
-                title="Storyline Workspace"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="8" y1="6" x2="21" y2="6" />
-                  <line x1="8" y1="12" x2="21" y2="12" />
-                  <line x1="8" y1="18" x2="21" y2="18" />
-                  <line x1="3" y1="6" x2="3.01" y2="6" />
-                  <line x1="3" y1="12" x2="3.01" y2="12" />
-                  <line x1="3" y1="18" x2="3.01" y2="18" />
-                </svg>
-                Storyline
-                {state.storyline?.length > 0 && <span className="chatbot-action-badge">{state.storyline.length}</span>}
-              </button>
-              <button
-                type="button"
-                className="chatbot-upload-btn"
-                onClick={() => setShowFlowStudio(true)}
-                title="Flow Studio"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <polygon points="10 8 16 12 10 16 10 8" />
-                </svg>
-                Flows
-                {(state.flows?.length > 0) && <span className="chatbot-action-badge">{state.flows.length}</span>}
-              </button>
-            </div>
+            {/* Storyline + Flows buttons hidden (functionality preserved in code) */}
           </div>
           <div className="chatbot-input-row">
             <textarea

@@ -276,6 +276,7 @@ Example: If template has 3 cards but user needs 5 points, create 5 cards with th
 
   const userPrompt = `=== PRIMARY OBJECTIVE ===
 USER INSTRUCTION: ${instruction}
+TODAY: ${currentDateString()}
 
 This is your MAIN TASK. Everything else below is context to help you execute this instruction.
 The user's request takes priority over preserving existing structure or template constraints.
@@ -510,6 +511,7 @@ export async function improveSlideWithTemplate(slideHtml, instruction, template,
 
   const userPrompt = `=== PRIMARY OBJECTIVE ===
 USER INSTRUCTION: ${primaryInstruction}
+TODAY: ${currentDateString()}
 
 This is your MAIN TASK. The template below is a GUIDE, not a strict constraint.
 ${positionContext}
@@ -643,6 +645,7 @@ export async function improveSlideWithContext(slideHtmlOrInfo, instruction, neig
   }
 
   const userPrompt = `TASK: Edit this slide while considering its position and context in the presentation.
+TODAY: ${currentDateString()}
 ${positionHeader}${metadataStr}
 
 CURRENT SLIDE HTML (this is what you are editing):

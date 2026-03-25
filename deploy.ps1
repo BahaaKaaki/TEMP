@@ -45,6 +45,9 @@ if (-not $SkipBuild) {
 
     Copy-Item -Path "$ROOT\backend\dist" -Destination "$deployTemp\dist" -Recurse
     Copy-Item -Path "$ROOT\backend\public" -Destination "$deployTemp\public" -Recurse
+    if (Test-Path "$ROOT\backend\assets") {
+        Copy-Item -Path "$ROOT\backend\assets" -Destination "$deployTemp\assets" -Recurse
+    }
     Copy-Item -Path "$ROOT\backend\package.json" -Destination "$deployTemp\package.json"
     Copy-Item -Path "$ROOT\backend\package-lock.json" -Destination "$deployTemp\package-lock.json" -ErrorAction SilentlyContinue
 

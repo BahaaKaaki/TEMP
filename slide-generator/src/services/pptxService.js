@@ -1564,17 +1564,12 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
 
   // Helper to get pptxRendererCode for a slide (from slide or template)
   const getRendererCode = (slide) => {
-    // First check if slide has its own pptxRendererCode
     if (slide.pptxRendererCode) {
       return slide.pptxRendererCode;
     }
-    // If slide has a templateId, look up the template's pptxRendererCode
-    if (slide.templateId && templates && templates.length > 0) {
-      const template = templates.find(t => t.id === slide.templateId);
-      if (template && template.pptxRendererCode) {
-        return template.pptxRendererCode;
-      }
-    }
+    // Skip template fallback: when a slide's pptxRendererCode was cleared
+    // (because HTML changed), fall through to AI generation which reads
+    // the current slide.html instead of using static template renderers.
     return null;
   };
 

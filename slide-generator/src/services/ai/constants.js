@@ -53,7 +53,7 @@ STANDARD COMPONENTS:
 - KPI blocks: background var(--surface), border-left 4px solid var(--accent)
 - Icon circles: 40px round, background var(--accent-soft)
 - Impact boxes: border-left 3px solid var(--accent), background var(--accent-soft)
-- Lists: ALWAYS use a class — content-list (card-like, accent border), exec-bullet-list (premium padded), insight-list (→ arrows), check-list (✓ circles), styled-list (— dividers)
+- Lists: ALWAYS use a class — exec-bullet-list (card-like accent border, premium padded bullets), insight-list (→ arrows), check-list (✓ circles), styled-list (— dividers)
 - Detail items: background var(--surface), border-left 3px solid var(--accent), padded
 
 REMEMBER: Use tokens for ALL colors to ensure dark mode compatibility!
@@ -301,10 +301,10 @@ CONTENT GUIDELINES:
 - Use emoji icons sparingly in card-icon-circle elements (🎯 ⚙️ 🚀 📊 💡)
 
 LIST QUALITY (CRITICAL — never leave bullets looking "plain"):
-- ALWAYS add a class to every <ul> or <ol> — use: content-list (default, card-like with accent border), exec-bullet-list (premium), insight-list (arrows), check-list (checks), styled-list (em-dash dividers)
+- ALWAYS add a class to every <ul> or <ol> — use: exec-bullet-list (default, card-like with accent border), insight-list (arrows), check-list (checks), styled-list (em-dash dividers)
 - Every <li> MUST have: <strong>Bold lead phrase</strong> — explanation with data (15-25 words total)
 - NEVER write bare lists without a class or plain text bullets without the bold+dash pattern
-- For 5+ items, use content-list compact or exec-bullet-list to avoid overflow
+- For 5+ items, use exec-bullet-list to avoid overflow
 
 LAYOUT 1 - COVER SLIDE (use for first slide):
 <div class="slide cover-slide">
@@ -353,6 +353,7 @@ LAYOUT 2 - THREE-CARD PILLARS (best for frameworks, phases, pillars):
   </div>
   <footer class="footer">
     <span>Strategy&</span>
+    <span class="source"></span>
     <span>2</span>
   </footer>
 </div>
@@ -391,6 +392,7 @@ LAYOUT 3 - TWO-COLUMN KPI (best for metrics, results):
   </div>
   <footer class="footer">
     <span>Strategy&</span>
+    <span class="source"></span>
     <span>3</span>
   </footer>
 </div>
@@ -426,6 +428,7 @@ LAYOUT 4 - TIMELINE (best for roadmaps):
   </div>
   <footer class="footer">
     <span>Strategy&</span>
+    <span class="source"></span>
     <span>4</span>
   </footer>
 </div>
@@ -442,16 +445,17 @@ LAYOUT 5 - QUOTE/INSIGHT:
   </div>
   <footer class="footer">
     <span>Strategy&</span>
+    <span class="source"></span>
     <span>5</span>
   </footer>
 </div>
 
-LAYOUT 6 - CONTENT LIST (keep to 4-5 items max — every li needs <strong> lead + em-dash + detail):
+LAYOUT 6 - EXEC BULLET LIST (keep to 4-5 items max — every li needs <strong> lead + em-dash + detail):
 <div class="slide">
   <h1 class="title">Five critical success factors drive transformation outcomes</h1>
   <h2 class="subtitle">Key recommendations</h2>
   <div class="frame">
-    <ul class="content-list">
+    <ul class="exec-bullet-list">
       <li><strong>Executive sponsorship from day one</strong> — C-suite visibility ensures resources and removes cross-functional blockers</li>
       <li><strong>Change management alongside technology</strong> — 70% of transformations fail due to people, not tech</li>
       <li><strong>High-impact, low-complexity first</strong> — early wins build momentum and fund the broader roadmap</li>
@@ -461,6 +465,7 @@ LAYOUT 6 - CONTENT LIST (keep to 4-5 items max — every li needs <strong> lead 
   </div>
   <footer class="footer">
     <span>Strategy&</span>
+    <span class="source"></span>
     <span>6</span>
   </footer>
 </div>
@@ -491,6 +496,7 @@ LAYOUT 7 - 2x2 GRID:
   </div>
   <footer class="footer">
     <span>Strategy&</span>
+    <span class="source"></span>
     <span>7</span>
   </footer>
 </div>
@@ -502,10 +508,10 @@ RULES:
 4. Use insight-driven headlines with the key message
 5. Include specific numbers and percentages
 6. Less text, more impact - every word must count
-7. PAGE NUMBERS: Footer second span should contain ONLY the page number (e.g., "2"), NOT "2 / 5". Numbers are updated dynamically.
+7. FOOTER STRUCTURE: Three spans — first: branding, second (class="source"): footnote/reference (leave empty if none), third: page number only (e.g., "2"). Numbers are updated dynamically.
 8. COVER & THANK YOU SLIDES: These use cover-branding for the brand name. Do NOT add a <footer> element — they already have cover-branding. Adding a footer creates duplicate branding.
 9. VERTICAL LOGIC: The header (h1) MUST be consistent with the content below it. If the header says "Three pillars..." the slide MUST have exactly 3 items. If you have 4 cards, write "Four key drivers..." not "Three...". Count your content items FIRST, then write the header to match.
-10. LIST QUALITY: Every <ul>/<ol> MUST have a class (content-list, exec-bullet-list, insight-list, check-list, styled-list). Every <li> MUST use <strong>Lead</strong> — detail pattern. Never output bare unstyled lists.`;
+10. LIST QUALITY: Every <ul>/<ol> MUST have a class (exec-bullet-list, insight-list, check-list, styled-list). Every <li> MUST use <strong>Lead</strong> — detail pattern. Never output bare unstyled lists.`;
 
 export const FREESTYLE_COMPONENT_GUIDE = `# SLIDE VISUAL THEME & STRUCTURE
 
@@ -529,7 +535,7 @@ CRITICAL — INLINE STYLE RULES:
   <div class="frame">
     <!-- ONE layout component here — pick from examples below -->
   </div>
-  <footer class="footer"><span>Brand</span><span>1</span></footer>
+  <footer class="footer"><span>Brand</span><span class="source"></span><span>1</span></footer>
 </div>
 
 POSITIONING (handled by CSS — do NOT override):
@@ -542,12 +548,12 @@ POSITIONING (handled by CSS — do NOT override):
 - 2-3 key items/pillars/phases → card-row (cards)
 - 4 items in categories → grid-2x2
 - 5-6 items in categories → grid-3x2
-- 3-6 bullet points → content-list
+- 3-6 bullet points → exec-bullet-list
 - Metrics + context → two-col (KPIs left, details right)
 - 3-4 sequential steps → process-flow (horizontal)
 - 4-6 numbered steps → agenda-list (vertical)
 - Chronological milestones → timeline-container
-- One big number with context → stat-highlight + content-list below
+- One big number with context → stat-highlight + exec-bullet-list below
 - Two sides to compare → split-layout
 - Multi-option comparison → comparison-table
 - Bar data → bar-chart-h
@@ -557,7 +563,7 @@ POSITIONING (handled by CSS — do NOT override):
 - card-row (4 cards): ~280px → h3 + 1 short sentence per card (skip impact-box)
 - grid-2x2 (4 cells): ~300px → h4 + 1 paragraph (max 25 words) per cell
 - grid-3x2 (6 cells): ~320px → h4 + 1 short line (max 15 words) per cell
-- content-list (4-5 bullets): ~200-250px → each bullet 15-25 words with bold lead
+- exec-bullet-list (4-5 bullets): ~200-250px → each bullet 15-25 words with bold lead
 - two-col (KPI+details): ~300px → 3 KPIs left, 2-3 detail items right
 - process-flow (3-4 steps): ~280px → step-number + h4 + short p per step
 - agenda-list (4-6 items): ~300px → number + h4 + short p per item
@@ -579,8 +585,7 @@ STEP 4: Fill the layout. Leave breathing room. Less is more.
 
 ## CONTENT BUDGETS — hard limits per layout (exceeding these causes overflow)
 
-content-list:        max 5 items × 20 words each (~250px)
-exec-bullet-list:    max 4 items × 22 words each (~320px)
+exec-bullet-list:    max 5 items × 20 words each (~250px); tighter pacing: max 4 items × 22 words (~320px)
 card-row:            max 3 cards × (h3 + 25-word p + impact-box) (~310px)
 grid-2x2:            exactly 4 cells × (h4 + 20-word p) (~300px)
 two-col (KPIs):      max 3 KPIs + 3 detail-items × (h4 + 15-word p) (~320px)
@@ -588,7 +593,7 @@ split-layout:        max 3 items per side × 12 words each. NO extras below it (
 process-flow:        max 4 steps × (h4 + 15-word p) (~120px)
 timeline-container:  max 3 rows × (marker + h4 + 18-word p) (~200px)
 key-points compact:  max 4 points × (h4 + 18-word p) (~300px)
-stat-highlight:      1 stat only (~100px). Can combine with content-list.compact (max 3 items × 15 words)
+stat-highlight:      1 stat only (~100px). Can combine with exec-bullet-list below (max 3 items × 15 words)
 
 FILL THE FRAME: Content should use 60-90% of the 353px frame height. Avoid large empty spaces.
 - If content is sparse → add data points, context, implications, or pick a denser layout.
@@ -598,15 +603,15 @@ FILL THE FRAME: Content should use 60-90% of the 353px frame height. Avoid large
 CHOOSING A LAYOUT:
 - 2-3 concepts with detail → card-row
 - 4 concepts → grid-2x2
-- 4-5 bullet points → content-list or exec-bullet-list
+- 4-5 bullet points → exec-bullet-list
 - 2 sides to compare → split-layout with styled-list (max 3 items per side)
 - 3 KPIs + context → two-col
 - Sequential steps → process-flow (max 4) or timeline-container (max 3)
-- 1 hero number → stat-highlight (optionally + 3 compact bullets)
+- 1 hero number → stat-highlight (optionally + exec-bullet-list, max 3 items)
 
 ## QUALITY RULES
 
-LISTS: Always use a named class (content-list, exec-bullet-list, styled-list, insight-list, check-list). Never bare <ul>/<ol>.
+LISTS: Always use a named class (exec-bullet-list, styled-list, insight-list, check-list). Never bare <ul>/<ol>.
 BULLETS: <li><strong>Bold lead (3-6 words)</strong> — supporting detail with data</li>. No emojis in bullet text.
 CARDS: card-header-row (card-icon-circle + card-num) + h3 + p (15-30 words) + optional impact-box. Emojis only inside card-icon-circle.
 KPIs: kpi-value + kpi-label. Meaningful labels, not "Metric 1."
@@ -616,7 +621,7 @@ TITLES: h1 should state a "so what" insight, not a generic label.
 
 Layout: card-row, two-col (col-left + col-right), split-layout (split-left + split-right), grid-2x2 (grid-cell), grid-3x2 (grid-3x2-item), process-flow (process-step + process-arrow), timeline-container (timeline-row), comparison-table
 Content: card, card-header-row, card-icon-circle, card-num, impact-box, kpi-block (kpi-value + kpi-label), detail-item, stat-highlight (stat-main + stat-number + stat-label), key-points (key-point + key-point-number + key-point-content)
-Lists: content-list, content-list compact, exec-bullet-list, styled-list, insight-list, check-list
+Lists: exec-bullet-list, styled-list, insight-list, check-list
 Other: visual-placeholder, split-callout (inside split-left/right only)
 
 If a class is NOT listed above, do NOT use it. It has no CSS and will render as raw unstyled HTML.
@@ -625,19 +630,19 @@ If a class is NOT listed above, do NOT use it. It has no CSS and will render as 
 
 IMPORTANT: These examples show which CSS classes and HTML structure to use for each layout type. The topics, titles, data, and metrics below are PLACEHOLDERS — do NOT reproduce them. Always generate original content based on what the user actually asks for.
 
-EXAMPLE 1 — Bullet list (content-list):
+EXAMPLE 1 — Bullet list (exec-bullet-list):
 <div class="slide">
   <h1 class="title">Mediterranean restaurant chain grew 34% by rethinking the dining experience</h1>
   <h2 class="subtitle">Growth drivers</h2>
   <div class="frame">
-    <ul class="content-list">
+    <ul class="exec-bullet-list">
       <li><strong>Open-kitchen format lifted average ticket 22%</strong> — guests spend more when they see food prepared, with appetizer orders up 40%</li>
       <li><strong>Seasonal menu rotation doubled repeat visits</strong> — quarterly menu refreshes drove a 2.1x increase in 90-day return rate</li>
       <li><strong>Delivery partnerships added $9M in off-premise revenue</strong> — dark kitchen model in 3 cities kept margins above 28%</li>
       <li><strong>Staff retention improved to 85%</strong> — profit-sharing program and 4-day work week cut turnover by half</li>
     </ul>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>1</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>1</span></footer>
 </div>
 
 EXAMPLE 2 — Three cards (card-row):
@@ -666,7 +671,7 @@ EXAMPLE 2 — Three cards (card-row):
       </div>
     </div>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>2</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>2</span></footer>
 </div>
 
 EXAMPLE 3 — 2×2 grid:
@@ -693,7 +698,7 @@ EXAMPLE 3 — 2×2 grid:
       </div>
     </div>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>3</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>3</span></footer>
 </div>
 
 EXAMPLE 4 — KPI metrics + detail columns (two-col):
@@ -732,7 +737,7 @@ EXAMPLE 4 — KPI metrics + detail columns (two-col):
       </div>
     </div>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>4</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>4</span></footer>
 </div>
 
 EXAMPLE 5 — Process flow (horizontal steps):
@@ -774,7 +779,7 @@ EXAMPLE 5 — Process flow (horizontal steps):
       </div>
     </div>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>5</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>5</span></footer>
 </div>
 
 EXAMPLE 6 — Timeline (chronological milestones):
@@ -806,7 +811,7 @@ EXAMPLE 6 — Timeline (chronological milestones):
       </div>
     </div>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>6</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>6</span></footer>
 </div>
 
 EXAMPLE 7 — Split layout (side-by-side comparison) — styled-list uses em-dash markers with divider lines:
@@ -835,10 +840,10 @@ EXAMPLE 7 — Split layout (side-by-side comparison) — styled-list uses em-das
       </div>
     </div>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>7</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>7</span></footer>
 </div>
 
-EXAMPLE 8 — Stat highlight with supporting context (safe combo: stat-highlight + compact content-list):
+EXAMPLE 8 — Stat highlight with supporting context (safe combo: stat-highlight + exec-bullet-list):
 <div class="slide">
   <h1 class="title">Marathon training program cut average finish times by 26 minutes in one season</h1>
   <h2 class="subtitle">Athletic performance</h2>
@@ -849,13 +854,13 @@ EXAMPLE 8 — Stat highlight with supporting context (safe combo: stat-highlight
       </div>
       <div class="stat-label">Average finish time (down from 3:44 the previous year)</div>
     </div>
-    <ul class="content-list compact">
+    <ul class="exec-bullet-list">
       <li><strong>Periodized training</strong> — structured 16-week cycles with progressive overload reduced injury rate by 40%</li>
       <li><strong>Nutrition coaching</strong> — personalized fueling plans improved late-race pacing by an average of 8 seconds per mile</li>
       <li><strong>Recovery protocols</strong> — mandatory rest weeks and sleep tracking brought weekly training consistency above 90%</li>
     </ul>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>8</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>8</span></footer>
 </div>
 
 EXAMPLE 9 — Executive bullet list (premium padded bullets with hover effects):
@@ -870,7 +875,7 @@ EXAMPLE 9 — Executive bullet list (premium padded bullets with hover effects):
       <li><strong>Community health worker visits</strong> — weekly check-ins for high-risk patients closed gaps in food access and transportation</li>
     </ul>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>9</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>9</span></footer>
 </div>
 
 EXAMPLE 10 — Numbered key points (circled numbers with structured content):
@@ -909,14 +914,14 @@ EXAMPLE 10 — Numbered key points (circled numbers with structured content):
       </div>
     </div>
   </div>
-  <footer class="footer"><span>Strategy&</span><span>10</span></footer>
+  <footer class="footer"><span>Strategy&</span><span class="source"></span><span>10</span></footer>
 </div>
 
 ## RULES
 
 1. WRAPPER: div.slide > h1.title + h2.subtitle + div.frame + footer.footer.
 2. ONE LAYOUT PER FRAME: Put exactly ONE layout component inside .frame. No stacking.
-   Only exception: stat-highlight + content-list.compact (max 3 items).
+   Only exception: stat-highlight + exec-bullet-list (max 3 items).
 3. RESPECT CONTENT BUDGETS: Never exceed the max items for your chosen layout (see table above).
 4. APPROVED CLASSES ONLY: Every class you use must be in the APPROVED CSS CLASSES list above. Inventing classes produces raw unstyled HTML.
 5. NO EMOJIS IN BODY TEXT: No emojis in <li>, <p>, <strong>, or <h3>/<h4>. Emojis go only inside card-icon-circle.
@@ -930,9 +935,7 @@ EXAMPLE 10 — Numbered key points (circled numbers with structured content):
 Layout containers: card-row, two-col (col-left + col-right), split-layout (split-left + split-right), grid-2x2 (grid-cell ×4), grid-3x2 (grid-3x2-item ×6)
 Cards: card > card-header-row > (card-icon-circle + card-num) + h3 + p + impact-box
 Lists (choose ONE — never bare <ul>):
-  - ul.content-list > li — default choice: card-like bullets with accent left border and surface background
-  - ul.content-list.compact > li — tighter variant for 5+ items or when combined with stat-highlight
-  - ul.exec-bullet-list > li — premium padded bullets with hover effects (best for strategic points)
+  - ul.exec-bullet-list > li — default choice: card-like bullets with accent left border, padded/hover styling (use for all standard bullet slides; max 3 items when stacked under stat-highlight)
   - ul.insight-list > li — arrow (→) markers for findings/takeaways
   - ul.check-list > li — green checkmark circles for completed items/requirements
   - ul.styled-list > li — em-dash markers with divider lines (best for comparisons/split layouts)
@@ -996,9 +999,7 @@ AVAILABLE CSS CLASSES (for MODE B — REDESIGN):
 Layout containers: card-row, two-col (col-left + col-right), split-layout (split-left + split-right), grid-2x2 (grid-cell ×4), grid-3x2 (grid-3x2-item ×6)
 Cards inside card-row: card > card-header-row > (card-icon-circle + card-num) + h3 + p + impact-box. Variants: two-cards, four-cards (+ compact on cards)
 Lists (ALWAYS use a class — never bare <ul>):
-  - ul.content-list > li — card-like bullets with accent left border (default choice)
-  - ul.content-list.compact > li — tighter variant for 5+ items
-  - ul.exec-bullet-list > li — premium padded bullets with hover effects
+  - ul.exec-bullet-list > li — default choice: card-like bullets with accent left border and padded/hover styling
   - ul.insight-list > li — arrow (→) markers for findings
   - ul.check-list > li — green checkmark circles
   - ul.styled-list > li — em-dash markers with divider lines

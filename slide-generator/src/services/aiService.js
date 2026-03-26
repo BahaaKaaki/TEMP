@@ -147,3 +147,11 @@ export {
   transformElementToWidget,
   reimagineSlideWithVibe,
 } from './ai/transforms.js';
+
+// ── improveSlideOrchestrator.js — shared context + search for improve calls ─
+export {
+  buildEnrichedSlideInfo,
+  enrichInstructionWithSearch,
+  improveSlideWithSearch,
+  trimSearchResult,
+} from './ai/improveSlideOrchestrator.js';

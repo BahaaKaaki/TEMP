@@ -1,7 +1,7 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useSlides } from '../context/SlideContext';
-import { improveSlide, transformSlideToTemplate, transformElementToWidget, hasAnyApiKey, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch } from '../services/aiService';
+import { transformSlideToTemplate, transformElementToWidget, hasAnyApiKey, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, improveSlideWithSearch } from '../services/aiService';
 import { exportSingleSlideToPPTX, testPPTXCodeGeneration } from '../services/pptxService';
 import { exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
@@ -32,6 +32,7 @@ export default function SlidePreview({ onSwitchToCode }) {
   const [slidePrompt, setSlidePrompt] = useState('');
   const [isImproving, setIsImproving] = useState(false);
   const [error, setError] = useState('');
+  const [useImproveSearch, setUseImproveSearch] = useState(false);
   const [isEditMode, setIsEditMode] = useState(true); // Always on
   const [isVisualEditMode, setIsVisualEditMode] = useState(true); // Always on
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
@@ -902,19 +903,15 @@ export default function SlidePreview({ onSwitchToCode }) {
           type: activeSlide.type,
         });
       } else {
-        const slideInfo = {
-          html: activeSlide.html,
-          customCSS: activeSlide.customCSS || '',
-          templateId: activeSlide.templateId || activeSlide.type || '',
-          title: activeSlide.title || '',
-        };
         const improveSettings = {
           ...state.settings,
           model: state.settings.routerModel || state.settings.model,
         };
-        const result = await improveSlide(slideInfo, slidePrompt, improveSettings);
+        const result = await improveSlideWithSearch(
+          activeSlide, slidePrompt, improveSettings,
+          { skipSearch: !useImproveSearch },
+        );
 
-        // Handle new return type { html, customCSS }
         const improvedHtml = result?.html || result;
         const newCustomCSS = result?.customCSS;
 
@@ -1274,6 +1271,24 @@ export default function SlidePreview({ onSwitchToCode }) {
               </>
             )}
           </button>
+          <label
+            className="improve-search-toggle"
+            title="Enable web search to ground the AI with current facts"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              fontSize: 11, color: '#888', cursor: 'pointer',
+              whiteSpace: 'nowrap', userSelect: 'none',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={useImproveSearch}
+              onChange={(e) => setUseImproveSearch(e.target.checked)}
+              disabled={isImproving}
+              style={{ margin: 0 }}
+            />
+            Search
+          </label>
           <div style={{ position: 'relative' }} ref={templatePickerRef}>
             <button
               type="button"
@@ -1368,14 +1383,11 @@ export default function SlidePreview({ onSwitchToCode }) {
                     type: activeSlide.type,
                   });
                 } else {
-                  const slideInfo = {
-                    html: activeSlide.html,
-                    customCSS: activeSlide.customCSS || '',
-                    templateId: activeSlide.templateId || activeSlide.type || '',
-                    title: activeSlide.title || '',
-                  };
                   const improveSettings = { ...state.settings, model: state.settings.routerModel || state.settings.model };
-                  const result = await improveSlide(slideInfo, prompt, improveSettings);
+                  const result = await improveSlideWithSearch(
+                    activeSlide, prompt, improveSettings,
+                    { skipSearch: true },
+                  );
                   const improvedHtml = result?.html || result;
                   const newCustomCSS = result?.customCSS;
                   const updateData = { html: improvedHtml };

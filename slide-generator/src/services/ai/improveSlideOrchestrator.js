@@ -74,10 +74,9 @@ export async function enrichInstructionWithSearch(instruction, settings) {
     const dateStr = currentDateString();
     const result = await webSearch(`${instruction} ${dateStr}`, settings);
     if (result) {
-      const trimmed = trimSearchResult(result);
       return instruction
         + `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${dateStr}) ===\n`
-        + `${trimmed}\n=== END KEY FACTS ===\n`
+        + `${result}\n=== END KEY FACTS ===\n`
         + 'IMPORTANT: Use ONLY dates, names, and facts from the above search context. '
         + 'Do NOT use outdated information from training data.\n';
     }

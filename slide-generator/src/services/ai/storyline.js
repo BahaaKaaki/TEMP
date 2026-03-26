@@ -533,7 +533,7 @@ export function createSkeletonFromTemplate(templateHtml, options) {
   // Update footer page numbers
   html = html.replace(
     /<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/gi,
-    `<footer class="footer"><span>${footerBrand}</span><span>${slideNum}</span></footer>`
+    `<footer class="footer"><span>${footerBrand}</span><span class="source"></span><span>${slideNum}</span></footer>`
   );
 
   // Ensure proper slide structure (title/subtitle outside frame)
@@ -560,7 +560,7 @@ export function getDefaultSkeletonHtml(slideNum, totalSlides, branding = 'Strate
   <h1 class="title">Slide Title</h1>
   <h2 class="subtitle">Key Message</h2>
   <div class="frame">
-    <ul class="content-list">
+    <ul class="exec-bullet-list">
       <li>First key point</li>
       <li>Second key point</li>
       <li>Third key point</li>
@@ -568,7 +568,8 @@ export function getDefaultSkeletonHtml(slideNum, totalSlides, branding = 'Strate
   </div>
   <footer class="footer">
     <span>${branding}</span>
-    <span>${slideNum} / ${totalSlides}</span>
+    <span class="source"></span>
+    <span>${slideNum}</span>
   </footer>
 </div>`;
 }

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, callWithModelFallback, webSearch, currentDateString } from '../services/aiService';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
@@ -1138,6 +1138,32 @@ export default function AIChatbot() {
       return;
     }
 
+    // Auto-name deck from first user prompt (fire-and-forget)
+    if (currentState.deckName === 'Untitled Deck' || !currentState.deckName) {
+      const namingText = userPrompt.trim();
+      (async () => {
+        try {
+          const fastSettings = {
+            ...currentState.settings,
+            model: currentState.settings.fastModel || currentState.settings.model,
+            maxTokens: 50,
+            temperature: 0.3,
+          };
+          const title = await callWithModelFallback(
+            fastSettings,
+            'Generate a concise deck title (3-6 words, no quotes, no punctuation at end) for a presentation. Return ONLY the title text.',
+            namingText
+          );
+          const clean = (title || '').trim().replace(/^["']|["']$/g, '').replace(/[.!?]$/, '').trim();
+          if (clean && clean.length > 2 && clean.length < 80 && stateRef.current.deckName === 'Untitled Deck') {
+            actions.setDeckName(clean);
+          }
+        } catch (e) {
+          console.warn('[AutoName] Failed to generate deck title:', e.message);
+        }
+      })();
+    }
+
     // Parse vibe from prompt - user can say "in executive vibe" or "use modern style"
     const { selectedVibe, cleanedPrompt: promptWithoutVibe } = parseVibeFromPrompt(userPrompt);
     if (selectedVibe) {
@@ -1970,6 +1996,12 @@ export default function AIChatbot() {
       const freshState = getFreshState();
       const capturedDeckName = freshState.deckName;
 
+      // Pre-search key facts from router — threaded into every slide for grounding
+      const searchRawContext = routeResult.searchRawContext || '';
+      if (searchRawContext) {
+        console.log('[SmartAction] Router search context available for all slides:', searchRawContext.length, 'chars');
+      }
+
       console.log('[SmartAction] Executing plan with', totalSteps, 'steps, parallel batch size:', parallelBatchSize, planSteps);
       console.log('[SmartAction] Captured deck:', capturedDeckName);
 
@@ -2039,6 +2071,29 @@ export default function AIChatbot() {
       };
 
       // Helper: build context string for a step, including contextSlides, contextFromStep, and content
+      // Build a grounding block from router pre-search to attach to every slide prompt.
+      // This ensures even slides without their own searchQuery (cover, dividers)
+      // get access to current factual context.
+      const buildSearchFactsBlock = () => {
+        if (!searchRawContext) return '';
+        return `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n${searchRawContext.substring(0, 4000)}\n=== END KEY FACTS ===\nIMPORTANT: Use ONLY dates, names, and facts from the above search context. Do NOT use outdated information from training data.\n`;
+      };
+
+      // Auto-derive a search query for content slides when the router omitted searchQuery.
+      // Skips cover and section dividers (no factual data needed).
+      const skipSearchTemplates = new Set(['cover', 'sectionDivider']);
+      const deriveSearchQuery = (step) => {
+        if (step.searchQuery) return step.searchQuery;
+        if (!settings.searchEnabled || !searchRawContext) return null;
+        if (skipSearchTemplates.has(step.templateId)) return null;
+        const instr = step.instruction || '';
+        const titleMatch = instr.match(/TITLE:\s*(.+)/i);
+        const title = titleMatch?.[1]?.split('\n')[0]?.trim();
+        if (title && title.length > 10) return title;
+        if (instr.length > 20) return instr.substring(0, 120);
+        return null;
+      };
+
       const buildContextForStep = (step, stepPromptWithVibe, baseState) => {
         let contextIndices = step.contextSlides?.length > 0
           ? step.contextSlides
@@ -2272,19 +2327,26 @@ export default function AIChatbot() {
 
             const pendingSlides = [];
 
-            // If step needs search, inject search tool into generation settings (one call instead of two)
             let stepSettings = settings;
-            let enrichedStepPrompt = stepPromptWithVibe;
-            if (step.searchQuery && settings.searchEnabled) {
-              stepSettings = {
-                ...settings,
-                _extraTools: [{
-                  type: 'web_search_preview',
-                  search_context_size: settings.searchContextSize || 'medium',
-                }],
-              };
-              enrichedStepPrompt = `${stepPromptWithVibe}\n\n[SEARCH THE WEB for: "${step.searchQuery}" — use real data, numbers, and facts from your search results. Be executive, not wordy.]`;
-              console.log(`[SmartAction] Step ${stepIndex}: inline search enabled for "${step.searchQuery.substring(0, 80)}"`);
+            // Inject router-level search facts into every slide's prompt for grounding
+            let enrichedStepPrompt = stepPromptWithVibe + buildSearchFactsBlock();
+            const effectiveSearchQuery = deriveSearchQuery(step);
+            if (effectiveSearchQuery && settings.searchEnabled) {
+              const datedQuery = `${effectiveSearchQuery} ${currentDateString()}`;
+              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
+              try {
+                const searchResult = await webSearch(datedQuery, settings);
+                if (searchResult) {
+                  enrichedStepPrompt = `${stepPromptWithVibe}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
+                } else {
+                  enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
+                  console.log(`[SmartAction] Step ${stepIndex}: search returned no results`);
+                }
+              } catch (searchErr) {
+                console.warn(`[SmartAction] Step ${stepIndex}: search failed:`, searchErr.message);
+                enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
+              }
             }
 
             // Image slide handling — check before template/freestyle branch
@@ -2613,19 +2675,15 @@ export default function AIChatbot() {
           const freestyle = batch.filter(b => !b.template && !imageSlides.includes(b) && !fixedSlides.includes(b));
 
           // Bulk-generate templated slides (ONE API call for the whole batch)
-          // If any step needs search, enable _extraTools on the bulk settings — the model
-          // searches inline while generating all slides in a single call.
-          const hasSearchSteps = batch.some(b => b.settings?._extraTools?.length > 0);
-          const bulkSettings = hasSearchSteps
-            ? { ...settings, _extraTools: [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }] }
-            : settings;
+          // Search results are already injected into each step's enrichedPrompt
+          const bulkSettings = settings;
           let templatedResults = []; // Array of { b, html }
           if (templated.length > 0) {
             const bulkSpecs = templated.map(b => ({
               template: b.template,
               instruction: b.enrichedPrompt,
             }));
-            console.log(`[SmartAction] Bulk generating ${templated.length} slides in one API call${hasSearchSteps ? ' (with search)' : ''}`);
+            console.log(`[SmartAction] Bulk generating ${templated.length} slides in one API call`);
             try {
               const bulkHtmls = await fillTemplatesBulkWithAI(bulkSpecs, bulkSettings, { agentMode: !!fromAgent });
               templatedResults = templated.map((b, i) => ({ b, html: bulkHtmls[i] || null }));
@@ -2729,14 +2787,14 @@ export default function AIChatbot() {
             });
           }
 
-          // Fixed-layout slides (cover, section divider): direct placeholder fill, no AI call
+          // Fixed-layout slides (cover, section divider): direct placeholder fill
+          // Cover titles are validated against search facts to prevent date hallucination
           for (const b of fixedSlides) {
             const instr = b.step.instruction || '';
             const titleMatch = instr.match(/TITLE:\s*(.+)/i);
             const subMatch = instr.match(/SUBTITLE:\s*(.+)/i);
             let parsedTitle = titleMatch?.[1]?.split('\n')[0]?.trim() || '';
             let parsedSubtitle = subMatch?.[1]?.trim() || '';
-            // Fallback: use the full instruction as title when no TITLE: marker
             if (!parsedTitle && instr) {
               const cleaned = instr.replace(/SUBTITLE:\s*.*/i, '').trim();
               parsedTitle = cleaned.split('\n')[0].trim().substring(0, 80);
@@ -2744,10 +2802,33 @@ export default function AIChatbot() {
 
             let slideData;
             if (b.step.templateId === 'cover') {
-              const coverTitle = parsedTitle || 'Untitled Presentation';
-              const coverSubtitle = parsedSubtitle || '';
+              let coverTitle = parsedTitle || 'Untitled Presentation';
+              let coverSubtitle = parsedSubtitle || '';
+
+              // Validate cover title and derive category using fast model
+              let coverCategory = '';
+              if (settings.fastModel) {
+                try {
+                  const contextBlock = searchRawContext ? `\nWeb search results:\n${searchRawContext.substring(0, 3000)}\n` : '';
+                  const fixPrompt = `You are a presentation cover-page editor.${contextBlock}\nThe router generated this cover slide title: "${coverTitle}"\nAnd subtitle: "${coverSubtitle}"\n\nToday's date is ${currentDateString()}.\n\nDo two things:\n1. Check if the title/subtitle contain any WRONG dates or factual errors. If so, correct them.\n2. Generate a short 2-3 word CATEGORY label that describes the topic (e.g. GEOPOLITICAL ANALYSIS, MARKET OVERVIEW, DIGITAL STRATEGY, SITUATION BRIEFING, INDUSTRY OUTLOOK). This appears as a small tag above the title.\n\nRespond in EXACTLY this JSON format (no markdown):\n{"title":"corrected title","subtitle":"corrected subtitle","category":"SHORT CATEGORY LABEL"}`;
+                  const fastSettings = { ...settings, model: settings.fastModel, maxTokens: 250, temperature: 0.2 };
+                  const fixResult = await callWithModelFallback(fastSettings, 'You fix factual errors in slide titles and generate category labels. Return only JSON.', fixPrompt, { role: 'text' });
+                  const fixJson = fixResult?.match(/\{[\s\S]*\}/)?.[0];
+                  if (fixJson) {
+                    const fixed = JSON.parse(fixJson);
+                    if (fixed.title && fixed.title !== coverTitle) {
+                      console.log(`[SmartAction] Cover title corrected: "${coverTitle}" → "${fixed.title}"`);
+                      coverTitle = fixed.title;
+                    }
+                    if (fixed.subtitle) coverSubtitle = fixed.subtitle;
+                    if (fixed.category) coverCategory = fixed.category.toUpperCase();
+                  }
+                } catch (fixErr) {
+                  console.warn('[SmartAction] Cover validation failed (non-critical):', fixErr.message);
+                }
+              }
               const coverHtml = SLIDE_TEMPLATES.cover.html
-                .replace('[CATEGORY]', coverSubtitle.toUpperCase() || 'STRATEGY')
+                .replace('[CATEGORY]', coverCategory || (coverSubtitle ? coverSubtitle.toUpperCase() : ''))
                 .replace('[Presentation Title]', coverTitle)
                 .replace('[Company]', settings.footerBranding || 'Strategy&')
                 .replace('[Date]', new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }));
@@ -2873,19 +2954,25 @@ export default function AIChatbot() {
               message: `Step ${actualIndex + 1}/${totalSteps}: Creating slide${step.templateId ? ` (${step.templateId})` : ' (freestyle)'}...`,
             });
 
-            // If step needs search, inject search tool into generation settings (one call instead of two)
             let batchStepSettings = settings;
-            let enrichedPrompt = stepPromptWithVibeLocal;
-            if (step.searchQuery && settings.searchEnabled) {
-              batchStepSettings = {
-                ...settings,
-                _extraTools: [{
-                  type: 'web_search_preview',
-                  search_context_size: settings.searchContextSize || 'medium',
-                }],
-              };
-              enrichedPrompt = `${stepPromptWithVibeLocal}\n\n[SEARCH THE WEB for: "${step.searchQuery}" — use real data, numbers, and facts from your search results. Be executive, not wordy.]`;
-              console.log(`[SmartAction] Step ${actualIndex}: inline search enabled for "${step.searchQuery.substring(0, 80)}"`);
+            // Inject router-level search facts into every slide's prompt for grounding
+            let enrichedPrompt = stepPromptWithVibeLocal + buildSearchFactsBlock();
+            const effectiveBatchQuery = deriveSearchQuery(step);
+            if (effectiveBatchQuery && settings.searchEnabled) {
+              const datedQuery = `${effectiveBatchQuery} ${currentDateString()}`;
+              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
+              try {
+                const searchResult = await webSearch(datedQuery, settings);
+                if (searchResult) {
+                  enrichedPrompt = `${stepPromptWithVibeLocal}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
+                } else {
+                  enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
+                }
+              } catch (searchErr) {
+                console.warn(`[SmartAction] Step ${actualIndex}: search failed:`, searchErr.message);
+                enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
+              }
             }
 
             const templateId = step.templateId;
@@ -5501,41 +5588,7 @@ Original request: ${userPrompt}`;
               )}
             </div>
 
-            <div className="chatbot-action-separator" />
-
-            {/* ─── Tools Group: Storyline + Flows ─── */}
-            <div className="chatbot-action-group">
-              <button
-                type="button"
-                className="chatbot-upload-btn"
-                onClick={() => setShowStorylineWorkspace(true)}
-                title="Storyline Workspace"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <line x1="8" y1="6" x2="21" y2="6" />
-                  <line x1="8" y1="12" x2="21" y2="12" />
-                  <line x1="8" y1="18" x2="21" y2="18" />
-                  <line x1="3" y1="6" x2="3.01" y2="6" />
-                  <line x1="3" y1="12" x2="3.01" y2="12" />
-                  <line x1="3" y1="18" x2="3.01" y2="18" />
-                </svg>
-                Storyline
-                {state.storyline?.length > 0 && <span className="chatbot-action-badge">{state.storyline.length}</span>}
-              </button>
-              <button
-                type="button"
-                className="chatbot-upload-btn"
-                onClick={() => setShowFlowStudio(true)}
-                title="Flow Studio"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <circle cx="12" cy="12" r="10" />
-                  <polygon points="10 8 16 12 10 16 10 8" />
-                </svg>
-                Flows
-                {(state.flows?.length > 0) && <span className="chatbot-action-badge">{state.flows.length}</span>}
-              </button>
-            </div>
+            {/* Storyline + Flows buttons hidden (functionality preserved in code) */}
           </div>
           <div className="chatbot-input-row">
             <textarea

@@ -550,14 +550,24 @@
   padding-bottom: 14px;
   display: flex;
   justify-content: space-between;
+  align-items: baseline;
   font-size: 10px;
   color: var(--meta);
+}
+
+.slide footer.footer .source {
+  flex: 1;
+  text-align: left;
+  font-style: italic;
+  opacity: 0.8;
+  padding: 0 12px;
 }
 
 /* Cover Slide */
 .slide.cover-slide .frame {
   top: 140px;
   height: auto;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
@@ -693,7 +703,7 @@
 .slide .cover-title {
   font: 400 42px/1.15 Georgia, serif;
   color: var(--main);
-  max-width: 700px;
+  max-width: 900px;
 }
 
 .slide .cover-branding {
@@ -931,54 +941,63 @@
 
 
 /* ===== CONTENT LIST — Primary bullet style for any slide ===== */
-/* This is the default "go-to" list class. Works standalone or inside any container. */
+/* content-list: alias for exec-bullet-list (consolidated) */
 .slide .content-list {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 16px;
   width: 100%;
+  min-width: 100%;
 }
 
-.slide .content-list > li {
+.slide .content-list li {
   position: relative;
-  padding: 10px 16px 10px 32px;
-  font: 400 13px/1.6 Arial, sans-serif;
-  color: var(--body);
+  width: 100%;
+  padding: 14px 18px 14px 38px;
   background: linear-gradient(135deg, var(--page) 0%, var(--surface) 100%);
-  border-radius: 6px;
+  border-radius: 8px;
   border-left: 3px solid var(--accent);
+  font: 400 14px/1.65 Arial, sans-serif;
+  color: var(--body);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.slide .content-list > li::before {
+.slide .content-list li:hover {
+  transform: translateX(3px);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.slide .content-list li::before {
   content: '';
   position: absolute;
-  left: 14px;
-  top: 17px;
-  width: 7px;
-  height: 7px;
+  left: 18px;
+  top: 22px;
+  width: 8px;
+  height: 8px;
   background: var(--accent);
   border-radius: 50%;
 }
 
-.slide .content-list > li strong {
-  font-weight: 600;
-  color: var(--heading);
+.slide .content-list li strong {
+  font: 600 14px/1.65 Arial, sans-serif;
+  color: var(--accent);
+  display: inline;
 }
 
-/* Compact variant for 5+ items — tighter spacing */
-.slide .content-list.compact > li {
-  padding: 7px 14px 7px 28px;
-  font-size: 12px;
+/* compact variant maps to same styling (no visual difference) */
+.slide .content-list.compact li {
+  padding: 14px 18px 14px 38px;
+  font-size: 14px;
 }
 
-.slide .content-list.compact > li::before {
-  left: 12px;
-  top: 14px;
-  width: 5px;
-  height: 5px;
+.slide .content-list.compact li::before {
+  left: 18px;
+  top: 22px;
+  width: 8px;
+  height: 8px;
 }
 
 /* ===== STYLED LIST — Alternate bullet style with em-dash leader ===== */

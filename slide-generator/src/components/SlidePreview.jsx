@@ -473,7 +473,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       // Inject dynamic page number based on position in deck
       const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
       if (slideIndex >= 0) {
-        html = injectPageNumber(html, slideIndex + 1);
+        html = injectPageNumber(html, slideIndex + 1, state.slides.length);
       }
       slideRef.current.innerHTML = html;
       if (isEditMode) {
@@ -867,8 +867,7 @@ export default function SlidePreview({ onSwitchToCode }) {
     e.preventDefault();
     if (!slidePrompt.trim() || !activeSlide) return;
 
-    // Check provider key for the model that will be used (same logic as router)
-    const improveModelRef = state.settings.fastModel || state.settings.model || '';
+    const improveModelRef = state.settings.routerModel || state.settings.model || '';
     const improveProviderId = improveModelRef.includes(':') ? improveModelRef.split(':')[0] : '';
     const improveProvider = (state.settings.providers || []).find(p => p.id === improveProviderId);
     if (!improveProvider?.apiKey) {
@@ -905,13 +904,15 @@ export default function SlidePreview({ onSwitchToCode }) {
       } else {
         const slideInfo = {
           html: activeSlide.html,
+          customCSS: activeSlide.customCSS || '',
+          templateId: activeSlide.templateId || activeSlide.type || '',
+          title: activeSlide.title || '',
         };
-        // Use fast model for quick slide improvements
-        const fastSettings = {
+        const improveSettings = {
           ...state.settings,
-          model: state.settings.fastModel || state.settings.model,
+          model: state.settings.routerModel || state.settings.model,
         };
-        const result = await improveSlide(slideInfo, slidePrompt, fastSettings);
+        const result = await improveSlide(slideInfo, slidePrompt, improveSettings);
 
         // Handle new return type { html, customCSS }
         const improvedHtml = result?.html || result;
@@ -932,7 +933,7 @@ export default function SlidePreview({ onSwitchToCode }) {
   const handleTemplateSwitch = async (templateId) => {
     if (!templateId || !activeSlide) return;
 
-    const switchModelRef = state.settings.fastModel || state.settings.model || '';
+    const switchModelRef = state.settings.routerModel || state.settings.model || '';
     const switchProviderId = switchModelRef.includes(':') ? switchModelRef.split(':')[0] : '';
     const switchProvider = (state.settings.providers || []).find(p => p.id === switchProviderId);
     if (!switchProvider?.apiKey) {
@@ -947,9 +948,9 @@ export default function SlidePreview({ onSwitchToCode }) {
 
     try {
       const customTemplate = state.customTemplates?.find(t => t.id === templateId);
-      const fastSettings = {
+      const switchSettings = {
         ...state.settings,
-        model: state.settings.fastModel || state.settings.model,
+        model: state.settings.routerModel || state.settings.model,
       };
 
       const currentIndex = state.slides.findIndex(s => s.id === activeSlide.id);
@@ -961,7 +962,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       const userGuidance = slidePrompt.trim() || null;
 
       const transformedHtml = await transformSlideToTemplate(
-        activeSlide.html, templateId, fastSettings, customTemplate,
+        activeSlide.html, templateId, switchSettings, customTemplate,
         slidePosition, deckContext, userGuidance,
       );
       actions.updateSlide(activeSlide.id, { html: transformedHtml, type: templateId, templateId: templateId });
@@ -1367,9 +1368,14 @@ export default function SlidePreview({ onSwitchToCode }) {
                     type: activeSlide.type,
                   });
                 } else {
-                  const slideInfo = { html: activeSlide.html };
-                  const fastSettings = { ...state.settings, model: state.settings.fastModel || state.settings.model };
-                  const result = await improveSlide(slideInfo, prompt, fastSettings);
+                  const slideInfo = {
+                    html: activeSlide.html,
+                    customCSS: activeSlide.customCSS || '',
+                    templateId: activeSlide.templateId || activeSlide.type || '',
+                    title: activeSlide.title || '',
+                  };
+                  const improveSettings = { ...state.settings, model: state.settings.routerModel || state.settings.model };
+                  const result = await improveSlide(slideInfo, prompt, improveSettings);
                   const improvedHtml = result?.html || result;
                   const newCustomCSS = result?.customCSS;
                   const updateData = { html: improvedHtml };
@@ -1926,14 +1932,15 @@ function injectSubSectionToHtml(html, subSectionLabel, sectionLabel) {
   );
 }
 
-// Dynamically inject the correct page number into the footer
-function injectPageNumber(html, pageNumber) {
+// Dynamically inject the correct page number into the footer.
+// Targets the LAST <span> inside <footer class="footer">, which works for both
+// two-span (brand + page) and three-span (brand + source + page) layouts.
+function injectPageNumber(html, pageNumber, totalSlides) {
   if (!html || !pageNumber) return html;
-  // Match footer with two spans: <footer class="footer"><span>Brand</span><span>N</span></footer>
-  // Replace the second span's content with the actual page number
+  const pageText = totalSlides ? `${pageNumber} / ${totalSlides}` : String(pageNumber);
   return html.replace(
-    /(<footer[^>]*class="[^"]*footer[^"]*"[^>]*>\s*<span>[^<]*<\/span>\s*<span>)[^<]*(<\/span>)/i,
-    `$1${pageNumber}$2`
+    /(<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*<span(?:\s[^>]*)?>)[^<]*(<\/span>\s*<\/footer>)/i,
+    `$1${pageText}$2`
   );
 }
 
@@ -1958,7 +1965,7 @@ function FullscreenModal({ slides, currentSlideId, vibe, combinedCSS, onClose, o
   if (currentSlide?.subSectionLabel && slideHtml) {
     slideHtml = injectSubSectionToHtml(slideHtml, currentSlide.subSectionLabel, currentSlide.sectionLabel);
   }
-  slideHtml = injectPageNumber(slideHtml, currentIndex + 1);
+  slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length);
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < slides.length - 1;
 

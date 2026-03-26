@@ -120,9 +120,7 @@ const COMPLETE_TRANSLATION_EXAMPLE = {
     slide.addShape('line', {x:xPos + 0.25, y:cardY + 4.3, w:cardW - 0.5, h:0, line:{color:'DCDCDC', width:1}});
     slide.addText(d.impact, {x:xPos + 0.25, y:cardY + 4.4, w:cardW - 0.5, h:0.4, fontFace:'Arial', fontSize:11, color:c.coal, bold:true});
   });
-
-  slide.addText('Strategy&', {x:0.48, y:7.05, w:2, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta});
-  slide.addText(slideNum + ' / ' + totalSlides, {x:11.5, y:7.05, w:1.3, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta, align:'right'});
+  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -200,9 +198,7 @@ const BLOCK_HEADER_CARDS_EXAMPLE = {
       bullet:true, paraSpaceAfter:6
     });
   });
-
-  slide.addText('Strategy&', {x:0.48, y:7.05, w:2, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta});
-  slide.addText(slideNum + ' / ' + totalSlides, {x:11.5, y:7.05, w:1.3, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta, align:'right'});
+  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -282,9 +278,7 @@ const KPI_TRANSLATION_EXAMPLE = {
       slide.addShape('line', {x:detailX, y:yPos + 1.45, w:detailW, h:0, line:{color:c.border, width:1}});
     }
   });
-
-  slide.addText('Strategy&', {x:0.48, y:7.05, w:2, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta});
-  slide.addText(slideNum + ' / ' + totalSlides, {x:11.5, y:7.05, w:1.3, h:0.25, fontFace:'Arial', fontSize:10, color:c.meta, align:'right'});
+  addFooter(slide, slideNum, totalSlides);
 }`
 };
 
@@ -312,16 +306,6 @@ const COVER_TRANSLATION_EXAMPLE = {
   slide.addText('Enterprise AI Strategy Framework for Sustainable Growth', {
     x: 0.48, y: 2.64, w: 9.7, h: 2.0,
     fontFace: 'Georgia', fontSize: 42, color: '111111', valign: 'top', lineSpacingMultiple: 1.15
-  });
-  // Branding (bottom-left)
-  slide.addText('Strategy&', {
-    x: 0.48, y: 6.6, w: 3, h: 0.4,
-    fontFace: 'Arial', fontSize: 16, color: '4A4F57', bold: true
-  });
-  // Date (bottom-right)
-  slide.addText('December 2025', {
-    x: 10.0, y: 6.6, w: 2.83, h: 0.4,
-    fontFace: 'Arial', fontSize: 13, color: '4A4F57', align: 'right'
   });
 }`
 };
@@ -373,8 +357,6 @@ function(pptx, slideNum, totalSlides) {
   // Rounded rect: slide.addShape('roundRect', { x, y, w, h, fill: { color: 'HEX' }, rectRadius: 0.05 });
   // Circle: slide.addShape('ellipse', { x, y, w, h, fill: { color: 'HEX' } });
   // Line: slide.addShape('line', { x, y, w, h, line: { color: 'HEX', width: 1 } });
-
-  // ========== FOOTER ==========
   addFooter(slide, slideNum, totalSlides);
 }`;
 
@@ -458,8 +440,9 @@ AUTO-CHARTS: If you see <div class="auto-chart" data-chart='JSON'>, extract the 
   // For donut: slide.addChart(pptx.charts.DOUGHNUT, chartData, {...})
   If unsure how to use addChart, render bars as rectangles (shapes) instead — that always works.
 
-FOOTER: The footer is handled separately by addFooter(). Do NOT render any <footer> HTML element content.
-Skip any text like "Strategy&" or page numbers that come from the footer — they are injected automatically.
+FOOTER: Branding ("Strategy&") comes from the slide master template — do NOT add it.
+Do NOT render any <footer> HTML element content or "Strategy&" text.
+DO call addFooter(slide, slideNum, totalSlides) once per slide for page numbering ("X / Y").
 
 OUTPUT: Return ONLY a JavaScript array of functions, no markdown.`;
 
@@ -528,8 +511,6 @@ export const DEFAULT_PPTX_CODE_EXAMPLE = `[
         fontFace: 'Arial', fontSize: 11, color: '7a1818', bold: true
       });
     });
-
-    // Footer (always add)
     addFooter(slide, slideNum, totalSlides);
   }
 ]`;
@@ -1148,8 +1129,6 @@ OUTPUT FORMAT (return ONLY this JavaScript array, no markdown):
     // Extract text from YOUR HTML above and create addText calls
     // USE COLORS FROM INLINE STYLES when present, otherwise use c.xxx defaults
     // Example: if HTML has <span style="color: #FF0000">text</span> → use color:'FF0000'
-
-    // Footer (always add) - use addFooter helper
     addFooter(slide, slideNum, totalSlides);
   }
 ]
@@ -1283,7 +1262,6 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides, masterName) {
     pptxSlide.addShape('rect', {x:0, y:0, w:13.333, h:7.5, fill:{color:'FFFFFF'}});
     const category = getText(doc, '.cover-category') || '';
     const coverTitle = getText(doc, '.cover-title') || getText(doc, '.title') || 'Presentation';
-    const branding = getText(doc, '.cover-branding') || '';
     if (category) {
       pptxSlide.addText(category.toUpperCase(), {
         x: 0.48, y: 1.94, w: 12.36, h: 0.5,
@@ -1294,12 +1272,6 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides, masterName) {
       x: 0.48, y: 2.64, w: 9.7, h: 2.0,
       fontFace: 'Georgia', fontSize: 42, color: COLORS.main, valign: 'top'
     });
-    if (branding) {
-      pptxSlide.addText(branding, {
-        x: 0.48, y: 6.6, w: 3, h: 0.4,
-        fontFace: 'Arial', fontSize: 16, color: COLORS.meta, bold: true
-      });
-    }
     addFooter(pptxSlide, slideNum, totalSlides);
     return;
   }
@@ -1521,7 +1493,6 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides, masterName) {
 
   // Source/footnote
   addSourceNote(pptxSlide, slide.html);
-
   addFooter(pptxSlide, slideNum, totalSlides);
 }
 
@@ -1564,17 +1535,12 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
 
   // Helper to get pptxRendererCode for a slide (from slide or template)
   const getRendererCode = (slide) => {
-    // First check if slide has its own pptxRendererCode
     if (slide.pptxRendererCode) {
       return slide.pptxRendererCode;
     }
-    // If slide has a templateId, look up the template's pptxRendererCode
-    if (slide.templateId && templates && templates.length > 0) {
-      const template = templates.find(t => t.id === slide.templateId);
-      if (template && template.pptxRendererCode) {
-        return template.pptxRendererCode;
-      }
-    }
+    // Skip template fallback: when a slide's pptxRendererCode was cleared
+    // (because HTML changed), fall through to AI generation which reads
+    // the current slide.html instead of using static template renderers.
     return null;
   };
 
@@ -1768,6 +1734,11 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       try {
         renderInfo.generatedFunction(pptx, i + 1, totalSlides);
         rendered = true;
+        // AI path strips footer from HTML, so source text is lost — extract from original HTML
+        const aiSlide = pptx.slides?.[pptx.slides.length - 1];
+        if (aiSlide && slide.html) {
+          addSourceNote(aiSlide, slide.html);
+        }
       } catch (err) {
         console.warn(`AI-generated code error for slide ${i + 1}:`, err);
       }
@@ -1953,6 +1924,11 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
         if (Array.isArray(slideFunctions) && typeof slideFunctions[0] === 'function') {
           slideFunctions[0](pptx, slideNumber, totalSlides);
           rendered = true;
+          // AI path strips footer from HTML, so source text is lost — extract from original HTML
+          const aiSlide = pptx.slides?.[pptx.slides.length - 1];
+          if (aiSlide && slide.html) {
+            addSourceNote(aiSlide, slide.html);
+          }
         } else {
           console.warn('[PPTX Single] AI did not return valid function array, using fallback');
         }

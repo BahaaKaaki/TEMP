@@ -48,13 +48,11 @@ export function setFooterBranding(branding) {
   _footerBranding = branding || 'Strategy&';
 }
 
-// Helper: Add standard footer
-export function addFooter(slide, slideNum, totalSlides, branding) {
-  branding = branding || _footerBranding;
-  slide.addText(branding, {
-    x: 0.48, y: 7.05, w: 2, h: 0.25,
-    fontFace: 'Arial', fontSize: 10, color: COLORS.meta
-  });
+// Page-number only: branding ("Strategy&") comes from the slide master
+// template. We only add the "X / Y" page counter since the template's
+// built-in sldNum placeholder cannot render that format.
+export function addFooter(slide, slideNum, totalSlides) {
+  if (!slide || !slideNum) return;
   slide.addText(`${slideNum} / ${totalSlides}`, {
     x: 11.5, y: 7.05, w: 1.3, h: 0.25,
     fontFace: 'Arial', fontSize: 10, color: COLORS.meta, align: 'right'
@@ -140,6 +138,7 @@ export function addSourceNote(slide, html) {
 
   // Look for source/footnote elements by class name (order: most specific first)
   const selectors = [
+    'footer .source',
     '.graph-source',
     '.exhibit-source',
     '.chart-source',
@@ -163,11 +162,10 @@ export function addSourceNote(slide, html) {
 
   if (texts.length === 0) return;
 
-  // Render all footnotes/sources just above the footer (y: 6.7)
   const combined = texts.join(' | ');
   slide.addText(combined, {
-    x: 0.48, y: 6.7, w: 12.36, h: 0.25,
-    fontFace: 'Arial', fontSize: 8, color: COLORS.meta
+    x: 2.5, y: 7.05, w: 8.5, h: 0.25,
+    fontFace: 'Arial', fontSize: 8, italic: true, color: COLORS.meta, align: 'left'
   });
 }
 

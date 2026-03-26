@@ -221,6 +221,7 @@ export async function callGeminiAPI(settings, systemPrompt, userPrompt) {
 async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
   const creds = getCredentials(settings);
   const { maxTokens } = settings;
+  delete settings._routerSearchGroundingDebug;
 
   // Non-Gemini provider: use buildRequestBody (handles Responses API for GPT-5.x)
   if (!creds.isGeminiProvider) {
@@ -298,6 +299,17 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
             'output length:', data.output?.length || 0,
             'output_text:', data.output_text ? 'present' : 'absent',
             'choices:', data.choices?.length || 0);
+        }
+        if (settings._extraTools?.length > 0) {
+          const urls = vGroundAll.flatMap(g =>
+            (g.groundingChunks || []).map(c => c.web?.uri || c.retrievedContext?.uri).filter(Boolean)
+          );
+          settings._routerSearchGroundingDebug = {
+            provider: creds.provider,
+            groundingReceived: vGroundAll.length > 0,
+            searchQueriesFromMetadata: allQueries,
+            sourceUrls: [...new Set(urls)].slice(0, 25),
+          };
         }
         return content;
       } catch (fetchErr) {
@@ -496,6 +508,18 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
     console.warn('[Gemini API] Parts count:', candidate?.content?.parts?.length || 0,
       'Finish reason:', finishReason,
       'Block reason:', blockReason || 'none');
+  }
+  if (settings._extraTools?.length > 0) {
+    const chunks = grounding?.groundingChunks || [];
+    const urls = chunks.map(c => c.web?.uri).filter(Boolean);
+    const qRaw = grounding?.webSearchQueries || grounding?.searchQueries;
+    const searchQueriesFromMetadata = Array.isArray(qRaw) ? qRaw : qRaw ? [qRaw] : [];
+    settings._routerSearchGroundingDebug = {
+      provider: 'gemini',
+      groundingReceived: !!grounding,
+      searchQueriesFromMetadata,
+      sourceUrls: [...new Set(urls)].slice(0, 25),
+    };
   }
   return content;
 }
@@ -728,7 +752,7 @@ export async function callWithModelFallback(settings, systemPrompt, userPrompt, 
 
 // Helper to get settings for fast model calls (assessments, template selection)
 export function getFastModelSettings(settings) {
-  const fastModel = settings.fastModel || 'openai:gpt-5-mini';
+  const fastModel = settings.fastModel || 'openai:gpt-5.4-nano';
   // If empty, use main model
   if (!fastModel) return { ...settings, temperature: 0.3, maxTokens: 200 };
 

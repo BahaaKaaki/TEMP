@@ -1219,6 +1219,13 @@ export async function aiRouteRequest(userPrompt, context, settings) {
     ? (settings.chatRouterSearchEnabled !== undefined ? settings.chatRouterSearchEnabled : true)
     : (settings.routerSearchEnabled || false);
 
+  console.log('[Router Search]', 'Toggle:', {
+    agentMode,
+    effectiveSearchEnabled,
+    chatRouterSearchEnabled: settings.chatRouterSearchEnabled,
+    routerSearchEnabled: settings.routerSearchEnabled,
+  });
+
   const routerModelRef = useBigModel ? bigModel : effectiveRouterModel;
   const { providerId: routerProviderId, modelName: routerModelName } = parseModelRef(routerModelRef);
 
@@ -1242,6 +1249,9 @@ export async function aiRouteRequest(userPrompt, context, settings) {
       type: 'web_search_preview',
       search_context_size: settings.searchContextSize || 'medium',
     }];
+    console.log('[Router Search]', 'Router API call: web search tool enabled →', routerSettings._extraTools);
+  } else {
+    console.log('[Router Search]', 'Router API call: web search tool NOT attached (effectiveSearchEnabled=false)');
   }
 
   // Build compact slide list — index, title, and template type. Mark the current slide.
@@ -1272,6 +1282,10 @@ ${referencedSlides.map(r => `  - Index ${r.index} = Page ${r.index + 1}: "${r.ti
     : '';
 
   const searchAvailable = !!(settings.searchEnabled && settings.searchEndpoint && settings.searchApiKey) || !!effectiveSearchEnabled;
+
+  console.log('[Router Search]', 'Prompt hint "Web search available":', searchAvailable ? 'YES' : 'NO',
+    '(custom search endpoint:', !!(settings.searchEnabled && settings.searchEndpoint && settings.searchApiKey),
+    '| router model may use built-in search:', !!effectiveSearchEnabled, ')');
 
   // ── Condense agent-generated prompts for the router ──
   // Agent prompts contain verbose per-slide instructions (~30-50K chars) that overwhelm the router.
@@ -1412,12 +1426,62 @@ ${activeFlow.sections.map((s, i) => `  ${i + 1}. template="${s.templateHint}" | 
 ` : ''}
 USER REQUEST: "${routerPrompt}"`;
 
+  // Pre-search: call the search endpoint BEFORE routing so the plan uses current data.
+  // This is critical because the router model (e.g., Opus) may not support inline search tools.
+  let routerSearchContext = '';
+  let routerSearchRawText = '';
+  if (searchAvailable && settings.searchEnabled && settings.searchEndpoint && settings.searchModel && !agentMode) {
+    try {
+      const searchQuery = `${routerPrompt} latest ${currentDateString()}`;
+      console.log('[Router Search] Pre-searching for router context:', searchQuery.substring(0, 100));
+      const searchBody = {
+        model: settings.searchModel,
+        input: searchQuery,
+        tools: [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }],
+        max_output_tokens: settings.searchMaxTokens || 32000,
+      };
+      const searchHeaders = { 'Content-Type': 'application/json' };
+      const isServerProxy = settings.searchApiKey === 'server-managed' || (settings.searchEndpoint || '').startsWith('/api/');
+      if (!isServerProxy) {
+        searchHeaders[settings.searchAuthHeader === 'bearer' ? 'Authorization' : 'api-key'] =
+          settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;
+      }
+      const searchResp = await fetch(settings.searchEndpoint, {
+        method: 'POST', headers: searchHeaders, body: JSON.stringify(searchBody),
+      });
+      if (searchResp.ok) {
+        const searchData = await searchResp.json();
+        let resultText = '';
+        if (searchData.output && Array.isArray(searchData.output)) {
+          for (const item of searchData.output) {
+            if (item.type === 'message' && item.content) {
+              for (const c of item.content) { if (c.text) resultText += c.text + '\n'; }
+            }
+          }
+        }
+        if (resultText.trim()) {
+          routerSearchRawText = resultText.trim();
+          routerSearchContext = `\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\n${routerSearchRawText.substring(0, 6000)}\n=== END SEARCH RESULTS ===\nIMPORTANT: Use the search results above to inform your plan with CURRENT, accurate data and dates. Do not rely on outdated training knowledge.\n`;
+          console.log('[Router Search] Pre-search returned', resultText.length, 'chars for router context');
+        }
+      } else {
+        console.warn('[Router Search] Pre-search HTTP error:', searchResp.status);
+      }
+    } catch (searchErr) {
+      console.warn('[Router Search] Pre-search failed:', searchErr.message);
+    }
+  }
+
+  const contextInfoWithSearch = routerSearchContext
+    ? `${contextInfo}\n${routerSearchContext}`
+    : contextInfo;
+
   const routerCallStart = Date.now();
 
   try {
     // Log context size for debugging
-    const contextWords = contextInfo.split(/\s+/).length;
-    const contextChars = contextInfo.length;
+    const contextWords = contextInfoWithSearch.split(/\s+/).length;
+    const contextChars = contextInfoWithSearch.length;
     const estimatedTokens = Math.ceil(contextChars / 4); // Rough estimate: 4 chars per token
 
     const hasImages = pendingImages && pendingImages.length > 0;
@@ -1458,19 +1522,35 @@ USER REQUEST: "${routerPrompt}"`;
           response = await callRouterWithImages(
             routerSettings,
             getRouterSystemPrompt(),
-            contextInfo,
+            contextInfoWithSearch,
             pendingImages
           );
         } else {
           response = await callWithModelFallback(
             routerSettings,
             getRouterSystemPrompt(),
-            contextInfo,
+            contextInfoWithSearch,
             { role: 'text' }
           );
         }
 
         console.log('[AI Router] Full response:', response);
+
+        if (effectiveSearchEnabled) {
+          const g = routerSettings._routerSearchGroundingDebug;
+          if (g) {
+            const used = !!(g.groundingReceived && (g.searchQueriesFromMetadata?.length > 0 || g.sourceUrls?.length > 0));
+            console.log('[Router Search]', 'After router model call — grounding metadata:', {
+              received: g.groundingReceived,
+              searchQueriesFromMetadata: g.searchQueriesFromMetadata,
+              sourceUrlCount: g.sourceUrls?.length || 0,
+              sourceUrls: g.sourceUrls,
+              likelySearchUsedForPlan: used,
+            });
+          } else {
+            console.log('[Router Search]', 'After router model call — no grounding debug payload (non-Gemini/Gemini path may omit _extraTools snapshot)');
+          }
+        }
 
         // Check for empty response
         if (!response || response.trim() === '') {
@@ -1661,6 +1741,12 @@ USER REQUEST: "${routerPrompt}"`;
           }
         }
 
+        const normalizedSearchQuery = step.searchQuery || null;
+        if (normalizedSearchQuery) {
+          console.log('[Router Search]', `Step ${stepIdx} (post-merge): searchQuery for slide generation → "${normalizedSearchQuery}"`,
+            '(injected into executor prompt as [SEARCH THE WEB for: …] when settings.searchEnabled)');
+        }
+
         return {
           action: step.action,
           templateId: step.templateId || null,
@@ -1672,7 +1758,7 @@ USER REQUEST: "${routerPrompt}"`;
           // Content from documents/images passed by router (factual mode)
           content: step.content || null,
           // Optional: search query if this step needs fresh web data
-          searchQuery: step.searchQuery || null,
+          searchQuery: normalizedSearchQuery,
           // Section tracker (main) — e.g. "1. Strategy"
           sectionTracker: step.sectionTracker || null,
           // Sub-section tracker (secondary)
@@ -1712,13 +1798,25 @@ USER REQUEST: "${routerPrompt}"`;
       },
     };
 
-    // Log search queries in the router plan for debugging
+    // Attach pre-search context so downstream slide generation can use it
+    // for ALL slides (including cover/dividers that lack their own searchQuery).
+    if (routerSearchRawText) {
+      result.searchRawContext = routerSearchRawText.substring(0, 8000);
+      console.log('[Router Search] Attached searchRawContext to route result:', result.searchRawContext.length, 'chars');
+    }
+
     const searchSteps = result.plan?.filter(s => s.searchQuery) || [];
     if (searchSteps.length > 0) {
-      console.log('%c[AI Router] Plan includes %d step(s) with searchQuery:', 'color:#059669; font-weight:bold', searchSteps.length,
-        searchSteps.map(s => ({ step: s.action, template: s.templateId, query: s.searchQuery })));
+      console.log('[Router Search]', `Plan: ${searchSteps.length} step(s) with searchQuery (step-level slide gen search):`,
+        searchSteps.map((s, i) => ({
+          planIndex: result.plan.indexOf(s),
+          action: s.action,
+          templateId: s.templateId,
+          query: s.searchQuery,
+        })));
+      console.log('[Router Search]', 'Slide-gen search will run if settings.searchEnabled; each query above is appended to that step’s prompt.');
     } else if (result.plan?.length > 0) {
-      console.log('[AI Router] Plan has %d step(s), none with searchQuery', result.plan.length);
+      console.log('[Router Search]', `Plan: ${result.plan.length} step(s), none with searchQuery`);
     }
 
     debugLog(LogLevel.INFO, 'aiRouteRequest', 'AI routing complete', {

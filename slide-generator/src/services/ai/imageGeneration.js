@@ -642,8 +642,6 @@ Return ONLY valid JSON: {"title": "...", "subtitle": "...", "footer": ""}`;
     const safeTitle = title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeSubtitle = subtitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeFooter = footer.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const slideNum = totalSlides ? `${slideNumber} / ${totalSlides}` : `${slideNumber}`;
-
     return {
       id: `slide-${Date.now()}`,
       title,
@@ -653,7 +651,7 @@ Return ONLY valid JSON: {"title": "...", "subtitle": "...", "footer": ""}`;
   <div class="frame">
     <img src="${imageDataUri}" alt="${safeTitle}" class="frame-image" />
   </div>
-  <footer class="footer"><span>${footerBranding}</span><span>${slideNum}</span></footer>
+  <footer class="footer"><span>${footerBranding}</span><span class="source"></span><span>${slideNumber}</span></footer>
 </div>`,
       type: 'image-content',
       templateId: 'image-content',

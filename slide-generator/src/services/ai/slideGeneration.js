@@ -297,7 +297,7 @@ You may lightly adjust word count to fit the 8-12 word format but MUST preserve 
 REQUIREMENTS:
 ${countInstruction}
 ${coverInstruction}
-- Footer branding: use "${settings.footerBranding || 'Strategy&'}" in the footer <span> (left side)
+- Footer: three spans — left: "${settings.footerBranding || 'Strategy&'}", center: <span class="source"> (footnote if citing a source, otherwise empty), right: page number
 ${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "this page", they mean the CURRENT SLIDE REFERENCE shown above' : ''}
 ${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
 
@@ -349,7 +349,7 @@ ${coverInstruction}
 - Maintain narrative flow with any existing slides
 ${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
 - SOURCE/CITATION: Any source attribution (e.g., "Source: McKinsey 2024") goes ONLY in the <footer> — NEVER inside <div class="frame"> content area.
-- Footer branding: use "${settings.footerBranding || 'Strategy&'}" in the footer <span> (left side)
+- Footer: three spans — left: "${settings.footerBranding || 'Strategy&'}", center: <span class="source"> (footnote if citing a source, otherwise empty), right: page number
 ${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "this page", they mean the CURRENT SLIDE REFERENCE shown above' : ''}
 
 CONTENT FIDELITY — PRESERVE THE USER'S CONTENT:

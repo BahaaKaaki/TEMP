@@ -9,6 +9,7 @@ import { ApiError } from '../../common/middleware/error.middleware';
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 const PPTX_MASTER_PATH = path.join(UPLOADS_DIR, 'pptx-master.pptx');
 const PPTX_META_PATH = path.join(UPLOADS_DIR, 'pptx-master.meta.json');
+const DEFAULT_PPTX_PATH = path.join(process.cwd(), 'assets', 'default-pptx-master.pptx');
 
 type MulterRequest = Request & { file?: Express.Multer.File };
 
@@ -31,13 +32,17 @@ export function uploadPptxMaster(req: Request, res: Response, next: NextFunction
 /** GET /api/templates/pptx-master */
 export function downloadPptxMaster(_req: Request, res: Response, next: NextFunction): void {
   try {
-    if (!fs.existsSync(PPTX_MASTER_PATH)) {
-      res.status(404).json({ error: 'No PPTX master template uploaded' });
+    const hasUploaded = fs.existsSync(PPTX_MASTER_PATH);
+    const resolvedPath = hasUploaded ? PPTX_MASTER_PATH : DEFAULT_PPTX_PATH;
+
+    if (!fs.existsSync(resolvedPath)) {
+      res.status(404).json({ error: 'No PPTX master template available' });
       return;
     }
-    let displayName = 'pptx-master.pptx';
+
+    let displayName = hasUploaded ? 'pptx-master.pptx' : 'S&_Template 1.pptx';
     try {
-      if (fs.existsSync(PPTX_META_PATH)) {
+      if (hasUploaded && fs.existsSync(PPTX_META_PATH)) {
         const raw = fs.readFileSync(PPTX_META_PATH, 'utf8');
         const meta = JSON.parse(raw) as { fileName?: string };
         if (meta.fileName && typeof meta.fileName === 'string') {
@@ -52,7 +57,7 @@ export function downloadPptxMaster(_req: Request, res: Response, next: NextFunct
       'application/vnd.openxmlformats-officedocument.presentationml.presentation'
     );
     res.setHeader('X-Pptx-Template-Name', encodeURIComponent(displayName));
-    res.sendFile(path.resolve(PPTX_MASTER_PATH), (err) => {
+    res.sendFile(path.resolve(resolvedPath), (err) => {
       if (err) next(err);
     });
   } catch (error) {

@@ -344,7 +344,8 @@ export default function AIChatbot() {
   const [messages, setMessages] = useState([
     {
       type: 'assistant',
-      content: 'Describe what you want on this slide, or switch to Deck mode to create a full presentation.',
+      content: 'What would you like to create? Use <strong>This Slide</strong> to work on a single slide, or <strong>Deck</strong> to build a full presentation.',
+      isHTML: true,
     },
   ]);
   const messagesEndRef = useRef(null);
@@ -1017,7 +1018,8 @@ export default function AIChatbot() {
       // Full reset of chat state for new deck
       setMessages([{
         type: 'assistant',
-        content: 'Describe what you want on this slide, or switch to Deck mode to create a full presentation.',
+        content: 'What would you like to create? Use <strong>This Slide</strong> to work on a single slide, or <strong>Deck</strong> to build a full presentation.',
+        isHTML: true,
       }]);
       setUploadedFiles([]);
       setPendingSmartAction(null);
@@ -4780,7 +4782,7 @@ Original request: ${userPrompt}`;
             className="chatbot-action-btn"
             onClick={() => {
               // Full reset — clear ALL chat state for a fresh start
-              setMessages([{ type: 'assistant', content: 'Describe what you want on this slide, or switch to Deck mode to create a full presentation.' }]);
+              setMessages([{ type: 'assistant', content: 'What would you like to create? Use <strong>This Slide</strong> to work on a single slide, or <strong>Deck</strong> to build a full presentation.', isHTML: true }]);
               setUploadedFiles([]);
               setPendingSmartAction(null);
               setProgress(null);

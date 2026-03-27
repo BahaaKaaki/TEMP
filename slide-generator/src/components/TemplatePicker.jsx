@@ -566,7 +566,7 @@ export default function TemplatePicker({
                 {selected.title}
                 {selected.isCustom && <span style={{ marginLeft: 4, fontSize: 10 }}>★</span>}
               </>
-            ) : 'Choose template...'}
+            ) : selectedTemplate === 'freestyle' ? 'Freestyle' : 'Choose template...'}
           </span>
           <svg className="trigger-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M6 9l6 6 6-6" />

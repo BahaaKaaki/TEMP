@@ -359,7 +359,7 @@ export default function SmartActionCard({
             {isCreateAction ? (
               <>
                 <TemplatePicker
-                  selectedTemplate={step.templateId && step.templateId !== 'freestyle' ? step.templateId : null}
+                  selectedTemplate={step.templateId || null}
                   onSelect={(templateId) => {
                     updatePlanStep(i, { templateId: templateId || 'freestyle' });
                   }}

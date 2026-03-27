@@ -4194,10 +4194,7 @@ body {
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
 }
 
-.chatbot-messages::before {
-  content: '';
-  flex: 1;
-}
+/* Messages naturally fill from top; no spacer needed since agent section is now conditional */
 
 .chatbot-messages::-webkit-scrollbar {
   width: 6px;

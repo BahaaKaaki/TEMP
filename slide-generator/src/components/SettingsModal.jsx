@@ -908,6 +908,20 @@ export default function SettingsModal({ onClose }) {
         </label>
       </div>
 
+      {/* Freestyle Self-Correction Toggle */}
+      <div style={{ ...boxStyle, borderLeft: '3px solid #6b7280' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={!!settings.freestyleSelfCorrection}
+            onChange={e => setSettings({ ...settings, freestyleSelfCorrection: e.target.checked })}
+            style={{ width: 14, height: 14 }}
+          />
+          <span style={{ fontWeight: 600, fontSize: 13 }}>Freestyle Self-Correction</span>
+          <span style={{ fontSize: 10, color: '#999' }}>Extra LLM call to fix brand compliance issues in freestyle slides (slower)</span>
+        </label>
+      </div>
+
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
 
       {/* ── Web Search / Custom Search Endpoint ── */}

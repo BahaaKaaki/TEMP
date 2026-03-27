@@ -113,6 +113,7 @@ const initialState = {
     reportSkipCompilation: false,
     imageModel: 'pwc:vertex_ai.gemini-3-pro-image-preview',
     enableAgenticMode: false,
+    freestyleSelfCorrection: false,
     // Web Search via backend proxy
     searchEnabled: true,
     searchEndpoint: '/api/ai/responses',

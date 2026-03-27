@@ -393,8 +393,8 @@ IMPORTANT: You MUST output valid HTML slides. Do NOT return JSON. Generate the s
     }
 
     // Freestyle validation + one-shot correction loop (brand compliance)
-    if (isFreestyle && !template) {
-      // Pre-extract customCSS for validation (parseGeneratedSlides will do it again properly)
+    // Gated behind settings.freestyleSelfCorrection (default off) to avoid extra LLM round-trip
+    if (isFreestyle && !template && settings.freestyleSelfCorrection) {
       const preStyleMatch = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
       const preCustomCSS = preStyleMatch
         ? preStyleMatch.map(s => s.replace(/<\/?style[^>]*>/gi, '').trim()).join('\n')

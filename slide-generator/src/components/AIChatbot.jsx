@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildMinimalEditContext, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, callWithModelFallback, webSearch, currentDateString } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult } from '../services/aiService';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
@@ -2076,7 +2076,8 @@ export default function AIChatbot() {
       // get access to current factual context.
       const buildSearchFactsBlock = () => {
         if (!searchRawContext) return '';
-        return `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n${searchRawContext.substring(0, 4000)}\n=== END KEY FACTS ===\nIMPORTANT: Use ONLY dates, names, and facts from the above search context. Do NOT use outdated information from training data.\n`;
+        const trimmed = trimSearchResult(searchRawContext);
+        return `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n${trimmed}\n=== END KEY FACTS ===\nIMPORTANT: Use ONLY dates, names, and facts from the above search context. Do NOT use outdated information from training data.\n`;
       };
 
       // Auto-derive a search query for content slides when the router omitted searchQuery.
@@ -3602,43 +3603,15 @@ Original request: ${userPrompt}`;
                   const idx = latestState.slides.findIndex(s => s.id === slideId);
                   if (idx >= 0 && idx < latestState.slides.length) {
                     const slide = latestState.slides[idx];
-                    // Find matching template for structure reference
-                    const matchingTemplate = slide.templateId
-                      ? allTemplates.find(t => t.id === slide.templateId)
-                      : allTemplates.find(t => t.id === slide.type);
-
-                    // Build minimal context (position + lightweight neighbor info)
-                    const minimalContext = buildMinimalEditContext(latestState.slides, idx, {
-                      includeNeighbors: true,
-                      includeStoryline: latestState.storyline?.length > 0,
-                      storyline: latestState.storyline,
-                      neighborRange: 2,
+                    const slideInfo = buildEnrichedSlideInfo(slide, latestState.slides, latestState.storyline, {
+                      templateList: allTemplates,
                     });
-
-                    const result = await improveSlide(
-                      {
-                        html: slide.html,
-                        title: slide.title,
-                        type: slide.type,
-                        templateId: slide.templateId,
-                        slideNumber: idx + 1,
-                        totalSlides: latestState.slides.length,
-                        comments: slide.comments,
-                        templateHtml: matchingTemplate?.html || null,
-                        templateName: matchingTemplate?.title || null,
-                        // Minimal context - no sharedCSS, just position + neighbors
-                        minimalContext,
-                      },
-                      instruction,
-                      latestState.settings
-                    );
+                    const result = await improveSlide(slideInfo, instruction, latestState.settings);
                     if (isAborted()) break;
 
-                    // Handle new return type { html, customCSS }
                     const improved = result?.html || result;
                     const newCustomCSS = result?.customCSS;
 
-                    // VALIDATION: Only update if we got valid HTML back
                     const isValidHtml = improved &&
                       improved.length > 100 &&
                       improved.includes('<div') &&
@@ -3707,44 +3680,15 @@ Original request: ${userPrompt}`;
                     const latestSlide = latestState.slides.find(s => s.id === slide.id);
                     if (!latestSlide) continue;
 
-                    // Get slide index for position context
-                    const slideIdx = latestState.slides.findIndex(s => s.id === slide.id);
-
-                    // Find matching template for structure reference
-                    const matchingTemplate = latestSlide.templateId
-                      ? allTemplates.find(t => t.id === latestSlide.templateId)
-                      : allTemplates.find(t => t.id === latestSlide.type);
-
-                    // Build minimal context (position + lightweight neighbor info)
-                    const minimalContext = buildMinimalEditContext(latestState.slides, slideIdx, {
-                      includeNeighbors: true,
-                      includeStoryline: latestState.storyline?.length > 0,
-                      storyline: latestState.storyline,
-                      neighborRange: 2,
+                    const slideInfo = buildEnrichedSlideInfo(latestSlide, latestState.slides, latestState.storyline, {
+                      templateList: allTemplates,
                     });
-
-                    const result = await improveSlide(
-                      {
-                        html: latestSlide.html,
-                        title: latestSlide.title,
-                        type: latestSlide.type,
-                        templateId: latestSlide.templateId,
-                        slideNumber: slideIdx + 1,
-                        totalSlides: latestState.slides.length,
-                        templateHtml: matchingTemplate?.html || null,
-                        templateName: matchingTemplate?.title || null,
-                        minimalContext,
-                      },
-                      instruction,
-                      latestState.settings
-                    );
+                    const result = await improveSlide(slideInfo, instruction, latestState.settings);
                     if (isAborted()) break;
 
-                    // Handle new return type { html, customCSS }
                     const improved = result?.html || result;
                     const newCustomCSS = result?.customCSS;
 
-                    // Validate before updating
                     const isValidHtml = improved &&
                       improved.length > 100 &&
                       improved.includes('<div') &&
@@ -4220,34 +4164,13 @@ Original request: ${userPrompt}`;
 
                 const slide = editSingleState.slides[slideIndex];
 
-                // Build minimal context (position + lightweight neighbor info)
-                const minimalContext = buildMinimalEditContext(editSingleState.slides, slideIndex, {
-                  includeNeighbors: true,
-                  includeStoryline: editSingleState.storyline?.length > 0,
-                  storyline: editSingleState.storyline,
-                  neighborRange: 2,
-                });
-
-                const result = await improveSlide(
-                  {
-                    html: slide.html,
-                    title: slide.title,
-                    type: slide.type,
-                    slideNumber: slideIndex + 1,
-                    totalSlides: editSingleState.slides.length,
-                    comments: slide.comments,
-                    minimalContext,
-                  },
-                  instruction,
-                  editSingleState.settings
-                );
+                const slideInfo = buildEnrichedSlideInfo(slide, editSingleState.slides, editSingleState.storyline);
+                const result = await improveSlide(slideInfo, instruction, editSingleState.settings);
                 if (isAborted()) break;
 
-                // Handle new return type { html, customCSS }
                 const improved = result?.html || result;
                 const newCustomCSS = result?.customCSS;
 
-                // Validate before updating
                 const isValidEdit = improved &&
                   improved.length > 100 &&
                   improved.includes('<div') &&
@@ -4495,25 +4418,7 @@ Original request: ${userPrompt}`;
                     improvedHtml = null; // Mark as failed
                   }
                 } else {
-                  // No template match - just improve without template conversion
-                  // Build minimal context (position + lightweight neighbor info)
-                  const minimalContext = buildMinimalEditContext(currentState.slides, slide.originalIndex, {
-                    includeNeighbors: true,
-                    includeStoryline: currentState.storyline?.length > 0,
-                    storyline: currentState.storyline,
-                    neighborRange: 2,
-                  });
-
-                  const slideInfo = {
-                    html: slide.html,
-                    title: slide.title,
-                    type: slide.type,
-                    slideNumber: slideNum,
-                    totalSlides: deckTotalSlides,
-                    comments: slide.comments || [],
-                    minimalContext,
-                  };
-                  // Build instruction with comments
+                  const slideInfo = buildEnrichedSlideInfo(slide, currentState.slides, currentState.storyline);
                   const commentContext = slide.comments?.length > 0 ? `\n\nUser comments to address:\n${slide.comments.map((c, i) => `${i + 1}. ${c}`).join('\n')}` : '';
                   const result = await improveSlide(slideInfo, editInstruction + commentContext, currentState.settings, null);
 

@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { useSlides } from '../context/SlideContext';
-import { generateSlides, improveSlide, generatePptxRendererCode, fillTemplateWithAI, selectTemplateWithAI, hasAnyApiKey } from '../services/aiService';
+import { generateSlides, generatePptxRendererCode, fillTemplateWithAI, selectTemplateWithAI, hasAnyApiKey, improveSlideWithSearch } from '../services/aiService';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { getVibePromptContext } from '../utils/vibes';
 import TemplatePicker from './TemplatePicker';
@@ -161,20 +161,14 @@ export default function AIPrompt() {
     setIsLoading(true);
     setError('');
 
-    // Capture EVERYTHING we need at the start to ensure consistency
     const slideId = currentActiveSlide.id;
-    const slideHtml = currentActiveSlide.html;
     const settings = currentState.settings;
 
     try {
-      const slideInfo = {
-        html: slideHtml,
-        customCSS: currentActiveSlide.customCSS,
-        sharedCSS: currentState.sharedCSS,
-      };
-      const result = await improveSlide(slideInfo, prompt, settings);
+      const result = await improveSlideWithSearch(
+        currentActiveSlide, prompt, settings,
+      );
 
-      // Handle new return type { html, customCSS }
       const improvedHtml = result?.html || result;
       const newCustomCSS = result?.customCSS;
 

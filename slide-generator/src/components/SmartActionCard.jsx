@@ -205,10 +205,12 @@ export default function SmartActionCard({
   onModify,
   isExecuting = false,
   executionStatus = null,
+  progress = null,
   currentSlide = null,
   currentSlideIdx = -1,
   imageVibe = 'default',
   onImageVibeChange = null,
+  debugMode = false,
 }) {
   const [selectedTemplate, setSelectedTemplate] = useState(routeResult?.templateMatch?.templateId || null);
   const [showDebug, setShowDebug] = useState(false);
@@ -345,11 +347,13 @@ export default function SmartActionCard({
         <span className="sac-step-action-badge" style={{ background: cfg.color }}>
           {cfg.icon} {cfg.label}
         </span>
-        <div className="sac-step-controls">
-          <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
-          <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
-          <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
-        </div>
+        {debugMode && (
+          <div className="sac-step-controls">
+            <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
+            <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
+            <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
+          </div>
+        )}
         <div className="sac-step-content">
           <div className="sac-step-main">
             {isCreateAction ? (
@@ -395,16 +399,31 @@ export default function SmartActionCard({
             )}
           </div>
 
-          {/* Instruction text - editable */}
-          <div className="sac-step-instruction-row">
-            <textarea
-              className="sac-step-instruction-input"
-              value={step.instruction || ''}
-              onChange={(e) => updatePlanStep(i, { instruction: e.target.value })}
-              placeholder="Enter instructions for this step..."
-              rows={2}
-            />
-          </div>
+          {/* Instruction text - always visible in debug, collapsed in normal mode */}
+          {debugMode ? (
+            <div className="sac-step-instruction-row">
+              <textarea
+                className="sac-step-instruction-input"
+                value={step.instruction || ''}
+                onChange={(e) => updatePlanStep(i, { instruction: e.target.value })}
+                placeholder="Enter instructions for this step..."
+                rows={2}
+              />
+            </div>
+          ) : (
+            <details className="sac-step-instruction-details">
+              <summary className="sac-step-instruction-summary">Edit instructions</summary>
+              <div className="sac-step-instruction-row">
+                <textarea
+                  className="sac-step-instruction-input"
+                  value={step.instruction || ''}
+                  onChange={(e) => updatePlanStep(i, { instruction: e.target.value })}
+                  placeholder="Enter instructions for this step..."
+                  rows={2}
+                />
+              </div>
+            </details>
+          )}
 
           {/* Source content from router (factual mode) - collapsible */}
           {step.content && (
@@ -432,56 +451,57 @@ export default function SmartActionCard({
             </div>
           )}
 
-          {/* Context slides - clickable to toggle */}
-          <div className="sac-step-context-row">
-            <span className="sac-ctx-label">Context:</span>
-            {slides.length > 0 ? (
-              <div className="sac-ctx-chips">
-                {slides.map((slide, sIdx) => (
-                  <button
-                    key={sIdx}
-                    className={`sac-ctx-chip ${(step.contextSlides || []).includes(sIdx) ? 'selected' : ''}`}
-                    onClick={() => toggleStepContext(i, sIdx)}
-                    title={slide.title}
-                  >
-                    {sIdx + 1}
-                  </button>
-                ))}
+          {/* Context slides and search — only in debug mode */}
+          {debugMode && (
+            <>
+              <div className="sac-step-context-row">
+                <span className="sac-ctx-label">Context:</span>
+                {slides.length > 0 ? (
+                  <div className="sac-ctx-chips">
+                    {slides.map((slide, sIdx) => (
+                      <button
+                        key={sIdx}
+                        className={`sac-ctx-chip ${(step.contextSlides || []).includes(sIdx) ? 'selected' : ''}`}
+                        onClick={() => toggleStepContext(i, sIdx)}
+                        title={slide.title}
+                      >
+                        {sIdx + 1}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="sac-ctx-none">no slides</span>
+                )}
               </div>
-            ) : (
-              <span className="sac-ctx-none">no slides</span>
-            )}
-          </div>
 
-          {/* Step-level web search toggle */}
-          <div className="sac-step-search-row">
-            <label className="sac-search-toggle" title={step.searchQuery ? `Search: ${step.searchQuery}` : 'Enable web search for this step'}>
-              <input
-                type="checkbox"
-                checked={!!step.searchQuery}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    updatePlanStep(i, { searchQuery: step.instruction?.slice(0, 80) || 'search query' });
-                  } else {
-                    updatePlanStep(i, { searchQuery: null });
-                  }
-                }}
-              />
-              <span className="sac-search-icon">🔍</span>
-              <span className="sac-search-label">Web search</span>
-            </label>
-            {step.searchQuery && (
-              <input
-                type="text"
-                className="sac-search-query-input"
-                value={step.searchQuery}
-                onChange={(e) => updatePlanStep(i, { searchQuery: e.target.value })}
-                placeholder="Search query for this step..."
-              />
-            )}
-          </div>
-
-          {/* Template picker removed — now inline via TemplatePicker in step header */}
+              <div className="sac-step-search-row">
+                <label className="sac-search-toggle" title={step.searchQuery ? `Search: ${step.searchQuery}` : 'Enable web search for this step'}>
+                  <input
+                    type="checkbox"
+                    checked={!!step.searchQuery}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        updatePlanStep(i, { searchQuery: step.instruction?.slice(0, 80) || 'search query' });
+                      } else {
+                        updatePlanStep(i, { searchQuery: null });
+                      }
+                    }}
+                  />
+                  <span className="sac-search-icon">🔍</span>
+                  <span className="sac-search-label">Web search</span>
+                </label>
+                {step.searchQuery && (
+                  <input
+                    type="text"
+                    className="sac-search-query-input"
+                    value={step.searchQuery}
+                    onChange={(e) => updatePlanStep(i, { searchQuery: e.target.value })}
+                    placeholder="Search query for this step..."
+                  />
+                )}
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -661,6 +681,16 @@ export default function SmartActionCard({
               {v.name}
             </button>
           ))}
+        </div>
+      )}
+
+      {/* Progress bar during execution */}
+      {isExecuting && progress && progress.total > 1 && (
+        <div className="sac-progress">
+          <div className="sac-progress-bar">
+            <div className="sac-progress-fill" style={{ width: `${Math.min(100, ((progress.current + 1) / progress.total) * 100)}%` }} />
+          </div>
+          <span className="sac-progress-label">Step {Math.min(progress.current + 1, progress.total)} of {progress.total}</span>
         </div>
       )}
 
@@ -1412,6 +1442,26 @@ export default function SmartActionCard({
           font-style: italic;
         }
 
+        .sac-step-instruction-details {
+          width: 100%;
+        }
+
+        .sac-step-instruction-summary {
+          font-size: 11px;
+          color: #94a3b8;
+          cursor: pointer;
+          user-select: none;
+          padding: 2px 0;
+          list-style: none;
+        }
+
+        .sac-step-instruction-summary::-webkit-details-marker { display: none; }
+        .sac-step-instruction-summary::marker { content: ''; }
+
+        .sac-step-instruction-summary:hover {
+          color: #64748b;
+        }
+
         /* Source content from router (factual mode) */
         .sac-step-content-details {
           width: 100%;
@@ -1840,6 +1890,35 @@ export default function SmartActionCard({
         .sac-btn-stop:hover {
           background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
           transform: translateY(-1px);
+        }
+
+        .sac-progress {
+          padding: 8px 16px 4px;
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+
+        .sac-progress-bar {
+          flex: 1;
+          height: 4px;
+          background: #f1f5f9;
+          border-radius: 2px;
+          overflow: hidden;
+        }
+
+        .sac-progress-fill {
+          height: 100%;
+          background: linear-gradient(90deg, #8E1E1E, #c41230);
+          border-radius: 2px;
+          transition: width 0.4s ease;
+        }
+
+        .sac-progress-label {
+          font-size: 11px;
+          color: #64748b;
+          white-space: nowrap;
+          font-weight: 500;
         }
       `}</style>
     </div>

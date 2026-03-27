@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect, useRef, useCallback } from 'react';
+import { createContext, useContext, useReducer, useEffect, useRef, useCallback, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
 // Import full CSS as raw string so it's available in state for AI and exports
@@ -262,7 +262,9 @@ function loadState() {
 
       // MIGRATION: Fix slides with instruction-based titles (e.g., "Create a...")
       // This is a ONE-TIME migration - only runs when bad titles are detected
-      let migratedSlides = parsed.slides || [];
+      let migratedSlides = (parsed.slides || []).map(s =>
+        s.id ? s : { ...s, id: uuidv4() }
+      );
       let migratedStoryline = parsed.storyline || [];
 
       const hasBadTitles = migratedSlides.some(s =>
@@ -1581,6 +1583,17 @@ function getDefaultSlideHTML() {
 export function SlideProvider({ children }) {
   const [state, dispatch] = useReducer(slideReducer, null, loadState);
 
+  const [isPanelOpen, setIsPanelOpen] = useState(() => {
+    try { return localStorage.getItem('aiPanelOpen') === 'true'; } catch { return false; }
+  });
+  const togglePanel = useCallback(() => {
+    setIsPanelOpen(prev => {
+      const next = !prev;
+      try { localStorage.setItem('aiPanelOpen', String(next)); } catch { /* noop */ }
+      return next;
+    });
+  }, []);
+
   // History management (kept in refs to avoid triggering re-renders)
   const historyRef = useRef([]); // Past snapshots
   const futureRef = useRef([]); // Future snapshots (for redo)
@@ -1918,7 +1931,7 @@ export function SlideProvider({ children }) {
   };
 
   return (
-    <SlideContext.Provider value={{ state, actions, activeSlide, historyState }}>
+    <SlideContext.Provider value={{ state, actions, activeSlide, historyState, isPanelOpen, togglePanel }}>
       {children}
     </SlideContext.Provider>
   );

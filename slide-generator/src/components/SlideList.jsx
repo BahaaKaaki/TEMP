@@ -492,7 +492,7 @@ export default function SlideList() {
 
                 return (
                   <div
-                    key={slide.id}
+                    key={slide.id || `slide-${index}`}
                     className={`slide-item ${activeSlide?.id === slide.id ? 'active' : ''} ${selectedSlides.has(slide.id) ? 'selected' : ''} ${isDragTarget ? `drag-target-${dragPosition}` : ''} ${isHighlighted ? 'context-highlighted' : ''}`}
                     style={{
                       paddingLeft: `${12 + (slide.depth || 0) * 16}px`,
@@ -520,7 +520,7 @@ export default function SlideList() {
 
                     {/* Slide thumbnail - key forces re-render on content change */}
                     <div className="slide-item-thumbnail">
-                      <SlideThumbnail html={slide.html} customCSS={slide.customCSS} vibe={state.vibe} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id}-${slide.updatedAt || ''}`} />
+                      <SlideThumbnail html={slide.html} customCSS={slide.customCSS} vibe={state.vibe} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id || index}-${slide.updatedAt || ''}`} />
                       {/* Child indicator */}
                       {slide.hasChildren && (
                         <div className="slide-children-badge" title="Has sub-slides">

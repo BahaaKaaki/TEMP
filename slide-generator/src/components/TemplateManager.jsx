@@ -205,9 +205,9 @@ export default function TemplateManager({ onClose }) {
                 <div key={category} className="template-category-section">
                   <h3 className="template-category-title">{category}</h3>
                   <div className="template-grid">
-                    {templates.map((template) => (
+                    {templates.map((template, tIdx) => (
                       <TemplateCard
-                        key={`${template.id}-${template.updatedAt || ''}`}
+                        key={`${template.id || `tmpl-${tIdx}`}-${template.updatedAt || ''}`}
                         template={template}
                         onPreview={() => setPreviewTemplate(template)}
                         onEdit={() => handleEditTemplate(template)}

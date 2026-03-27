@@ -566,7 +566,7 @@ export default function TemplatePicker({
                 {selected.title}
                 {selected.isCustom && <span style={{ marginLeft: 4, fontSize: 10 }}>★</span>}
               </>
-            ) : 'Freestyle'}
+            ) : 'Choose template...'}
           </span>
           <svg className="trigger-arrow" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M6 9l6 6 6-6" />
@@ -628,9 +628,10 @@ export default function TemplatePicker({
                       {!selectedTemplate && <span className="item-check">✓</span>}
                     </button>
                     <button
-                      className={`template-dropdown-item ${selectedTemplate === 'image-full' ? 'selected' : ''}`}
-                      onClick={() => handleSelect('image-full')}
-                      onMouseEnter={() => setHoveredTemplate(null)}
+                      className="template-dropdown-item"
+                      disabled
+                      style={{ opacity: 0.4, pointerEvents: 'none' }}
+                      title="Image mode is currently disabled"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -638,12 +639,12 @@ export default function TemplatePicker({
                         <path d="M21 15l-5-5L5 21" />
                       </svg>
                       <span>Image Full (AI visual)</span>
-                      {selectedTemplate === 'image-full' && <span className="item-check">✓</span>}
                     </button>
                     <button
-                      className={`template-dropdown-item ${selectedTemplate === 'image-content' ? 'selected' : ''}`}
-                      onClick={() => handleSelect('image-content')}
-                      onMouseEnter={() => setHoveredTemplate(null)}
+                      className="template-dropdown-item"
+                      disabled
+                      style={{ opacity: 0.4, pointerEvents: 'none' }}
+                      title="Image mode is currently disabled"
                     >
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                         <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -652,7 +653,6 @@ export default function TemplatePicker({
                         <path d="M18 18l-3-3-2 2" />
                       </svg>
                       <span>Image + Text (illustrated)</span>
-                      {selectedTemplate === 'image-content' && <span className="item-check">✓</span>}
                     </button>
                   </>
                 )}
@@ -665,9 +665,9 @@ export default function TemplatePicker({
                   Object.entries(filteredByCategory).map(([category, templates]) => (
                     <div key={category} className="template-dropdown-category">
                       <div className="category-label">{category}</div>
-                      {templates.map((template) => (
+                      {templates.map((template, tIdx) => (
                         <button
-                          key={template.id}
+                          key={template.id || `tmpl-${tIdx}`}
                           className={`template-dropdown-item ${selectedTemplate === template.id ? 'selected' : ''} ${hoveredTemplate?.id === template.id ? 'hovered' : ''}`}
                           onClick={() => handleSelect(template.id)}
                           onMouseEnter={() => setHoveredTemplate(template)}
@@ -793,9 +793,10 @@ export default function TemplatePicker({
             )}
           </button>
           <button
-            className={`template-freestyle-option ${selectedTemplate === 'image-full' ? 'selected' : ''}`}
-            onClick={() => onSelect('image-full')}
-            style={{ marginTop: 6 }}
+            className="template-freestyle-option"
+            disabled
+            style={{ marginTop: 6, opacity: 0.4, pointerEvents: 'none' }}
+            title="Image mode is currently disabled"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -806,18 +807,12 @@ export default function TemplatePicker({
               <span className="freestyle-title">Image Full</span>
               <span className="freestyle-desc">Full-bleed AI-generated visual</span>
             </div>
-            {selectedTemplate === 'image-full' && (
-              <span className="template-check">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </span>
-            )}
           </button>
           <button
-            className={`template-freestyle-option ${selectedTemplate === 'image-content' ? 'selected' : ''}`}
-            onClick={() => onSelect('image-content')}
-            style={{ marginTop: 6 }}
+            className="template-freestyle-option"
+            disabled
+            style={{ marginTop: 6, opacity: 0.4, pointerEvents: 'none' }}
+            title="Image mode is currently disabled"
           >
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -829,13 +824,6 @@ export default function TemplatePicker({
               <span className="freestyle-title">Image + Text</span>
               <span className="freestyle-desc">AI visual with title &amp; subtitle</span>
             </div>
-            {selectedTemplate === 'image-content' && (
-              <span className="template-check">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3">
-                  <path d="M20 6L9 17l-5-5" />
-                </svg>
-              </span>
-            )}
           </button>
         </div>
       )}
@@ -850,9 +838,9 @@ export default function TemplatePicker({
         <div key={category} className="template-picker-section">
           <h5 className="template-category-title">{category}</h5>
           <div className="template-grid">
-            {templates.map((template) => (
+            {templates.map((template, tIdx) => (
               <TemplatePreview
-                key={template.id}
+                key={template.id || `tmpl-${tIdx}`}
                 template={template}
                 isSelected={selectedTemplate === template.id}
                 onClick={() => onSelect(template.id)}

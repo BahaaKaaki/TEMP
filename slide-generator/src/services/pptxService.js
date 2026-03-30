@@ -15,6 +15,7 @@ import {
 import { applyTemplateToGenerated, loadTemplateFromStorage, downloadArrayBuffer } from './pptxTemplateService';
 // Import extractRelevantCSS to get only CSS rules that apply to each slide
 import { extractRelevantCSS } from './aiService';
+import { resolveCustomProperties } from './ai/cssExtraction';
 // Import the COMPLETE CSS directly from slides.css - single source of truth (kept for reference)
 import FULL_SLIDE_CSS from '../styles/slides.css?raw';
 // Import built-in templates to access their pptxRendererCode
@@ -1018,8 +1019,10 @@ ${example.code}
     const slideNum = startIndex + i + 1;
     const { layoutType, patternInfo } = slidePatterns[i];
 
-    // Extract only CSS rules relevant to this specific slide
-    const relevantCSS = extractRelevantCSS(slide.html);
+    // Extract only CSS rules relevant to this slide, then resolve var(--token) to hex
+    const rawCSS = extractRelevantCSS(slide.html);
+    const vibe = settings?.vibe || 'bold';
+    const relevantCSS = resolveCustomProperties(rawCSS, vibe, false);
 
     // Determine which JS example to reference
     let jsRef;

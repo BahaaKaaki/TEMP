@@ -398,6 +398,25 @@
   color: var(--on-accent);
 }
 
+/* Safety net: any element with an accent/dark background must have light text.
+   Freestyle slides often combine class names like "accent-header", "highlight-box"
+   that match [class*="accent"]/[class*="highlight"] (which sets color to maroon)
+   while also having a maroon background -- resulting in invisible text. */
+.slide [class*="accent"][style*="background"],
+.slide [class*="highlight"][style*="background"] {
+  color: var(--on-accent);
+}
+.slide [class*="accent-fill"], .slide [class*="accent-bar"],
+.slide [class*="accent-badge"], .slide [class*="accent-tag"],
+.slide [class*="accent-label"], .slide [class*="accent-header"],
+.slide [class*="accent-banner"], .slide [class*="accent-block"],
+.slide [class*="highlight-fill"], .slide [class*="highlight-bar"],
+.slide [class*="highlight-badge"], .slide [class*="highlight-tag"],
+.slide [class*="highlight-label"], .slide [class*="highlight-header"],
+.slide [class*="highlight-banner"], .slide [class*="highlight-block"] {
+  color: var(--on-accent);
+}
+
 /* ===== GLOBAL OVERFLOW PROTECTION ===== */
 /* Prevent content from extending beyond slide boundaries */
 .slide * {
@@ -758,7 +777,7 @@
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: var(--accent-soft, linear-gradient(135deg, #8E1E1E 0%, #A32020 100%));
+  background: var(--accent-soft);
   color: var(--accent);
   display: flex;
   align-items: center;

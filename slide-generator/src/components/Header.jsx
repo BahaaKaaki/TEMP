@@ -531,6 +531,7 @@ ${previewParts.join('\n\n')}`;
               <span className="header-btn-label">New</span>
             </button>
 
+            {/* UI declutter: Import hidden
             <button className="header-action-btn" onClick={handleImport} title="Import JSON">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
@@ -539,6 +540,7 @@ ${previewParts.join('\n\n')}`;
               </svg>
               <span className="header-btn-label">Import</span>
             </button>
+            */}
 
             <div style={{ position: 'relative' }}>
               <button
@@ -696,6 +698,7 @@ ${previewParts.join('\n\n')}`;
           </div>
 
           <div className="header-action-group">
+            {/* UI declutter: Save hidden
             <button
               className="header-action-btn"
               onClick={handleSaveVersion}
@@ -709,6 +712,7 @@ ${previewParts.join('\n\n')}`;
               </svg>
               <span className="header-btn-label">Save</span>
             </button>
+            */}
 
             <div style={{ position: 'relative' }}>
               <button
@@ -830,6 +834,7 @@ ${previewParts.join('\n\n')}`;
 
           {/* TOOLS */}
           <div className="header-action-group header-action-group-tools">
+            {/* UI declutter: Transform, Info, Docs hidden
             <button
               className="header-action-btn"
               disabled
@@ -843,8 +848,6 @@ ${previewParts.join('\n\n')}`;
               </svg>
               <span className="header-btn-label">Transform</span>
             </button>
-
-            {/* Audit Log button hidden (functionality preserved in code) */}
 
             <button
               className="header-action-btn"
@@ -870,6 +873,7 @@ ${previewParts.join('\n\n')}`;
               </svg>
               <span className="header-btn-label">Docs</span>
             </button>
+            */}
 
             <button
               className="header-action-btn header-action-btn-settings"

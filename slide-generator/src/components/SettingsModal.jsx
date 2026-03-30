@@ -372,7 +372,7 @@ const TOKEN_OPTIONS_SMALL = [256, 500, 1000, 2000, 4000, 8000, 16000, 32000, 640
 export default function SettingsModal({ onClose }) {
   const { state, actions } = useSlides();
   const [settings, setSettings] = useState({ ...state.settings });
-  const [activeSection, setActiveSection] = useState('providers');
+  const [activeSection, setActiveSection] = useState('essential');
   const [testStatus, setTestStatus] = useState(null);
   const [modelTestStatus, setModelTestStatus] = useState({}); // keyed by model type: fast, thinking, image
   const [searchTestStatus, setSearchTestStatus] = useState(null);
@@ -388,6 +388,7 @@ export default function SettingsModal({ onClose }) {
     try { return JSON.parse(localStorage.getItem('pwc_fetched_models') || 'null'); } catch { return null; }
   });
   const [modelFetchStatus, setModelFetchStatus] = useState(null);
+  const DEBUG_MODE = (() => { try { return localStorage.getItem('DEBUG_MODE') === 'true'; } catch { return false; } })();
 
   const fetchModelsFromAPI = useCallback(async () => {
     setModelFetchStatus({ type: 'loading', message: 'Fetching models...' });
@@ -652,7 +653,8 @@ export default function SettingsModal({ onClose }) {
   // ═══════════════════════════════════════════════════════════════════════════
   const renderProviders = () => (
     <>
-      {/* ── Provider List ── */}
+      {/* ── Provider List (DEBUG_MODE only) ── */}
+      {DEBUG_MODE && (<>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
         <div style={sectionTitle}>API Providers</div>
         <button className="btn btn-ghost btn-sm" onClick={addProvider} style={{ fontSize: 11 }}>+ Add Provider</button>
@@ -793,108 +795,112 @@ export default function SettingsModal({ onClose }) {
           </div>
         ))}
       </div>
+      </>)}
 
-      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+      {/* ── Default Model Selection (DEBUG_MODE only) ── */}
+      {DEBUG_MODE && (
+        <>
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+          <div style={sectionTitle}>Default Model Selection</div>
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 12 }}>
+            Select the standard model for each purpose. All roles inherit from these unless overridden.
+          </div>
 
-      {/* ── Default Model Selection ── */}
-      <div style={sectionTitle}>Default Model Selection</div>
-      <div style={{ fontSize: 11, color: '#888', marginBottom: 12 }}>
-        Select the standard model for each purpose. All roles inherit from these unless overridden.
-      </div>
-
-      {/* Default LLM */}
-      <div style={{ ...boxStyle, borderLeft: '3px solid #1565C0', background: 'rgba(21,101,192,0.03)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontWeight: 700, fontSize: 14 }}>Default LLM</span>
-          <span style={{ fontSize: 10, color: '#888' }}>primary model for all tasks</span>
-        </div>
-        <ModelPicker value={settings.model || ''} onChange={v => setSettings({ ...settings, model: v })} providers={providers} role="chat" />
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
-          <div style={{ flex: 1, minWidth: 100 }}>
-            <label style={labelSmall}>Reasoning</label>
-            <select value={settings.reasoningEffort || 'low'} onChange={(e) => setSettings({ ...settings, reasoningEffort: e.target.value })} style={{ width: '100%', fontSize: 11 }}>
-              <option value="none">None</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
-            </select>
-          </div>
-          <div style={{ flex: 1, minWidth: 100 }}>
-            <label style={labelSmall}>Max Tokens</label>
-            <select value={String(settings.maxTokens || 4096)} onChange={(e) => setSettings({ ...settings, maxTokens: parseInt(e.target.value) })} style={{ width: '100%', fontSize: 11 }}>
-              {TOKEN_OPTIONS.map(n => <option key={n} value={String(n)}>{n.toLocaleString()}</option>)}
-            </select>
-          </div>
-          <div style={{ flex: 1, minWidth: 80 }}>
-            <label style={labelSmall}>Temperature</label>
-            <input type="number" min="0" max="2" step="0.1" value={settings.temperature ?? 0.7} onChange={(e) => setSettings({ ...settings, temperature: parseFloat(e.target.value) })} style={{ width: '100%', fontSize: 11 }} />
-          </div>
-        </div>
-        {isGPT5Model(settings.model) && (
-          <div style={{ marginTop: 6 }}>
-            <label style={labelSmall}>Verbosity (GPT-5.x)</label>
-            <select value={settings.verbosity || ''} onChange={(e) => setSettings({ ...settings, verbosity: e.target.value })} style={{ width: 120, fontSize: 11 }}>
-              <option value="">Default</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
-            </select>
-          </div>
-        )}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
-          <button className="btn btn-secondary btn-sm" style={{ fontSize: 11 }} onClick={handleTestConnection}>Test Connection</button>
-          {testStatus && <span style={{ fontSize: 11, color: testStatus.type === 'success' ? '#28a745' : testStatus.type === 'error' ? '#dc3545' : '#17a2b8' }}>{testStatus.message}</span>}
-        </div>
-      </div>
-
-      {/* Fast Model */}
-      <div style={{ ...boxStyle, borderLeft: '3px solid #0277BD' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontWeight: 600, fontSize: 13 }}>Fast Model</span>
-          <span style={{ fontSize: 10, color: '#999' }}>template selection, quick assessments</span>
-        </div>
-        <ModelPicker value={settings.fastModel || ''} onChange={v => setSettings({ ...settings, fastModel: v })} providers={providers} allowEmpty emptyLabel="Use Default model" role="fast" />
-        {settings.fastModel && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-            <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => testModelRef(settings.fastModel, 'fast')}>Test</button>
-            {modelTestStatus.fast && <span style={{ fontSize: 10, color: modelTestStatus.fast.type === 'success' ? '#28a745' : modelTestStatus.fast.type === 'error' ? '#dc3545' : '#17a2b8' }}>{modelTestStatus.fast.message}</span>}
-          </div>
-        )}
-      </div>
-
-      {/* Thinking (Deep) Model */}
-      <div style={{ ...boxStyle, borderLeft: '3px solid #6A1B9A' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontWeight: 600, fontSize: 13 }}>Thinking Model</span>
-          <span style={{ fontSize: 10, color: '#999' }}>deep analysis, document understanding, compilation</span>
-        </div>
-        <ModelPicker value={settings.deepAnalysisModel || ''} onChange={v => setSettings({ ...settings, deepAnalysisModel: v })} providers={providers} allowEmpty emptyLabel="Use Default model" role="thinking" />
-        {settings.deepAnalysisModel && (
-          <>
-            <div style={{ marginTop: 4 }}>
-              <label style={labelSmall}>Reasoning</label>
-              <select value={settings.deepAnalysisReasoningEffort || 'medium'} onChange={(e) => setSettings({ ...settings, deepAnalysisReasoningEffort: e.target.value })} style={{ width: 120, fontSize: 11 }}>
-                <option value="none">None</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
-              </select>
+          {/* Default LLM */}
+          <div style={{ ...boxStyle, borderLeft: '3px solid #1565C0', background: 'rgba(21,101,192,0.03)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontWeight: 700, fontSize: 14 }}>Default LLM</span>
+              <span style={{ fontSize: 10, color: '#888' }}>primary model for all tasks</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-              <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => testModelRef(settings.deepAnalysisModel, 'thinking')}>Test</button>
-              {modelTestStatus.thinking && <span style={{ fontSize: 10, color: modelTestStatus.thinking.type === 'success' ? '#28a745' : modelTestStatus.thinking.type === 'error' ? '#dc3545' : '#17a2b8' }}>{modelTestStatus.thinking.message}</span>}
+            <ModelPicker value={settings.model || ''} onChange={v => setSettings({ ...settings, model: v })} providers={providers} role="chat" />
+            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+              <div style={{ flex: 1, minWidth: 100 }}>
+                <label style={labelSmall}>Reasoning</label>
+                <select value={settings.reasoningEffort || 'low'} onChange={(e) => setSettings({ ...settings, reasoningEffort: e.target.value })} style={{ width: '100%', fontSize: 11 }}>
+                  <option value="none">None</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+                </select>
+              </div>
+              <div style={{ flex: 1, minWidth: 100 }}>
+                <label style={labelSmall}>Max Tokens</label>
+                <select value={String(settings.maxTokens || 4096)} onChange={(e) => setSettings({ ...settings, maxTokens: parseInt(e.target.value) })} style={{ width: '100%', fontSize: 11 }}>
+                  {TOKEN_OPTIONS.map(n => <option key={n} value={String(n)}>{n.toLocaleString()}</option>)}
+                </select>
+              </div>
+              <div style={{ flex: 1, minWidth: 80 }}>
+                <label style={labelSmall}>Temperature</label>
+                <input type="number" min="0" max="2" step="0.1" value={settings.temperature ?? 0.7} onChange={(e) => setSettings({ ...settings, temperature: parseFloat(e.target.value) })} style={{ width: '100%', fontSize: 11 }} />
+              </div>
             </div>
-          </>
-        )}
-      </div>
-
-      {/* Image Model */}
-      <div style={{ ...boxStyle, borderLeft: '3px solid #D97706' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <span style={{ fontWeight: 600, fontSize: 13 }}>Image Model</span>
-          <span style={{ fontSize: 10, color: '#999' }}>image generation (if supported)</span>
-        </div>
-        <ModelPicker value={settings.imageModel || ''} onChange={v => setSettings({ ...settings, imageModel: v })} providers={providers} allowEmpty emptyLabel="None configured" role="image" />
-        {settings.imageModel && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
-            <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => testModelRef(settings.imageModel, 'image')}>Test</button>
-            {modelTestStatus.image && <span style={{ fontSize: 10, color: modelTestStatus.image.type === 'success' ? '#28a745' : modelTestStatus.image.type === 'error' ? '#dc3545' : '#17a2b8' }}>{modelTestStatus.image.message}</span>}
+            {isGPT5Model(settings.model) && (
+              <div style={{ marginTop: 6 }}>
+                <label style={labelSmall}>Verbosity (GPT-5.x)</label>
+                <select value={settings.verbosity || ''} onChange={(e) => setSettings({ ...settings, verbosity: e.target.value })} style={{ width: 120, fontSize: 11 }}>
+                  <option value="">Default</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+                </select>
+              </div>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 10 }}>
+              <button className="btn btn-secondary btn-sm" style={{ fontSize: 11 }} onClick={handleTestConnection}>Test Connection</button>
+              {testStatus && <span style={{ fontSize: 11, color: testStatus.type === 'success' ? '#28a745' : testStatus.type === 'error' ? '#dc3545' : '#17a2b8' }}>{testStatus.message}</span>}
+            </div>
           </div>
-        )}
-      </div>
 
-      {/* Agentic Mode Toggle */}
+          {/* Fast Model */}
+          <div style={{ ...boxStyle, borderLeft: '3px solid #0277BD' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Fast Model</span>
+              <span style={{ fontSize: 10, color: '#999' }}>template selection, quick assessments</span>
+            </div>
+            <ModelPicker value={settings.fastModel || ''} onChange={v => setSettings({ ...settings, fastModel: v })} providers={providers} allowEmpty emptyLabel="Use Default model" role="fast" />
+            {settings.fastModel && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => testModelRef(settings.fastModel, 'fast')}>Test</button>
+                {modelTestStatus.fast && <span style={{ fontSize: 10, color: modelTestStatus.fast.type === 'success' ? '#28a745' : modelTestStatus.fast.type === 'error' ? '#dc3545' : '#17a2b8' }}>{modelTestStatus.fast.message}</span>}
+              </div>
+            )}
+          </div>
+
+          {/* Thinking (Deep) Model */}
+          <div style={{ ...boxStyle, borderLeft: '3px solid #6A1B9A' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Thinking Model</span>
+              <span style={{ fontSize: 10, color: '#999' }}>deep analysis, document understanding, compilation</span>
+            </div>
+            <ModelPicker value={settings.deepAnalysisModel || ''} onChange={v => setSettings({ ...settings, deepAnalysisModel: v })} providers={providers} allowEmpty emptyLabel="Use Default model" role="thinking" />
+            {settings.deepAnalysisModel && (
+              <>
+                <div style={{ marginTop: 4 }}>
+                  <label style={labelSmall}>Reasoning</label>
+                  <select value={settings.deepAnalysisReasoningEffort || 'medium'} onChange={(e) => setSettings({ ...settings, deepAnalysisReasoningEffort: e.target.value })} style={{ width: 120, fontSize: 11 }}>
+                    <option value="none">None</option><option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+                  </select>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                  <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => testModelRef(settings.deepAnalysisModel, 'thinking')}>Test</button>
+                  {modelTestStatus.thinking && <span style={{ fontSize: 10, color: modelTestStatus.thinking.type === 'success' ? '#28a745' : modelTestStatus.thinking.type === 'error' ? '#dc3545' : '#17a2b8' }}>{modelTestStatus.thinking.message}</span>}
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* Image Model */}
+          <div style={{ ...boxStyle, borderLeft: '3px solid #D97706' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <span style={{ fontWeight: 600, fontSize: 13 }}>Image Model</span>
+              <span style={{ fontSize: 10, color: '#999' }}>image generation (if supported)</span>
+            </div>
+            <ModelPicker value={settings.imageModel || ''} onChange={v => setSettings({ ...settings, imageModel: v })} providers={providers} allowEmpty emptyLabel="None configured" role="image" />
+            {settings.imageModel && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => testModelRef(settings.imageModel, 'image')}>Test</button>
+                {modelTestStatus.image && <span style={{ fontSize: 10, color: modelTestStatus.image.type === 'success' ? '#28a745' : modelTestStatus.image.type === 'error' ? '#dc3545' : '#17a2b8' }}>{modelTestStatus.image.message}</span>}
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* Feature toggles -- always visible */}
       <div style={{ ...boxStyle, borderLeft: '3px solid #6b7280' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
           <input
@@ -908,7 +914,6 @@ export default function SettingsModal({ onClose }) {
         </label>
       </div>
 
-      {/* Freestyle Self-Correction Toggle */}
       <div style={{ ...boxStyle, borderLeft: '3px solid #6b7280' }}>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
           <input
@@ -922,62 +927,66 @@ export default function SettingsModal({ onClose }) {
         </label>
       </div>
 
-      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+      {/* ── Web Search / Custom Search Endpoint (DEBUG_MODE only) ── */}
+      {DEBUG_MODE && (
+        <>
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
 
-      {/* ── Web Search / Custom Search Endpoint ── */}
-      <div style={sectionTitle}>Web Search</div>
-      <div style={{ fontSize: 11, color: '#888', marginBottom: 10 }}>
-        Search lets the AI access the internet for real-time data. Two systems: <b>built-in</b> (Gemini googleSearch, GPT web_search tool) and <b>custom endpoint</b> below.
-      </div>
+          <div style={sectionTitle}>Web Search</div>
+          <div style={{ fontSize: 11, color: '#888', marginBottom: 10 }}>
+            Search lets the AI access the internet for real-time data. Two systems: <b>built-in</b> (Gemini googleSearch, GPT web_search tool) and <b>custom endpoint</b> below.
+          </div>
 
-      <div style={boxStyle}>
-        <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4, color: 'var(--text-secondary)' }}>Web Search Endpoint (Agent Research)</div>
-        <div style={{ fontSize: 10, color: '#888', marginBottom: 8 }}>Workers use this endpoint to search the web during research. Configure below to enable.</div>
-          <div className="form-group" style={{ marginBottom: 8 }}>
-            <label style={{ fontSize: 11 }}>Endpoint URL</label>
-            <input type="url" value={settings.searchEndpoint || ''} onChange={(e) => setSettings({ ...settings, searchEndpoint: e.target.value })} placeholder="https://api.openai.com/v1/responses" style={{ fontSize: 12 }} />
+          <div style={boxStyle}>
+            <div style={{ fontWeight: 600, fontSize: 12, marginBottom: 4, color: 'var(--text-secondary)' }}>Web Search Endpoint (Agent Research)</div>
+            <div style={{ fontSize: 10, color: '#888', marginBottom: 8 }}>Workers use this endpoint to search the web during research. Configure below to enable.</div>
+              <div className="form-group" style={{ marginBottom: 8 }}>
+                <label style={{ fontSize: 11 }}>Endpoint URL</label>
+                <input type="url" value={settings.searchEndpoint || ''} onChange={(e) => setSettings({ ...settings, searchEndpoint: e.target.value })} placeholder="https://api.openai.com/v1/responses" style={{ fontSize: 12 }} />
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label style={{ fontSize: 11 }}>Model</label>
+                  <input type="text" value={settings.searchModel || ''} onChange={(e) => setSettings({ ...settings, searchModel: e.target.value })} placeholder="openai.gpt-5.4" style={{ fontSize: 12 }} />
+                </div>
+                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label style={{ fontSize: 11 }}>API Key</label>
+                  <input type="password" value={settings.searchApiKey || ''} onChange={(e) => setSettings({ ...settings, searchApiKey: e.target.value })} placeholder="Enter key..." style={{ fontSize: 12 }} />
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                <div style={{ flex: 1 }}>
+                  <label style={labelSmall}>Auth Header</label>
+                  <select value={settings.searchAuthHeader || 'api-key'} onChange={(e) => setSettings({ ...settings, searchAuthHeader: e.target.value })} style={{ width: '100%', fontSize: 11 }}>
+                    <option value="api-key">api-key: KEY</option><option value="bearer">Bearer KEY</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelSmall}>Context Size</label>
+                  <select value={settings.searchContextSize || 'medium'} onChange={(e) => setSettings({ ...settings, searchContextSize: e.target.value })} style={{ width: '100%', fontSize: 11 }}>
+                    <option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option>
+                  </select>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <label style={labelSmall}>Max Tokens</label>
+                  <select value={String(settings.searchMaxTokens || 2000)} onChange={(e) => setSettings({ ...settings, searchMaxTokens: parseInt(e.target.value) })} style={{ width: '100%', fontSize: 11 }}>
+                    {TOKEN_OPTIONS_SMALL.map(n => <option key={n} value={String(n)}>{n.toLocaleString()}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <label style={{ ...labelSmall, display: 'flex', alignItems: 'center', gap: 6, margin: 0, cursor: 'pointer' }}>
+                  <input type="checkbox" checked={!!settings.searchIncludeSources} onChange={(e) => setSettings({ ...settings, searchIncludeSources: e.target.checked })} style={{ width: 'auto' }} />
+                  Include source links in research output
+                </label>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <button className="btn btn-secondary btn-sm" style={{ fontSize: 11 }} onClick={handleTestSearch} disabled={searchTestStatus?.type === 'loading'}>{searchTestStatus?.type === 'loading' ? 'Testing...' : 'Test Search'}</button>
+                {searchTestStatus && <span style={{ fontSize: 11, color: searchTestStatus.type === 'success' ? '#28a745' : searchTestStatus.type === 'error' ? '#dc3545' : '#17a2b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{searchTestStatus.message}</span>}
+              </div>
           </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label style={{ fontSize: 11 }}>Model</label>
-              <input type="text" value={settings.searchModel || ''} onChange={(e) => setSettings({ ...settings, searchModel: e.target.value })} placeholder="openai.gpt-5.4" style={{ fontSize: 12 }} />
-            </div>
-            <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-              <label style={{ fontSize: 11 }}>API Key</label>
-              <input type="password" value={settings.searchApiKey || ''} onChange={(e) => setSettings({ ...settings, searchApiKey: e.target.value })} placeholder="Enter key..." style={{ fontSize: 12 }} />
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-            <div style={{ flex: 1 }}>
-              <label style={labelSmall}>Auth Header</label>
-              <select value={settings.searchAuthHeader || 'api-key'} onChange={(e) => setSettings({ ...settings, searchAuthHeader: e.target.value })} style={{ width: '100%', fontSize: 11 }}>
-                <option value="api-key">api-key: KEY</option><option value="bearer">Bearer KEY</option>
-              </select>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={labelSmall}>Context Size</label>
-              <select value={settings.searchContextSize || 'medium'} onChange={(e) => setSettings({ ...settings, searchContextSize: e.target.value })} style={{ width: '100%', fontSize: 11 }}>
-                <option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option>
-              </select>
-            </div>
-            <div style={{ flex: 1 }}>
-              <label style={labelSmall}>Max Tokens</label>
-              <select value={String(settings.searchMaxTokens || 2000)} onChange={(e) => setSettings({ ...settings, searchMaxTokens: parseInt(e.target.value) })} style={{ width: '100%', fontSize: 11 }}>
-                {TOKEN_OPTIONS_SMALL.map(n => <option key={n} value={String(n)}>{n.toLocaleString()}</option>)}
-              </select>
-            </div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-            <label style={{ ...labelSmall, display: 'flex', alignItems: 'center', gap: 6, margin: 0, cursor: 'pointer' }}>
-              <input type="checkbox" checked={!!settings.searchIncludeSources} onChange={(e) => setSettings({ ...settings, searchIncludeSources: e.target.checked })} style={{ width: 'auto' }} />
-              Include source links in research output
-            </label>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <button className="btn btn-secondary btn-sm" style={{ fontSize: 11 }} onClick={handleTestSearch} disabled={searchTestStatus?.type === 'loading'}>{searchTestStatus?.type === 'loading' ? 'Testing...' : 'Test Search'}</button>
-            {searchTestStatus && <span style={{ fontSize: 11, color: searchTestStatus.type === 'success' ? '#28a745' : searchTestStatus.type === 'error' ? '#dc3545' : '#17a2b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{searchTestStatus.message}</span>}
-          </div>
-      </div>
+        </>
+      )}
     </>
   );
 
@@ -1127,18 +1136,12 @@ export default function SettingsModal({ onClose }) {
       {/* ── Agent Workflow ── */}
       <div style={sectionTitle}>Agent Workflow</div>
 
-      <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
-        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-          <label style={{ fontSize: 12 }}>Slide Creation Batch</label>
-          <select value={String(settings.slideCreationBatchSize || 3)} onChange={(e) => setSettings({ ...settings, slideCreationBatchSize: parseInt(e.target.value) })} style={{ width: '100%', fontSize: 12 }}>
-            <option value="1">1 (one-by-one)</option><option value="2">2 per call</option><option value="3">3 per call</option><option value="5">5 per call</option>
-          </select>
-          <div style={hint}>Slides per API call. Higher = faster but less reliable.</div>
-        </div>
-        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
-          <label style={{ fontSize: 12 }}>Manager Name</label>
-          <input type="text" value={settings.agentManagerName || 'Edwin'} onChange={(e) => setSettings({ ...settings, agentManagerName: e.target.value.trim() || 'Edwin' })} placeholder="Edwin" style={{ fontSize: 12 }} />
-        </div>
+      <div className="form-group" style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 12 }}>Slide Creation Batch</label>
+        <select value={String(settings.slideCreationBatchSize || 3)} onChange={(e) => setSettings({ ...settings, slideCreationBatchSize: parseInt(e.target.value) })} style={{ width: '100%', fontSize: 12 }}>
+          <option value="1">1 (one-by-one)</option><option value="2">2 per call</option><option value="3">3 per call</option><option value="5">5 per call</option>
+        </select>
+        <div style={hint}>Slides per API call. Higher = faster but less reliable.</div>
       </div>
 
       <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
@@ -1484,12 +1487,102 @@ export default function SettingsModal({ onClose }) {
   // ═══════════════════════════════════════════════════════════════════════════
   // ─── SIDEBAR SECTIONS ──────────────────────────────────────────────────
   // ═══════════════════════════════════════════════════════════════════════════
-  const SECTIONS = [
-    { id: 'providers',  label: 'Providers',  icon: '◈' },
-    { id: 'roles',      label: 'Roles',      icon: '◆' },
-    { id: 'generation', label: 'Generation', icon: '◉' },
-    { id: 'advanced',   label: 'Advanced',   icon: '◫' },
-  ];
+
+  const renderEssential = () => (
+    <>
+      {renderProviders()}
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
+      <div style={sectionTitle}>Model Roles</div>
+      <div style={{ fontSize: 10, color: '#888', marginBottom: 10 }}>Which model handles each task in the pipeline.{DEBUG_MODE ? ' You can override any role below.' : ''}</div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+        {[
+          { key: 'model',           label: 'Main (Slides)',   desc: 'Generates HTML slides from content and instructions',   role: 'chat' },
+          { key: 'routerModel',     label: 'Router (Deck)',   desc: 'Plans deck structure, classifies intent, assigns templates', role: 'chat' },
+          { key: 'chatRouterModel', label: 'Router (Chat)',   desc: 'Routes chatbot requests, decides actions',             role: 'chat' },
+          { key: 'fastModel',       label: 'Fast',            desc: 'Flash classification, query refinement, naming',       role: 'fast' },
+          { key: 'searchModel',     label: 'Search',          desc: 'Web search queries and result synthesis',              role: 'chat' },
+          { key: 'pptxModel',       label: 'PPTX Export',     desc: 'Converts slides to PowerPoint code',                   role: 'chat' },
+          { key: 'reportModel',     label: 'Report',          desc: 'Generates interactive HTML/JSON reports',              role: 'chat' },
+          { key: 'imageModel',      label: 'Image',           desc: 'AI image generation',                                 role: 'image' },
+        ].map(mr => (
+          <div key={mr.key} style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '6px 10px', borderRadius: 6,
+            background: 'var(--zone1, #f8fafc)',
+            border: '1px solid var(--border, #e2e8f0)',
+          }}>
+            <div style={{ width: 100, flexShrink: 0 }}>
+              <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-primary)' }}>{mr.label}</div>
+              <div style={{ fontSize: 9, color: '#999', lineHeight: 1.2, marginTop: 1 }}>{mr.desc}</div>
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              {DEBUG_MODE ? (
+                <ModelPicker
+                  value={settings[mr.key] || ''}
+                  onChange={v => setSettings({ ...settings, [mr.key]: v })}
+                  providers={providers}
+                  allowEmpty
+                  emptyLabel="Use Default"
+                  role={mr.role}
+                />
+              ) : (
+                <div style={{
+                  fontSize: 11, fontFamily: 'monospace', color: 'var(--text-secondary, #64748b)',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+                }}>
+                  {stripProviderPrefix(settings[mr.key]) || '(default)'}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
+      <div style={sectionTitle}>Search</div>
+      <div className="form-group" style={{ marginBottom: 8 }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+          <input type="checkbox" checked={settings.searchEnabled ?? false} onChange={(e) => setSettings({ ...settings, searchEnabled: e.target.checked })} style={{ width: 'auto' }} />
+          Enable web search
+        </label>
+      </div>
+      {settings.searchEnabled && (
+        <div className="form-group" style={{ marginBottom: 8 }}>
+          <label style={{ fontSize: 12 }}>Search Endpoint</label>
+          <input type="text" value={settings.searchEndpoint || ''} onChange={(e) => setSettings({ ...settings, searchEndpoint: e.target.value })} placeholder="https://..." style={{ fontSize: 12 }} />
+        </div>
+      )}
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
+      <div style={sectionTitle}>Branding</div>
+      <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
+        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+          <label style={{ fontSize: 12 }}>Footer Branding</label>
+          <input type="text" value={settings.footerBranding || 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Strategy&" style={{ fontSize: 12 }} />
+        </div>
+        <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+          <label style={{ fontSize: 12 }}>Manager Name</label>
+          <input type="text" value={settings.agentManagerName || 'Edwin'} onChange={(e) => setSettings({ ...settings, agentManagerName: e.target.value.trim() || 'Edwin' })} placeholder="Edwin" style={{ fontSize: 12 }} />
+        </div>
+      </div>
+    </>
+  );
+
+  const SECTIONS = (() => {
+    const sections = [
+      { id: 'essential',   label: 'Essential',   icon: '◈' },
+      { id: 'generation',  label: 'Generation',  icon: '◉' },
+    ];
+    if (DEBUG_MODE) {
+      sections.push({ id: 'roles', label: 'Roles', icon: '◆' });
+      sections.push({ id: 'advanced', label: 'Advanced', icon: '◫' });
+    }
+    return sections;
+  })();
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -1528,9 +1621,9 @@ export default function SettingsModal({ onClose }) {
 
           {/* Content */}
           <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
-            {activeSection === 'providers' && renderProviders()}
-            {activeSection === 'roles' && renderRoles()}
+            {activeSection === 'essential' && renderEssential()}
             {activeSection === 'generation' && renderGeneration()}
+            {activeSection === 'roles' && renderRoles()}
             {activeSection === 'advanced' && renderAdvanced()}
           </div>
         </div>

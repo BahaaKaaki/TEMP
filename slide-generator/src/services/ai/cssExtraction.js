@@ -148,6 +148,70 @@ export function extractRelevantCSS(html) {
   return result;
 }
 
+// Parse CSS custom property definitions from the full slides.css
+function parseCSSVariables(vibe = 'default', darkMode = false) {
+  if (!FULL_SLIDE_CSS) return {};
+  const vars = {};
+
+  const vibePattern = darkMode
+    ? /\[data-dark-mode="true"\]\s*\{([^}]+)\}/g
+    : /\.slide\s*\{([^}]+)\}/;
+
+  const vibeBlock = vibe && vibe !== 'default'
+    ? new RegExp(`\\[data-vibe="${vibe}"\\]\\s*\\{([^}]+)\\}`, 'g')
+    : null;
+
+  const extractVars = (block) => {
+    const re = /--([\w-]+)\s*:\s*([^;]+);/g;
+    let m;
+    while ((m = re.exec(block)) !== null) {
+      vars[`--${m[1]}`] = m[2].trim();
+    }
+  };
+
+  const baseMatch = FULL_SLIDE_CSS.match(vibePattern);
+  if (baseMatch) extractVars(baseMatch[1] || baseMatch[0]);
+
+  if (vibeBlock) {
+    let vm;
+    while ((vm = vibeBlock.exec(FULL_SLIDE_CSS)) !== null) {
+      extractVars(vm[1]);
+    }
+  }
+
+  if (darkMode) {
+    const darkPattern = /\[data-dark-mode="true"\]\s*\{([^}]+)\}/g;
+    let dm;
+    while ((dm = darkPattern.exec(FULL_SLIDE_CSS)) !== null) {
+      extractVars(dm[1]);
+    }
+  }
+
+  return vars;
+}
+
+/**
+ * Resolve CSS custom properties (var(--token)) to actual hex values.
+ * Used by PPTX export to give the LLM concrete color values.
+ */
+export function resolveCustomProperties(cssText, vibe = 'default', darkMode = false) {
+  if (!cssText) return cssText;
+  const vars = parseCSSVariables(vibe, darkMode);
+  return cssText.replace(/var\(--([\w-]+)(?:\s*,\s*([^)]+))?\)/g, (match, name, fallback) => {
+    const resolved = vars[`--${name}`];
+    if (resolved) {
+      if (resolved.startsWith('var(')) {
+        const innerMatch = resolved.match(/var\(--([\w-]+)/);
+        if (innerMatch && vars[`--${innerMatch[1]}`]) {
+          return vars[`--${innerMatch[1]}`];
+        }
+      }
+      return resolved;
+    }
+    return fallback ? fallback.trim() : match;
+  });
+}
+
 // ============================================
 // CONTEXT-FETCH DETECTION
 // ============================================

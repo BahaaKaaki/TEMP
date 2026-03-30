@@ -10,7 +10,8 @@ const SlideContext = createContext(null);
 const DEFAULT_SHARED_CSS = SLIDES_CSS;
 
 // Bump when default-model migration should run once for saved decks (see loadState).
-const SETTINGS_VERSION = 4;
+// v6: fastModel changed from gpt-5.4-nano to gpt-5.4-mini
+const SETTINGS_VERSION = 6;
 
 // Initial state
 const initialState = {
@@ -42,16 +43,15 @@ const initialState = {
         apiUrl: '/api/ai/chat',
         apiKey: 'server-managed',
         models: [
-          'vertex_ai.gemini-3.1-pro-preview',
-          'vertex_ai.gemini-3-pro-preview',
-          'vertex_ai.gemini-3-pro-image-preview',
           'bedrock.anthropic.claude-opus-4-6',
-          'vertex_ai.anthropic.claude-opus-4-6',
-          'openai.gpt-5.4-nano',
+          'bedrock.anthropic.claude-sonnet-4-6',
+          'openai.gpt-5.4',
           'openai.gpt-5.4-mini',
-          'openai.gpt-5.2-2025-12-11',
-          'openai.gpt-5.2',
-          'openai.gpt-5.2-codex',
+          'openai.gpt-5.4-nano',
+          'openai.gpt-5.4-pro',
+          'vertex_ai.gemini-3.1-pro-preview',
+          'vertex_ai.gemini-3-pro-image-preview',
+          'vertex_ai.anthropic.claude-opus-4-6',
           'azure.gpt-4.1',
         ],
         azurePrefix: false,
@@ -63,14 +63,14 @@ const initialState = {
     ],
     // Model selections — format: "providerId:modelName"
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',
-    fastModel: 'pwc:openai.gpt-5.4-nano',
+    fastModel: 'pwc:openai.gpt-5.4-mini',
     // Agent-mode router settings
-    routerModel: 'pwc:bedrock.anthropic.claude-opus-4-6',
+    routerModel: 'pwc:openai.gpt-5.4',
     routerReasoningEffort: 'low',
     routerMaxTokens: 65536,
     routerSearchEnabled: false,
     // Chatbot-mode router settings
-    chatRouterModel: 'pwc:bedrock.anthropic.claude-opus-4-6',
+    chatRouterModel: 'pwc:openai.gpt-5.4',
     chatRouterReasoningEffort: 'low',
     chatRouterMaxTokens: 65536,
     chatRouterSearchEnabled: true,
@@ -333,6 +333,7 @@ function loadState() {
         'pwc:bedrock.anthropic.claude-opus-4-6',
         'pwc:azure.gpt-4o',
         'pwc:openai.gpt-5-mini',
+        'pwc:openai.gpt-5.4-nano',
       ]);
 
       const migrateDefault = (val, fallback, fieldName) => {
@@ -1633,46 +1634,45 @@ export function SlideProvider({ children }) {
     dispatch(action);
   }, [state]);
 
-  // Save to localStorage on state change
+  // Save to localStorage on state change (debounced to avoid rapid writes during batch operations)
+  const saveTimerRef = useRef(null);
   useEffect(() => {
-    const saveState = (stateToSave) => {
-      const { selectedSlideIds, ...persistState } = stateToSave;
-      const stateJson = JSON.stringify(persistState);
-      localStorage.setItem('slideGeneratorState', stateJson);
-      return stateJson.length;
-    };
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
-    try {
-      const stateSize = saveState(state);
-      console.log('[SlideContext] State saved to localStorage', {
-        deckName: state.deckName,
-        slideCount: state.slides?.length || 0,
-        versionsCount: state.deckVersions?.length || 0,
-        stateSize,
-        timestamp: new Date().toISOString(),
-      });
-    } catch (e) {
-      console.error('[SlideContext] Failed to save state:', e);
-      // Check if it's a quota exceeded error - auto-clear history and retry
-      if (e.name === 'QuotaExceededError' || e.message?.includes('quota') || e.message?.includes('exceeded')) {
-        console.warn('[SlideContext] localStorage quota exceeded! Auto-clearing history...');
-        // Clear deck versions and retry save
-        const slimState = {
-          ...state,
-          deckVersions: [], // Clear all saved versions to free space
-        };
-        try {
-          const slimSize = saveState(slimState);
-          console.log('[SlideContext] Saved after clearing versions, new size:', slimSize);
-          // Dispatch to update state so it stays in sync
-          dispatch({ type: ACTIONS.CLEAR_HISTORY });
-        } catch (e2) {
-          console.error('[SlideContext] Still failed after clearing history:', e2);
-          // Last resort: try saving minimal state
-          console.warn('[SlideContext] Attempting minimal save (slides only)...');
+    saveTimerRef.current = setTimeout(() => {
+      const saveState = (stateToSave) => {
+        const { selectedSlideIds, ...persistState } = stateToSave;
+        const stateJson = JSON.stringify(persistState);
+        localStorage.setItem('slideGeneratorState', stateJson);
+        return stateJson.length;
+      };
+
+      try {
+        const stateSize = saveState(state);
+        console.log('[SlideContext] State saved to localStorage', {
+          deckName: state.deckName,
+          slideCount: state.slides?.length || 0,
+          versionsCount: state.deckVersions?.length || 0,
+          stateSize,
+          timestamp: new Date().toISOString(),
+        });
+      } catch (e) {
+        console.error('[SlideContext] Failed to save state:', e);
+        if (e.name === 'QuotaExceededError' || e.message?.includes('quota') || e.message?.includes('exceeded')) {
+          console.warn('[SlideContext] localStorage quota exceeded! Auto-clearing history...');
+          const slimState = { ...state, deckVersions: [] };
+          try {
+            const slimSize = saveState(slimState);
+            console.log('[SlideContext] Saved after clearing versions, new size:', slimSize);
+            dispatch({ type: ACTIONS.CLEAR_HISTORY });
+          } catch (e2) {
+            console.error('[SlideContext] Still failed after clearing history:', e2);
+          }
         }
       }
-    }
+    }, 2000);
+
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
   }, [state]);
 
   // Sync API concurrency cap from settings

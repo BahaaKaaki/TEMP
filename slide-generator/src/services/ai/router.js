@@ -1014,10 +1014,15 @@ Even with freestyle:
 - The layoutGuidance field IS your visual direction — pick the right pattern for the content
 - Exception: if user explicitly requests a specific visual (e.g., "make it a 2-column layout"), reflect that in layoutGuidance (e.g., "split")
 
-SECTION TRACKER + EXECUTIVE SUMMARY:
-For structured decks (7+ slides or when the agent provides SECTION TRACKERS), every body slide carries a "sectionTracker" label — a short tab shown on the slide (e.g. "1. Strategy", "2. Financials"). Section trackers are useful navigation labels regardless of whether an executive summary slide is included.
-The executiveSummary template (optional) shows numbered boxes in a 4-column grid — each box has a number, an INSIGHT-DRIVEN title (4-7 words — a mini-conclusion, NOT a generic label; e.g. "Digital up 40% despite headwinds" NOT "Market Overview"), and a one-sentence insight (8 words max). When included, it provides a high-level overview of the deck. If present, its items should correspond 1:1 to the section trackers on body slides.
-
+Section Trackers & Executive Summary
+For structured decks (7+ slides, or when Section Trackers / Executive Summary are used), each body slide must include a section tracker — a short tab label (e.g. “1. Strategy”, “2. Financials”). These trackers serve as navigation anchors and must align directly with the Executive Summary.
+The Executive Summary should present a set of numbered pillars. Each pillar includes:
+A number
+A clear 2–3 word title (must exactly match the section tracker labels)
+A one-line executive statement that conveys the core message + Any additional executive content
+Each pillar should be self-explanatory and may include brief supporting context if needed.
+There must be a 1:1 correspondence between Executive Summary pillars and section trackers across the body slides, ensuring consistency and easy navigation throughout the deck.
+ 
 RULES:
 - Add "sectionTracker" to EVERY body slide that belongs to a section. Format: "N. Section Name" — keep concise (max ~20 chars, 2-4 words after the number)
 - Cover, executive summary, and closing slides do NOT get a sectionTracker

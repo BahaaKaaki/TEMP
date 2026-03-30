@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { useSlides } from '../context/SlideContext';
-import { downloadAsHTML, downloadAsJSON, exportToPDF, generateFileName } from '../services/exportService';
+import { downloadAsHTML, downloadAsJSON, exportToPDF, exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { extractRelevantCSS } from '../services/aiService';
 import {
   exportToPPTX,
+  exportSingleSlideToPPTX,
   detectSlideLayoutType,
   hasAnyCredentials,
   COMPLETE_TRANSLATION_EXAMPLE,
@@ -14,7 +15,7 @@ import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from '../services/templateMatcher';
 import SettingsModal from './SettingsModal';
 import TemplateManager from './TemplateManager';
-import WidgetBrowser from './WidgetBrowser';
+// import WidgetBrowser from './WidgetBrowser'; // UI declutter: widgets hidden
 import AuditLogViewer from './AuditLogViewer';
 import FeaturesLanding from './FeaturesLanding';
 import PptxTransformer from './PptxTransformer';
@@ -23,8 +24,9 @@ export default function Header() {
   const { state, actions, historyState } = useSlides();
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplateManager, setShowTemplateManager] = useState(false);
-  const [showWidgetBrowser, setShowWidgetBrowser] = useState(false);
+  // const [showWidgetBrowser, setShowWidgetBrowser] = useState(false); // UI declutter: widgets hidden
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [isDownloadingSlide, setIsDownloadingSlide] = useState(false);
   const [showVersionMenu, setShowVersionMenu] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
@@ -308,7 +310,7 @@ ${previewParts.join('\n\n')}`;
 
     setIsExporting(true);
     setShowExportMenu(false);
-    setExportProgress({ phase: 'starting', message: 'Preparing export...' });
+    setExportProgress({ phase: 'starting', title: 'Exporting to PowerPoint', message: 'Preparing export...' });
 
     try {
       // Pass settings for AI-powered generation if any API key is configured
@@ -362,7 +364,7 @@ ${previewParts.join('\n\n')}`;
     }
     setIsExporting(true);
     setShowExportMenu(false);
-    setExportProgress({ phase: 'starting', message: 'Preparing PDF export...' });
+    setExportProgress({ phase: 'starting', title: 'Exporting to PDF', message: 'Preparing PDF export...' });
 
     try {
       // Use file naming nomenclature if enabled
@@ -417,6 +419,58 @@ ${previewParts.join('\n\n')}`;
     };
     input.click();
     setShowExportMenu(false);
+  };
+
+  const activeSlide = state.slides.find(s => s.id === state.activeSlideId);
+
+  const anyExportBusy = isExporting || isDownloadingSlide;
+
+  const handleDownloadCurrentSlidePPTX = async () => {
+    if (!activeSlide) return;
+    setIsDownloadingSlide(true);
+    setShowExportMenu(false);
+    setExportProgress({ phase: 'starting', title: 'Exporting Slide to PPTX', message: 'Generating PowerPoint for current slide...' });
+    try {
+      const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
+      const filename = generateFileName(`${state.deckName}_Slide${slideIndex + 1}`, 'pptx', {
+        useNomenclature: state.settings.useNomenclature ?? true,
+        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
+        version: 1,
+      });
+      const settingsWithVibe = { ...state.settings, vibe: state.vibe };
+      const allTemplates = state.customTemplates || [];
+      await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, settingsWithVibe, null, allTemplates);
+      setExportProgress({ phase: 'complete', message: 'Download complete!' });
+      setTimeout(() => setExportProgress(null), 2000);
+    } catch (err) {
+      setExportProgress(null);
+      alert('Failed to download PPTX: ' + err.message);
+    } finally {
+      setIsDownloadingSlide(false);
+    }
+  };
+
+  const handleDownloadCurrentSlidePDF = async () => {
+    if (!activeSlide) return;
+    setIsDownloadingSlide(true);
+    setShowExportMenu(false);
+    setExportProgress({ phase: 'starting', title: 'Exporting Slide to PDF', message: 'Generating PDF for current slide...' });
+    try {
+      const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
+      const filename = generateFileName(`${state.deckName}_Slide${slideIndex + 1}`, 'pdf', {
+        useNomenclature: state.settings.useNomenclature ?? true,
+        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
+        version: 1,
+      });
+      await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename);
+      setExportProgress({ phase: 'complete', message: 'Download complete!' });
+      setTimeout(() => setExportProgress(null), 2000);
+    } catch (err) {
+      setExportProgress(null);
+      alert('Failed to download PDF: ' + err.message);
+    } finally {
+      setIsDownloadingSlide(false);
+    }
   };
 
   return (
@@ -474,6 +528,7 @@ ${previewParts.join('\n\n')}`;
                 <line x1="12" y1="18" x2="12" y2="12" />
                 <line x1="9" y1="15" x2="15" y2="15" />
               </svg>
+              <span className="header-btn-label">New</span>
             </button>
 
             <button className="header-action-btn" onClick={handleImport} title="Import JSON">
@@ -482,6 +537,7 @@ ${previewParts.join('\n\n')}`;
                 <polyline points="17 8 12 3 7 8" />
                 <line x1="12" y1="3" x2="12" y2="15" />
               </svg>
+              <span className="header-btn-label">Import</span>
             </button>
 
             <div style={{ position: 'relative' }}>
@@ -495,6 +551,7 @@ ${previewParts.join('\n\n')}`;
                   <polyline points="7 10 12 15 17 10" />
                   <line x1="12" y1="15" x2="12" y2="3" />
                 </svg>
+                <span className="header-btn-label">Export</span>
                 <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <path d="M6 9l6 6 6-6" />
                 </svg>
@@ -502,9 +559,13 @@ ${previewParts.join('\n\n')}`;
 
               {showExportMenu && (
                 <div className="header-dropdown">
+                  <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    All Slides
+                  </div>
                   <button
                     className="header-dropdown-item header-dropdown-item-accent"
                     onClick={handlePreviewPPTXHtml}
+                    disabled={anyExportBusy}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
@@ -515,7 +576,7 @@ ${previewParts.join('\n\n')}`;
                   <button
                     className="header-dropdown-item"
                     onClick={() => handleDownloadPPTX(false)}
-                    disabled={isExporting}
+                    disabled={anyExportBusy}
                   >
                     {isExporting ? (
                       <>
@@ -535,7 +596,7 @@ ${previewParts.join('\n\n')}`;
                   <button
                     className="header-dropdown-item"
                     onClick={() => handleDownloadPDF(false)}
-                    disabled={isExporting}
+                    disabled={anyExportBusy}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -543,40 +604,10 @@ ${previewParts.join('\n\n')}`;
                     </svg>
                     PDF (.pdf)
                   </button>
-                  {selectedCount > 1 && (
-                    <>
-                      <div className="header-dropdown-divider" />
-                      <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                        Export {selectedCount} Selected
-                      </div>
-                      <button
-                        className="header-dropdown-item"
-                        onClick={() => handleDownloadPPTX(true)}
-                        disabled={isExporting}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                          <polyline points="13 2 13 9 20 9" />
-                        </svg>
-                        Selected as PPTX ({selectedCount})
-                      </button>
-                      <button
-                        className="header-dropdown-item"
-                        onClick={() => handleDownloadPDF(true)}
-                        disabled={isExporting}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                          <polyline points="14 2 14 8 20 8" />
-                        </svg>
-                        Selected as PDF ({selectedCount})
-                      </button>
-                    </>
-                  )}
-                  <div className="header-dropdown-divider" />
                   <button
                     className="header-dropdown-item"
                     onClick={handleDownloadHTML}
+                    disabled={anyExportBusy}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -584,9 +615,74 @@ ${previewParts.join('\n\n')}`;
                     </svg>
                     HTML (.html)
                   </button>
+                  {selectedCount > 1 && (
+                    <>
+                      <div className="header-dropdown-divider" />
+                      <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        {selectedCount} Selected Slides
+                      </div>
+                      <button
+                        className="header-dropdown-item"
+                        onClick={() => handleDownloadPPTX(true)}
+                        disabled={anyExportBusy}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                          <polyline points="13 2 13 9 20 9" />
+                        </svg>
+                        Selected as PPTX
+                      </button>
+                      <button
+                        className="header-dropdown-item"
+                        onClick={() => handleDownloadPDF(true)}
+                        disabled={anyExportBusy}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        Selected as PDF
+                      </button>
+                    </>
+                  )}
+                  {activeSlide && (
+                    <>
+                      <div className="header-dropdown-divider" />
+                      <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                        Current Slide
+                      </div>
+                      <button
+                        className="header-dropdown-item"
+                        onClick={handleDownloadCurrentSlidePPTX}
+                        disabled={anyExportBusy}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                          <polyline points="13 2 13 9 20 9" />
+                        </svg>
+                        This Slide as PPTX
+                      </button>
+                      <button
+                        className="header-dropdown-item"
+                        onClick={handleDownloadCurrentSlidePDF}
+                        disabled={anyExportBusy}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                          <polyline points="14 2 14 8 20 8" />
+                        </svg>
+                        This Slide as PDF
+                      </button>
+                    </>
+                  )}
+                  <div className="header-dropdown-divider" />
+                  <div style={{ padding: '4px 12px', fontSize: 10, color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Data
+                  </div>
                   <button
                     className="header-dropdown-item"
-                    onClick={handleDownloadJSON}
+                    disabled
+                    title="JSON export — Coming soon"
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -611,6 +707,7 @@ ${previewParts.join('\n\n')}`;
                 <polyline points="17 21 17 13 7 13 7 21" />
                 <polyline points="7 3 7 8 15 8" />
               </svg>
+              <span className="header-btn-label">Save</span>
             </button>
 
             <div style={{ position: 'relative' }}>
@@ -623,6 +720,7 @@ ${previewParts.join('\n\n')}`;
                   <circle cx="12" cy="12" r="10" />
                   <polyline points="12 6 12 12 16 14" />
                 </svg>
+                <span className="header-btn-label">History</span>
                 {state.deckVersions.length > 0 && (
                   <span className="header-badge">{state.deckVersions.length}</span>
                 )}
@@ -682,6 +780,7 @@ ${previewParts.join('\n\n')}`;
                 <path d="M3 7v6h6" />
                 <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6.36 2.64L3 13" />
               </svg>
+              <span className="header-btn-label">Undo</span>
             </button>
             <button
               className="header-action-btn"
@@ -693,6 +792,7 @@ ${previewParts.join('\n\n')}`;
                 <path d="M21 7v6h-6" />
                 <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6.36 2.64L21 13" />
               </svg>
+              <span className="header-btn-label">Redo</span>
             </button>
           </div>
 
@@ -709,8 +809,10 @@ ${previewParts.join('\n\n')}`;
                 <rect x="14" y="14" width="7" height="7" />
                 <rect x="3" y="14" width="7" height="7" />
               </svg>
+              <span className="header-btn-label">Templates</span>
             </button>
 
+            {/* UI declutter: Widgets button hidden
             <button
               className="header-action-btn"
               onClick={() => setShowWidgetBrowser(true)}
@@ -723,14 +825,15 @@ ${previewParts.join('\n\n')}`;
                 <path d="M17 14v7M14 17.5h7" />
               </svg>
             </button>
+            */}
           </div>
 
           {/* TOOLS */}
           <div className="header-action-group header-action-group-tools">
             <button
               className="header-action-btn"
-              onClick={() => setShowTransformer(true)}
-              title="Transform PPTX — Rebrand an existing presentation"
+              disabled
+              title="Transform PPTX — Coming soon"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <polyline points="17 1 21 5 17 9" />
@@ -738,31 +841,34 @@ ${previewParts.join('\n\n')}`;
                 <polyline points="7 23 3 19 7 15" />
                 <path d="M21 13v2a4 4 0 0 1-4 4H3" />
               </svg>
+              <span className="header-btn-label">Transform</span>
             </button>
 
             {/* Audit Log button hidden (functionality preserved in code) */}
 
             <button
               className="header-action-btn"
-              onClick={() => setShowFeatures(true)}
-              title="Platform Overview"
+              disabled
+              title="Platform Overview — Coming soon"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 16v-4" />
                 <path d="M12 8h.01" />
               </svg>
+              <span className="header-btn-label">Info</span>
             </button>
 
             <button
               className="header-action-btn"
-              onClick={() => setShowDocs(true)}
-              title="Documentation"
+              disabled
+              title="Documentation — Coming soon"
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
                 <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
               </svg>
+              <span className="header-btn-label">Docs</span>
             </button>
 
             <button
@@ -774,6 +880,7 @@ ${previewParts.join('\n\n')}`;
                 <circle cx="12" cy="12" r="3" />
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
+              <span className="header-btn-label">Settings</span>
             </button>
           </div>
         </div>
@@ -785,7 +892,9 @@ ${previewParts.join('\n\n')}`;
 
       {showTemplateManager && <TemplateManager onClose={() => setShowTemplateManager(false)} />}
 
+      {/* UI declutter: WidgetBrowser hidden
       <WidgetBrowser isOpen={showWidgetBrowser} onClose={() => setShowWidgetBrowser(false)} />
+      */}
 
       {showFeatures && <FeaturesLanding onClose={() => setShowFeatures(false)} />}
 
@@ -1142,7 +1251,7 @@ ${previewParts.join('\n\n')}`;
               </svg>
             )}
             <h3 style={{ margin: '0 0 8px', color: '#111', fontSize: 18 }}>
-              {exportProgress.phase === 'complete' ? 'Export Complete!' : 'Exporting to PowerPoint'}
+              {exportProgress.phase === 'complete' ? 'Export Complete!' : (exportProgress.title || 'Exporting...')}
             </h3>
             <p style={{ margin: 0, color: '#4A4F57', fontSize: 14 }}>
               {exportProgress.message}

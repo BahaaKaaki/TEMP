@@ -1199,6 +1199,8 @@ export async function aiRouteRequest(userPrompt, context, settings) {
     agentMode = false,
     // When true, user selected "Image-based" mode — prefer image-content templates
     preferImageSlides = false,
+    // Panel scope: 'slide' = user focused on current slide, 'deck' = full deck operations
+    contextMode = 'deck',
   } = context;
 
   // Get router model - use big model if requested, otherwise pick based on agentMode
@@ -1414,6 +1416,7 @@ SEARCH: Include a searchQuery when real data would strengthen the title — the 
 - Max parallel steps per group: ${parallelBatchSize}
 - Web search available: ${searchAvailable ? 'YES — add "searchQuery" to steps that need real-time or specific data' : 'NO — do not add searchQuery'}
 - Slide style preference: ${settings.slideStylePreference === 'freestyle' ? 'FREESTYLE — always use templateId "freestyle" for create_slide steps (except cover/sectionDivider)' : settings.slideStylePreference === 'templates' ? 'TEMPLATES — always use a named template for create_slide steps, never "freestyle"' : 'AUTO — choose the best template or freestyle based on content'}
+- Context mode: ${contextMode === 'slide' ? 'THIS SLIDE — user is focused on editing the current slide. Prefer edit_slide for the current slide unless the prompt clearly asks to create new slides.' : 'DECK — user is working on the full deck. Free to create, edit, delete, or batch-operate across slides.'}
 ${layoutSummary ? `- LAYOUTS ALREADY IN DECK: ${layoutSummary} — DO NOT repeat the most-used layouts. Pick different templates and content shapes for new slides.` : ''}
 ${agentModeNote}${imageModeNote}${documentSection}
 SLIDE TITLES:

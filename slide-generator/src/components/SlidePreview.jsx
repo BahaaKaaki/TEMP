@@ -1,16 +1,16 @@
 import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useSlides } from '../context/SlideContext';
-import { transformSlideToTemplate, transformElementToWidget, hasAnyApiKey, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, improveSlideWithSearch } from '../services/aiService';
+import { transformElementToWidget, hasAnyApiKey } from '../services/aiService';
 import { exportSingleSlideToPPTX, testPPTXCodeGeneration } from '../services/pptxService';
 import { exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
 import { getVibeCSS, getVibePromptContext, VIBE_AWARE_CSS } from '../utils/vibes';
-import TemplatePicker from './TemplatePicker';
 import CommentPanel from './CommentPanel';
 
 const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
 const DEFAULT_ZOOM = 1;
+const DEBUG_MODE = typeof window !== 'undefined' && localStorage.getItem('DEBUG_MODE') === 'true';
 
 // Category icon helper for context menu
 function getCategoryIcon(category) {
@@ -29,21 +29,14 @@ function getCategoryIcon(category) {
 
 export default function SlidePreview({ onSwitchToCode }) {
   const { activeSlide, state, actions } = useSlides();
-  const [slidePrompt, setSlidePrompt] = useState('');
-  const [isImproving, setIsImproving] = useState(false);
-  const [error, setError] = useState('');
-  const [useImproveSearch, setUseImproveSearch] = useState(false);
   const [isEditMode, setIsEditMode] = useState(true); // Always on
   const [isVisualEditMode, setIsVisualEditMode] = useState(true); // Always on
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const [isTransforming, setIsTransforming] = useState(false);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [selectedElement, setSelectedElement] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [elementStart, setElementStart] = useState({ x: 0, y: 0 });
   const slideRef = useRef(null);
-  const templatePickerRef = useRef(null);
   const previewWrapperRef = useRef(null);
   // Ref that always tracks the current active slide ID — used inside setTimeout
   // callbacks to detect stale closures when the user clicks another slide
@@ -147,7 +140,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       const allTemplates = state.customTemplates || [];
       await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, settingsWithVibe, null, allTemplates);
     } catch (err) {
-      setError('Failed to download PPTX: ' + err.message);
+      console.error('Failed to download PPTX:', err);
     } finally {
       setIsDownloading(false);
     }
@@ -166,7 +159,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       });
       await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename);
     } catch (err) {
-      setError('Failed to download PDF: ' + err.message);
+      console.error('Failed to download PDF:', err);
     } finally {
       setIsDownloading(false);
     }
@@ -864,126 +857,6 @@ export default function SlidePreview({ onSwitchToCode }) {
     }
   }, [handleBlur]);
 
-  const handleImproveSlide = async (e) => {
-    e.preventDefault();
-    if (!slidePrompt.trim() || !activeSlide) return;
-
-    const improveModelRef = state.settings.routerModel || state.settings.model || '';
-    const improveProviderId = improveModelRef.includes(':') ? improveModelRef.split(':')[0] : '';
-    const improveProvider = (state.settings.providers || []).find(p => p.id === improveProviderId);
-    if (!improveProvider?.apiKey) {
-      setError(`No API key for ${improveProvider?.name || improveProviderId || 'provider'}. Check Settings.`);
-      return;
-    }
-
-    setIsImproving(true);
-    setError('');
-
-    try {
-      // Detect image slide — regenerate image instead of text editing
-      const isImageSlide = activeSlide.templateId === 'image-full' || activeSlide.templateId === 'image-content'
-        || (activeSlide.html && (activeSlide.html.includes('slide-image-full') || activeSlide.html.includes('frame-image')));
-
-      if (isImageSlide && state.settings.imageModel) {
-        const imageMode = activeSlide.templateId === 'image-full' ? 'full' : 'content';
-        const slideIdx = state.slides.findIndex(s => s.id === activeSlide.id);
-        const existingImage = extractImageDataUri(activeSlide.html);
-        const imageResult = await generateImageSlide(slidePrompt, state.settings, imageMode, {
-          layoutGuidance: slidePrompt,
-          vibe: state.imageVibe || state.vibe,
-          footerBranding: state.settings.footerBranding || 'Strategy&',
-          slideNumber: slideIdx + 1,
-          totalSlides: state.slides.length,
-          existingImageDataUri: existingImage,
-        });
-        actions.updateSlide(activeSlide.id, {
-          html: imageResult.html,
-          title: imageResult.title || activeSlide.title,
-          templateId: activeSlide.templateId,
-          type: activeSlide.type,
-        });
-      } else {
-        const improveSettings = {
-          ...state.settings,
-          model: state.settings.routerModel || state.settings.model,
-        };
-        const result = await improveSlideWithSearch(
-          activeSlide, slidePrompt, improveSettings,
-          { skipSearch: !useImproveSearch },
-        );
-
-        const improvedHtml = result?.html || result;
-        const newCustomCSS = result?.customCSS;
-
-        const updateData = { html: improvedHtml };
-        if (newCustomCSS) updateData.customCSS = newCustomCSS;
-        actions.updateSlide(activeSlide.id, updateData);
-      }
-      setSlidePrompt('');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsImproving(false);
-    }
-  };
-
-  const handleTemplateSwitch = async (templateId) => {
-    if (!templateId || !activeSlide) return;
-
-    const switchModelRef = state.settings.routerModel || state.settings.model || '';
-    const switchProviderId = switchModelRef.includes(':') ? switchModelRef.split(':')[0] : '';
-    const switchProvider = (state.settings.providers || []).find(p => p.id === switchProviderId);
-    if (!switchProvider?.apiKey) {
-      setError(`No API key for ${switchProvider?.name || switchProviderId || 'provider'}. Check Settings.`);
-      setShowTemplatePicker(false);
-      return;
-    }
-
-    setIsTransforming(true);
-    setShowTemplatePicker(false);
-    setError('');
-
-    try {
-      const customTemplate = state.customTemplates?.find(t => t.id === templateId);
-      const switchSettings = {
-        ...state.settings,
-        model: state.settings.routerModel || state.settings.model,
-      };
-
-      const currentIndex = state.slides.findIndex(s => s.id === activeSlide.id);
-      const deckContext = buildDeckContextForSwitch(state.slides, currentIndex);
-      const slidePosition = {
-        slideNumber: currentIndex + 1,
-        totalSlides: state.slides.length,
-      };
-      const userGuidance = slidePrompt.trim() || null;
-
-      const transformedHtml = await transformSlideToTemplate(
-        activeSlide.html, templateId, switchSettings, customTemplate,
-        slidePosition, deckContext, userGuidance,
-      );
-      actions.updateSlide(activeSlide.id, { html: transformedHtml, type: templateId, templateId: templateId });
-      if (userGuidance) setSlidePrompt('');
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsTransforming(false);
-    }
-  };
-
-  // Close template picker when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (templatePickerRef.current && !templatePickerRef.current.contains(e.target)) {
-        setShowTemplatePicker(false);
-      }
-    };
-    if (showTemplatePicker) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showTemplatePicker]);
-
   if (!activeSlide) {
     return (
       <div className="empty-state" style={{ height: '100%' }}>
@@ -1002,140 +875,34 @@ export default function SlidePreview({ onSwitchToCode }) {
 
   return (
     <div className="preview-container">
-      {/* Toolbar */}
-      <div className="preview-toolbar">
-        {/* View Switcher */}
-        <div className="toolbar-group view-switcher">
-          <button className="btn btn-sm btn-primary" disabled>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="3" width="20" height="14" rx="2" />
-              <path d="M8 21h8M12 17v4" />
-            </svg>
-            Preview
-          </button>
-          <button className="btn btn-sm btn-ghost" onClick={onSwitchToCode} title="Edit HTML/CSS code">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <polyline points="16 18 22 12 16 6" />
-              <polyline points="8 6 2 12 8 18" />
-            </svg>
-            Code
-          </button>
-        </div>
-
-        {/* Zoom Controls */}
-        <div className="zoom-controls">
-          <button
-            className="btn btn-ghost btn-icon btn-sm"
-            onClick={handleZoomOut}
-            disabled={zoom <= ZOOM_LEVELS[0]}
-            title="Zoom out"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-              <line x1="8" y1="11" x2="14" y2="11" />
-            </svg>
-          </button>
-
-          <button
-            className="zoom-level-btn"
-            onClick={handleZoomReset}
-            title="Reset to 100%"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-
-          <button
-            className="btn btn-ghost btn-icon btn-sm"
-            onClick={handleZoomIn}
-            disabled={zoom >= ZOOM_LEVELS[ZOOM_LEVELS.length - 1]}
-            title="Zoom in"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <circle cx="11" cy="11" r="8" />
-              <path d="M21 21l-4.35-4.35" />
-              <line x1="11" y1="8" x2="11" y2="14" />
-              <line x1="8" y1="11" x2="14" y2="11" />
-            </svg>
-          </button>
-
-          <button
-            className="btn btn-ghost btn-icon btn-sm"
-            onClick={handleZoomFit}
-            title="Fit to screen"
-          >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Single Slide Download */}
-        <div style={{ position: 'relative' }} ref={downloadMenuRef}>
-          <button
-            className="btn btn-ghost btn-sm"
-            onClick={() => setShowDownloadMenu(!showDownloadMenu)}
-            disabled={isDownloading}
-            title="Download this slide"
-          >
-            {isDownloading ? (
-              <span className="spinner" style={{ width: 14, height: 14 }} />
-            ) : (
+      {/* Toolbar only shown in debug mode (Preview/Code switcher) */}
+      {DEBUG_MODE && (
+        <div className="preview-toolbar">
+          <div className="toolbar-group view-switcher">
+            <button className="btn btn-sm btn-primary" disabled>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="7 10 12 15 17 10" />
-                <line x1="12" y1="15" x2="12" y2="3" />
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+                <path d="M8 21h8M12 17v4" />
               </svg>
-            )}
-            Download
-          </button>
-
-          {showDownloadMenu && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                right: 0,
-                marginTop: 8,
-                background: 'white',
-                border: '1px solid var(--border-color)',
-                borderRadius: 8,
-                padding: 8,
-                minWidth: 160,
-                zIndex: 100,
-                boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-              }}
-            >
-              <button
-                className="btn btn-ghost btn-sm"
-                style={{ width: '100%', justifyContent: 'flex-start', marginBottom: 4 }}
-                onClick={handleDownloadSlidePPTX}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                  <polyline points="13 2 13 9 20 9" />
-                </svg>
-                Download PPTX
-              </button>
-              <button
-                className="btn btn-ghost btn-sm"
-                style={{ width: '100%', justifyContent: 'flex-start' }}
-                onClick={handleDownloadSlidePDF}
-              >
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <path d="M9 15v-2h2.5a1.5 1.5 0 0 0 0-3H9v5" />
-                </svg>
-                Download PDF
-              </button>
-            </div>
-          )}
+              Preview
+            </button>
+            <button className="btn btn-sm btn-ghost" onClick={onSwitchToCode} title="Edit HTML/CSS code">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="16 18 22 12 16 6" />
+                <polyline points="8 6 2 12 8 18" />
+              </svg>
+              Code
+            </button>
+          </div>
         </div>
+      )}
 
-        {/* Fullscreen Button */}
+      <div className="slide-main-area">
+      <div className="slide-content-column">
+      <div className="slide-preview-wrapper" ref={previewWrapperRef}>
+        {/* Floating fullscreen button (moved from toolbar) */}
         <button
-          className="btn btn-ghost btn-sm"
+          className="slide-fullscreen-float"
           onClick={() => setIsFullscreen(true)}
           title="View slide fullscreen"
         >
@@ -1146,11 +913,7 @@ export default function SlidePreview({ onSwitchToCode }) {
             <line x1="3" y1="21" x2="10" y2="14" />
           </svg>
         </button>
-      </div>
 
-      <div className="slide-main-area">
-      <div className="slide-content-column">
-      <div className="slide-preview-wrapper" ref={previewWrapperRef}>
         {/* Inject CSS */}
         <style>{getBaseCSS() + '\n' + combinedCSS + '\n' + getEditModeCSS(isEditMode) + '\n' + getVisualEditModeCSS(isVisualEditMode) + '\n' + VIBE_AWARE_CSS + '\n:root { ' + getVibeCSS(state.vibe) + ' }'}</style>
 
@@ -1234,196 +997,10 @@ export default function SlidePreview({ onSwitchToCode }) {
         </div>
 
       </div>
-
-      {/* Per-Slide AI Prompt + Switch Template */}
-      <div className="slide-ai-prompt">
-        <form className="slide-ai-prompt-form" onSubmit={handleImproveSlide}>
-          <input
-            type="text"
-            value={slidePrompt}
-            onChange={(e) => setSlidePrompt(e.target.value)}
-            placeholder={
-              (activeSlide?.templateId === 'image-full' || activeSlide?.templateId === 'image-content'
-                || (activeSlide?.html && (activeSlide.html.includes('slide-image-full') || activeSlide.html.includes('frame-image'))))
-                ? `Regenerate image...${state.imageVibe && state.imageVibe !== 'default' ? ` [vibe: ${state.imageVibe}]` : ''} (e.g., 'Make it a 2x2 matrix', 'Add more detail')`
-                : "Improve or guide template switch... (e.g., 'Keep 3 columns', 'Make it more visual')"
-            }
-            disabled={isImproving || isTransforming}
-          />
-          <button
-            type="submit"
-            className="btn btn-primary btn-sm"
-            disabled={isImproving || isTransforming || !slidePrompt.trim()}
-          >
-            {isImproving ? (
-              <>
-                <span className="spinner" style={{ width: 14, height: 14 }} />
-                Improving...
-              </>
-            ) : (
-              <>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M12 2L2 7l10 5 10-5-10-5z" />
-                  <path d="M2 17l10 5 10-5" />
-                  <path d="M2 12l10 5 10-5" />
-                </svg>
-                Improve
-              </>
-            )}
-          </button>
-          <label
-            className="improve-search-toggle"
-            title="Enable web search to ground the AI with current facts"
-            style={{
-              display: 'flex', alignItems: 'center', gap: 4,
-              fontSize: 11, color: '#888', cursor: 'pointer',
-              whiteSpace: 'nowrap', userSelect: 'none',
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={useImproveSearch}
-              onChange={(e) => setUseImproveSearch(e.target.checked)}
-              disabled={isImproving}
-              style={{ margin: 0 }}
-            />
-            Search
-          </label>
-          <div style={{ position: 'relative' }} ref={templatePickerRef}>
-            <button
-              type="button"
-              className="template-switch-btn"
-              onClick={() => setShowTemplatePicker(!showTemplatePicker)}
-              disabled={isTransforming || isImproving}
-              title={slidePrompt.trim() ? 'Switch template with your guidance' : 'Switch to a different template layout'}
-            >
-              {isTransforming ? (
-                <>
-                  <span className="spinner" style={{ width: 14, height: 14 }} />
-                  Switching...
-                </>
-              ) : (
-                <>
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ width: 14, height: 14 }}>
-                    <rect x="3" y="3" width="7" height="7" />
-                    <rect x="14" y="3" width="7" height="7" />
-                    <rect x="14" y="14" width="7" height="7" />
-                    <rect x="3" y="14" width="7" height="7" />
-                  </svg>
-                  Switch
-                </>
-              )}
-            </button>
-            {showTemplatePicker && (
-              <div className="template-switch-popover" style={{ bottom: '100%', top: 'auto', marginBottom: 8 }}>
-                <h4>Switch to Template{slidePrompt.trim() ? ' (with guidance)' : ''}</h4>
-                {slidePrompt.trim() && (
-                  <div style={{ fontSize: 11, color: '#666', padding: '4px 8px', background: 'rgba(142, 30, 30, 0.05)', borderRadius: 4, marginBottom: 8 }}>
-                    Guidance: "{slidePrompt.trim()}"
-                  </div>
-                )}
-                <TemplatePicker
-                  selectedTemplate={null}
-                  onSelect={handleTemplateSwitch}
-                  showFreestyle={false}
-                  compact={false}
-                  title=""
-                  slideHtml={activeSlide?.html}
-                  currentTemplateId={activeSlide?.templateId}
-                />
-              </div>
-            )}
-          </div>
-        </form>
-        {error && (
-          <div style={{ marginTop: 8, fontSize: 12, color: 'var(--danger)' }}>
-            {error}
-          </div>
-        )}
       </div>
       </div>
 
-      {/* Quick Action Buttons */}
-      <div className="slide-quick-actions">
-        {[
-          { label: 'Auto-Fix', icon: '🔍', prompt: 'Inspect this slide for visual issues: overlapping elements, text overflow, clipped content, misaligned items. Fix ALL layout issues found. DO NOT change any text content — preserve every word exactly as-is. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Fix Overlaps', icon: '📐', prompt: 'Fix overlapping or overflowing elements. Adjust spacing, reduce font sizes, or simplify the visual layout so everything fits within the frame. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Expand', icon: '↕️', prompt: 'The slide has too much empty space. Expand card heights, increase spacing, add visual breathing room, use the full frame area. DO NOT add new text content or change existing text — only adjust the visual sizing and spacing. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Simplify', icon: '✨', prompt: 'Make the visual design lighter and more minimal. Reduce decorative elements, increase white space, simplify borders/shadows. DO NOT change, remove, or reword any text content. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Compact', icon: '📏', prompt: 'Make the layout more compact and space-efficient. Tighten spacing between elements, reduce padding, use the available frame space more efficiently. DO NOT change, add, or remove any text content — only adjust visual density and spacing. Keep h1, h2, h3, h4 text identical.' },
-          { label: 'Emphasize', icon: '💪', prompt: 'Make the visual design more impactful. Use stronger contrast, bigger numbers, bolder visual weight. DO NOT change any text content — only adjust visual styling and emphasis. Keep h1, h2, h3, h4 text identical.' },
-        ].map(({ label, icon, prompt }) => (
-          <button
-            key={label}
-            className="slide-quick-action-btn"
-            disabled={isImproving}
-            onClick={async () => {
-              setSlidePrompt(prompt);
-              setIsImproving(true);
-              setError('');
-              try {
-                const isImg = activeSlide.templateId === 'image-full' || activeSlide.templateId === 'image-content'
-                  || (activeSlide.html && (activeSlide.html.includes('slide-image-full') || activeSlide.html.includes('frame-image')));
-                if (isImg && state.settings.imageModel) {
-                  const imageMode = activeSlide.templateId === 'image-full' ? 'full' : 'content';
-                  const slideIdx = state.slides.findIndex(s => s.id === activeSlide.id);
-                  const existingImage = extractImageDataUri(activeSlide.html);
-                  const imageResult = await generateImageSlide(prompt, state.settings, imageMode, {
-                    layoutGuidance: prompt,
-                    vibe: state.imageVibe || state.vibe,
-                    footerBranding: state.settings.footerBranding || 'Strategy&',
-                    slideNumber: slideIdx + 1,
-                    totalSlides: state.slides.length,
-                    existingImageDataUri: existingImage,
-                  });
-                  actions.updateSlide(activeSlide.id, {
-                    html: imageResult.html,
-                    title: imageResult.title || activeSlide.title,
-                    templateId: activeSlide.templateId,
-                    type: activeSlide.type,
-                  });
-                } else {
-                  const improveSettings = { ...state.settings, model: state.settings.routerModel || state.settings.model };
-                  const result = await improveSlideWithSearch(
-                    activeSlide, prompt, improveSettings,
-                    { skipSearch: true },
-                  );
-                  const improvedHtml = result?.html || result;
-                  const newCustomCSS = result?.customCSS;
-                  const updateData = { html: improvedHtml };
-                  if (newCustomCSS) updateData.customCSS = newCustomCSS;
-                  actions.updateSlide(activeSlide.id, updateData);
-                }
-                setSlidePrompt('');
-              } catch (err) {
-                setError(err.message);
-              } finally {
-                setIsImproving(false);
-              }
-            }}
-          >
-            <span className="quick-action-icon">{icon}</span>
-            {label}
-          </button>
-        ))}
-      </div>
-      </div>
-
-      {/* Bottom bar: Slide Info */}
-      <div className="preview-bottom-bar">
-        <div className="preview-info">
-          <span>Slide {state.slides.findIndex(s => s.id === activeSlide.id) + 1} of {state.slides.length}</span>
-          <span>|</span>
-          <span>Type: {activeSlide.type}</span>
-          <span>|</span>
-          <span>Updated: {new Date(activeSlide.updatedAt).toLocaleTimeString()}</span>
-          {pendingCommentsCount > 0 && (
-            <span className="pending-instructions-badge" onClick={() => setShowCommentPanel(true)}>
-              {pendingCommentsCount} instruction{pendingCommentsCount > 1 ? 's' : ''}
-            </span>
-          )}
-        </div>
-      </div>
+      {/* Bottom bar removed for vertical space -- info available in slide list sidebar */}
 
       {/* Widget Context Menu */}
       {contextMenu.visible && (

@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
+import { PRIMARY_ACTIONS, MORE_ACTIONS } from '../constants/slideActions';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
@@ -275,8 +276,17 @@ function formatIssuesForUser(validationResult) {
   return lines.join('\n');
 }
 
+const DEBUG_MODE = typeof window !== 'undefined' && localStorage.getItem('DEBUG_MODE') === 'true';
+
+function isSlideEffectivelyEmpty(slide) {
+  if (!slide?.html) return true;
+  const text = slide.html.replace(/<[^>]+>/g, '').replace(/\[.*?\]/g, '').trim();
+  const stripped = text.replace(/\s+/g, ' ');
+  return stripped.length < 30 || /^(Title|Subtitle|Add your content|Your title here|\s)*$/i.test(stripped);
+}
+
 export default function AIChatbot() {
-  const { state, actions, activeSlide } = useSlides();
+  const { state, actions, activeSlide, isPanelOpen, togglePanel } = useSlides();
   const knowledgeBase = useKnowledgeBase();
 
   // Keep a ref to current state that's updated synchronously on every render
@@ -284,10 +294,14 @@ export default function AIChatbot() {
   const stateRef = useRef(state);
   stateRef.current = state; // Updated synchronously during render
 
-  const [isOpen, setIsOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
+  const isOpen = isPanelOpen;
+  const setIsOpen = (val) => { if (val !== isPanelOpen) togglePanel(); };
   const [prompt, setPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [contextMode, setContextMode] = useState('slide');
+  const [quickActionBusy, setQuickActionBusy] = useState(false);
+  const [activeQuickAction, setActiveQuickAction] = useState('');
+  const [showMoreActions, setShowMoreActions] = useState(false);
   // Agent-only mode - simplified chatbot
   const mode = 'agent';
   const [editAllAutoMatch] = useState(false); // Auto-match templates in Edit All mode
@@ -330,7 +344,8 @@ export default function AIChatbot() {
   const [messages, setMessages] = useState([
     {
       type: 'assistant',
-      content: 'Hi! I can help you create and improve slides. Choose a mode below and describe what you need.',
+      content: 'What would you like to create? Use <strong>This Slide</strong> to work on a single slide, or <strong>Deck</strong> to build a full presentation.',
+      isHTML: true,
     },
   ]);
   const messagesEndRef = useRef(null);
@@ -400,12 +415,14 @@ export default function AIChatbot() {
   });
 
   // Helper to record AI I/O for current execution
-  const recordAiIO = (stepName, input, output) => {
+  // meta: { model, templateId, searchUsed, duration } — optional structured data for summary view
+  const recordAiIO = (stepName, input, output, meta = {}) => {
     currentStepAiIO.current.push({
       step: stepName,
       input: typeof input === 'string' ? input : JSON.stringify(input, null, 2),
       output: typeof output === 'string' ? output : JSON.stringify(output, null, 2),
       timestamp: new Date().toISOString(),
+      ...meta,
     });
   };
 
@@ -976,6 +993,11 @@ export default function AIChatbot() {
     scrollToBottom();
   }, [messages]);
 
+  // Scroll when SmartActionCard appears/disappears or loading state changes
+  useEffect(() => {
+    scrollToBottom();
+  }, [pendingSmartAction, isLoading]);
+
   useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
@@ -996,7 +1018,8 @@ export default function AIChatbot() {
       // Full reset of chat state for new deck
       setMessages([{
         type: 'assistant',
-        content: 'Hi! I can help you create and improve slides. Choose a mode below and describe what you need.',
+        content: 'What would you like to create? Use <strong>This Slide</strong> to work on a single slide, or <strong>Deck</strong> to build a full presentation.',
+        isHTML: true,
       }]);
       setUploadedFiles([]);
       setPendingSmartAction(null);
@@ -1211,6 +1234,98 @@ export default function AIChatbot() {
 
     // Show initial progress — agent mode will override with its own phases
     setProgress({ phase: 'Working...', current: 0, total: 1 });
+
+    // ─── THIS SLIDE MODE: bypass router, directly improve/fill the current slide ───
+    if (contextMode === 'slide' && activeSlide) {
+      try {
+        const slideSettings = {
+          ...currentState.settings,
+          model: currentState.settings.routerModel || currentState.settings.model,
+          vibe: currentState.vibe || state.vibe,
+        };
+        const searchEnabled = currentState.settings.chatRouterSearchEnabled !== false
+          && currentState.settings.searchEnabled
+          && currentState.settings.searchEndpoint
+          && currentState.settings.searchModel;
+
+        // Refine search query with fast model, then search -- matches router-quality results
+        let enrichedPrompt = effectivePrompt;
+        if (searchEnabled) {
+          setProgress({ phase: 'Searching...', current: 0, total: 1 });
+          try {
+            const fastSettings = {
+              ...slideSettings,
+              model: currentState.settings.fastModel || currentState.settings.model,
+              maxTokens: 100,
+              temperature: 0.1,
+            };
+            const refinedQuery = await callWithModelFallback(
+              fastSettings,
+              'Turn this user request into a concise, specific web search query. Fix any typos. Add key terms for better results. Return ONLY the search query text, nothing else.',
+              effectivePrompt
+            );
+            const searchQuery = (refinedQuery || effectivePrompt).trim() + ' latest ' + currentDateString();
+            console.log('[ThisSlide] Refined search query:', searchQuery);
+            const searchResult = await webSearch(searchQuery, currentState.settings);
+            if (searchResult) {
+              const dateStr = currentDateString();
+              enrichedPrompt = effectivePrompt
+                + `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${dateStr}) ===\n`
+                + searchResult
+                + `\n=== END KEY FACTS ===\n`
+                + 'IMPORTANT: Use ONLY dates, names, and facts from the above search context. '
+                + 'Do NOT use outdated information from training data.\n';
+              console.log('[ThisSlide] Search enriched prompt with', searchResult.length, 'chars');
+            }
+          } catch (searchErr) {
+            console.warn('[ThisSlide] Search refinement failed, proceeding without:', searchErr.message);
+          }
+        }
+
+        if (isSlideEffectivelyEmpty(activeSlide)) {
+          const templateId = activeSlide.templateId;
+          const isRealTemplate = templateId && templateId !== 'freestyle' && !templateId.startsWith('empty-');
+          const template = isRealTemplate ? SLIDE_TEMPLATES[templateId] : null;
+
+          if (template) {
+            setProgress({ phase: 'Filling template...', current: 0, total: 1 });
+            const filledHtml = await fillTemplateWithAI(template, enrichedPrompt, slideSettings, [], { agentMode: false });
+            if (filledHtml) {
+              const title = extractTitleFromHTML(filledHtml) || template.title;
+              actions.updateSlide(activeSlide.id, { html: filledHtml, title });
+              addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Filled: <strong>${template.title}</strong></div>`, { isHTML: true });
+            }
+          } else {
+            setProgress({ phase: 'Generating slide...', current: 0, total: 1 });
+            const slides = await generateSlides(enrichedPrompt, slideSettings, currentState.sharedCSS);
+            if (slides && slides.length > 0) {
+              const s = slides[0];
+              actions.updateSlide(activeSlide.id, { html: s.html, title: s.title || 'Untitled Slide' });
+              addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Created: <strong>${s.title || 'Slide'}</strong></div>`, { isHTML: true });
+            }
+          }
+        } else {
+          setProgress({ phase: 'Improving slide...', current: 0, total: 1 });
+          const result = await improveSlideWithSearch(activeSlide, enrichedPrompt, slideSettings, { skipSearch: true });
+          const improvedHtml = result?.html || result;
+          const updateData = { html: improvedHtml };
+          if (result?.customCSS) updateData.customCSS = result.customCSS;
+          const newTitle = extractTitleFromHTML(improvedHtml);
+          if (newTitle) updateData.title = newTitle;
+          actions.updateSlide(activeSlide.id, updateData);
+          addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Updated slide</div>`, { isHTML: true });
+        }
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Error: ${err.message}</div>`, { isHTML: true });
+        }
+      } finally {
+        setIsLoading(false);
+        setProgress(null);
+        abortControllerRef.current = null;
+      }
+      return;
+    }
 
     try {
       // REVISION MODE — user typed feedback during storyline approval
@@ -1690,6 +1805,8 @@ export default function AIChatbot() {
           agentMode: shouldRunAgent,
           // Image-based mode — tell router to prefer image-content templates
           preferImageSlides: useImageMode && !!freshState.settings.imageModel,
+          // Panel scope — helps router decide edit_slide vs create_slide
+          contextMode,
         };
 
         // ROUTING: Use AI router if enabled, otherwise rule-based
@@ -1728,7 +1845,12 @@ export default function AIChatbot() {
           // Record router AI I/O
           recordAiIO('router',
             `Prompt: ${effectivePrompt}\n\nContext: ${JSON.stringify(context, null, 2)}`,
-            JSON.stringify(routeResult, null, 2)
+            JSON.stringify(routeResult, null, 2),
+            {
+              model: routeResult.routerDebug?.model,
+              searchUsed: !!routeResult.searchRawContext,
+              templateId: routeResult.plan?.[0]?.templateId,
+            }
           );
         } else {
           console.log('[Router] Using rule-based (no Gemini key or disabled)');
@@ -1828,6 +1950,31 @@ export default function AIChatbot() {
           },
         };
 
+        // Promote edit_slide on empty slides to create_slide so the user sees
+        // a TemplatePicker in SmartActionCard and execution uses fillTemplateWithAI
+        if (enhancedRouteResult.plan) {
+          enhancedRouteResult.plan = enhancedRouteResult.plan.map(step => {
+            if (step.action !== 'edit_slide') return step;
+            const targetIdx = step.slideIndex ?? capturedSlideIdx;
+            const targetSlide = freshState.slides[targetIdx];
+            if (targetSlide && isSlideEffectivelyEmpty(targetSlide)) {
+              // Prefer the slide's stored templateId (user's pick) over the router's choice
+              const slideTemplateId = targetSlide.templateId;
+              const isRealTemplate = slideTemplateId && !slideTemplateId.startsWith('empty-');
+              const effectiveTemplate = isRealTemplate ? slideTemplateId : (step.templateId || 'freestyle');
+              console.log(`[SmartAction] Promoting edit_slide → create_slide for empty slide at index ${targetIdx} (template: ${effectiveTemplate})`);
+              return {
+                ...step,
+                action: 'create_slide',
+                templateId: effectiveTemplate,
+                _promotedFromEdit: true,
+                _replaceSlideIndex: targetIdx,
+              };
+            }
+            return step;
+          });
+        }
+
         // Build the SmartAction payload (shared for manual and auto-execute)
         const smartActionPayload = {
           routeResult: enhancedRouteResult,
@@ -1921,8 +2068,13 @@ export default function AIChatbot() {
         //   addMessage('assistant', planMessage);
         // }
 
-        // Show SmartActionCard in chat for user review/modification
-        setPendingSmartAction(smartActionPayload);
+        // "This Slide" mode: auto-execute without plan review (direct action)
+        // "Deck" mode: show SmartActionCard for user review/modification
+        if (contextMode === 'slide') {
+          setPendingSmartAction({ ...smartActionPayload, autoExecute: true });
+        } else {
+          setPendingSmartAction(smartActionPayload);
+        }
 
         // Highlight context slides in the slide panel
         if (detectedContextIndices.length > 0) {
@@ -1933,7 +2085,7 @@ export default function AIChatbot() {
         setExecutionStatus(null);
         setIsLoading(false);
         setProgress(null);
-        return; // Wait for user to execute from SmartActionCard
+        return; // Wait for user to execute from SmartActionCard (deck mode) or auto-execute effect (slide mode)
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
@@ -2046,6 +2198,27 @@ export default function AIChatbot() {
 
         for (const { stepIndex, slideDataArray, step } of pendingInserts) {
           for (const slideData of slideDataArray) {
+            // Promoted edit → create: replace the empty slide in-place
+            if (step._promotedFromEdit && step._replaceSlideIndex != null) {
+              const replaceIdx = step._replaceSlideIndex;
+              const freshSlides = getFreshState().slides;
+              const targetSlide = freshSlides[replaceIdx];
+              if (targetSlide) {
+                actions.updateSlide(targetSlide.id, {
+                  html: slideData.html,
+                  customCSS: slideData.customCSS,
+                  title: slideData.title,
+                  templateId: slideData.templateId || step.templateId,
+                  type: slideData.type,
+                  summary: slideData.summary,
+                });
+                lastInsertedIndex = replaceIdx;
+                stepOutputs[stepIndex] = { html: slideData.html, slideIndex: replaceIdx, title: slideData.title };
+                editedSlides.push({ index: replaceIdx + 1, title: slideData.title });
+                continue;
+              }
+            }
+
             const insertAt = resolvePosition(step, lastInsertedIndex);
             // skipActiveChange: don't hijack the user's selected thumbnail during agent work
             const dataWithFlag = { ...slideData, skipActiveChange: true };
@@ -2065,7 +2238,7 @@ export default function AIChatbot() {
               slideIndex: lastInsertedIndex,
               title: slideData.title,
             };
-            createdSlides.push(slideData.title);
+            createdSlides.push({ index: lastInsertedIndex + 1, title: slideData.title });
           }
         }
       };
@@ -2501,6 +2674,25 @@ export default function AIChatbot() {
               }
             }
 
+            // Inject router-level search facts (same grounding as create_slide)
+            editContext += buildSearchFactsBlock();
+
+            // Per-step web search when the router set a searchQuery on this edit step
+            const editSearchQuery = deriveSearchQuery(step);
+            if (editSearchQuery && settings.searchEnabled) {
+              const datedQuery = `${editSearchQuery} ${currentDateString()}`;
+              console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
+              try {
+                const searchResult = await webSearch(datedQuery, settings);
+                if (searchResult) {
+                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  console.log(`[SmartAction] edit_slide step ${stepIndex}: search returned ${searchResult.length} chars`);
+                }
+              } catch (searchErr) {
+                console.warn(`[SmartAction] edit_slide step ${stepIndex}: search failed:`, searchErr.message);
+              }
+            }
+
             let newHtml, newTitle, newCustomCSS;
             if (isImageSlide && settings.imageModel) {
               // Image slide: edit the image — pass existing image as reference
@@ -2540,7 +2732,8 @@ export default function AIChatbot() {
             // Record AI I/O for edit
             recordAiIO(`edit_slide (${slideToEdit.title})`,
               `Original: ${slideToEdit.html.slice(0, 500)}...\n\nInstruction: ${editContext}`,
-              (newHtml || '').slice(0, 2000)
+              (newHtml || '').slice(0, 2000),
+              { templateId: step.templateId, searchUsed: editContext.includes('KEY FACTS FROM WEB SEARCH') || editContext.includes('WEB SEARCH RESULTS') }
             );
 
             actions.updateSlide(slideToEdit.id, {
@@ -2552,7 +2745,7 @@ export default function AIChatbot() {
 
             actions.syncStorylineFromSlides();
             stepOutputs[stepIndex] = { html: newHtml, slideIndex: slideIdx, title: newTitle };
-            editedSlides.push(newTitle);
+            editedSlides.push({ index: slideIdx + 1, title: newTitle });
             return null;
           }
 
@@ -2576,7 +2769,7 @@ export default function AIChatbot() {
                 message: `Step ${stepIndex + 1}/${totalSteps}: Deleting slide ${slideIdx + 1}: "${slideToDelete.title}"...`,
               });
               actions.deleteSlide(slideToDelete.id);
-              deletedSlides.push(slideToDelete.title);
+              deletedSlides.push({ index: slideIdx + 1, title: slideToDelete.title });
             }
             return null;
           }
@@ -2638,7 +2831,7 @@ export default function AIChatbot() {
                 pptxRendererCode: null, // Clear stale export code so next PPTX export regenerates from new HTML
               });
               const newTitle = extractTitleFromHTML(transformedHtml) || slideToSwitch.title;
-              editedSlides.push(newTitle);
+              editedSlides.push({ index: slideIdx + 1, title: newTitle });
               stepOutputs[stepIndex] = { html: transformedHtml, slideIndex: slideIdx, title: newTitle };
             } else {
               addMessage('assistant', `⚠️ Template switch returned invalid result for slide ${slideIdx + 1} — keeping original.`);
@@ -3215,29 +3408,37 @@ Original request: ${userPrompt}`;
           setExecutionStatus({ type: 'error', message: `Batch continuation failed: ${contErr.message}` });
         }
       } else {
-        setExecutionStatus({ type: 'success', message: `✅ ${summaryMessage}` });
+        setExecutionStatus({ type: 'success', message: summaryMessage });
 
-        // Add a permanent message to chat showing what was done
-        const resultDetails = [];
+        const truncTitle = (t, max = 45) => t && t.length > max ? t.slice(0, max) + '...' : (t || 'Untitled');
+        const formatSlideItem = (item) => `Slide ${item.index} &mdash; ${truncTitle(item.title)}`;
+
+        let resultHtml = '<div class="execution-result-card">';
+        resultHtml += `<div class="result-badge result-badge-success">Done! ${summaryMessage}</div>`;
+
         if (createdSlides.length > 0) {
-          resultDetails.push(`**Created ${createdSlides.length} slide${createdSlides.length > 1 ? 's' : ''}:**`);
-          createdSlides.forEach((title, i) => {
-            resultDetails.push(`  ${i + 1}. ${title}`);
-          });
+          resultHtml += '<div class="result-section">';
+          resultHtml += '<span class="result-label">Created:</span> ';
+          resultHtml += createdSlides.map(s => `<span class="result-item">${formatSlideItem(s)}</span>`).join('');
+          resultHtml += '</div>';
         }
         if (editedSlides.length > 0) {
-          resultDetails.push(`**Edited:** ${editedSlides.join(', ')}`);
+          resultHtml += '<div class="result-section">';
+          resultHtml += '<span class="result-label">Edited:</span> ';
+          resultHtml += editedSlides.map(s => `<span class="result-item">${formatSlideItem(s)}</span>`).join('');
+          resultHtml += '</div>';
         }
         if (deletedSlides.length > 0) {
-          resultDetails.push(`**Deleted:** ${deletedSlides.join(', ')}`);
+          resultHtml += '<div class="result-section">';
+          resultHtml += '<span class="result-label">Removed:</span> ';
+          resultHtml += deletedSlides.map(s => `<span class="result-item">${formatSlideItem(s)}</span>`).join('');
+          resultHtml += '</div>';
         }
-        const resultMessage = resultDetails.length > 0
-          ? `✅ ${summaryMessage}\n\n${resultDetails.join('\n')}`
-          : `✅ ${summaryMessage}`;
 
-        // Include AI I/O data in the message for debugging
+        resultHtml += '</div>';
+
         const aiIOData = currentStepAiIO.current.length > 0 ? [...currentStepAiIO.current] : null;
-        addMessage('assistant', resultMessage, { aiIO: aiIOData });
+        addMessage('assistant', resultHtml, { aiIO: aiIOData, isHTML: true });
       }
 
       // Mark all agent steps complete — keep visible as execution history
@@ -4532,19 +4733,40 @@ Original request: ${userPrompt}`;
     }
   };
 
-  if (!isOpen) {
-    return (
-      <button className="chatbot-fab" onClick={() => setIsOpen(true)} title="AI Assistant">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-        </svg>
-        <span className="chatbot-fab-badge">AI</span>
-      </button>
-    );
-  }
+  const handleQuickAction = useCallback(async (actionPrompt, actionLabel) => {
+    if (!activeSlide || quickActionBusy) return;
+    const providerCfg = state.settings.providers?.find(p => {
+      const mid = state.settings.routerModel || state.settings.model || '';
+      return mid.startsWith(p.id + ':');
+    });
+    if (!providerCfg || !hasAnyApiKey(state.settings)) return;
+    setQuickActionBusy(true);
+    setActiveQuickAction(actionLabel || 'action');
+    try {
+      const improveSettings = {
+        ...state.settings,
+        model: state.settings.routerModel || state.settings.model,
+        vibe: state.vibe,
+      };
+      const result = await improveSlideWithSearch(activeSlide, actionPrompt, improveSettings, { skipSearch: true });
+      const improvedHtml = result?.html || result;
+      const updateData = { html: improvedHtml };
+      if (result?.customCSS) updateData.customCSS = result.customCSS;
+      actions.updateSlide(activeSlide.id, updateData);
+      addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Applied: <strong>${actionLabel || 'Quick Action'}</strong></div>`, { isHTML: true });
+    } catch (err) {
+      console.error('[QuickAction] failed:', err);
+      addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Failed: <strong>${actionLabel || 'Quick Action'}</strong></div>`, { isHTML: true });
+    } finally {
+      setQuickActionBusy(false);
+      setActiveQuickAction('');
+    }
+  }, [activeSlide, quickActionBusy, state.settings, state.vibe, actions]);
+
+  if (!isOpen) return null;
 
   return (
-    <div className={`chatbot-container ${isExpanded ? 'expanded' : ''}`}>
+    <div className="chatbot-container chatbot-docked">
       <div className="chatbot-header">
         <div className="chatbot-title">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -4560,7 +4782,7 @@ Original request: ${userPrompt}`;
             className="chatbot-action-btn"
             onClick={() => {
               // Full reset — clear ALL chat state for a fresh start
-              setMessages([{ type: 'assistant', content: 'Hi! I can help you create and improve slides. Choose a mode below and describe what you need.' }]);
+              setMessages([{ type: 'assistant', content: 'What would you like to create? Use <strong>This Slide</strong> to work on a single slide, or <strong>Deck</strong> to build a full presentation.', isHTML: true }]);
               setUploadedFiles([]);
               setPendingSmartAction(null);
               setProgress(null);
@@ -4590,26 +4812,135 @@ Original request: ${userPrompt}`;
               <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
             </svg>
           </button>
-          <button
-            className="chatbot-action-btn"
-            onClick={() => setIsExpanded(!isExpanded)}
-            title={isExpanded ? 'Shrink' : 'Expand'}
-          >
+          <button className="chatbot-action-btn" onClick={togglePanel} title="Close panel">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {isExpanded ? (
-                <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3" />
-              ) : (
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-              )}
-            </svg>
-          </button>
-          <button className="chatbot-action-btn" onClick={() => setIsOpen(false)} title="Minimize">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <line x1="5" y1="12" x2="19" y2="12" />
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
       </div>
+
+      {/* Context mode toggle */}
+      <div className="panel-context-bar">
+        <div className="panel-scope-toggle" role="group" aria-label="Scope">
+          <button
+            className={`panel-scope-btn ${contextMode === 'slide' ? 'active' : ''}`}
+            onClick={() => setContextMode('slide')}
+          >
+            This Slide
+          </button>
+          <button
+            className={`panel-scope-btn ${contextMode === 'deck' ? 'active' : ''}`}
+            onClick={() => setContextMode('deck')}
+          >
+            Deck
+          </button>
+        </div>
+        {contextMode === 'slide' && activeSlide && (
+          <span className="panel-context-label">
+            Slide {state.slides.findIndex(s => s.id === activeSlide.id) + 1} of {state.slides.length}
+            {activeSlide.title && activeSlide.title !== 'Untitled Slide' && (
+              <span className="panel-context-title"> -- {activeSlide.title.length > 30 ? activeSlide.title.slice(0, 30) + '...' : activeSlide.title}</span>
+            )}
+          </span>
+        )}
+      </div>
+
+      {/* Quick actions or template picker (slide mode only) */}
+      {contextMode === 'slide' && !activeSlide && (
+        <div className="panel-empty-slide-picker">
+          <div className="panel-empty-hint">Pick a layout to create your first slide, then describe your content below.</div>
+          <TemplatePicker
+            selectedTemplate={null}
+            onSelect={(templateId) => {
+              actions.addSlide({ templateId: templateId || 'freestyle' });
+            }}
+            showFreestyle={true}
+            compact={true}
+            initiallyOpen={false}
+          />
+        </div>
+      )}
+      {contextMode === 'slide' && activeSlide && (
+        isSlideEffectivelyEmpty(activeSlide) ? (
+          <div className="panel-empty-slide-picker">
+            <div className="panel-empty-hint">Choose a layout for this slide, then describe your content below.</div>
+            <TemplatePicker
+              selectedTemplate={activeSlide.templateId && !activeSlide.templateId.startsWith('empty-') ? activeSlide.templateId : null}
+              onSelect={(templateId) => {
+                actions.updateSlide(activeSlide.id, { templateId: templateId || 'freestyle' });
+              }}
+              showFreestyle={true}
+              compact={true}
+              initiallyOpen={false}
+            />
+          </div>
+        ) : (
+          <div className="panel-quick-actions">
+            {quickActionBusy ? (
+              <div className="panel-quick-running">
+                <div className="panel-quick-running-label">
+                  <span className="panel-quick-spinner" />
+                  <span>Applying <strong>{activeQuickAction}</strong></span>
+                </div>
+                <div className="panel-quick-running-bar">
+                  <div className="panel-quick-running-fill" />
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="panel-quick-pills">
+                  {PRIMARY_ACTIONS.map(({ id, label, prompt: actionPrompt }) => (
+                    <button
+                      key={id}
+                      className="panel-quick-pill"
+                      disabled={quickActionBusy || isLoading}
+                      onClick={() => handleQuickAction(actionPrompt, label)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  <button
+                    className={`panel-quick-pill panel-quick-more ${showMoreActions ? 'active' : ''}`}
+                    disabled={quickActionBusy || isLoading}
+                    onClick={() => setShowMoreActions(!showMoreActions)}
+                  >
+                    More
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d={showMoreActions ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+                    </svg>
+                  </button>
+                </div>
+                {showMoreActions && (
+                  <>
+                    <div className="panel-more-backdrop" onClick={() => setShowMoreActions(false)} />
+                    <div className="panel-more-dropdown">
+                      {MORE_ACTIONS.map(({ category, actions: catActions }) => (
+                        <div key={category} className="panel-more-category">
+                          <div className="panel-more-category-label">{category}</div>
+                          <div className="panel-more-category-pills">
+                            {catActions.map(({ id, label, prompt: actionPrompt }) => (
+                              <button
+                                key={id}
+                                className="panel-quick-pill panel-quick-pill-sm"
+                                disabled={quickActionBusy || isLoading}
+                                onClick={() => { handleQuickAction(actionPrompt, label); setShowMoreActions(false); }}
+                              >
+                                {label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )
+      )}
 
       <div className="chatbot-messages">
         {visibleMessages.map((msg, idx) => (
@@ -4627,49 +4958,68 @@ Original request: ${userPrompt}`;
               ) : (
                 msg.content
               )}
-              {/* AI I/O toggle for messages with AI call data */}
+              {/* Tier 3 (DEBUG_MODE): full raw AI I/O panel */}
+              {/* Tier 2 (non-debug): human-friendly "Details" expandable */}
+              {/* Tier 1 (default): nothing shown — result card is sufficient */}
               {msg.aiIO && msg.aiIO.length > 0 && (
-                <>
-                  <button
-                    className={`ai-io-toggle ${expandedAiIO.has(idx) ? 'expanded' : ''}`}
-                    onClick={() => toggleAiIO(idx)}
-                  >
-                    <span>{expandedAiIO.has(idx) ? '▼' : '▶'}</span>
-                    <span>🔍 View AI I/O ({msg.aiIO.length} call{msg.aiIO.length > 1 ? 's' : ''})</span>
-                  </button>
-                  {expandedAiIO.has(idx) && (
-                    <div className="ai-io-panel">
-                      {msg.aiIO.map((io, ioIdx) => (
-                        <div key={ioIdx} className="ai-io-section">
-                          <div className="ai-io-step-header">
-                            <span className="ai-io-step-num">{ioIdx + 1}</span>
-                            <span className="ai-io-step-action">{io.step}</span>
-                            <span style={{ fontSize: 10, color: '#64748b', marginLeft: 'auto' }}>
-                              {io.timestamp?.split('T')[1]?.split('.')[0] || ''}
-                            </span>
+                DEBUG_MODE ? (
+                  <>
+                    <button
+                      className={`ai-io-toggle ${expandedAiIO.has(idx) ? 'expanded' : ''}`}
+                      onClick={() => toggleAiIO(idx)}
+                    >
+                      <span>{expandedAiIO.has(idx) ? '▼' : '▶'}</span>
+                      <span>View AI I/O ({msg.aiIO.length} call{msg.aiIO.length > 1 ? 's' : ''})</span>
+                    </button>
+                    {expandedAiIO.has(idx) && (
+                      <div className="ai-io-panel">
+                        {msg.aiIO.map((io, ioIdx) => (
+                          <div key={ioIdx} className="ai-io-section">
+                            <div className="ai-io-step-header">
+                              <span className="ai-io-step-num">{ioIdx + 1}</span>
+                              <span className="ai-io-step-action">{io.step}</span>
+                              <span style={{ fontSize: 10, color: '#64748b', marginLeft: 'auto' }}>
+                                {io.timestamp?.split('T')[1]?.split('.')[0] || ''}
+                              </span>
+                            </div>
+                            <div className="ai-io-meta">
+                              {io.model && <span className="ai-io-meta-tag">Model: {io.model}</span>}
+                              {io.maxTokens && <span className="ai-io-meta-tag">Max tokens: {io.maxTokens.toLocaleString()}</span>}
+                              {io.duration && <span className="ai-io-meta-tag">{(io.duration / 1000).toFixed(1)}s</span>}
+                              {io.temperature != null && <span className="ai-io-meta-tag">Temp: {io.temperature}</span>}
+                              {io.attempt > 1 && <span className="ai-io-meta-tag ai-io-meta-warn">Attempt #{io.attempt}</span>}
+                              {io.reasoningEffort && <span className="ai-io-meta-tag">Reasoning: {io.reasoningEffort}</span>}
+                              {io.skillsInjected > 0 && <span className="ai-io-meta-tag ai-io-meta-skill">{io.skillsInjected} skills</span>}
+                            </div>
+                            <div className="ai-io-section-header input">Input</div>
+                            <div className="ai-io-content">
+                              {io.input?.length > 5000 ? io.input.slice(0, 5000) + '\n\n... (truncated)' : io.input}
+                            </div>
+                            <div className="ai-io-section-header output">Output</div>
+                            <div className="ai-io-content">
+                              {io.output?.length > 5000 ? io.output.slice(0, 5000) + '\n\n... (truncated)' : io.output}
+                            </div>
                           </div>
-                          <div className="ai-io-meta">
-                            {io.model && <span className="ai-io-meta-tag">Model: {io.model}</span>}
-                            {io.maxTokens && <span className="ai-io-meta-tag">Max tokens: {io.maxTokens.toLocaleString()}</span>}
-                            {io.duration && <span className="ai-io-meta-tag">{(io.duration / 1000).toFixed(1)}s</span>}
-                            {io.temperature != null && <span className="ai-io-meta-tag">Temp: {io.temperature}</span>}
-                            {io.attempt > 1 && <span className="ai-io-meta-tag ai-io-meta-warn">Attempt #{io.attempt}</span>}
-                            {io.reasoningEffort && <span className="ai-io-meta-tag">Reasoning: {io.reasoningEffort}</span>}
-                            {io.skillsInjected > 0 && <span className="ai-io-meta-tag ai-io-meta-skill">{io.skillsInjected} skills</span>}
-                          </div>
-                          <div className="ai-io-section-header input">📤 Input</div>
-                          <div className="ai-io-content">
-                            {io.input?.length > 5000 ? io.input.slice(0, 5000) + '\n\n... (truncated)' : io.input}
-                          </div>
-                          <div className="ai-io-section-header output">📥 Output</div>
-                          <div className="ai-io-content">
-                            {io.output?.length > 5000 ? io.output.slice(0, 5000) + '\n\n... (truncated)' : io.output}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                ) : (() => {
+                  const nonRouter = msg.aiIO.filter(io => io.step !== 'router');
+                  const usedSearch = nonRouter.some(io => io.searchUsed);
+                  const totalDuration = nonRouter.reduce((sum, io) => sum + (io.duration || 0), 0);
+                  const hasDetails = usedSearch || totalDuration > 0;
+                  if (!hasDetails) return null;
+                  return (
+                    <details className="exec-details">
+                      <summary className="exec-details-toggle">Details</summary>
+                      <div className="exec-details-body">
+                        {usedSearch && <span className="exec-detail-tag exec-detail-search">Used web search</span>}
+                        {totalDuration > 0 && <span className="exec-detail-tag">Took {(totalDuration / 1000).toFixed(1)}s</span>}
+                      </div>
+                    </details>
+                  );
+                })()
               )}
             </div>
           </div>
@@ -4692,10 +5042,12 @@ Original request: ${userPrompt}`;
               onCancel={cancelSmartAction}
               isExecuting={isLoading}
               executionStatus={executionStatus}
+              progress={progress}
               currentSlide={pendingSmartAction.capturedSlide}
               currentSlideIdx={pendingSmartAction.capturedSlideIdx}
               imageVibe={imageVibe}
               onImageVibeChange={useImageMode ? setImageVibe : null}
+              debugMode={DEBUG_MODE}
             />
           </div>
         )}
@@ -5290,33 +5642,31 @@ Original request: ${userPrompt}`;
       </div>
 
       <div className="chatbot-footer">
-        {/* Agent mode section - clean minimal design */}
-        {(
+        {/* Agent mode section - only renders when there is content to show */}
+        {(agentPlan || activeFlow || uploadedFiles.length > 0) && (
           <div className="chatbot-edit-section agent-section-clean">
-            {/* Execution plan when running */}
             {agentPlan && (
               <ExecutionPlan
                 plan={agentPlan}
                 currentStep={agentStep}
-                compact={!isExpanded}
+                compact={false}
                 onCancel={handleStop}
               />
             )}
-
-            {/* Active flow / uploads indicator — only when not running */}
-            {!agentPlan && (
+            {!agentPlan && activeFlow && (
               <div className="agent-status-bar">
-                {activeFlow ? (
-                  <span className="agent-flow-tag">
-                    {activeFlow.name}
-                    <button className="agent-flow-clear" onClick={clearActiveFlow} title="Clear flow">&times;</button>
-                  </span>
-                ) : uploadedFiles.length > 0 ? (
-                  <span className="agent-flow-tag">
-                    {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''} uploaded
-                    <button className="agent-flow-clear" onClick={() => setUploadedFiles([])} title="Clear uploads">&times;</button>
-                  </span>
-                ) : null}
+                <span className="agent-flow-tag">
+                  {activeFlow.name}
+                  <button className="agent-flow-clear" onClick={clearActiveFlow} title="Clear flow">&times;</button>
+                </span>
+              </div>
+            )}
+            {!agentPlan && !activeFlow && uploadedFiles.length > 0 && (
+              <div className="agent-status-bar">
+                <span className="agent-flow-tag">
+                  {uploadedFiles.length} file{uploadedFiles.length > 1 ? 's' : ''} uploaded
+                  <button className="agent-flow-clear" onClick={() => setUploadedFiles([])} title="Clear uploads">&times;</button>
+                </span>
               </div>
             )}
           </div>
@@ -5387,132 +5737,113 @@ Original request: ${userPrompt}`;
 
         {/* Input form with file upload */}
         <form onSubmit={handleSubmit} className="chatbot-input-form">
-          <div className="chatbot-input-actions">
-            {/* ─── Context Group: Attach files + Library ─── */}
-            <div className="chatbot-action-group">
-              <button
-                type="button"
-                className="chatbot-upload-btn"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading || isUploadingFiles}
-                title="Upload documents (PDF, Word, Excel, PPTX, Images)"
-              >
-                {isUploadingFiles ? (
-                  <span className="upload-spinner"></span>
-                ) : (
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
-                  </svg>
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept={getAcceptString()}
+            onChange={handleFileUpload}
+            style={{ display: 'none' }}
+          />
+          {/* Deck-mode controls row: style toggle + agent mode buttons */}
+          {(contextMode === 'deck' || state.settings.enableAgenticMode) && (
+            <div className="chatbot-input-actions">
+              <div className="chatbot-action-group chatbot-mode-group">
+                {contextMode === 'deck' && (
+                  <div className="panel-style-toggle" role="group" aria-label="Slide style">
+                    {['auto', 'templates', 'freestyle'].map(opt => (
+                      <button
+                        key={opt}
+                        type="button"
+                        className={`panel-style-btn ${(state.settings.slideStylePreference || 'auto') === opt ? 'active' : ''}`}
+                        onClick={() => actions.updateSettings({ slideStylePreference: opt })}
+                        title={opt === 'auto' ? 'AI decides template vs freestyle' : opt === 'templates' ? 'Force template-based slides' : 'Force freestyle HTML slides'}
+                      >
+                        {opt.charAt(0).toUpperCase() + opt.slice(1)}
+                      </button>
+                    ))}
+                  </div>
                 )}
-                Attach
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                accept={getAcceptString()}
-                onChange={handleFileUpload}
-                style={{ display: 'none' }}
-              />
-              {/* Library button hidden for now -- re-enable when knowledge base is ready */}
+                {state.settings.enableAgenticMode && (
+                  <>
+                    <button
+                      type="button"
+                      className={`chatbot-mode-btn ${useAgenticMode && !useReportMode ? 'active' : ''}`}
+                      onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(false); }}
+                      disabled={isLoading}
+                      title="Deep Deck - Research-powered slide presentation"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                      </svg>
+                      Deep Deck
+                    </button>
+                    <button
+                      type="button"
+                      className={`chatbot-mode-btn chatbot-report-mode ${useReportMode ? 'active' : ''}`}
+                      onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(true); }}
+                      disabled={isLoading}
+                      title="Deep Report - Research-powered interactive dashboard"
+                    >
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M3 3v18h18" />
+                        <path d="M18 9l-5 5-4-4-3 3" />
+                      </svg>
+                      Deep Report
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-
-            <div className="chatbot-action-separator" />
-
-            {/* ─── Output Mode Group: Express / Image-based (+ Deep modes if enabled) ─── */}
-            <div className="chatbot-action-group chatbot-mode-group">
-              <span className="chatbot-mode-label">Slides:</span>
-              <button
-                type="button"
-                className={`chatbot-mode-btn ${!useImageMode && !useAgenticMode && !useReportMode ? 'active' : ''}`}
-                onClick={() => { setUseImageMode(false); setUseAgenticMode(false); setUseReportMode(false); }}
-                disabled={isLoading}
-                title="Regular - Template-based slides"
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                </svg>
-                Regular
-              </button>
-              <button
-                type="button"
-                className={`chatbot-mode-btn ${useImageMode && !useAgenticMode && !useReportMode ? 'active' : ''}`}
-                onClick={() => { setUseImageMode(true); setUseAgenticMode(false); setUseReportMode(false); }}
-                disabled={isLoading || !state.settings.imageModel}
-                title={state.settings.imageModel ? 'Image-based - AI-generated visual slides' : 'Configure an image model in Settings to enable'}
-              >
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                  <circle cx="8.5" cy="8.5" r="1.5" />
-                  <polyline points="21 15 16 10 5 21" />
-                </svg>
-                Image
-              </button>
-              {/* Style preference */}
-              <select
-                className="chatbot-mode-select"
-                value={state.settings.slideStylePreference || 'auto'}
-                onChange={(e) => actions.updateSettings({ slideStylePreference: e.target.value })}
-                title="Slide style preference"
-                style={{ fontSize: 11, padding: '4px 6px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg-secondary)', marginLeft: 4 }}
-              >
-                <option value="auto">Auto</option>
-                <option value="templates">Templates</option>
-                <option value="freestyle">Freestyle</option>
-              </select>
-              {state.settings.enableAgenticMode && (
-                <>
+          )}
+          {(() => {
+            const noSlideForThisMode = contextMode === 'slide' && !activeSlide;
+            const inputDisabled = noSlideForThisMode || (isLoading && !agenticExecution.isRunning);
+            const placeholder = noSlideForThisMode
+              ? 'Select a template above to start...'
+              : agenticExecution.isRunning
+                ? 'Chat with the team while they work...'
+                : 'Describe your presentation goal or paste an image (Ctrl+V)...';
+            return (
+              <div className={`chatbot-input-box ${noSlideForThisMode ? 'chatbot-input-disabled' : ''}`}>
+                <textarea
+                  ref={inputRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  rows={2}
+                  disabled={inputDisabled}
+                  placeholder={placeholder}
+                />
+                <div className="chatbot-input-toolbar">
                   <button
                     type="button"
-                    className={`chatbot-mode-btn ${useAgenticMode && !useReportMode ? 'active' : ''}`}
-                    onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(false); }}
-                    disabled={isLoading}
-                    title="Deep Deck - Research-powered slide presentation"
+                    className="panel-attach-btn"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={inputDisabled || isUploadingFiles}
+                    title="Upload documents (PDF, Word, Excel, PPTX, Images)"
                   >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                      <line x1="8" y1="21" x2="16" y2="21" />
-                      <line x1="12" y1="17" x2="12" y2="21" />
-                    </svg>
-                    Deep Deck
+                    {isUploadingFiles ? (
+                      <span className="upload-spinner"></span>
+                    ) : (
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                      </svg>
+                    )}
                   </button>
-                  <button
-                    type="button"
-                    className={`chatbot-mode-btn chatbot-report-mode ${useReportMode ? 'active' : ''}`}
-                    onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(true); }}
-                    disabled={isLoading}
-                    title="Deep Report - Research-powered interactive dashboard"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M3 3v18h18" />
-                      <path d="M18 9l-5 5-4-4-3 3" />
+                  <button type="submit" className="chatbot-send-btn" disabled={inputDisabled || !prompt.trim()}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="22" y1="2" x2="11" y2="13" />
+                      <polygon points="22 2 15 22 11 13 2 9 22 2" />
                     </svg>
-                    Deep Report
                   </button>
-                </>
-              )}
-            </div>
-
-            {/* Storyline + Flows buttons hidden (functionality preserved in code) */}
-          </div>
-          <div className="chatbot-input-row">
-            <textarea
-              ref={inputRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={handleKeyDown}
-              onPaste={handlePaste}
-              rows={3}
-              disabled={isLoading && !agenticExecution.isRunning}
-              placeholder={agenticExecution.isRunning ? 'Chat with the team while they work...' : 'Describe your presentation goal or paste an image (Ctrl+V)...'}
-            />
-            <button type="submit" disabled={(isLoading && !agenticExecution.isRunning) || !prompt.trim()}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <line x1="22" y1="2" x2="11" y2="13" />
-                <polygon points="22 2 15 22 11 13 2 9 22 2" />
-              </svg>
-            </button>
-          </div>
+                </div>
+              </div>
+            );
+          })()}
         </form>
       </div>
 

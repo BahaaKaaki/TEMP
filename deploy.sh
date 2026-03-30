@@ -4,6 +4,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")" && pwd)"
+SUBSCRIPTION="pzi-gxx1-sw5t3-dev001"
 RESOURCE_GROUP="rg-edwin-slides"
 APP_NAME="app-edwin-slides"
 
@@ -75,6 +76,9 @@ if [ "$SKIP_DEPLOY" = false ]; then
   fi
 
   echo ""
+  echo "Setting Azure subscription: $SUBSCRIPTION"
+  az account set --subscription "$SUBSCRIPTION"
+
   echo "Deploying to Azure App Service: $APP_NAME..."
   az webapp deploy \
     --resource-group "$RESOURCE_GROUP" \

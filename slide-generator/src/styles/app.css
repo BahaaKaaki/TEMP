@@ -61,12 +61,12 @@ body {
 
 .app-header {
   background: #fff;
-  padding: 0 20px;
-  height: 56px;
+  padding: 0 16px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  border-bottom: 1px solid #e5e5e5;
+  border-bottom: 1px solid #ebebeb;
   flex-shrink: 0;
   z-index: 100;
 }
@@ -75,7 +75,7 @@ body {
 .header-left {
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: 16px;
   min-width: 0;
   overflow: hidden;
   flex-shrink: 1;
@@ -84,9 +84,9 @@ body {
 .header-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   color: #8E1E1E;
-  font-size: 17px;
+  font-size: 15px;
   font-weight: 700;
   letter-spacing: -0.3px;
   flex-shrink: 0;
@@ -100,24 +100,24 @@ body {
 .header-deck-name {
   display: flex;
   align-items: center;
-  padding-left: 20px;
-  border-left: 1px solid #e5e5e5;
+  padding-left: 16px;
+  border-left: 1px solid #ebebeb;
   min-width: 0;
-  max-width: 320px;
+  max-width: 280px;
   flex-shrink: 1;
 }
 
 .deck-name-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 12px;
-  background: #f5f5f5;
-  border: none;
-  border-radius: 8px;
-  font-size: 14px;
+  gap: 6px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 13px;
   font-weight: 500;
-  color: #333;
+  color: #444;
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
@@ -127,7 +127,8 @@ body {
 }
 
 .deck-name-button:hover {
-  background: #ebebeb;
+  background: #f5f5f5;
+  border-color: #e0e0e0;
 }
 
 .deck-name-button svg {
@@ -156,7 +157,7 @@ body {
 /* Header actions */
 .header-actions {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
   flex-shrink: 0;
 }
@@ -165,14 +166,14 @@ body {
 .header-action-group {
   display: flex;
   align-items: center;
-  gap: 2px;
-  padding: 4px;
-  background: #f5f5f5;
+  gap: 1px;
+  padding: 3px;
+  background: #f3f3f3;
   border-radius: 10px;
 }
 
 .header-action-group-tools {
-  margin-left: 8px;
+  margin-left: 4px;
 }
 
 /* Action buttons */
@@ -180,12 +181,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 8px;
+  gap: 5px;
+  padding: 7px 10px;
   background: transparent;
   border: none;
   border-radius: 8px;
-  color: #555;
+  color: #666;
   cursor: pointer;
   transition: all 0.15s ease;
 }
@@ -197,7 +198,7 @@ body {
 }
 
 .header-action-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   cursor: not-allowed;
 }
 
@@ -206,40 +207,43 @@ body {
   box-shadow: none;
 }
 
+.header-action-btn-icon {
+  padding: 7px;
+}
+
 .header-action-btn-primary {
   background: #8E1E1E;
   color: white;
+  padding: 7px 12px;
 }
 
 .header-action-btn-primary:hover {
   background: #7a1919;
   color: white;
-}
-
-.header-action-btn-settings {
-  background: #e8e8e8;
-}
-
-.header-action-btn-settings:hover {
-  background: #fff;
+  box-shadow: 0 2px 8px rgba(142,30,30,0.25);
 }
 
 /* Button text labels */
 .header-btn-label {
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.2px;
+  letter-spacing: 0.1px;
   white-space: nowrap;
 }
 
 /* Badge for version count etc */
 .header-badge {
-  font-size: 10px;
-  font-weight: 600;
+  font-size: 9px;
+  font-weight: 700;
   background: #8E1E1E;
   color: white;
-  padding: 2px 6px;
-  border-radius: 10px;
+  min-width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: 8px;
   margin-left: 2px;
 }
 
@@ -291,6 +295,82 @@ body {
   height: 1px;
   background: #e5e5e5;
   margin: 6px 0;
+}
+
+/* Export dropdown cards */
+.export-dropdown {
+  min-width: 240px;
+  padding: 6px;
+}
+
+.export-dropdown-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: left;
+}
+
+.export-dropdown-card:hover {
+  background: var(--accent-light, #fdf2f2);
+  border-color: var(--accent, #8E1E1E);
+}
+
+.export-dropdown-card:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.export-dropdown-card:disabled:hover {
+  background: transparent;
+  border-color: transparent;
+}
+
+.export-dropdown-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: var(--accent-light, #fdf2f2);
+  color: var(--accent, #8E1E1E);
+  flex-shrink: 0;
+}
+
+.export-dropdown-card:hover .export-dropdown-icon {
+  background: var(--accent, #8E1E1E);
+  color: #fff;
+}
+
+.export-dropdown-icon.exporting {
+  background: transparent;
+}
+
+.export-dropdown-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.export-dropdown-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary, #1a1a1a);
+  white-space: nowrap;
+}
+
+.export-dropdown-hint {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+  white-space: nowrap;
 }
 
 /* Legacy support */
@@ -624,6 +704,7 @@ body {
   cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.15s ease;
+  position: relative;
 }
 
 .slide-item:hover {
@@ -2311,10 +2392,14 @@ body {
 }
 
 .slide-item-actions {
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
   display: flex;
   gap: 2px;
   opacity: 0;
   transition: opacity 0.15s;
+  z-index: 2;
 }
 
 .slide-item:hover .slide-item-actions {
@@ -2322,15 +2407,16 @@ body {
 }
 
 .slide-item-actions button {
-  background: transparent;
-  border: none;
+  background: var(--bg-primary, #fff);
+  border: 1px solid var(--border-light, #e5e7eb);
   color: var(--text-muted);
   cursor: pointer;
-  padding: 3px;
+  padding: 4px;
   border-radius: 4px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .slide-item-actions button:hover {
@@ -3982,6 +4068,61 @@ body {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
+}
+
+/* Three-button action bar: [Quick Fixes v] [Translate to Arabic] [Template v] */
+.panel-action-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.panel-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  flex: 1 1 auto;
+  padding: 7px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: white;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.panel-action-btn:hover:not(:disabled) {
+  border-color: var(--border-dark, #999);
+  background: #f7f7f8;
+  color: var(--text-primary);
+}
+
+.panel-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.panel-action-btn--active {
+  border-color: var(--accent, #8E1E1E);
+  background: #fdf2f2;
+  color: var(--accent, #8E1E1E);
+}
+
+.panel-action-btn--arabic {
+  background: #fdf2f2;
+  border-color: #e8c4c4;
+  color: #8E1E1E;
+  font-weight: 600;
+}
+
+.panel-action-btn--arabic:hover:not(:disabled) {
+  background: #f9e0e0;
+  border-color: #8E1E1E;
+  color: #6b1616;
 }
 
 .panel-quick-pill {

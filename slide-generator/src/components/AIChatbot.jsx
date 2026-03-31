@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
 import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
-import { PRIMARY_ACTIONS, MORE_ACTIONS } from '../constants/slideActions';
+import { PRIMARY_ACTIONS, MORE_ACTIONS, ARABIC_TRANSLATION_PROMPT } from '../constants/slideActions';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
@@ -5059,42 +5059,55 @@ Original request: ${userPrompt}`;
               </div>
             ) : (
               <>
-                <div className="panel-quick-pills">
-                  {PRIMARY_ACTIONS.map(({ id, label, prompt: actionPrompt }) => (
-                    <button
-                      key={id}
-                      className="panel-quick-pill"
-                      disabled={quickActionBusy || isLoading}
-                      onClick={() => handleQuickAction(actionPrompt, label)}
-                    >
-                      {label}
-                    </button>
-                  ))}
+                <div className="panel-action-bar">
+                  {/* Quick Fixes dropdown */}
                   <button
-                    className={`panel-quick-pill panel-quick-template ${showSlideTemplatePicker ? 'active' : ''}`}
-                    disabled={quickActionBusy || isLoading}
-                    onClick={() => { setShowSlideTemplatePicker(!showSlideTemplatePicker); setShowMoreActions(false); }}
-                    title="Switch this slide to a different template"
-                  >
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <rect x="3" y="3" width="7" height="7" />
-                      <rect x="14" y="3" width="7" height="7" />
-                      <rect x="14" y="14" width="7" height="7" />
-                      <rect x="3" y="14" width="7" height="7" />
-                    </svg>
-                    Template
-                  </button>
-                  <button
-                    className={`panel-quick-pill panel-quick-more ${showMoreActions ? 'active' : ''}`}
+                    className={`panel-action-btn ${showMoreActions ? 'panel-action-btn--active' : ''}`}
                     disabled={quickActionBusy || isLoading}
                     onClick={() => { setShowMoreActions(!showMoreActions); setShowSlideTemplatePicker(false); }}
                   >
-                    More
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                    </svg>
+                    Quick Fixes
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <path d={showMoreActions ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
                     </svg>
                   </button>
+
+                  {/* Translate to Arabic */}
+                  <button
+                    className="panel-action-btn panel-action-btn--arabic"
+                    disabled={quickActionBusy || isLoading}
+                    onClick={() => handleQuickAction(ARABIC_TRANSLATION_PROMPT, 'Translate to Arabic')}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <circle cx="12" cy="12" r="10" />
+                      <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                    </svg>
+                    Translate to Arabic
+                  </button>
+
+                  {/* Template switcher */}
+                  <button
+                    className={`panel-action-btn ${showSlideTemplatePicker ? 'panel-action-btn--active' : ''}`}
+                    disabled={quickActionBusy || isLoading}
+                    onClick={() => { setShowSlideTemplatePicker(!showSlideTemplatePicker); setShowMoreActions(false); }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="3" width="7" height="7" rx="1" />
+                      <rect x="14" y="14" width="7" height="7" rx="1" />
+                      <rect x="3" y="14" width="7" height="7" rx="1" />
+                    </svg>
+                    Change Template
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d={showSlideTemplatePicker ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+                    </svg>
+                  </button>
                 </div>
+
+                {/* Quick Fixes dropdown panel */}
                 {showMoreActions && (
                   <>
                     <div className="panel-more-backdrop" onClick={() => setShowMoreActions(false)} />
@@ -5103,6 +5116,16 @@ Original request: ${userPrompt}`;
                         <div key={category} className="panel-more-category">
                           <div className="panel-more-category-label">{category}</div>
                           <div className="panel-more-category-pills">
+                            {category === 'Core Fixes' && PRIMARY_ACTIONS.map(({ id, label, prompt: actionPrompt }) => (
+                              <button
+                                key={id}
+                                className="panel-quick-pill panel-quick-pill-sm"
+                                disabled={quickActionBusy || isLoading}
+                                onClick={() => { handleQuickAction(actionPrompt, label); setShowMoreActions(false); }}
+                              >
+                                {label}
+                              </button>
+                            ))}
                             {catActions.map(({ id, label, prompt: actionPrompt }) => (
                               <button
                                 key={id}
@@ -5119,6 +5142,8 @@ Original request: ${userPrompt}`;
                     </div>
                   </>
                 )}
+
+                {/* Template picker popover */}
                 {showSlideTemplatePicker && activeSlide && (
                   <>
                     <div className="panel-more-backdrop" onClick={() => setShowSlideTemplatePicker(false)} />

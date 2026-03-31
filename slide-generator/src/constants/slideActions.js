@@ -24,12 +24,9 @@ export const PRIMARY_ACTIONS = [
     label: 'Executive',
     prompt: 'Rewrite the slide for senior audiences. Lead with the key message and so-what, sharpen the takeaway, reduce unnecessary detail, and make the page more decision-oriented.',
   },
-  {
-    id: 'translate_arabic',
-    label: 'Arabic',
-    prompt: 'Translate ALL text content on this slide to Arabic. This includes titles, subtitles, body text, labels, captions, legends, footnotes, source lines, and any visible text. Also translate numbers to Arabic-Indic numerals where contextually appropriate. Change the entire layout direction to RTL (right-to-left): flip horizontal alignment, swap left-aligned elements to right-aligned, mirror flex/grid layouts, and ensure reading order flows right-to-left. Preserve the logical relationships between elements — if a label points to a chart, keep that spatial association. If columns had a left-to-right progression, reverse it to right-to-left while keeping the logical sequence intact. Maintain the visual design, colors, spacing, and hierarchy. Set dir="rtl" on the root container. Use a clean Arabic font stack: \'Noto Sans Arabic\', \'Segoe UI\', \'Tahoma\', sans-serif.',
-  },
 ];
+
+export const ARABIC_TRANSLATION_PROMPT = 'Translate ALL text content on this slide to Arabic. This includes titles, subtitles, body text, labels, captions, legends, footnotes, source lines, and any visible text. Also translate numbers to Arabic-Indic numerals where contextually appropriate. Change the entire layout direction to RTL (right-to-left): flip horizontal alignment, swap left-aligned elements to right-aligned, mirror flex/grid layouts, and ensure reading order flows right-to-left. Preserve the logical relationships between elements — if a label points to a chart, keep that spatial association. If columns had a left-to-right progression, reverse it to right-to-left while keeping the logical sequence intact. Maintain the visual design, colors, spacing, and hierarchy. Set dir="rtl" on the root container. Use a clean Arabic font stack: \'Noto Sans Arabic\', \'Segoe UI\', \'Tahoma\', sans-serif.';
 
 export const MORE_ACTIONS = [
   {

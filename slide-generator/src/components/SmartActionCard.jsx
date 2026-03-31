@@ -173,15 +173,15 @@ function LayoutGuidanceInput({ value, onChange }) {
 
 // Action type icons and labels
 const ACTION_CONFIG = {
-  analyze_content: { icon: '🧠', label: 'Analyzing', color: '#8b5cf6' },
-  create_slide: { icon: '✨', label: 'Create', color: '#10b981' },
-  edit_slide: { icon: '✏️', label: 'Edit', color: '#7c3aed' },
+  analyze_content: { icon: '🧠', label: 'Analyzing', color: '#8E1E1E' },
+  create_slide: { icon: '✨', label: 'Create', color: '#8E1E1E' },
+  edit_slide: { icon: '✏️', label: 'Edit', color: '#8E1E1E' },
   delete_slide: { icon: '🗑️', label: 'Delete', color: '#ef4444' },
-  switch_template: { icon: '🔄', label: 'Switch', color: '#f59e0b' },
-  create_slides_batch: { icon: '📑', label: 'Batch', color: '#8b5cf6' },
-  create_from_template: { icon: '✨', label: 'Create', color: '#10b981' },
-  generate_storyline: { icon: '📖', label: 'Storyline', color: '#06b6d4' },
-  populate_slides: { icon: '📝', label: 'Populate', color: '#14b8a6' },
+  switch_template: { icon: '🔄', label: 'Switch', color: '#8E1E1E' },
+  create_slides_batch: { icon: '📑', label: 'Batch', color: '#8E1E1E' },
+  create_from_template: { icon: '✨', label: 'Create', color: '#8E1E1E' },
+  generate_storyline: { icon: '📖', label: 'Storyline', color: '#8E1E1E' },
+  populate_slides: { icon: '📝', label: 'Populate', color: '#8E1E1E' },
   answer_question: { icon: '💬', label: 'Answer', color: '#64748b' },
 };
 
@@ -451,57 +451,56 @@ export default function SmartActionCard({
             </div>
           )}
 
-          {/* Context slides and search — only in debug mode */}
+          {/* Context slides — debug mode only */}
           {debugMode && (
-            <>
-              <div className="sac-step-context-row">
-                <span className="sac-ctx-label">Context:</span>
-                {slides.length > 0 ? (
-                  <div className="sac-ctx-chips">
-                    {slides.map((slide, sIdx) => (
-                      <button
-                        key={sIdx}
-                        className={`sac-ctx-chip ${(step.contextSlides || []).includes(sIdx) ? 'selected' : ''}`}
-                        onClick={() => toggleStepContext(i, sIdx)}
-                        title={slide.title}
-                      >
-                        {sIdx + 1}
-                      </button>
-                    ))}
-                  </div>
-                ) : (
-                  <span className="sac-ctx-none">no slides</span>
-                )}
-              </div>
-
-              <div className="sac-step-search-row">
-                <label className="sac-search-toggle" title={step.searchQuery ? `Search: ${step.searchQuery}` : 'Enable web search for this step'}>
-                  <input
-                    type="checkbox"
-                    checked={!!step.searchQuery}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        updatePlanStep(i, { searchQuery: step.instruction?.slice(0, 80) || 'search query' });
-                      } else {
-                        updatePlanStep(i, { searchQuery: null });
-                      }
-                    }}
-                  />
-                  <span className="sac-search-icon">🔍</span>
-                  <span className="sac-search-label">Web search</span>
-                </label>
-                {step.searchQuery && (
-                  <input
-                    type="text"
-                    className="sac-search-query-input"
-                    value={step.searchQuery}
-                    onChange={(e) => updatePlanStep(i, { searchQuery: e.target.value })}
-                    placeholder="Search query for this step..."
-                  />
-                )}
-              </div>
-            </>
+            <div className="sac-step-context-row">
+              <span className="sac-ctx-label">Context:</span>
+              {slides.length > 0 ? (
+                <div className="sac-ctx-chips">
+                  {slides.map((slide, sIdx) => (
+                    <button
+                      key={sIdx}
+                      className={`sac-ctx-chip ${(step.contextSlides || []).includes(sIdx) ? 'selected' : ''}`}
+                      onClick={() => toggleStepContext(i, sIdx)}
+                      title={slide.title}
+                    >
+                      {sIdx + 1}
+                    </button>
+                  ))}
+                </div>
+              ) : (
+                <span className="sac-ctx-none">no slides</span>
+              )}
+            </div>
           )}
+
+          {/* Per-step web search toggle — always visible */}
+          <div className="sac-step-search-row">
+            <button
+              type="button"
+              className={`sac-search-pill ${step.searchQuery ? 'active' : ''}`}
+              title={step.searchQuery ? `Search: ${step.searchQuery}` : 'Enable web search for this step'}
+              onClick={() => {
+                if (step.searchQuery) {
+                  updatePlanStep(i, { searchQuery: null });
+                } else {
+                  updatePlanStep(i, { searchQuery: step.instruction?.slice(0, 80) || 'search query' });
+                }
+              }}
+            >
+              <span className="sac-search-icon">&#x2315;</span>
+              Web search
+            </button>
+            {step.searchQuery && (
+              <input
+                type="text"
+                className="sac-search-query-input"
+                value={step.searchQuery}
+                onChange={(e) => updatePlanStep(i, { searchQuery: e.target.value })}
+                placeholder="Search query for this step..."
+              />
+            )}
+          </div>
         </div>
       </div>
     );
@@ -1283,7 +1282,7 @@ export default function SmartActionCard({
           display: flex;
           align-items: center;
           justify-content: center;
-          background: #334155;
+          background: #8E1E1E;
           color: white;
           border-radius: 50%;
           font-weight: 700;
@@ -1593,31 +1592,40 @@ export default function SmartActionCard({
           padding: 0 4px;
         }
 
-        .sac-search-toggle {
-          display: flex;
+        .sac-search-pill {
+          display: inline-flex;
           align-items: center;
           gap: 4px;
-          cursor: pointer;
+          padding: 3px 10px;
+          border-radius: 12px;
+          border: 1px solid #e2e8f0;
+          background: #f8fafc;
+          color: #94a3b8;
           font-size: 11px;
-          color: #64748b;
+          font-weight: 600;
+          cursor: pointer;
           white-space: nowrap;
-          user-select: none;
+          transition: all 0.15s ease;
+          flex-shrink: 0;
         }
 
-        .sac-search-toggle input[type="checkbox"] {
-          width: 14px;
-          height: 14px;
-          margin: 0;
-          cursor: pointer;
-          accent-color: #3b82f6;
+        .sac-search-pill:hover {
+          border-color: #cbd5e1;
+          color: #64748b;
+        }
+
+        .sac-search-pill.active {
+          background: rgba(142, 30, 30, 0.08);
+          border-color: #8E1E1E;
+          color: #8E1E1E;
+        }
+
+        .sac-search-pill.active:hover {
+          background: rgba(142, 30, 30, 0.14);
         }
 
         .sac-search-icon {
           font-size: 12px;
-        }
-
-        .sac-search-label {
-          font-size: 11px;
         }
 
         .sac-search-query-input {
@@ -1632,7 +1640,7 @@ export default function SmartActionCard({
         }
 
         .sac-search-query-input:focus {
-          border-color: #3b82f6;
+          border-color: #8E1E1E;
           background: white;
         }
 

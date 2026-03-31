@@ -482,7 +482,7 @@ body {
 
 /* Sidebar - Independent Scrolling */
 .sidebar {
-  width: 340px;
+  width: 160px;
   background: var(--bg-secondary);
   border-right: 1px solid var(--border);
   display: flex;
@@ -616,11 +616,11 @@ body {
 
 .slide-item {
   display: flex;
-  gap: 10px;
-  padding: 8px;
+  flex-direction: column;
+  padding: 4px;
   background: var(--bg-tertiary);
   border-radius: var(--radius);
-  margin-bottom: 8px;
+  margin-bottom: 6px;
   cursor: pointer;
   border: 2px solid transparent;
   transition: all 0.15s ease;
@@ -660,14 +660,28 @@ body {
 
 /* Slide thumbnail */
 .slide-item-thumbnail {
-  width: 80px;
-  height: 45px;
+  width: 100%;
+  aspect-ratio: 16 / 9;
   border-radius: 4px;
   overflow: hidden;
   background: white;
   border: 1px solid var(--border);
   flex-shrink: 0;
   position: relative;
+}
+
+.slide-number-badge {
+  position: absolute;
+  bottom: 3px;
+  left: 3px;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  pointer-events: none;
 }
 
 .slide-comment-badge {
@@ -2243,16 +2257,14 @@ body {
 }
 
 .thumbnail-wrapper {
-  width: 80px;
-  height: 45px;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   position: relative;
-  /* CSS containment to isolate thumbnails from layout recalculations */
   contain: strict;
 }
 
 .thumbnail-slide {
-  transform: scale(0.0833);
   transform-origin: top left;
   width: 960px;
   height: 540px;
@@ -2260,17 +2272,17 @@ body {
   position: absolute;
   top: 0;
   left: 0;
-  /* Isolate rendering from main preview */
   isolation: isolate;
 }
 
-/* Ensure slide inside thumbnail is positioned correctly */
+/* Force correct positioning regardless of slide-specific CSS */
 .thumbnail-slide .slide {
-  position: absolute;
-  top: 0;
-  left: 0;
-  margin: 0;
-  /* Prevent external style changes from affecting thumbnail */
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  margin: 0 !important;
+  width: 960px !important;
+  height: 540px !important;
   contain: layout style;
 }
 
@@ -3725,7 +3737,7 @@ body {
 
 @media (max-width: 1024px) {
   .sidebar {
-    width: 300px;
+    width: 140px;
   }
 
   .chatbot-container.chatbot-docked {
@@ -4076,6 +4088,28 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.panel-template-popover {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: calc(100% + 4px);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 10px;
+  max-height: 50vh;
+  overflow-y: auto;
+  z-index: 150;
+  animation: panel-dropdown-in 0.15s ease;
+}
+
+.panel-quick-template.active {
+  background: rgba(142, 30, 30, 0.08);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 .panel-more-category {
   margin-bottom: 10px;
 }
@@ -4156,6 +4190,39 @@ body {
 .panel-attach-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+/* Search toggle pill in input toolbar */
+.panel-search-pill {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #f8fafc;
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.panel-search-pill:hover {
+  border-color: #cbd5e1;
+  color: #64748b;
+}
+
+.panel-search-pill.active {
+  background: rgba(142, 30, 30, 0.08);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.panel-search-pill.active:hover {
+  background: rgba(142, 30, 30, 0.14);
 }
 
 .chatbot-actions {

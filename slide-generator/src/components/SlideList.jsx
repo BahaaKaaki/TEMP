@@ -518,17 +518,10 @@ export default function SlideList() {
                       </div>
                     )}
 
-                    {/* Slide thumbnail - key forces re-render on content change */}
+                    {/* Slide thumbnail with number overlay */}
                     <div className="slide-item-thumbnail">
                       <SlideThumbnail html={slide.html} customCSS={slide.customCSS} vibe={state.vibe} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id || index}-${slide.updatedAt || ''}`} />
-                      {/* Child indicator */}
-                      {slide.hasChildren && (
-                        <div className="slide-children-badge" title="Has sub-slides">
-                          <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M7 10l5 5 5-5z"/>
-                          </svg>
-                        </div>
-                      )}
+                      <span className="slide-number-badge">{index + 1}</span>
                       {/* Comment indicator badge */}
                       {(slide.comments || []).filter(c => !c.addressed).length > 0 && (
                         <div className="slide-comment-badge" title={`${(slide.comments || []).filter(c => !c.addressed).length} pending comment(s)`}>
@@ -554,63 +547,6 @@ export default function SlideList() {
                           {slide.skeletonApproved ? '✓' : '🦴'}
                         </div>
                       )}
-                    </div>
-
-                    <div className="slide-item-content">
-                      <div className="slide-item-header">
-                        <span className="slide-item-number">#{index + 1}</span>
-                        <div className="slide-item-actions">
-                          {/* Indent/Outdent buttons */}
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleIndent(slide); }}
-                            title="Indent (make child)"
-                            disabled={index === 0}
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M9 18l6-6-6-6" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleOutdent(slide); }}
-                            title="Outdent (move up level)"
-                            disabled={!slide.parentId}
-                          >
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M15 18l-6-6 6-6" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={(e) => handleValidate(e, slide, index)}
-                            title="Validate PPTX quality"
-                            className="validate-btn"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <path d="M9 12l2 2 4-4" />
-                              <circle cx="12" cy="12" r="10" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={(e) => handleDuplicate(e, slide)}
-                            title="Duplicate (Ctrl+D)"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-                              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={(e) => handleDelete(e, slide.id)}
-                            title="Delete"
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                              <polyline points="3 6 5 6 21 6" />
-                              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                            </svg>
-                          </button>
-                        </div>
-                      </div>
-                      <div className="slide-item-title">{slide.title || 'Untitled'}</div>
-                      <div className="slide-item-type">{getTypeLabel(slide.type)}</div>
                     </div>
                   </div>
                 );
@@ -694,8 +630,22 @@ function injectSectionAttribute(html, sectionLabel) {
   );
 }
 
-// Mini thumbnail component (scaled down)
+// Mini thumbnail component -- dynamically scales 960x540 slide to fit container
 function SlideThumbnail({ html, customCSS, vibe = 'default', darkMode = false, sectionLabel }) {
+  const wrapperRef = useRef(null);
+  const [scale, setScale] = useState(0.13);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(([entry]) => {
+      const w = entry.contentRect.width;
+      if (w > 0) setScale(w / 960);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   let safeHtml = html;
   if (safeHtml && safeHtml.includes('section-divider-slide') && !safeHtml.includes('master-blank')) {
     safeHtml = safeHtml.replace(/class="slide([^"]*)"/, 'class="slide master-blank$1"');
@@ -704,9 +654,10 @@ function SlideThumbnail({ html, customCSS, vibe = 'default', darkMode = false, s
   vibeHtml = injectSectionAttribute(vibeHtml, sectionLabel);
   const cssTag = customCSS ? `<style>${customCSS}</style>` : '';
   return (
-    <div className="thumbnail-wrapper">
+    <div className="thumbnail-wrapper" ref={wrapperRef}>
       <div
         className="thumbnail-slide"
+        style={{ transform: `scale(${scale})` }}
         dangerouslySetInnerHTML={{ __html: cssTag + vibeHtml }}
       />
     </div>

@@ -36,7 +36,7 @@ Use `var(--token)` for all colors. Never hardcode hex, rgb, or named colors.
 | Brand accent | `var(--accent)` |
 | Accent hover | `var(--accent-hover)` |
 | Light accent bg | `var(--accent-soft)` |
-| Text on accent | `var(--on-accent)` |
+| Text on accent | `var(--on-accent)` -- **REQUIRED** on any element with `var(--accent)` background |
 | Page background | `var(--page)` |
 | Card/container bg | `var(--surface)` |
 | Alternate surface | `var(--surface-alt)` |
@@ -72,7 +72,8 @@ Return a `<style>` block followed by the slide HTML:
 
 1. **Scope everything** under `.slide .frame` so styles don't leak.
 2. **Use design tokens** for all colors -- `var(--accent)`, `var(--surface)`, etc.
-3. **Use flexbox and CSS grid** freely for layout.
+3. **CRITICAL CONTRAST RULE: Every element with `background: var(--accent)` or any dark/colored background MUST have `color: var(--on-accent)` (or `color: white`) set DIRECTLY on it AND on all child elements containing text.** This includes card headers, numbered badges, banner bars, pill labels, and any container with a maroon/dark fill. Never rely on inheritance alone -- explicitly set `color: var(--on-accent)` on each text-bearing element inside a dark container. Failure to do this produces invisible dark-on-dark text.
+4. **Use flexbox and CSS grid** freely for layout.
 4. **Use class names** that describe the layout's purpose (e.g., `.pillar-grid`, `.metric-row`, `.phase-timeline`). Invent clear, semantic names.
 5. **Size in pixels** relative to the 890x353 frame. Use `height: 100%` on the top-level container to fill the frame.
 6. **No inline layout styles.** All layout must be in the `<style>` block. Inline `style` is allowed only for `color: var(--token)` or minor tweaks.

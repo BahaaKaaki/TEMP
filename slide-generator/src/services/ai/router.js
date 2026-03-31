@@ -1014,10 +1014,15 @@ Even with freestyle:
 - The layoutGuidance field IS your visual direction — pick the right pattern for the content
 - Exception: if user explicitly requests a specific visual (e.g., "make it a 2-column layout"), reflect that in layoutGuidance (e.g., "split")
 
-SECTION TRACKER + EXECUTIVE SUMMARY:
-For structured decks (7+ slides or when the agent provides SECTION TRACKERS), every body slide carries a "sectionTracker" label — a short tab shown on the slide (e.g. "1. Strategy", "2. Financials"). Section trackers are useful navigation labels regardless of whether an executive summary slide is included.
-The executiveSummary template (optional) shows numbered boxes in a 4-column grid — each box has a number, an INSIGHT-DRIVEN title (4-7 words — a mini-conclusion, NOT a generic label; e.g. "Digital up 40% despite headwinds" NOT "Market Overview"), and a one-sentence insight (8 words max). When included, it provides a high-level overview of the deck. If present, its items should correspond 1:1 to the section trackers on body slides.
-
+Section Trackers & Executive Summary
+For structured decks (7+ slides, or when Section Trackers / Executive Summary are used), each body slide must include a section tracker — a short tab label (e.g. “1. Strategy”, “2. Financials”). These trackers serve as navigation anchors and must align directly with the Executive Summary.
+The Executive Summary should present a set of numbered pillars. Each pillar includes:
+A number
+A clear 2–3 word title (must exactly match the section tracker labels)
+A one-line executive statement that conveys the core message + Any additional executive content
+Each pillar should be self-explanatory and may include brief supporting context if needed.
+There must be a 1:1 correspondence between Executive Summary pillars and section trackers across the body slides, ensuring consistency and easy navigation throughout the deck.
+ 
 RULES:
 - Add "sectionTracker" to EVERY body slide that belongs to a section. Format: "N. Section Name" — keep concise (max ~20 chars, 2-4 words after the number)
 - Cover, executive summary, and closing slides do NOT get a sectionTracker
@@ -1054,6 +1059,13 @@ DECK STRUCTURE & STORYTELLING (think like a senior consulting partner):
 - PYRAMIDAL STRUCTURE: Lead with the answer/governing thought. The structure after the cover depends on the REQUEST — do NOT default to a proposal format. Match the deck structure to what the user actually asked for.
 - FOR LARGE DECKS (7+ slides or when SECTION TRACKERS are provided): Cover → [optional Executive Summary (ONE slide, 2-5 key themes, template: executiveSummary)] → Body Slides → Wrap-up. IMPORTANT: If the prompt already contains an executive summary, table of contents, deck overview, section preview, or any tracking/overview slide, do NOT add another — just pick the right template for the existing one. When the prompt says the slide list is complete, add ONLY the cover and pick templates — no new slides of any kind. In AGENT MODE, NEVER add an executive summary — the agent's slide list is final.
 - FOR SMALL DECKS (≤6 slides or when NO section trackers are provided): Cover → Content Slides → Closing. No executive summary — go straight to content.
+- SECTION DIVIDERS (templateId "sectionDivider"):
+  - Only add a sectionDivider slide when a section contains 5 or more body slides. Smaller sections do NOT need a divider — the sectionTracker label is sufficient.
+  - Place each sectionDivider IMMEDIATELY BEFORE the first body slide of its section (after the previous section's last slide).
+  - There must be exactly ONE sectionDivider per qualifying section — never duplicate, never omit for qualifying sections.
+  - The sectionDivider instruction should contain the section name matching the sectionTracker label (e.g. "2. Financials").
+  - Do NOT add sectionDividers for the first section if it directly follows an executive summary (the exec summary already introduces it).
+  - Exception: if the user explicitly asks for section separators/dividers, include them for all sections regardless of size.
 - PARENT-CHILD GROUPING: When there are N key points (e.g., 3 pillars, 4 strategies), create a summary/overview slide FIRST that names all N, then one detail slide per point. The overview slide is the "parent" and the detail slides are its "children".
   Example: "3 Growth Pillars" overview slide → Pillar 1 detail → Pillar 2 detail → Pillar 3 detail
 - ONE MESSAGE PER SLIDE: Never crowd a slide with multiple themes. Each slide makes exactly one point. If content is too dense, split into multiple slides.
@@ -1094,7 +1106,7 @@ Each slide is built by a separate AI call that sees ONLY its own instruction (+ 
 
 5. NUMBERS AND DATA POINTS: When specific numbers appear in one slide (e.g., "$4.2B market size"), repeat the EXACT same number in related slides. Don't let parallel sub-agents invent different figures.
 
-6. SEARCH FOR REAL DATA: When the topic involves facts, statistics, or current information, add "searchQuery" to the relevant slides. Real data prevents the sub-agents from hallucinating inconsistent numbers. Prefer one good search on the overview slide, then use contextFromStep to propagate those results to detail slides.
+6. SEARCH FOR REAL DATA (IMPORTANT): When the topic involves facts, statistics, or current information, you MUST add "searchQuery" to slides that present specific data. Real data prevents the sub-agents from hallucinating inconsistent numbers. Add searchQuery to ANY slide that mentions statistics, financials, rankings, dates, named entities, market data, or recent events. Prefer one good search on the overview slide, then use contextFromStep to propagate those results to detail slides. The global search context provides general grounding, but per-step searchQuery gives each slide targeted, precise data.
 
 SLIDE POSITIONING:
 - POSITION values: "start", "end", {"after_slide": N}, "after_previous"
@@ -1102,8 +1114,8 @@ SLIDE POSITIONING:
 - Content slides use "end" or "after_previous"
 - Multiple slides: first gets specific position, rest use "after_previous"
 
-STEP-LEVEL WEB SEARCH:
-Check the "Web search available" field in CURRENT STATE. If YES, you MAY add a "searchQuery" field to steps that would benefit from real data. The search runs BEFORE the slide is created and results are injected into the step's context.
+STEP-LEVEL WEB SEARCH (USE AGGRESSIVELY):
+Check the "Web search available" field in CURRENT STATE. If YES, you SHOULD add a "searchQuery" field to most content slides — especially those presenting data, facts, timelines, or claims. The search runs BEFORE the slide is created and results are injected into the step's context, supplementing the global search context with slide-specific data.
 - searchQuery must be PRECISE to what THIS SLIDE needs — not a broad topic search
   WRONG: "S&P 500 performance" ← too broad, will return generic info
   RIGHT: "S&P 500 annual returns 2020 2021 2022 2023 ${new Date().getFullYear()} percentage" ← precise, gets the exact numbers the slide needs
@@ -1245,16 +1257,12 @@ export async function aiRouteRequest(userPrompt, context, settings) {
     reasoningEffort: effectiveReasoningEffort,
   };
 
-  // Add web search tool if router search is enabled (same pattern as agent search)
-  if (effectiveSearchEnabled) {
-    routerSettings._extraTools = [{
-      type: 'web_search_preview',
-      search_context_size: settings.searchContextSize || 'medium',
-    }];
-    console.log('[Router Search]', 'Router API call: web search tool enabled →', routerSettings._extraTools);
-  } else {
-    console.log('[Router Search]', 'Router API call: web search tool NOT attached (effectiveSearchEnabled=false)');
-  }
+  // Detect whether the router model supports inline web search via the Responses API.
+  // GPT/o-series models support web_search_preview natively; Gemini/Claude do not.
+  const isGPTRouter = routerModelName.includes('gpt-') || routerModelName.includes('o3') || routerModelName.includes('o4-');
+  const canUseResponsesAPI = isGPTRouter && settings.searchEndpoint && effectiveSearchEnabled && !agentMode;
+  console.log('[Router Search]', 'Responses API inline search:', canUseResponsesAPI ? 'YES' : 'NO (fallback to pre-search)',
+    { isGPTRouter, hasSearchEndpoint: !!settings.searchEndpoint, searchEnabled: effectiveSearchEnabled, agentMode });
 
   // Build compact slide list — index, title, and template type. Mark the current slide.
   const slideList = slideSummaries.length > 0
@@ -1429,166 +1437,210 @@ ${activeFlow.sections.map((s, i) => `  ${i + 1}. template="${s.templateHint}" | 
 ` : ''}
 USER REQUEST: "${routerPrompt}"`;
 
-  // Pre-search: call the search endpoint BEFORE routing so the plan uses current data.
-  // This is critical because the router model (e.g., Opus) may not support inline search tools.
-  let routerSearchContext = '';
   let routerSearchRawText = '';
-  if (searchAvailable && settings.searchEnabled && settings.searchEndpoint && settings.searchModel && !agentMode) {
-    try {
-      const searchQuery = `${routerPrompt} latest ${currentDateString()}`;
-      console.log('[Router Search] Pre-searching for router context:', searchQuery.substring(0, 100));
-      const searchBody = {
-        model: settings.searchModel,
-        input: searchQuery,
-        tools: [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }],
-        max_output_tokens: settings.searchMaxTokens || 32000,
-      };
-      const searchHeaders = { 'Content-Type': 'application/json' };
-      const isServerProxy = settings.searchApiKey === 'server-managed' || (settings.searchEndpoint || '').startsWith('/api/');
-      if (!isServerProxy) {
-        searchHeaders[settings.searchAuthHeader === 'bearer' ? 'Authorization' : 'api-key'] =
-          settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;
-      }
-      const searchResp = await fetch(settings.searchEndpoint, {
-        method: 'POST', headers: searchHeaders, body: JSON.stringify(searchBody),
-      });
-      if (searchResp.ok) {
-        const searchData = await searchResp.json();
-        let resultText = '';
-        if (searchData.output && Array.isArray(searchData.output)) {
-          for (const item of searchData.output) {
-            if (item.type === 'message' && item.content) {
-              for (const c of item.content) { if (c.text) resultText += c.text + '\n'; }
-            }
-          }
-        }
-        if (resultText.trim()) {
-          routerSearchRawText = resultText.trim();
-          routerSearchContext = `\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\n${routerSearchRawText.substring(0, 6000)}\n=== END SEARCH RESULTS ===\nIMPORTANT: Use the search results above to inform your plan with CURRENT, accurate data and dates. Do not rely on outdated training knowledge.\n`;
-          console.log('[Router Search] Pre-search returned', resultText.length, 'chars for router context');
-        }
-      } else {
-        console.warn('[Router Search] Pre-search HTTP error:', searchResp.status);
-      }
-    } catch (searchErr) {
-      console.warn('[Router Search] Pre-search failed:', searchErr.message);
-    }
-  }
-
-  const contextInfoWithSearch = routerSearchContext
-    ? `${contextInfo}\n${routerSearchContext}`
-    : contextInfo;
+  let response;
 
   const routerCallStart = Date.now();
 
+  const hasImages = pendingImages && pendingImages.length > 0;
+  const contextWords = contextInfo.split(/\s+/).length;
+  const contextChars = contextInfo.length;
+  const estimatedTokens = Math.ceil(contextChars / 4);
+
+  console.log('[AI Router] Context stats:', {
+    words: contextWords,
+    chars: contextChars,
+    estimatedTokens,
+    hasDocuments: hasDocumentsAttached,
+    hasImages,
+    imageCount: pendingImages?.length || 0,
+    useBigModel,
+  });
+  console.log('[AI Router] Calling router model:', routerModelRef);
+  debugLog(LogLevel.INFO, 'aiRouteRequest', 'Calling AI router', {
+    model: routerSettings.model,
+    prompt: userPrompt.slice(0, 100),
+    contextWords,
+    contextChars,
+    estimatedTokens,
+    hasImages,
+  });
+
   try {
-    // Log context size for debugging
-    const contextWords = contextInfoWithSearch.split(/\s+/).length;
-    const contextChars = contextInfoWithSearch.length;
-    const estimatedTokens = Math.ceil(contextChars / 4); // Rough estimate: 4 chars per token
+    // ── PATH A: Responses API with inline web search (GPT models) ──
+    // Single call: the model searches the web AND produces the plan in one request.
+    // Eliminates the separate pre-search step (~15-20s savings).
+    if (canUseResponsesAPI && !hasImages) {
+      console.log('[Router Search] Using Responses API with inline web_search_preview (single call)');
 
-    const hasImages = pendingImages && pendingImages.length > 0;
-
-    console.log('[AI Router] Context stats:', {
-      words: contextWords,
-      chars: contextChars,
-      estimatedTokens,
-      hasDocuments: hasDocumentsAttached,
-      hasImages,
-      imageCount: pendingImages?.length || 0,
-      useBigModel,
-    });
-    console.log('[AI Router] Calling router model:', routerModelRef);
-    debugLog(LogLevel.INFO, 'aiRouteRequest', 'Calling AI router', {
-      model: routerSettings.model,
-      prompt: userPrompt.slice(0, 100),
-      contextWords,
-      contextChars,
-      estimatedTokens,
-      hasImages,
-    });
-
-    // Retry with jittered backoff: immediate → ~1.5s, then give up
-    // 429 (rate limit) fails fast — retrying worsens congestion for all concurrent users
-    let response;
-    const routerBaseDelays = [0, 1500];
-    for (let attempt = 0; attempt < routerBaseDelays.length; attempt++) {
-      if (attempt > 0) {
-        const jitter = Math.random() * 0.5;
-        const delay = Math.round(routerBaseDelays[attempt] * (1 + jitter));
-        console.log(`[AI Router] Retry ${attempt}/1 after ${delay}ms (jittered)...`);
-        await new Promise(r => setTimeout(r, delay));
+      const responsesEndpoint = (settings.searchEndpoint || '').startsWith('/api/')
+        ? settings.searchEndpoint
+        : '/api/ai/responses';
+      const responsesBody = {
+        model: routerModelName,
+        instructions: getRouterSystemPrompt(),
+        input: contextInfo,
+        tools: [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }],
+        max_output_tokens: effectiveMaxTokens,
+      };
+      if (effectiveReasoningEffort && effectiveReasoningEffort !== 'none') {
+        responsesBody.reasoning = { effort: effectiveReasoningEffort };
       }
-      try {
-        if (hasImages) {
-          console.log('[AI Router] Using multimodal call with', pendingImages.length, 'image(s)');
-          response = await callRouterWithImages(
-            routerSettings,
-            getRouterSystemPrompt(),
-            contextInfoWithSearch,
-            pendingImages
-          );
-        } else {
-          response = await callWithModelFallback(
-            routerSettings,
-            getRouterSystemPrompt(),
-            contextInfoWithSearch,
-            { role: 'text' }
-          );
-        }
 
-        console.log('[AI Router] Full response:', response);
+      const responsesHeaders = { 'Content-Type': 'application/json' };
+      const isServerProxy = (settings.searchApiKey === 'server-managed') || responsesEndpoint.startsWith('/api/');
+      if (!isServerProxy) {
+        responsesHeaders[settings.searchAuthHeader === 'bearer' ? 'Authorization' : 'api-key'] =
+          settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;
+      }
 
-        if (effectiveSearchEnabled) {
-          const g = routerSettings._routerSearchGroundingDebug;
-          if (g) {
-            const used = !!(g.groundingReceived && (g.searchQueriesFromMetadata?.length > 0 || g.sourceUrls?.length > 0));
-            console.log('[Router Search]', 'After router model call — grounding metadata:', {
-              received: g.groundingReceived,
-              searchQueriesFromMetadata: g.searchQueriesFromMetadata,
-              sourceUrlCount: g.sourceUrls?.length || 0,
-              sourceUrls: g.sourceUrls,
-              likelySearchUsedForPlan: used,
-            });
-          } else {
-            console.log('[Router Search]', 'After router model call — no grounding debug payload (non-Gemini/Gemini path may omit _extraTools snapshot)');
+      const resp = await fetch(responsesEndpoint, {
+        method: 'POST', headers: responsesHeaders, body: JSON.stringify(responsesBody),
+      });
+
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        const errMsg = errData.error?.message || `Responses API error: ${resp.status}`;
+        console.warn('[Router Search] Responses API failed, falling back to Chat Completions:', errMsg);
+        throw new Error(errMsg);
+      }
+
+      const data = await resp.json();
+      let planText = '';
+      let searchText = '';
+      let searchCallCount = 0;
+
+      if (data.output && Array.isArray(data.output)) {
+        for (const item of data.output) {
+          if (item.type === 'web_search_call') {
+            searchCallCount++;
+          } else if (item.type === 'message' && item.content) {
+            for (const c of item.content) {
+              if (c.type === 'output_text' && c.text) {
+                planText += c.text;
+              }
+            }
           }
         }
+      }
 
-        // Check for empty response
-        if (!response || response.trim() === '') {
-          if (attempt < routerBaseDelays.length - 1) {
-            console.warn(`[AI Router] Empty response on attempt ${attempt + 1} — retrying. Prompt length: ${contextInfo.length} chars`);
+      console.log('[Router Search] Responses API: %d search call(s), plan %d chars', searchCallCount, planText.length);
+
+      if (!planText.trim()) {
+        throw new Error('Responses API returned empty plan text');
+      }
+
+      response = planText.trim();
+      // Don't populate searchRawContext from the plan text -- the Responses API
+      // doesn't expose raw search results separately. The router's plan instructions
+      // already incorporate search data, and per-step searchQuery handles grounding.
+
+      console.log('[AI Router] Full response:', response.substring(0, 500) + (response.length > 500 ? '...' : ''));
+
+    } else {
+      // ── PATH B: Legacy two-step (pre-search + Chat Completions) ──
+      // Used for non-GPT models, agent mode, or image-based routing.
+      let routerSearchContext = '';
+
+      const searchConfigured = searchAvailable && settings.searchEnabled && settings.searchEndpoint && settings.searchModel && !agentMode;
+      if (searchConfigured && !canUseResponsesAPI) {
+        try {
+          const searchQuery = `${routerPrompt} latest ${currentDateString()}`;
+          console.log('[Router Search] Pre-searching for router context:', searchQuery.substring(0, 100));
+          const searchBody = {
+            model: settings.searchModel,
+            input: searchQuery,
+            tools: [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }],
+            max_output_tokens: settings.searchMaxTokens || 32000,
+          };
+          const searchHeaders = { 'Content-Type': 'application/json' };
+          const isServerProxy = settings.searchApiKey === 'server-managed' || (settings.searchEndpoint || '').startsWith('/api/');
+          if (!isServerProxy) {
+            searchHeaders[settings.searchAuthHeader === 'bearer' ? 'Authorization' : 'api-key'] =
+              settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;
+          }
+          const searchResp = await fetch(settings.searchEndpoint, {
+            method: 'POST', headers: searchHeaders, body: JSON.stringify(searchBody),
+          });
+          if (searchResp.ok) {
+            const searchData = await searchResp.json();
+            let resultText = '';
+            if (searchData.output && Array.isArray(searchData.output)) {
+              for (const item of searchData.output) {
+                if (item.type === 'message' && item.content) {
+                  for (const c of item.content) { if (c.text) resultText += c.text + '\n'; }
+                }
+              }
+            }
+            if (resultText.trim()) {
+              routerSearchRawText = resultText.trim();
+              routerSearchContext = `\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\n${routerSearchRawText.substring(0, 6000)}\n=== END SEARCH RESULTS ===\nIMPORTANT: Use the search results above to inform your plan with CURRENT, accurate data and dates. Do not rely on outdated training knowledge.\n`;
+              console.log('[Router Search] Pre-search returned', resultText.length, 'chars for router context');
+            }
+          } else {
+            console.warn('[Router Search] Pre-search HTTP error:', searchResp.status);
+          }
+        } catch (searchErr) {
+          console.warn('[Router Search] Pre-search failed:', searchErr.message);
+        }
+      }
+
+      const contextInfoWithSearch = routerSearchContext
+        ? `${contextInfo}\n${routerSearchContext}`
+        : contextInfo;
+
+      const routerBaseDelays = [0, 1500];
+      for (let attempt = 0; attempt < routerBaseDelays.length; attempt++) {
+        if (attempt > 0) {
+          const jitter = Math.random() * 0.5;
+          const delay = Math.round(routerBaseDelays[attempt] * (1 + jitter));
+          console.log(`[AI Router] Retry ${attempt}/1 after ${delay}ms (jittered)...`);
+          await new Promise(r => setTimeout(r, delay));
+        }
+        try {
+          if (hasImages) {
+            console.log('[AI Router] Using multimodal call with', pendingImages.length, 'image(s)');
+            response = await callRouterWithImages(
+              routerSettings,
+              getRouterSystemPrompt(),
+              contextInfoWithSearch,
+              pendingImages
+            );
+          } else {
+            response = await callWithModelFallback(
+              routerSettings,
+              getRouterSystemPrompt(),
+              contextInfoWithSearch,
+              { role: 'text' }
+            );
+          }
+
+          console.log('[AI Router] Full response:', response);
+
+          if (!response || response.trim() === '') {
+            if (attempt < routerBaseDelays.length - 1) {
+              console.warn(`[AI Router] Empty response on attempt ${attempt + 1} — retrying`);
+              continue;
+            }
+            throw new Error(`AI router returned an empty response (model: ${routerModelRef}, prompt: ${contextInfo.length} chars)`);
+          }
+          break;
+        } catch (routerErr) {
+          if (routerErr.isRateLimit) throw routerErr;
+          if (attempt < routerBaseDelays.length - 1 && (
+            routerErr.message.includes('empty response') ||
+            routerErr.message.includes('Network error') ||
+            routerErr.message.includes('Failed to fetch') ||
+            routerErr.message.includes('overloaded') ||
+            routerErr.message.includes('500') ||
+            routerErr.message.includes('502') ||
+            routerErr.message.includes('503')
+          )) {
+            console.warn(`[AI Router] Retryable error on attempt ${attempt + 1}:`, routerErr.message);
             continue;
           }
-          console.error('[AI Router] Empty response after all retries. Model:', routerModelRef, 'Prompt length:', contextInfo.length, 'chars', 'Has docs:', hasDocumentsAttached);
-          debugLog(LogLevel.WARN, 'aiRouteRequest', 'Empty response from API after retries', {
-            model: routerModelRef,
-            promptLength: contextInfo.length,
-            hasDocuments: hasDocumentsAttached,
-            documentContentLength: documentContent?.length || 0,
-          });
-          throw new Error(`AI router returned an empty response (model: ${routerModelRef}, prompt: ${contextInfo.length} chars, docs: ${hasDocumentsAttached ? 'yes' : 'no'}). The API may be overloaded. Please try again.`);
-        }
-        break; // Got a valid response
-      } catch (routerErr) {
-        if (routerErr.isRateLimit) {
-          console.warn(`[AI Router] Rate limited — failing fast (no retry/fallback)`);
           throw routerErr;
         }
-        if (attempt < routerBaseDelays.length - 1 && (
-          routerErr.message.includes('empty response') ||
-          routerErr.message.includes('Network error') ||
-          routerErr.message.includes('Failed to fetch') ||
-          routerErr.message.includes('overloaded') ||
-          routerErr.message.includes('500') ||
-          routerErr.message.includes('502') ||
-          routerErr.message.includes('503')
-        )) {
-          console.warn(`[AI Router] Retryable error on attempt ${attempt + 1}:`, routerErr.message);
-          continue;
-        }
-        throw routerErr;
       }
     }
 

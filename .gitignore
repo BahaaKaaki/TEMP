@@ -49,6 +49,7 @@ app-logs/
 # BMAD / project docs
 _bmad/
 CHAT_CONTEXT.md
+docs/AI_ASSISTANT_ARCHITECTURE.md
 docs/TECHNICAL_RESEARCH_REPORT.md
 docs/plans/
 
@@ -58,7 +59,6 @@ docs/plans/
 .cursor/rules/*
 !.cursor/rules/project-reference.mdc
 !.cursor/rules/pwc-api-reference.mdc
-!.cursor/rules/ai-assistant-architecture.mdc
 
 # Temp diff files
 temp_diff*.txt

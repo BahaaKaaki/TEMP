@@ -965,58 +965,6 @@ function CreateTemplateForm({ activeSlide, onSave, onSaveAndEdit, onCancel }) {
               <span style={{ fontWeight: 600, fontSize: 13 }}>Template Match</span>
               <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Fill existing template</span>
             </button>
-            <button
-              type="button"
-              className={`mode-toggle-btn ${aiMode === 'image-full' ? 'active' : ''}`}
-              onClick={() => {
-                setAiMode('image-full');
-                setSelectedTemplate(null);
-              }}
-              style={{
-                flex: 1,
-                padding: '10px 16px',
-                background: aiMode === 'image-full' ? 'white' : 'transparent',
-                border: aiMode === 'image-full' ? '1px solid var(--border)' : '1px solid transparent',
-                borderRadius: 6,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-                transition: 'all 0.2s',
-                boxShadow: aiMode === 'image-full' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
-              }}
-            >
-              <span style={{ fontSize: 18 }}>🖼️</span>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>Image Full</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>Full AI visual</span>
-            </button>
-            <button
-              type="button"
-              className={`mode-toggle-btn ${aiMode === 'image-content' ? 'active' : ''}`}
-              onClick={() => {
-                setAiMode('image-content');
-                setSelectedTemplate(null);
-              }}
-              style={{
-                flex: 1,
-                padding: '10px 16px',
-                background: aiMode === 'image-content' ? 'white' : 'transparent',
-                border: aiMode === 'image-content' ? '1px solid var(--border)' : '1px solid transparent',
-                borderRadius: 6,
-                cursor: 'pointer',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: 4,
-                transition: 'all 0.2s',
-                boxShadow: aiMode === 'image-content' ? '0 2px 4px rgba(0,0,0,0.1)' : 'none',
-              }}
-            >
-              <span style={{ fontSize: 18 }}>🖼️</span>
-              <span style={{ fontWeight: 600, fontSize: 13 }}>Image + Text</span>
-              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>AI visual + title</span>
-            </button>
           </div>
 
           {aiMode === 'freestyle' && (

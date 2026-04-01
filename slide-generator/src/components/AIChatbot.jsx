@@ -300,7 +300,7 @@ export default function AIChatbot() {
   const [isLoading, setIsLoading] = useState(false);
   const [contextMode, setContextMode] = useState('slide');
   const [slideSearchEnabled, setSlideSearchEnabled] = useState(true);
-  const [quickActionBusy, setQuickActionBusy] = useState(false);
+  const [busySlideIds, setBusySlideIds] = useState(new Set());
   const [activeQuickAction, setActiveQuickAction] = useState('');
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [showSlideTemplatePicker, setShowSlideTemplatePicker] = useState(false);
@@ -1364,7 +1364,7 @@ export default function AIChatbot() {
           );
           if (transformedHtml && transformedHtml !== activeSlide.html) {
             const newTitle = extractTitleFromHTML(transformedHtml) || activeSlide.title;
-            actions.updateSlide(activeSlide.id, { html: transformedHtml, type: miniRoute.templateId, templateId: miniRoute.templateId, pptxRendererCode: null });
+            actions.updateSlide(activeSlide.id, { html: transformedHtml, type: miniRoute.templateId, templateId: miniRoute.templateId, customCSS: '', pptxRendererCode: null });
             addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${miniRoute.templateId}</strong></div>`, { isHTML: true });
             setIsLoading(false);
             setProgress(null);
@@ -1448,7 +1448,7 @@ export default function AIChatbot() {
           const fullPrompt = enrichedPrompt + referenceContext + deckContext;
           const result = await improveSlideWithSearch(activeSlide, fullPrompt, slideSettings, { skipSearch: true });
           const improvedHtml = result?.html || result;
-          const updateData = { html: improvedHtml };
+          const updateData = { html: improvedHtml, templateId: null };
           if (result?.customCSS) updateData.customCSS = result.customCSS;
           const newTitle = extractTitleFromHTML(improvedHtml);
           if (newTitle) updateData.title = newTitle;
@@ -4990,15 +4990,19 @@ Original request: ${userPrompt}`;
   };
 
   const handleQuickAction = useCallback(async (actionPrompt, actionLabel) => {
-    if (!activeSlide || quickActionBusy) return;
+    if (!activeSlide) return;
+    const slideId = activeSlide.id;
+    if (busySlideIds.has(slideId)) return;
     const providerCfg = state.settings.providers?.find(p => {
       const mid = state.settings.routerModel || state.settings.model || '';
       return mid.startsWith(p.id + ':');
     });
     if (!providerCfg || !hasAnyApiKey(state.settings)) return;
-    setQuickActionBusy(true);
+    setBusySlideIds(prev => new Set(prev).add(slideId));
     setActiveQuickAction(actionLabel || 'action');
     try {
+      const currentState = stateRef.current;
+      const freshSlide = currentState.slides.find(s => s.id === slideId) || activeSlide;
       const genModel = state.settings.speedMode === 'thinking'
         ? state.settings.model
         : (state.settings.fastModel || state.settings.model);
@@ -5007,36 +5011,55 @@ Original request: ${userPrompt}`;
         model: genModel,
         vibe: state.vibe,
       };
-      const result = await improveSlideWithSearch(activeSlide, actionPrompt, improveSettings, { skipSearch: true });
+      const result = await improveSlideWithSearch(freshSlide, actionPrompt, improveSettings, { skipSearch: true });
       const improvedHtml = result?.html || result;
-      const updateData = { html: improvedHtml };
+      const updateData = { html: improvedHtml, templateId: null };
       if (result?.customCSS) updateData.customCSS = result.customCSS;
-      actions.updateSlide(activeSlide.id, updateData);
+      actions.updateSlide(slideId, updateData);
       addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Applied: <strong>${actionLabel || 'Quick Action'}</strong></div>`, { isHTML: true });
     } catch (err) {
       console.error('[QuickAction] failed:', err);
       addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Failed: <strong>${actionLabel || 'Quick Action'}</strong></div>`, { isHTML: true });
     } finally {
-      setQuickActionBusy(false);
+      setBusySlideIds(prev => { const next = new Set(prev); next.delete(slideId); return next; });
       setActiveQuickAction('');
     }
-  }, [activeSlide, quickActionBusy, state.settings, state.vibe, actions]);
+  }, [activeSlide, busySlideIds, state.settings, state.vibe, actions]);
 
   const handleReimagineSlide = useCallback(async () => {
-    if (!activeSlide || quickActionBusy) return;
+    if (!activeSlide) return;
+    const slideId = activeSlide.id;
+    if (busySlideIds.has(slideId)) return;
     if (!hasAnyApiKey(state.settings)) return;
-    setQuickActionBusy(true);
+    setBusySlideIds(prev => new Set(prev).add(slideId));
     setActiveQuickAction('Reimagine Slide');
     try {
       const genModel = state.settings.speedMode === 'thinking'
         ? state.settings.model
         : (state.settings.fastModel || state.settings.model);
-      const reimagineSettings = { ...state.settings, model: genModel, vibe: state.vibe };
+      const reimagineSettings = { ...state.settings, model: genModel, temperature: 0.85, vibe: state.vibe };
       const currentState = stateRef.current;
-      const slideIdx = currentState.slides.findIndex(s => s.id === activeSlide.id);
+      const freshSlide = currentState.slides.find(s => s.id === slideId) || activeSlide;
+      const slideIdx = currentState.slides.findIndex(s => s.id === slideId);
       const prevTitle = currentState.slides[slideIdx - 1]?.title;
       const nextTitle = currentState.slides[slideIdx + 1]?.title;
-      let prompt = `Create a completely new slide about: ${activeSlide.title || 'this topic'}. Fresh layout, new visual approach, different structure than before.`;
+
+      const styleHints = [
+        'Use a bold metrics-driven layout with large KPI numbers',
+        'Use a multi-column card grid with icons',
+        'Use a timeline or process flow layout',
+        'Use a comparison or before/after layout',
+        'Use a single impactful statement with supporting details',
+        'Use a visual hierarchy with nested sections',
+        'Use an icon grid with short descriptions',
+        'Use a two-column layout with contrasting themes',
+      ];
+      const hint = styleHints[Math.floor(Math.random() * styleHints.length)];
+
+      let prompt = `Create a completely new slide about: ${freshSlide.title || 'this topic'}.`;
+      prompt += `\n\nSTYLE DIRECTION: ${hint}`;
+      prompt += `\n\n=== CURRENT SLIDE (DO NOT reuse this layout or structure) ===\n${(freshSlide.html || '').substring(0, 2000)}\n=== END CURRENT SLIDE ===`;
+      prompt += `\nYou MUST use a DIFFERENT layout, structure, and visual approach than the current slide above.`;
       if (prevTitle || nextTitle) {
         prompt += `\n\n=== DECK CONTEXT ===\nSlide ${slideIdx + 1} of ${currentState.slides.length}`;
         if (prevTitle) prompt += `\nPrevious: "${prevTitle}"`;
@@ -5045,18 +5068,18 @@ Original request: ${userPrompt}`;
       const newSlides = await generateSlides(prompt, reimagineSettings, 1, currentState.slides);
       if (newSlides?.length > 0) {
         const s = newSlides[0];
-        const newTitle = s.title || extractTitleFromHTML(s.html) || activeSlide.title;
-        actions.updateSlide(activeSlide.id, { html: s.html, title: newTitle, customCSS: s.customCSS || undefined });
+        const newTitle = s.title || extractTitleFromHTML(s.html) || freshSlide.title;
+        actions.updateSlide(slideId, { html: s.html, title: newTitle, customCSS: s.customCSS || '', templateId: null });
         addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Reimagined: <strong>${newTitle}</strong></div>`, { isHTML: true });
       }
     } catch (err) {
       console.error('[Reimagine] failed:', err);
       addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Reimagine failed: ${err.message}</div>`, { isHTML: true });
     } finally {
-      setQuickActionBusy(false);
+      setBusySlideIds(prev => { const next = new Set(prev); next.delete(slideId); return next; });
       setActiveQuickAction('');
     }
-  }, [activeSlide, quickActionBusy, state.settings, state.vibe, actions]);
+  }, [activeSlide, busySlideIds, state.settings, state.vibe, actions]);
 
   if (!isOpen) return null;
 
@@ -5187,7 +5210,7 @@ Original request: ${userPrompt}`;
           </div>
         ) : (
           <div className="panel-quick-actions">
-            {quickActionBusy ? (
+            {activeSlide && busySlideIds.has(activeSlide.id) ? (
               <div className="panel-quick-running">
                 <div className="panel-quick-running-label">
                   <span className="panel-quick-spinner" />
@@ -5203,7 +5226,7 @@ Original request: ${userPrompt}`;
                   {/* Quick Fixes dropdown */}
                   <button
                     className={`panel-action-btn panel-action-btn--primary ${showMoreActions ? 'panel-action-btn--active' : ''}`}
-                    disabled={quickActionBusy || isLoading}
+                    disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
                     onClick={() => { setShowMoreActions(!showMoreActions); setShowSlideTemplatePicker(false); }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -5218,7 +5241,7 @@ Original request: ${userPrompt}`;
                   {/* Reimagine Slide */}
                   <button
                     className="panel-action-btn"
-                    disabled={quickActionBusy || isLoading}
+                    disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
                     onClick={handleReimagineSlide}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -5231,7 +5254,7 @@ Original request: ${userPrompt}`;
                   {/* Translate to Arabic */}
                   <button
                     className="panel-action-btn"
-                    disabled={quickActionBusy || isLoading}
+                    disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
                     onClick={() => handleQuickAction(ARABIC_TRANSLATION_PROMPT, 'Translate to Arabic')}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -5244,7 +5267,7 @@ Original request: ${userPrompt}`;
                   {/* Template switcher */}
                   <button
                     className={`panel-action-btn ${showSlideTemplatePicker ? 'panel-action-btn--active' : ''}`}
-                    disabled={quickActionBusy || isLoading}
+                    disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
                     onClick={() => { setShowSlideTemplatePicker(!showSlideTemplatePicker); setShowMoreActions(false); }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -5273,7 +5296,7 @@ Original request: ${userPrompt}`;
                               <button
                                 key={id}
                                 className="panel-quick-pill panel-quick-pill-sm"
-                                disabled={quickActionBusy || isLoading}
+                                disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
                                 onClick={() => { handleQuickAction(actionPrompt, label); setShowMoreActions(false); }}
                               >
                                 {label}
@@ -5283,7 +5306,7 @@ Original request: ${userPrompt}`;
                               <button
                                 key={id}
                                 className="panel-quick-pill panel-quick-pill-sm"
-                                disabled={quickActionBusy || isLoading}
+                                disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
                                 onClick={() => { handleQuickAction(actionPrompt, label); setShowMoreActions(false); }}
                               >
                                 {label}
@@ -5307,27 +5330,29 @@ Original request: ${userPrompt}`;
                         currentTemplateId={activeSlide.templateId}
                         onSelect={async (templateId) => {
                           setShowSlideTemplatePicker(false);
-                          if (!templateId || templateId === activeSlide.templateId) return;
-                          setQuickActionBusy(true);
+                          if (!templateId || !activeSlide) return;
+                          const sid = activeSlide.id;
+                          setBusySlideIds(prev => new Set(prev).add(sid));
                           setActiveQuickAction(`Switch to ${templateId}`);
                           try {
                             const currentState = stateRef.current;
-                            const slideIdx = currentState.slides.findIndex(s => s.id === activeSlide.id);
+                            const freshSlide = currentState.slides.find(s => s.id === sid) || activeSlide;
+                            const slideIdx = currentState.slides.findIndex(s => s.id === sid);
                             const switchSettings = { ...currentState.settings, model: currentState.settings.routerModel || currentState.settings.model, vibe: currentState.vibe };
                             const customTemplate = currentState.customTemplates?.find(t => t.id === templateId);
                             const deckContext = buildDeckContextForSwitch(currentState.slides, slideIdx);
                             const transformedHtml = await transformSlideToTemplate(
-                              activeSlide.html, templateId, switchSettings, customTemplate,
+                              freshSlide.html, templateId, switchSettings, customTemplate,
                               { slideNumber: slideIdx + 1, totalSlides: currentState.slides.length },
                               deckContext, null
                             );
-                            const newTitle = extractTitleFromHTML(transformedHtml) || activeSlide.title;
-                            actions.updateSlide(activeSlide.id, { html: transformedHtml, type: templateId, templateId, title: newTitle, pptxRendererCode: null });
+                            const newTitle = extractTitleFromHTML(transformedHtml) || freshSlide.title;
+                            actions.updateSlide(sid, { html: transformedHtml, type: templateId, templateId, title: newTitle, customCSS: '', pptxRendererCode: null });
                             addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${templateId}</strong></div>`, { isHTML: true });
                           } catch (err) {
                             addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Template switch failed: ${err.message}</div>`, { isHTML: true });
                           } finally {
-                            setQuickActionBusy(false);
+                            setBusySlideIds(prev => { const next = new Set(prev); next.delete(sid); return next; });
                             setActiveQuickAction('');
                           }
                         }}

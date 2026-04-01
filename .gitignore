@@ -34,7 +34,7 @@ npm-debug.log*
 # Generated / temporary
 screenshot-pw.mjs
 template-screenshots/
-scripts/sim-output/
+scripts/
 
 # Uploaded files
 uploads/

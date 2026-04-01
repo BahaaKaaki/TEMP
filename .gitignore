@@ -34,6 +34,7 @@ npm-debug.log*
 # Generated / temporary
 screenshot-pw.mjs
 template-screenshots/
+scripts/
 
 # Uploaded files
 uploads/
@@ -48,10 +49,16 @@ app-logs/
 # BMAD / project docs
 _bmad/
 CHAT_CONTEXT.md
-PROJECT_REFERENCE.md
+docs/AI_ASSISTANT_ARCHITECTURE.md
+docs/TECHNICAL_RESEARCH_REPORT.md
+docs/plans/
 
-# Cursor
+# Cursor (ignore everything except specific rules we want tracked)
 .cursor/
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/project-reference.mdc
+!.cursor/rules/pwc-api-reference.mdc
 
 # Temp diff files
 temp_diff*.txt

@@ -1,0 +1,22 @@
+---
+description: PwC GenAI API reference for model selection and API usage
+globs:
+  - "slide-generator/src/services/ai/**"
+  - "backend/src/modules/ai-proxy/**"
+  - "backend/src/config/env.ts"
+  - "backend/.env*"
+alwaysApply: true
+---
+
+# PwC GenAI Shared Services API Reference
+
+When working on AI service code, model configuration, or API proxy logic, read `docs/PWC_GENAI_API_REFERENCE.md` for verified details on:
+
+- Available models (168 across Azure, OpenAI, Vertex AI, Bedrock)
+- Endpoint compatibility (Chat Completions vs Responses API)
+- Web search behavior and citation format
+- Model role recommendations for Edwin's task pipeline
+- Provider prefix mapping (`azure.*`, `openai.*`, `vertex_ai.*`, `bedrock.*`)
+- Key constraints (e.g., Responses API only works with `openai.*` models)
+
+The reference was tested and verified on 2026-03-31 with API key from `backend/.env`.

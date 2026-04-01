@@ -53,6 +53,7 @@ export {
   currentDateString,
   routeRequest,
   aiRouteRequest,
+  classifyRequest,
 } from './ai/router.js';
 
 // ── cssExtraction.js — CSS extraction + context-fetch detection ──────────────

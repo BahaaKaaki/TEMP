@@ -211,6 +211,7 @@ export default function SmartActionCard({
   imageVibe = 'default',
   onImageVibeChange = null,
   debugMode = false,
+  routerAlreadySearched = false,
 }) {
   const [selectedTemplate, setSelectedTemplate] = useState(routeResult?.templateMatch?.templateId || null);
   const [showDebug, setShowDebug] = useState(false);
@@ -474,33 +475,35 @@ export default function SmartActionCard({
             </div>
           )}
 
-          {/* Per-step web search toggle — always visible */}
-          <div className="sac-step-search-row">
-            <button
-              type="button"
-              className={`sac-search-pill ${step.searchQuery ? 'active' : ''}`}
-              title={step.searchQuery ? `Search: ${step.searchQuery}` : 'Enable web search for this step'}
-              onClick={() => {
-                if (step.searchQuery) {
-                  updatePlanStep(i, { searchQuery: null });
-                } else {
-                  updatePlanStep(i, { searchQuery: step.instruction?.slice(0, 80) || 'search query' });
-                }
-              }}
-            >
-              <span className="sac-search-icon">&#x2315;</span>
-              Web search
-            </button>
-            {step.searchQuery && (
-              <input
-                type="text"
-                className="sac-search-query-input"
-                value={step.searchQuery}
-                onChange={(e) => updatePlanStep(i, { searchQuery: e.target.value })}
-                placeholder="Search query for this step..."
-              />
-            )}
-          </div>
+          {/* Per-step web search toggle — hidden when router already searched (unless step has searchGoal) */}
+          {(!routerAlreadySearched || step.searchGoal) && (
+            <div className="sac-step-search-row">
+              <button
+                type="button"
+                className={`sac-search-pill ${step.searchQuery ? 'active' : ''}`}
+                title={step.searchQuery ? `Search: ${step.searchQuery}` : 'Enable web search for this step'}
+                onClick={() => {
+                  if (step.searchQuery) {
+                    updatePlanStep(i, { searchQuery: null, searchGoal: null });
+                  } else {
+                    updatePlanStep(i, { searchQuery: step.instruction?.slice(0, 80) || 'search query' });
+                  }
+                }}
+              >
+                <span className="sac-search-icon">&#x2315;</span>
+                Web search
+              </button>
+              {step.searchQuery && (
+                <input
+                  type="text"
+                  className="sac-search-query-input"
+                  value={step.searchQuery}
+                  onChange={(e) => updatePlanStep(i, { searchQuery: e.target.value })}
+                  placeholder="Search query for this step..."
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
     );

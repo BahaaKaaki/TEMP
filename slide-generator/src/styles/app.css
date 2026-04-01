@@ -4037,6 +4037,10 @@ body {
   font-weight: 500;
 }
 
+.panel-context-bar .panel-search-pill {
+  margin-left: auto;
+}
+
 .panel-context-title {
   color: #94a3b8;
   font-weight: 400;
@@ -4072,8 +4076,8 @@ body {
 
 /* Three-button action bar: [Quick Fixes v] [Translate to Arabic] [Template v] */
 .panel-action-bar {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: 6px;
 }
 
@@ -4082,7 +4086,6 @@ body {
   align-items: center;
   justify-content: center;
   gap: 5px;
-  flex: 1 1 auto;
   padding: 7px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
@@ -4112,14 +4115,14 @@ body {
   color: var(--accent, #8E1E1E);
 }
 
-.panel-action-btn--arabic {
+.panel-action-btn--primary {
   background: #fdf2f2;
   border-color: #e8c4c4;
   color: #8E1E1E;
   font-weight: 600;
 }
 
-.panel-action-btn--arabic:hover:not(:disabled) {
+.panel-action-btn--primary:hover:not(:disabled) {
   background: #f9e0e0;
   border-color: #8E1E1E;
   color: #6b1616;

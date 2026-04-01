@@ -1,0 +1,493 @@
+
+================================================================================
+SLIDE 1: Lebanon’s war has reignited and widened a national crisis
+Type: cover  |  Chars: 103
+================================================================================
+{"title": "Lebanon’s war has reignited and widened a national crisis", "subtitle": "Conflict overview"}
+
+================================================================================
+SLIDE 2: The conflict has shifted from border friction to renewed war
+Type: freestyle  |  Chars: 3205
+================================================================================
+<style>
+  .slide .frame .takeaway-banner {
+    background: var(--accent);
+    color: var(--on-accent);
+    padding: 12px 20px;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+  }
+  .slide .frame .timeline {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 25px;
+    position: relative;
+    padding: 0 10px;
+  }
+  .slide .frame .timeline::before {
+    content: "";
+    position: absolute;
+    top: 12px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+  .slide .frame .timeline-node {
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    padding: 4px 8px;
+    font-size: 11px;
+    font-weight: bold;
+    z-index: 1;
+    border-radius: 12px;
+    text-align: center;
+  }
+  .slide .frame .implications-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+  .slide .frame .card {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    padding: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+    border-radius: 0 4px 4px 0;
+  }
+  .slide .frame .card h3 {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    margin: 0 0 8px 0;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .slide .frame .card p {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    line-height: 1.4;
+    margin: 0;
+    color: var(--body);
+  }
+</style>
+
+<div class="slide">
+  <h1 class="title">The conflict has shifted from border friction to renewed war</h1>
+  <h2 class="subtitle">Situation snapshot</h2>
+  <div class="frame">
+    <div class="takeaway-banner">
+      Renewed hostilities since 2 March 2026 have escalated into full-scale conflict, characterized by heavy cross-border fire and deepening ground operations.
+    </div>
+    
+    <div class="timeline">
+      <div class="timeline-node">Nov 2024<br>Ceasefire</div>
+      <div class="timeline-node">2 Mar 2026<br>Escalation</div>
+      <div class="timeline-node">12 Mar 2026<br>Intensification</div>
+      <div class="timeline-node">Late Mar 2026<br>Ground Expansion</div>
+    </div>
+
+    <div class="implications-grid">
+      <div class="card">
+        <h3>Military Picture</h3>
+        <p><strong>Heavy exchange:</strong> UNIFIL recorded 120+ projectiles and 120+ artillery strikes on 12 March. Israeli operations now include deeper ground incursions in southern Lebanon.</p>
+      </div>
+      <div class="card">
+        <h3>Political Context</h3>
+        <p><strong>Fragile stability:</strong> The post-2024 ceasefire framework has collapsed. Diplomatic efforts are currently overshadowed by rapid tactical escalation and hardening positions on both sides.</p>
+      </div>
+      <div class="card">
+        <h3>Humanitarian Impact</h3>
+        <p><strong>Perfect storm:</strong> Civilians bear the brunt of the crisis. Widespread displacement and infrastructure damage are creating a rapidly deteriorating environment across southern regions.</p>
+      </div>
+    </div>
+  </div>
+  <footer class="footer"><span>Source: UN in Lebanon, UNIFIL, and AP reporting, March 2026</span><span>Page 1</span></footer>
+</div>
+
+================================================================================
+SLIDE 3: Civilians are bearing the brunt through mass displacement and fear
+Type: freestyle  |  Chars: 3140
+================================================================================
+<style>
+  .slide .frame .layout-container {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+    height: 100%;
+  }
+  .slide .frame .hero-metric {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    background: var(--surface-alt);
+    padding: 24px;
+    border-radius: 4px;
+    border-left: 4px solid var(--accent);
+  }
+  .slide .frame .hero-metric .number {
+    font-family: Georgia, serif;
+    font-size: 56px;
+    color: var(--accent);
+    line-height: 1;
+    margin-bottom: 8px;
+  }
+  .slide .frame .hero-metric .label {
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 16px;
+    color: var(--heading);
+  }
+  .slide .frame .details-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .slide .frame .detail-card {
+    background: var(--surface);
+    padding: 12px 16px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+  }
+  .slide .frame .detail-card strong {
+    display: block;
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    color: var(--heading);
+    margin-bottom: 4px;
+  }
+  .slide .frame .detail-card span {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--body);
+    line-height: 1.4;
+  }
+  .slide .frame .bottom-strip {
+    grid-column: span 2;
+    background: var(--warning-soft);
+    padding: 12px 16px;
+    border-radius: 4px;
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    color: var(--heading);
+    border-left: 4px solid var(--warning);
+  }
+</style>
+
+<div class="slide">
+  <h1 class="title">Civilians are bearing the brunt through mass displacement and fear</h1>
+  <h2 class="subtitle">Humanitarian toll</h2>
+  <div class="frame">
+    <div class="layout-container">
+      <div class="hero-metric">
+        <div class="number">815k</div>
+        <div class="label">People uprooted by violence in Lebanon as of March 2026</div>
+      </div>
+      <div class="details-panel">
+        <div class="detail-card">
+          <strong>Displacement scale</strong>
+          <span>Nearly 700,000 people, including 200,000 children, were displaced within the first week of escalation, marking a second shock for vulnerable households.</span>
+        </div>
+        <div class="detail-card">
+          <strong>Shelter and infrastructure stress</strong>
+          <span>Intensified hostilities are rapidly degrading critical infrastructure, leaving displaced populations with limited access to essential services and safe shelter.</span>
+        </div>
+        <div class="detail-card">
+          <strong>Protection concerns</strong>
+          <span>ICRC emphasizes that evacuation notices do not absolve parties of their obligations under the laws of war to protect civilians and civilian objects.</span>
+        </div>
+      </div>
+      <div class="bottom-strip">
+        <strong>Implication:</strong> Humanitarian needs are currently outrunning available funding and the country's remaining absorptive capacity.
+      </div>
+    </div>
+  </div>
+  <footer class="footer"><span>Source: UN, UNICEF, and ICRC statements, March 2026</span><span>Page 1</span></footer>
+</div>
+
+================================================================================
+SLIDE 4: The war is compounding an already severe economic and fiscal collapse
+Type: freestyle  |  Chars: 2478
+================================================================================
+<style>
+  .slide .frame .logic-chain {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    height: 100%;
+    padding: 10px;
+  }
+  .slide .frame .card {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .slide .frame .metric {
+    font-family: Georgia, serif;
+    font-size: 32px;
+    color: var(--accent);
+    font-weight: bold;
+  }
+  .slide .frame .label {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .slide .frame .description {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--body);
+  }
+  .slide .frame .footer-box {
+    grid-column: span 3;
+    background: var(--accent-soft);
+    padding: 16px;
+    border-radius: 4px;
+    text-align: center;
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    color: var(--accent);
+  }
+</style>
+
+<div class="slide">
+  <h1 class="title">The war is compounding an already severe economic and fiscal collapse</h1>
+  <h2 class="subtitle">Economic damage</h2>
+  <div class="frame">
+    <div class="logic-chain">
+      <div class="card">
+        <div class="label">Pre-war fragility</div>
+        <div class="metric">44%</div>
+        <div class="description">Poverty rate has more than tripled over the last decade, leaving the population with minimal resilience to new shocks.</div>
+      </div>
+      <div class="card">
+        <div class="label">Conflict impact</div>
+        <div class="metric">$14B</div>
+        <div class="description">Total economic cost including $6.8B in physical damage and $7.2B in economic losses as of December 2024.</div>
+      </div>
+      <div class="card">
+        <div class="label">Recovery needs</div>
+        <div class="metric">$11B</div>
+        <div class="description">Estimated reconstruction and recovery requirements, significantly straining a state with limited fiscal capacity.</div>
+      </div>
+      <div class="footer-box">
+        Every additional month of conflict further erodes state capacity and exponentially increases long-term humanitarian and reconstruction costs.
+      </div>
+    </div>
+  </div>
+  <footer class="footer"><span>Source: World Bank RDNA (2025), Economic Monitor (2026), Poverty Release (2024)</span><span>1</span></footer>
+</div>
+
+================================================================================
+SLIDE 5: Diplomacy is failing to stabilize the border despite existing mechanisms
+Type: freestyle  |  Chars: 3375
+================================================================================
+<style>
+  .slide .frame .layout-container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    height: 100%;
+  }
+  .slide .frame .column-title {
+    font-family: Arial, sans-serif;
+    font-size: 14px;
+    font-weight: bold;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    letter-spacing: 0.5px;
+  }
+  .slide .frame .card {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .slide .frame .card p {
+    font-family: Arial, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    color: var(--body);
+    margin: 0;
+  }
+  .slide .frame .card strong {
+    color: var(--heading);
+    display: block;
+    margin-bottom: 4px;
+  }
+  .slide .frame .risk-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px;
+    background: var(--surface-alt);
+    margin-bottom: 8px;
+    border-radius: 4px;
+  }
+  .slide .frame .risk-label {
+    font-family: Georgia, serif;
+    font-weight: bold;
+    font-size: 14px;
+    color: var(--heading);
+    min-width: 120px;
+  }
+  .slide .frame .risk-desc {
+    font-family: Arial, sans-serif;
+    font-size: 12px;
+    color: var(--body);
+  }
+</style>
+
+<div class="slide">
+  <h1 class="title">Diplomacy is failing to stabilize the border despite existing mechanisms</h1>
+  <h2 class="subtitle">Political-security outlook</h2>
+  <div class="frame">
+    <div class="layout-container">
+      <div class="left-col">
+        <div class="column-title">Why de-escalation failed</div>
+        <div class="card">
+          <p><strong>Incomplete Security Framework</strong> -- UNIFIL and Lebanese Army patrols remain limited by ongoing Israeli presence in contested areas, preventing full restoration of state control.</p>
+        </div>
+        <div class="card">
+          <p><strong>Humanitarian Crisis</strong> -- The March 2026 Flash Appeal confirms the conflict has transcended localized border skirmishes, requiring urgent international intervention.</p>
+        </div>
+        <div class="card">
+          <p><strong>Regional Entanglement</strong> -- Lebanon de-escalation is now tethered to broader negotiations between Israel, Iran, and regional proxies, complicating standalone settlements.</p>
+        </div>
+      </div>
+      <div class="right-col">
+        <div class="column-title">What happens next</div>
+        <div class="risk-item">
+          <div class="risk-label">Limited Border War</div>
+          <div class="risk-desc">Continued tactical exchanges along the Blue Line with high risk of miscalculation.</div>
+        </div>
+        <div class="risk-item">
+          <div class="risk-label">Prolonged Occupation</div>
+          <div class="risk-desc">Israeli forces maintain buffer zones in southern Lebanon, deepening institutional paralysis.</div>
+        </div>
+        <div class="risk-item">
+          <div class="risk-label">Regional Spillover</div>
+          <div class="risk-desc">Escalation risks rise as Lebanon becomes a primary theater for wider regional power struggles.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <footer class="footer"><span>Source: UNIFIL, UN Humanitarian Coordinator, Reuters/Guardian (Mar 2026); Outlook contingent on regional diplomacy</span><span>Page 1</span></footer>
+</div>
+
+================================================================================
+SLIDE 6: Lebanon now faces three urgent priorities to limit further collapse
+Type: freestyle  |  Chars: 3169
+================================================================================
+<style>
+  .slide .frame .priority-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    height: 100%;
+    padding: 10px 0;
+  }
+  .slide .frame .priority-card {
+    background: var(--surface);
+    border-left: 4px solid var(--accent);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+  .slide .frame .priority-title {
+    font-family: Arial, sans-serif;
+    font-weight: bold;
+    font-size: 16px;
+    color: var(--heading);
+    margin: 0;
+  }
+  .slide .frame .action-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: var(--body);
+  }
+  .slide .frame .action-list li {
+    margin-bottom: 8px;
+    padding-left: 12px;
+    position: relative;
+  }
+  .slide .frame .action-list li::before {
+    content: "•";
+    color: var(--accent);
+    position: absolute;
+    left: 0;
+  }
+  .slide .frame .risk-box {
+    margin-top: auto;
+    background: var(--danger-soft);
+    padding: 8px;
+    font-size: 11px;
+    color: var(--danger);
+    border-radius: 2px;
+  }
+  .slide .frame .takeaway-banner {
+    grid-column: span 3;
+    background: var(--surface-alt);
+    padding: 12px 20px;
+    text-align: center;
+    font-family: Georgia, serif;
+    font-style: italic;
+    font-size: 16px;
+    color: var(--heading);
+    border-top: 1px solid var(--border);
+  }
+</style>
+
+<div class="slide">
+  <h1 class="title">Lebanon now faces three urgent priorities to limit further collapse</h1>
+  <h2 class="subtitle">Implications and actions</h2>
+  <div class="frame">
+    <div class="priority-grid">
+      <div class="priority-card">
+        <h3 class="priority-title">Stop the war</h3>
+        <ul class="action-list">
+          <li>Secure immediate ceasefire to halt civilian casualties</li>
+          <li>Prioritize diplomatic de-escalation channels</li>
+        </ul>
+        <div class="risk-box"><strong>Risk:</strong> Continued fighting renders all recovery efforts ineffective.</div>
+      </div>
+      <div class="priority-card">
+        <h3 class="priority-title">Protect civilians</h3>
+        <ul class="action-list">
+          <li>Scale Flash Appeal funding for March-May 2026</li>
+          <li>Expand rapid delivery of essential humanitarian aid</li>
+        </ul>
+        <div class="risk-box"><strong>Risk:</strong> Worsening humanitarian crisis triggers mass displacement.</div>
+      </div>
+      <div class="priority-card">
+        <h3 class="priority-title">Rebuild with conditions</h3>
+        <ul class="action-list">
+          <li>Deploy US$250M LEAP funds for infrastructure</li>
+          <li>Link financing to governance and security reforms</li>
+        </ul>
+        <div class="risk-box"><strong>Risk:</strong> Unconditional aid risks mismanagement and lack of sustainability.</div>
+      </div>
+      <div class="takeaway-banner">
+        Without de-escalation, humanitarian relief and reconstruction will both remain insufficient.
+      </div>
+    </div>
+  </div>
+  <footer class="footer"><span>Source: UN in Lebanon (2026); World Bank (2025)</span><span>Page 03</span></footer>
+</div>

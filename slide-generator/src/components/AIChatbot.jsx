@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
 import { PRIMARY_ACTIONS, MORE_ACTIONS, ARABIC_TRANSLATION_PROMPT } from '../constants/slideActions';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
@@ -1166,32 +1166,8 @@ export default function AIChatbot() {
       return;
     }
 
-    // Auto-name deck from first user prompt (fire-and-forget)
-    if (currentState.deckName === 'Untitled Deck' || !currentState.deckName) {
-      const namingText = userPrompt.trim();
-      (async () => {
-        try {
-          const fastSettings = {
-            ...currentState.settings,
-            model: currentState.settings.fastModel || currentState.settings.model,
-            maxTokens: 50,
-            temperature: 0.3,
-          };
-          const title = await callWithModelFallback(
-            fastSettings,
-            'Generate a concise deck title (3-6 words, no quotes, no punctuation at end) for a presentation. Return ONLY the title text.',
-            namingText
-          );
-          const clean = (title || '').trim().replace(/^["']|["']$/g, '').replace(/[.!?]$/, '').trim();
-          if (clean && clean.length > 2 && clean.length < 80 && stateRef.current.deckName === 'Untitled Deck') {
-            isAutoNamingRef.current = true;
-            actions.setDeckName(clean);
-          }
-        } catch (e) {
-          console.warn('[AutoName] Failed to generate deck title:', e.message);
-        }
-      })();
-    }
+    // Auto-name deck: deferred to post-execution — uses the first slide's title
+    // (no AI call needed; see autoNameFromFirstSlide in executeFromSmartAction)
 
     // Parse vibe from prompt - user can say "in executive vibe" or "use modern style"
     const { selectedVibe, cleanedPrompt: promptWithoutVibe } = parseVibeFromPrompt(userPrompt);
@@ -1239,14 +1215,70 @@ export default function AIChatbot() {
     setAgentModeProgress(null); // Clear previous execution history
 
     // Show initial progress — agent mode will override with its own phases
+    setProgress({ phase: 'Classifying...', current: 0, total: 1 });
+
+    // ─── UNIFIED CLASSIFIER: auto-detect scope instead of manual toggle ───
+    let autoScope = 'planner'; // default: full planner path
+    let classifierNeedsSearch = null; // Tier 1 verdict on search (null = no opinion)
+    if (activeSlide && !useAgenticMode && !useReportMode) {
+      try {
+        const classification = await classifyRequest(effectivePrompt, {
+          slides: currentState.slides,
+          activeSlideIndex: currentSlideIndex,
+          activeSlide,
+        }, currentState.settings);
+        console.log('[Unified] Classifier result:', classification);
+        classifierNeedsSearch = classification.needsSearch;
+
+        if (classification.scope === 'qa' && classification.action === 'answer') {
+          autoScope = 'qa';
+        } else if (!classification.needsPlanner && (classification.scope === 'single_slide')) {
+          const targets = classification.targetSlides || [];
+          const targetsDifferentSlide = targets.length > 0 && !targets.includes(currentSlideIndex);
+          if (targetsDifferentSlide) {
+            console.log('[Unified] Cross-slide reference detected (target: %o, active: %d) → routing to planner', targets, currentSlideIndex);
+            autoScope = 'planner';
+          } else {
+            autoScope = 'direct';
+          }
+        }
+      } catch (classifyErr) {
+        console.warn('[Unified] Classifier failed, falling back to planner:', classifyErr.message);
+      }
+    }
+
+    // ─── Q&A: direct response, no slide changes ───
+    if (autoScope === 'qa') {
+      try {
+        setProgress({ phase: 'Thinking...', current: 0, total: 1 });
+        const speedModel = currentState.settings.speedMode === 'thinking'
+          ? currentState.settings.model
+          : currentState.settings.fastModel;
+        const qaSettings = { ...currentState.settings, model: speedModel || currentState.settings.model };
+        const qaResponse = await chatWithContext(effectivePrompt, '', qaSettings);
+        addMessage('assistant', qaResponse || 'I could not generate a response.');
+      } catch (qaErr) {
+        console.error('[Unified] Q&A failed:', qaErr);
+        addMessage('assistant', `Sorry, I ran into an error: ${qaErr.message}`);
+      } finally {
+        setIsLoading(false);
+        setProgress(null);
+      }
+      return;
+    }
+
     setProgress({ phase: 'Working...', current: 0, total: 1 });
 
-    // ─── THIS SLIDE MODE: lightweight flash router + direct improve/fill ───
-    if (contextMode === 'slide' && activeSlide) {
+    // ─── DIRECT EXECUTION: single-slide actions (edit, improve, fill, template switch) ───
+    if (autoScope === 'direct' && activeSlide) {
       try {
-        // Generation uses the main model (Opus); only classification uses the fast model
+        // Speed mode determines generation model: 'thinking' = main model, 'fast' = fast model
+        const genModel = currentState.settings.speedMode === 'thinking'
+          ? currentState.settings.model
+          : (currentState.settings.fastModel || currentState.settings.model);
         const slideSettings = {
           ...currentState.settings,
+          model: genModel,
           vibe: currentState.vibe || state.vibe,
         };
         const searchConfigured = currentState.settings.chatRouterSearchEnabled !== false
@@ -1257,11 +1289,12 @@ export default function AIChatbot() {
         const slideIsEmpty = isSlideEffectivelyEmpty(activeSlide);
 
         // ── Parallel: classify + search at the same time for non-empty slides ──
-        // For empty slides, skip classification (no template/reference context needed)
-        let miniRoute = { needsSearch: slideSearchEnabled, referenceSlides: [], isTemplateSwitch: false, templateId: null };
+        // If Tier 1 classifier already said needsSearch: false, skip speculative search entirely
+        const searchEnabled = currentState.settings.searchToggle !== false;
+        let miniRoute = { needsSearch: searchEnabled, referenceSlides: [], isTemplateSwitch: false, templateId: null };
 
         const doClassify = fastModel && !slideIsEmpty;
-        const doSearch = searchConfigured && slideSearchEnabled;
+        const doSearch = searchConfigured && searchEnabled && classifierNeedsSearch !== false;
 
         const classifyPromise = doClassify ? (async () => {
           const classifySettings = { ...slideSettings, model: fastModel, maxTokens: 150, temperature: 0.0 };
@@ -1270,14 +1303,14 @@ export default function AIChatbot() {
           const classifyResult = await callWithModelFallback(
             classifySettings,
             'You classify slide editing requests. Return ONLY valid JSON, no markdown.',
-            `User request: "${effectivePrompt}"\nCurrent slide: #${slideIdx + 1} "${activeSlide.title}" (template: ${activeSlide.templateId || 'custom'})\nAll slides: ${slideList}\n\nReturn JSON: {"needsSearch": boolean (true if request needs current data/facts/statistics), "referenceSlides": [slide numbers if user references other slides, e.g. "like slide 3"], "isTemplateSwitch": boolean (true if user wants to change the template/layout), "templateId": string or null}`
+            `User request: "${effectivePrompt}"\nCurrent slide: #${slideIdx + 1} "${activeSlide.title}" (template: ${activeSlide.templateId || 'custom'})\nAll slides: ${slideList}\n\nReturn JSON: {"needsSearch": boolean (true if request needs current data/facts/statistics), "referenceSlides": [slide numbers if user references other slides, e.g. "like slide 3"], "isTemplateSwitch": boolean, "templateId": string or null}\n\nisTemplateSwitch rules:\n- TRUE only when user explicitly asks to SWITCH or CHANGE the template type (e.g. "switch to comparison", "change to timeline", "use the kpi template")\n- FALSE for content/structural edits like "add a column", "remove a row", "make it a 3-column layout", "add more detail", "change the title"\n- FALSE for styling changes like "make it bold", "change colors"\n- When in doubt, set false — the edit path handles layout changes fine`
           );
           if (classifyResult) {
             const cleaned = classifyResult.replace(/```json?\n?|\n?```/g, '').trim();
             try {
               const parsed = JSON.parse(cleaned);
               return {
-                needsSearch: slideSearchEnabled && (parsed.needsSearch ?? true),
+                needsSearch: searchEnabled && (parsed.needsSearch ?? true),
                 referenceSlides: Array.isArray(parsed.referenceSlides) ? parsed.referenceSlides.map(n => Number(n) - 1).filter(n => n >= 0 && n < currentState.slides.length) : [],
                 isTemplateSwitch: !!parsed.isTemplateSwitch,
                 templateId: parsed.templateId || null,
@@ -1317,7 +1350,8 @@ export default function AIChatbot() {
         // If classifier says no search needed, discard any search result we fetched speculatively
         const useSearchResult = doSearch && miniRoute.needsSearch && searchResult;
 
-        // Template switch: delegate to transformSlideToTemplate if flash router detected it
+        // Template switch: delegate to transformSlideToTemplate if flash router detected it.
+        // If the template is not found or the HTML comes back unchanged, fall through to edit path.
         if (miniRoute.isTemplateSwitch && miniRoute.templateId) {
           setProgress({ phase: 'Switching template...', current: 0, total: 1 });
           const customTemplate = currentState.customTemplates?.find(t => t.id === miniRoute.templateId);
@@ -1328,13 +1362,16 @@ export default function AIChatbot() {
             { slideNumber: currentIndex + 1, totalSlides: currentState.slides.length },
             deckContext, effectivePrompt.trim() || null
           );
-          const newTitle = extractTitleFromHTML(transformedHtml) || activeSlide.title;
-          actions.updateSlide(activeSlide.id, { html: transformedHtml, type: miniRoute.templateId, templateId: miniRoute.templateId, pptxRendererCode: null });
-          addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${miniRoute.templateId}</strong></div>`, { isHTML: true });
-          setIsLoading(false);
-          setProgress(null);
-          abortControllerRef.current = null;
-          return;
+          if (transformedHtml && transformedHtml !== activeSlide.html) {
+            const newTitle = extractTitleFromHTML(transformedHtml) || activeSlide.title;
+            actions.updateSlide(activeSlide.id, { html: transformedHtml, type: miniRoute.templateId, templateId: miniRoute.templateId, pptxRendererCode: null });
+            addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${miniRoute.templateId}</strong></div>`, { isHTML: true });
+            setIsLoading(false);
+            setProgress(null);
+            abortControllerRef.current = null;
+            return;
+          }
+          console.log('[ThisSlide] Template switch returned unchanged HTML, falling through to edit path');
         }
 
         // Build reference slide context from flash router
@@ -1908,8 +1945,8 @@ export default function AIChatbot() {
           agentMode: shouldRunAgent,
           // Image-based mode — tell router to prefer image-content templates
           preferImageSlides: useImageMode && !!freshState.settings.imageModel,
-          // Panel scope — helps router decide edit_slide vs create_slide
-          contextMode,
+          // Unified mode: classifier auto-detects scope, tell router "deck" context
+          contextMode: 'deck',
         };
 
         // ROUTING: Use AI router if enabled, otherwise rule-based
@@ -2171,9 +2208,10 @@ export default function AIChatbot() {
         //   addMessage('assistant', planMessage);
         // }
 
-        // "This Slide" mode: auto-execute without plan review (direct action)
-        // "Deck" mode: show SmartActionCard for user review/modification
-        if (contextMode === 'slide') {
+        // Auto-execute: plans with < 5 non-destructive steps skip the review card
+        const hasDestructive = planSteps.some(s => s.action === 'delete_slide');
+        const shouldAutoExecute = planSteps.length > 0 && planSteps.length < 5 && !hasDestructive;
+        if (shouldAutoExecute) {
           setPendingSmartAction({ ...smartActionPayload, autoExecute: true });
         } else {
           setPendingSmartAction(smartActionPayload);
@@ -2209,6 +2247,13 @@ export default function AIChatbot() {
     const { userPrompt, getFreshState, settings, capturedSlideId, capturedSlideIdx, vibeHint, fullKnowledgeContext, fromAgent } = pendingSmartAction;
 
     const routeResult = modifiedRouteResult;
+
+    // Speed mode determines generation model
+    const genModel = settings.speedMode === 'thinking'
+      ? settings.model
+      : (settings.fastModel || settings.model);
+    const executionSettings = { ...settings, model: genModel };
+    console.log('[SmartAction] Speed mode:', settings.speedMode, '→ generation model:', genModel);
 
     setIsLoading(true);
     abortControllerRef.current = new AbortController();
@@ -2249,12 +2294,14 @@ export default function AIChatbot() {
       // Capture deck identity at submission time — agent only modifies THIS deck
       // IMPORTANT: Get fresh state before using it
       const freshState = getFreshState();
-      const capturedDeckName = freshState.deckName;
+      let capturedDeckName = freshState.deckName;
 
       // Pre-search key facts from router — threaded into every slide for grounding
       const searchRawContext = routeResult.searchRawContext || '';
+      const routerAlreadySearched = !!searchRawContext;
       if (searchRawContext) {
-        console.log('[SmartAction] Router search context available for all slides:', searchRawContext.length, 'chars');
+        console.log('[SmartAction] Router search context available for all slides:', searchRawContext.length, 'chars',
+          '(per-step search skipped unless step has searchGoal)');
       }
 
       console.log('[SmartAction] Executing plan with', totalSteps, 'steps, parallel batch size:', parallelBatchSize, planSteps);
@@ -2342,6 +2389,20 @@ export default function AIChatbot() {
               title: slideData.title,
             };
             createdSlides.push({ index: lastInsertedIndex + 1, title: slideData.title });
+
+            // Auto-name deck from the first created slide's title
+            if (createdSlides.length === 1 && slideData.title) {
+              const current = getFreshState();
+              if (current.deckName === 'Untitled Deck' || !current.deckName) {
+                const clean = slideData.title.replace(/^["']|["']$/g, '').replace(/[.!?]$/, '').trim();
+                if (clean && clean.length > 2 && clean.length < 80) {
+                  isAutoNamingRef.current = true;
+                  actions.setDeckName(clean);
+                  capturedDeckName = clean;
+                  console.log('[AutoName] Deck named from first slide title:', clean);
+                }
+              }
+            }
           }
         }
       };
@@ -2450,7 +2511,23 @@ export default function AIChatbot() {
         }
 
         const freshState = getFreshState();
-        const stepPrompt = step.instruction || userPrompt;
+        // Build step prompt from structured fields if available
+        let stepPrompt = step.instruction || userPrompt;
+        const structuredParts = [];
+        if (step.title) structuredParts.push(`TITLE: ${step.title}`);
+        if (step.subtitle) structuredParts.push(`SUBTITLE: ${step.subtitle}`);
+        if (structuredParts.length > 0) {
+          stepPrompt = structuredParts.join('\n') + '\n' + stepPrompt;
+        }
+        if (Array.isArray(step.facts) && step.facts.length > 0) {
+          stepPrompt += '\n\nKey facts:\n' + step.facts.map(f => `- ${f}`).join('\n');
+        }
+        if (Array.isArray(step.sources) && step.sources.length > 0) {
+          const srcLines = step.sources.map(s =>
+            typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
+          );
+          stepPrompt += '\n\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
+        }
         const stepPromptWithVibe = vibeHint ? `${stepPrompt}\n\n[Design Style: ${vibeHint}]` : stepPrompt;
 
         // Map action names to user-friendly labels
@@ -2598,11 +2675,16 @@ export default function AIChatbot() {
 
             const pendingSlides = [];
 
-            let stepSettings = settings;
+            let stepSettings = executionSettings;
             // Inject router-level search facts into every slide's prompt for grounding
             let enrichedStepPrompt = stepPromptWithVibe + buildSearchFactsBlock();
             const effectiveSearchQuery = deriveSearchQuery(step);
-            if (effectiveSearchQuery && settings.searchEnabled) {
+            // Per-step search: skip if router already searched (routerAlreadySearched),
+            // UNLESS the step has a searchGoal indicating it needs deeper data.
+            const needsDeeperSearch = !!step.searchGoal;
+            const shouldRunStepSearch = effectiveSearchQuery && settings.searchEnabled
+              && (!routerAlreadySearched || needsDeeperSearch);
+            if (shouldRunStepSearch) {
               const datedQuery = `${effectiveSearchQuery} ${currentDateString()}`;
               console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
@@ -2774,9 +2856,10 @@ export default function AIChatbot() {
             // Inject router-level search facts (same grounding as create_slide)
             editContext += buildSearchFactsBlock();
 
-            // Per-step web search when the router set a searchQuery on this edit step
+            // Per-step web search: only if router didn't already search, or step has searchGoal
             const editSearchQuery = deriveSearchQuery(step);
-            if (editSearchQuery && settings.searchEnabled) {
+            const editNeedsDeeperSearch = !!step.searchGoal;
+            if (editSearchQuery && settings.searchEnabled && (!routerAlreadySearched || editNeedsDeeperSearch)) {
               const datedQuery = `${editSearchQuery} ${currentDateString()}`;
               console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
@@ -2829,7 +2912,7 @@ export default function AIChatbot() {
               const imageMode = slideToEdit.templateId === 'image-full' ? 'full' : 'content';
               const existingImage = extractImageDataUri(slideToEdit.html);
               try {
-                const imageResult = await generateImageSlide(editContext, settings, imageMode, {
+                const imageResult = await generateImageSlide(editContext, executionSettings, imageMode, {
                   layoutGuidance: step.layoutGuidance || step.instruction,
                   vibe: useImageMode ? imageVibe : state.vibe,
                   footerBranding: settings.footerBranding || 'Strategy&',
@@ -2841,7 +2924,7 @@ export default function AIChatbot() {
                 newTitle = imageResult.title || slideToEdit.title;
               } catch (imgErr) {
                 console.warn('[edit_slide] Image regeneration failed, falling back to text edit:', imgErr.message);
-                const result = await improveSlide(slideToEdit, editContext, settings, { slides: freshState.slides, storyline: freshState.storyline });
+                const result = await improveSlide(slideToEdit, editContext, executionSettings, { slides: freshState.slides, storyline: freshState.storyline });
                 newHtml = result.html || result;
                 newCustomCSS = result?.customCSS;
                 newTitle = extractTitleFromHTML(newHtml) || slideToEdit.title;
@@ -2851,7 +2934,7 @@ export default function AIChatbot() {
               const result = await improveSlide(
                 slideToEdit,
                 editContext,
-                settings,
+                executionSettings,
                 { slides: freshState.slides, storyline: freshState.storyline }
               );
               newHtml = result.html || result;
@@ -3034,7 +3117,7 @@ export default function AIChatbot() {
                 const freestyleBatchCtx = b.step.layoutGuidance
                   ? { layoutGuidance: b.step.layoutGuidance }
                   : null;
-                const newSlides = await generateSlides(b.enrichedPrompt, b.settings || settings, 1, getFreshState().slides, null, null, freestyleBatchCtx);
+                const newSlides = await generateSlides(b.enrichedPrompt, b.settings || executionSettings, 1, getFreshState().slides, null, null, freestyleBatchCtx);
                 return { b, newSlides, ok: true };
               } catch (e) {
                 console.warn(`[SmartAction] Freestyle gen failed for step ${b.actualIndex}:`, e.message);
@@ -3057,7 +3140,7 @@ export default function AIChatbot() {
                   const freestyleBatchCtx = b.step.layoutGuidance
                     ? { layoutGuidance: b.step.layoutGuidance }
                     : null;
-                  const newSlides = await generateSlides(b.enrichedPrompt, b.settings || settings, 1, getFreshState().slides, null, null, freestyleBatchCtx);
+                  const newSlides = await generateSlides(b.enrichedPrompt, b.settings || executionSettings, 1, getFreshState().slides, null, null, freestyleBatchCtx);
                   freestyleResults.push({ b, newSlides });
                 } catch (e) {
                   console.warn(`[SmartAction] Freestyle retry also failed for step ${b.actualIndex}:`, e.message);
@@ -3073,7 +3156,7 @@ export default function AIChatbot() {
             for (const b of imageSlides) {
               try {
                 const imageMode = b.step.templateId === 'image-full' ? 'full' : 'content';
-                const result = await generateImageSlide(b.enrichedPrompt, b.settings || settings, imageMode, {
+                const result = await generateImageSlide(b.enrichedPrompt, b.settings || executionSettings, imageMode, {
                   layoutGuidance: b.step.layoutGuidance,
                   vibe: useImageMode ? imageVibe : state.vibe,
                   footerBranding: settings.footerBranding || 'Strategy&',
@@ -3115,8 +3198,9 @@ export default function AIChatbot() {
           // Cover titles are validated against search facts to prevent date hallucination
           for (const b of fixedSlides) {
             const instr = b.step.instruction || '';
-            const titleMatch = instr.match(/TITLE:\s*(.+)/i);
-            const subMatch = instr.match(/SUBTITLE:\s*(.+)/i);
+            // Prefer structured title/subtitle fields from the new router output
+            const titleMatch = b.step.title ? [null, b.step.title] : instr.match(/TITLE:\s*(.+)/i);
+            const subMatch = b.step.subtitle ? [null, b.step.subtitle] : instr.match(/SUBTITLE:\s*(.+)/i);
             let parsedTitle = titleMatch?.[1]?.split('\n')[0]?.trim() || '';
             let parsedSubtitle = subMatch?.[1]?.trim() || '';
             if (!parsedTitle && instr) {
@@ -3278,11 +3362,14 @@ export default function AIChatbot() {
               message: `Step ${actualIndex + 1}/${totalSteps}: Creating slide${step.templateId ? ` (${step.templateId})` : ' (freestyle)'}...`,
             });
 
-            let batchStepSettings = settings;
+            let batchStepSettings = executionSettings;
             // Inject router-level search facts into every slide's prompt for grounding
             let enrichedPrompt = stepPromptWithVibeLocal + buildSearchFactsBlock();
             const effectiveBatchQuery = deriveSearchQuery(step);
-            if (effectiveBatchQuery && settings.searchEnabled) {
+            const batchNeedsDeeperSearch = !!step.searchGoal;
+            const shouldRunBatchSearch = effectiveBatchQuery && settings.searchEnabled
+              && (!routerAlreadySearched || batchNeedsDeeperSearch);
+            if (shouldRunBatchSearch) {
               const datedQuery = `${effectiveBatchQuery} ${currentDateString()}`;
               console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
@@ -4912,9 +4999,12 @@ Original request: ${userPrompt}`;
     setQuickActionBusy(true);
     setActiveQuickAction(actionLabel || 'action');
     try {
+      const genModel = state.settings.speedMode === 'thinking'
+        ? state.settings.model
+        : (state.settings.fastModel || state.settings.model);
       const improveSettings = {
         ...state.settings,
-        model: state.settings.routerModel || state.settings.model,
+        model: genModel,
         vibe: state.vibe,
       };
       const result = await improveSlideWithSearch(activeSlide, actionPrompt, improveSettings, { skipSearch: true });
@@ -4926,6 +5016,42 @@ Original request: ${userPrompt}`;
     } catch (err) {
       console.error('[QuickAction] failed:', err);
       addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Failed: <strong>${actionLabel || 'Quick Action'}</strong></div>`, { isHTML: true });
+    } finally {
+      setQuickActionBusy(false);
+      setActiveQuickAction('');
+    }
+  }, [activeSlide, quickActionBusy, state.settings, state.vibe, actions]);
+
+  const handleReimagineSlide = useCallback(async () => {
+    if (!activeSlide || quickActionBusy) return;
+    if (!hasAnyApiKey(state.settings)) return;
+    setQuickActionBusy(true);
+    setActiveQuickAction('Reimagine Slide');
+    try {
+      const genModel = state.settings.speedMode === 'thinking'
+        ? state.settings.model
+        : (state.settings.fastModel || state.settings.model);
+      const reimagineSettings = { ...state.settings, model: genModel, vibe: state.vibe };
+      const currentState = stateRef.current;
+      const slideIdx = currentState.slides.findIndex(s => s.id === activeSlide.id);
+      const prevTitle = currentState.slides[slideIdx - 1]?.title;
+      const nextTitle = currentState.slides[slideIdx + 1]?.title;
+      let prompt = `Create a completely new slide about: ${activeSlide.title || 'this topic'}. Fresh layout, new visual approach, different structure than before.`;
+      if (prevTitle || nextTitle) {
+        prompt += `\n\n=== DECK CONTEXT ===\nSlide ${slideIdx + 1} of ${currentState.slides.length}`;
+        if (prevTitle) prompt += `\nPrevious: "${prevTitle}"`;
+        if (nextTitle) prompt += `\nNext: "${nextTitle}"`;
+      }
+      const newSlides = await generateSlides(prompt, reimagineSettings, 1, currentState.slides);
+      if (newSlides?.length > 0) {
+        const s = newSlides[0];
+        const newTitle = s.title || extractTitleFromHTML(s.html) || activeSlide.title;
+        actions.updateSlide(activeSlide.id, { html: s.html, title: newTitle, customCSS: s.customCSS || undefined });
+        addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Reimagined: <strong>${newTitle}</strong></div>`, { isHTML: true });
+      }
+    } catch (err) {
+      console.error('[Reimagine] failed:', err);
+      addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Reimagine failed: ${err.message}</div>`, { isHTML: true });
     } finally {
       setQuickActionBusy(false);
       setActiveQuickAction('');
@@ -4990,23 +5116,37 @@ Original request: ${userPrompt}`;
         </div>
       </div>
 
-      {/* Context mode toggle */}
+      {/* Speed mode + Search toggle bar */}
       <div className="panel-context-bar">
-        <div className="panel-scope-toggle" role="group" aria-label="Scope">
+        <div className="panel-scope-toggle" role="group" aria-label="Speed mode">
           <button
-            className={`panel-scope-btn ${contextMode === 'slide' ? 'active' : ''}`}
-            onClick={() => setContextMode('slide')}
+            className={`panel-scope-btn ${state.settings.speedMode === 'fast' ? 'active' : ''}`}
+            onClick={() => actions.updateSettings({ speedMode: 'fast' })}
+            title="Faster generation with balanced quality"
           >
-            This Slide
+            Fast
           </button>
           <button
-            className={`panel-scope-btn ${contextMode === 'deck' ? 'active' : ''}`}
-            onClick={() => setContextMode('deck')}
+            className={`panel-scope-btn ${state.settings.speedMode === 'thinking' ? 'active' : ''}`}
+            onClick={() => actions.updateSettings({ speedMode: 'thinking' })}
+            title="Higher quality generation with deeper reasoning"
           >
-            Deck
+            Thinking
           </button>
         </div>
-        {contextMode === 'slide' && activeSlide && (
+        <button
+          type="button"
+          className={`panel-search-pill ${state.settings.searchToggle !== false ? 'active' : ''}`}
+          onClick={() => actions.updateSettings({ searchToggle: !(state.settings.searchToggle !== false) })}
+          title={state.settings.searchToggle !== false ? 'Web search enabled -- click to disable' : 'Web search disabled -- click to enable'}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <circle cx="11" cy="11" r="8" />
+            <path d="M21 21l-4.35-4.35" />
+          </svg>
+          Search
+        </button>
+        {activeSlide && (
           <span className="panel-context-label">
             Slide {state.slides.findIndex(s => s.id === activeSlide.id) + 1} of {state.slides.length}
             {activeSlide.title && activeSlide.title !== 'Untitled Slide' && (
@@ -5016,8 +5156,8 @@ Original request: ${userPrompt}`;
         )}
       </div>
 
-      {/* Quick actions or template picker (slide mode only) */}
-      {contextMode === 'slide' && !activeSlide && (
+      {/* Quick actions or template picker (when no active slide) */}
+      {!activeSlide && state.slides.length === 0 && (
         <div className="panel-empty-slide-picker">
           <div className="panel-empty-hint">Pick a layout to create your first slide, then describe your content below.</div>
           <TemplatePicker
@@ -5031,7 +5171,7 @@ Original request: ${userPrompt}`;
           />
         </div>
       )}
-      {contextMode === 'slide' && activeSlide && (
+      {activeSlide && (
         isSlideEffectivelyEmpty(activeSlide) ? (
           <div className="panel-empty-slide-picker">
             <div className="panel-empty-hint">Choose a layout for this slide, then describe your content below.</div>
@@ -5062,7 +5202,7 @@ Original request: ${userPrompt}`;
                 <div className="panel-action-bar">
                   {/* Quick Fixes dropdown */}
                   <button
-                    className={`panel-action-btn ${showMoreActions ? 'panel-action-btn--active' : ''}`}
+                    className={`panel-action-btn panel-action-btn--primary ${showMoreActions ? 'panel-action-btn--active' : ''}`}
                     disabled={quickActionBusy || isLoading}
                     onClick={() => { setShowMoreActions(!showMoreActions); setShowSlideTemplatePicker(false); }}
                   >
@@ -5075,9 +5215,22 @@ Original request: ${userPrompt}`;
                     </svg>
                   </button>
 
+                  {/* Reimagine Slide */}
+                  <button
+                    className="panel-action-btn"
+                    disabled={quickActionBusy || isLoading}
+                    onClick={handleReimagineSlide}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M23 4v6h-6" />
+                      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                    </svg>
+                    Reimagine Slide
+                  </button>
+
                   {/* Translate to Arabic */}
                   <button
-                    className="panel-action-btn panel-action-btn--arabic"
+                    className="panel-action-btn"
                     disabled={quickActionBusy || isLoading}
                     onClick={() => handleQuickAction(ARABIC_TRANSLATION_PROMPT, 'Translate to Arabic')}
                   >
@@ -5150,6 +5303,8 @@ Original request: ${userPrompt}`;
                     <div className="panel-template-popover">
                       <TemplatePicker
                         selectedTemplate={activeSlide.templateId || null}
+                        slideHtml={activeSlide.html}
+                        currentTemplateId={activeSlide.templateId}
                         onSelect={async (templateId) => {
                           setShowSlideTemplatePicker(false);
                           if (!templateId || templateId === activeSlide.templateId) return;
@@ -5297,6 +5452,7 @@ Original request: ${userPrompt}`;
               imageVibe={imageVibe}
               onImageVibeChange={useImageMode ? setImageVibe : null}
               debugMode={DEBUG_MODE}
+              routerAlreadySearched={!!pendingSmartAction.routeResult?.searchRawContext}
             />
           </div>
         )}
@@ -5994,11 +6150,11 @@ Original request: ${userPrompt}`;
             onChange={handleFileUpload}
             style={{ display: 'none' }}
           />
-          {/* Deck-mode controls row: style toggle + agent mode buttons */}
-          {(contextMode === 'deck' || state.settings.enableAgenticMode) && (
+          {/* Style toggle + agent mode buttons */}
+          {(true || state.settings.enableAgenticMode) && (
             <div className="chatbot-input-actions">
               <div className="chatbot-action-group chatbot-mode-group">
-                {contextMode === 'deck' && (
+                {(
                   <div className="panel-style-toggle" role="group" aria-label="Slide style">
                     {['auto', 'templates', 'freestyle'].map(opt => (
                       <button
@@ -6048,15 +6204,15 @@ Original request: ${userPrompt}`;
             </div>
           )}
           {(() => {
-            const noSlideForThisMode = contextMode === 'slide' && !activeSlide;
-            const inputDisabled = noSlideForThisMode || (isLoading && !agenticExecution.isRunning);
-            const placeholder = noSlideForThisMode
-              ? 'Select a template above to start...'
+            const inputDisabled = (isLoading && !agenticExecution.isRunning);
+            const noSlidesYet = state.slides.length === 0;
+            const placeholder = noSlidesYet
+              ? 'Describe your presentation to get started...'
               : agenticExecution.isRunning
                 ? 'Chat with the team while they work...'
                 : 'Describe your presentation goal or paste an image (Ctrl+V)...';
             return (
-              <div className={`chatbot-input-box ${noSlideForThisMode ? 'chatbot-input-disabled' : ''}`}>
+              <div className="chatbot-input-box">
                 <textarea
                   ref={inputRef}
                   value={prompt}
@@ -6083,20 +6239,7 @@ Original request: ${userPrompt}`;
                       </svg>
                     )}
                   </button>
-                  {contextMode === 'slide' && (
-                    <button
-                      type="button"
-                      className={`panel-search-pill ${slideSearchEnabled ? 'active' : ''}`}
-                      onClick={() => setSlideSearchEnabled(prev => !prev)}
-                      title={slideSearchEnabled ? 'Web search enabled -- click to disable' : 'Web search disabled -- click to enable'}
-                    >
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <circle cx="11" cy="11" r="8" />
-                        <path d="M21 21l-4.35-4.35" />
-                      </svg>
-                      Search
-                    </button>
-                  )}
+                  {/* Search toggle moved to the context bar */}
                   <button type="submit" className="chatbot-send-btn" disabled={inputDisabled || !prompt.trim()}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <line x1="22" y1="2" x2="11" y2="13" />

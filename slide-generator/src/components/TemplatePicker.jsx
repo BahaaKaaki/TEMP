@@ -657,6 +657,24 @@ export default function TemplatePicker({
                   </>
                 )}
                 {(!searchQuery || Object.keys(filteredByCategory).length > 0) && <div className="template-dropdown-divider" />}
+                {suggestedTemplates.length > 0 && !searchQuery && (
+                  <div className="template-dropdown-category">
+                    <div className="category-label">Suggested for This Slide</div>
+                    {suggestedTemplates.slice(0, 4).map((template) => (
+                      <button
+                        key={`suggested-${template.id}`}
+                        className={`template-dropdown-item ${selectedTemplate === template.id ? 'selected' : ''} ${hoveredTemplate?.id === template.id ? 'hovered' : ''}`}
+                        onClick={() => handleSelect(template.id)}
+                        onMouseEnter={() => setHoveredTemplate(template)}
+                      >
+                        <span className="item-icon">{getTemplateIcon(template.id, template.isCustom)}</span>
+                        <span>{template.title}</span>
+                        {selectedTemplate === template.id && <span className="item-check">✓</span>}
+                      </button>
+                    ))}
+                    <div className="template-dropdown-divider" />
+                  </div>
+                )}
                 {Object.keys(filteredByCategory).length === 0 && searchQuery ? (
                   <div className="template-no-results">
                     <span>No templates match "{searchQuery}"</span>

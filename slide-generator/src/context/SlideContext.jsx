@@ -9,9 +9,10 @@ const SlideContext = createContext(null);
 // This is the single source of truth for all slide styling
 const DEFAULT_SHARED_CSS = SLIDES_CSS;
 
-// Bump when default-model migration should run once for saved decks (see loadState).
-// v6: fastModel changed from gpt-5.4-nano to gpt-5.4-mini
-const SETTINGS_VERSION = 6;
+// Model assignments are code-managed (always sourced from initialState, never
+// from localStorage) so model changes no longer require a version bump.
+// Reserve SETTINGS_VERSION for structural migrations only (new fields, format changes).
+const SETTINGS_VERSION = 9;
 
 // Initial state
 const initialState = {
@@ -61,15 +62,19 @@ const initialState = {
         ],
       },
     ],
+    // ── Unified chat: speed mode & search ──
+    speedMode: 'fast',           // 'fast' | 'thinking' — user-selectable generation tier
+    searchToggle: true,          // user toggle: allow LLM to use web search when needed
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:bedrock.anthropic.claude-opus-4-6',
-    fastModel: 'pwc:openai.gpt-5.4-mini',
-    // Agent-mode router settings
-    routerModel: 'pwc:openai.gpt-5.4',
+    model: 'pwc:bedrock.anthropic.claude-opus-4-6',         // "Thinking" generation
+    fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
+    classifierModel: 'pwc:openai.gpt-5.4-mini',             // Tier 1 quick classifier (always fast)
+    // Router / planner
+    routerModel: 'pwc:openai.gpt-5.4',                      // Tier 2 full planner
     routerReasoningEffort: 'low',
     routerMaxTokens: 65536,
     routerSearchEnabled: false,
-    // Chatbot-mode router settings
+    // Legacy chatbot-router fields (kept for backward compat, mirrors routerModel)
     chatRouterModel: 'pwc:openai.gpt-5.4',
     chatRouterReasoningEffort: 'low',
     chatRouterMaxTokens: 65536,
@@ -98,7 +103,7 @@ const initialState = {
     agentMaxBudget: 5,
     agentRichResearch: true,
     agentUseSkills: false,
-    slideStylePreference: 'auto', // 'auto' | 'templates' | 'freestyle'
+    slideStylePreference: 'freestyle', // 'auto' | 'templates' | 'freestyle'
     // ── Work level (prompt-driven output scaling) ──
     // low = concise/minimal, medium = balanced, high = detailed, very_high = maximum depth
     workLevelSlide: 'medium',
@@ -224,21 +229,8 @@ function loadState() {
         }
       }
 
-      // Migrate model references: old "gpt-4o" → new "openai:gpt-4o"
-      const migrateModelRef = (val) => {
-        if (!val || val.includes(':')) return val; // already new format or empty
-        // Find which provider has this model
-        const provider = mergedProviders.find(p => p.models.includes(val));
-        if (provider) return `${provider.id}:${val}`;
-        // Guess by name prefix
-        if (val.includes('gemini')) return `gemini:${val}`;
-        if (val.includes('claude')) return `anthropic:${val}`;
-        return `openai:${val}`;
-      };
-
       const legacyKey = parsed.settings?.apiKey;
       if (legacyKey) {
-        // Migrate legacy single key to the first provider that has no key
         const currentModel = parsed.settings?.model || 'gpt-4o';
         const targetId = currentModel.includes('gemini') ? 'gemini' : currentModel.includes('claude') ? 'anthropic' : 'openai';
         const target = mergedProviders.find(p => p.id === targetId);
@@ -305,48 +297,11 @@ function loadState() {
         }
       }
 
-      // MIGRATION: update old/stale default models to current defaults.
-      // Strategy: bump SETTINGS_VERSION whenever defaults change. On load,
-      // if the saved version is behind, replace any model value that matches
-      // a known old default OR the previous version's defaults with the new one.
-      // User-chosen values that aren't in OLD_DEFAULTS are preserved.
-      const savedVersion = parsed.settings?._settingsVersion || 0;
-      const needsMigration = savedVersion < SETTINGS_VERSION;
-
-      if (needsMigration) {
-        console.log('[SlideContext] Migration needed: saved v%d -> v%d', savedVersion, SETTINGS_VERSION);
-        console.log('[SlideContext] Saved models:', {
-          model: parsed.settings?.model,
-          fastModel: parsed.settings?.fastModel,
-          routerModel: parsed.settings?.routerModel,
-          chatRouterModel: parsed.settings?.chatRouterModel,
-          reportModel: parsed.settings?.reportModel,
-        });
-      }
-
-      const OLD_DEFAULTS = new Set([
-        'pwc:openai.gpt-5.2', 'openai:gpt-5.2', 'openai.gpt-5.2',
-        'pwc:openai.gpt-5.2-2025-12-11',
-        'pwc:vertex_ai.gemini-3-pro-preview',
-        'pwc:vertex_ai.gemini-3.1-pro-preview',
-        'pwc:vertex_ai.anthropic.claude-opus-4-6',
-        'pwc:bedrock.anthropic.claude-opus-4-6',
-        'pwc:azure.gpt-4o',
-        'pwc:openai.gpt-5-mini',
-        'pwc:openai.gpt-5.4-nano',
-      ]);
-
-      const migrateDefault = (val, fallback, fieldName) => {
-        if (!needsMigration) return migrateModelRef(val) || val || fallback;
-        const migrated = migrateModelRef(val) || fallback;
-        const result = OLD_DEFAULTS.has(migrated) ? fallback : migrated;
-        if (migrated !== result) {
-          console.log('[SlideContext] Migrated %s: %s -> %s', fieldName, migrated, result);
-        }
-        return result;
-      };
-      let migratedModel = migrateDefault(parsed.settings?.model, initialState.settings.model, 'model');
-
+      // Model assignments are CODE-MANAGED: always sourced from initialState,
+      // never read back from localStorage. Change a default in initialState →
+      // all users pick it up on next page load. No version bump needed.
+      // User-controlled preferences (speedMode, searchToggle, batch sizes, etc.)
+      // still persist normally via the ...parsed.settings spread.
       const loadedState = {
         ...initialState,
         ...parsed,
@@ -359,25 +314,27 @@ function loadState() {
           ...parsed.settings,
           providers: mergedProviders,
           _settingsVersion: SETTINGS_VERSION,
-          model: migratedModel,
-          fastModel: migrateDefault(parsed.settings?.fastModel, initialState.settings.fastModel, 'fastModel'),
-          routerModel: migrateDefault(parsed.settings?.routerModel, initialState.settings.routerModel, 'routerModel'),
-          chatRouterModel: migrateDefault(parsed.settings?.chatRouterModel, initialState.settings.chatRouterModel, 'chatRouterModel'),
-          deepAnalysisModel: parsed.settings?.deepAnalysisModel != null ? (migrateModelRef(parsed.settings.deepAnalysisModel) || '') : initialState.settings.deepAnalysisModel,
-          reportModel: migrateDefault(parsed.settings?.reportModel, initialState.settings.reportModel, 'reportModel'),
-          pptxModel: needsMigration && !parsed.settings?.pptxModel
-            ? initialState.settings.pptxModel
-            : (parsed.settings?.pptxModel || initialState.settings.pptxModel),
+          // Code-managed model assignments — these always come from code,
+          // so deploying new defaults is instant for all users.
+          model: initialState.settings.model,
+          fastModel: initialState.settings.fastModel,
+          classifierModel: initialState.settings.classifierModel,
+          routerModel: initialState.settings.routerModel,
+          chatRouterModel: initialState.settings.chatRouterModel,
+          deepAnalysisModel: initialState.settings.deepAnalysisModel,
+          pptxModel: initialState.settings.pptxModel,
+          reportModel: initialState.settings.reportModel,
         },
       };
-      console.log('[SlideContext] Final models:', {
+      console.log('[SlideContext] Loaded (models are code-managed):', {
         model: loadedState.settings.model,
-        pptxModel: loadedState.settings.pptxModel,
         fastModel: loadedState.settings.fastModel,
+        classifierModel: loadedState.settings.classifierModel,
         routerModel: loadedState.settings.routerModel,
-        chatRouterModel: loadedState.settings.chatRouterModel,
+        pptxModel: loadedState.settings.pptxModel,
         reportModel: loadedState.settings.reportModel,
-        migrated: needsMigration,
+        speedMode: loadedState.settings.speedMode,
+        searchToggle: loadedState.settings.searchToggle,
       });
       return loadedState;
     }

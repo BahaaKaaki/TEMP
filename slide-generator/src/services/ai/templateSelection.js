@@ -892,7 +892,7 @@ EXECUTIVE WRITING STYLE - MANDATORY:
 - LESS IS MORE: Fill the visual SPACE with layout (spacing, alignment) not with more text. The slide should feel light and easy to scan at a glance.
 
 OVERFLOW PREVENTION (CRITICAL):
-- The slide has a FIXED frame of 890×353px. Content MUST NOT overflow this boundary.
+- The slide has a FIXED frame of 904×366px. Content MUST NOT overflow this boundary.
 - If content risks overflow: CUT content first. Remove the weakest point, shorten descriptions, reduce item count. LESS content that fits cleanly is ALWAYS better than cramming.
 - Only AFTER trimming content, if still tight, THEN slightly reduce font-size (by 1px max) or tighten padding.
 - NEVER pack so much text that the slide feels "wall of text". Slides should feel LIGHT and easy to scan.

@@ -104,14 +104,15 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 
 | Role | Model |
 |---|---|
-| Main | `vertex_ai.gemini-3.1-pro-preview` |
-| Fast / Workers | `vertex_ai.gemini-3-pro-preview` |
-| Router | `vertex_ai.gemini-3.1-pro-preview` |
-| Chat Router | `vertex_ai.gemini-3.1-pro-preview` |
+| Thinking (main generation) | `bedrock.anthropic.claude-opus-4-6` |
+| Fast generation | `vertex_ai.gemini-3.1-flash-lite-preview` |
+| Classifier | `openai.gpt-5.4-mini` |
+| Router | `openai.gpt-5.4` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
+| PPTX (export) | `vertex_ai.gemini-3.1-pro-preview` |
 
-Each role can be overridden individually in Settings > Roles.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role.
 
 ## Azure Deployment
 

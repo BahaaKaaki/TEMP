@@ -499,7 +499,7 @@ DO NOT INCLUDE ANY OF THESE — they already exist in the HTML around this image
 
 THE IMAGE MUST BE: just the raw framework/diagram on a plain white background, edge-to-edge, with NO surrounding elements.
 
-TARGET DIMENSIONS: ${mode === 'full' ? 'Wide landscape 16:9 (960×540 container)' : 'Extra-wide landscape ~2.5:1 (890×353 container) — arrange content horizontally, keep it short and wide, not tall'}
+TARGET DIMENSIONS: ${mode === 'full' ? 'Wide landscape 16:9 (960×540 container)' : 'Extra-wide landscape ~2.5:1 (904×366 container) — arrange content horizontally, keep it short and wide, not tall'}
 
 VISUAL TO GENERATE: ${visualDirective}
 ${contentContext}

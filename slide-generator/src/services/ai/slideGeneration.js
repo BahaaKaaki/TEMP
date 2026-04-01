@@ -366,7 +366,7 @@ Rules for PRECISE content:
 - If the user provides specific data, numbers, percentages, or names, reproduce them EXACTLY.
 - You may lightly restructure for the layout (e.g., split a long sentence across card title + description) but the WORDS must stay the same.
 - ADAPT THE LAYOUT TO THE CONTENT, not the content to the layout. Content is the deliverable — the layout serves it.
-- Only trim content if it physically overflows the 353px frame — and even then, cut the least important parts, don't reword what remains.
+- Only trim content if it physically overflows the 366px frame — and even then, cut the least important parts, don't reword what remains.
 
 Even for PRECISE content, always use CSS components (card-row, split-layout, content-list, grid-2x2, etc.) rather than raw paragraphs or unstyled lists. Structure their content into the layout — each point becomes a card, a list item, a grid cell, etc.
 

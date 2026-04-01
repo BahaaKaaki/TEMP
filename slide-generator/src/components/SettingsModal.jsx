@@ -1495,13 +1495,13 @@ export default function SettingsModal({ onClose }) {
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
 
       <div style={sectionTitle}>Model Roles</div>
-      <div style={{ fontSize: 10, color: '#888', marginBottom: 10 }}>Which model handles each task in the pipeline.{DEBUG_MODE ? ' You can override any role below.' : ''}</div>
+      <div style={{ fontSize: 10, color: '#888', marginBottom: 10 }}>Server-managed model assignments for each pipeline stage.{DEBUG_MODE ? ' You can override any role below.' : ''}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {[
-          { key: 'model',           label: 'Main (Slides)',   desc: 'Generates HTML slides from content and instructions',   role: 'chat' },
-          { key: 'routerModel',     label: 'Router (Deck)',   desc: 'Plans deck structure, classifies intent, assigns templates', role: 'chat' },
-          { key: 'chatRouterModel', label: 'Router (Chat)',   desc: 'Routes chatbot requests, decides actions',             role: 'chat' },
-          { key: 'fastModel',       label: 'Fast',            desc: 'Flash classification, query refinement, naming',       role: 'fast' },
+          { key: 'model',           label: 'Thinking',        desc: 'High-quality slide generation (Thinking speed mode)',  role: 'chat' },
+          { key: 'fastModel',       label: 'Fast',            desc: 'Balanced slide generation (Fast speed mode)',          role: 'chat' },
+          { key: 'classifierModel', label: 'Classifier',      desc: 'Tier 1 quick intent classification',                  role: 'fast' },
+          { key: 'routerModel',     label: 'Router',          desc: 'Tier 2 full planner for multi-slide requests',        role: 'chat' },
           { key: 'searchModel',     label: 'Search',          desc: 'Web search queries and result synthesis',              role: 'chat' },
           { key: 'pptxModel',       label: 'PPTX Export',     desc: 'Converts slides to PowerPoint code',                   role: 'chat' },
           { key: 'reportModel',     label: 'Report',          desc: 'Generates interactive HTML/JSON reports',              role: 'chat' },

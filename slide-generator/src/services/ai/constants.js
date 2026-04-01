@@ -289,7 +289,7 @@ UNSTRUCTURED TEXT (text dumps):
 - The goal is to make the content VISUAL and STRUCTURED, not to preserve exact wording of raw text
 
 FRAME FIT — CRITICAL:
-- Content MUST fit within the .frame (890×353px). NEVER let content overflow or extend beyond the frame boundaries.
+- Content MUST fit within the .frame (904×366px). NEVER let content overflow or extend beyond the frame boundaries.
 - If you have too many items, reduce count or shorten text — a clean 4-card layout beats a cramped 8-card layout.
 - For side-by-side layouts (two-col, split-layout, card-row): ensure left and right content have BALANCED heights. If one column is much taller, reduce its content. Unbalanced columns cause wrapping/overlap.
 - ALWAYS use the pre-styled CSS classes (card-row, two-col, split-layout, grid-2x2) for side-by-side layouts — do NOT create custom float, inline-block, or absolute positioning that can break.
@@ -541,7 +541,7 @@ CRITICAL — INLINE STYLE RULES:
 POSITIONING (handled by CSS — do NOT override):
 - h1.title: absolute at top 30px, Georgia 28px, full width
 - h2.subtitle: absolute at top 101px, Arial bold 18px, accent color
-- div.frame: absolute at top 137px, 890px wide × 353px tall — ALL content goes here
+- div.frame: absolute at top 137px, 904px wide × 366px tall — ALL content goes here
 - footer: absolute at bottom
 
 ## LAYOUT SELECTION — pick ONE layout based on content type and item count:
@@ -558,7 +558,7 @@ POSITIONING (handled by CSS — do NOT override):
 - Multi-option comparison → comparison-table
 - Bar data → bar-chart-h
 
-## HEIGHT BUDGET — content frame is 890×353px. PLAN before building:
+## HEIGHT BUDGET — content frame is 904×366px. PLAN before building:
 - card-row (3 cards): ~300px → h3 + 1-2 sentences + impact-box per card
 - card-row (4 cards): ~280px → h3 + 1 short sentence per card (skip impact-box)
 - grid-2x2 (4 cells): ~300px → h4 + 1 paragraph (max 25 words) per cell
@@ -595,7 +595,7 @@ timeline-container:  max 3 rows × (marker + h4 + 18-word p) (~200px)
 key-points compact:  max 4 points × (h4 + 18-word p) (~300px)
 stat-highlight:      1 stat only (~100px). Can combine with exec-bullet-list below (max 3 items × 15 words)
 
-FILL THE FRAME: Content should use 60-90% of the 353px frame height. Avoid large empty spaces.
+FILL THE FRAME: Content should use 60-90% of the 366px frame height. Avoid large empty spaces.
 - If content is sparse → add data points, context, implications, or pick a denser layout.
 - If using process-flow (~120px) or timeline (~200px) alone, pad with richer descriptions to fill the space.
 - Cards, grids, and split-layouts naturally fill the frame when items have enough text (15-25 words).
@@ -952,7 +952,7 @@ Charts: div.bar-chart-h > div.bar-row > (span.bar-label + div.bar-track > div.ba
 Auto-layout: div.auto-row, div.auto-col, div.auto-grid.cols-2/cols-3/cols-4
 Box types: content-box (.accent), metric-box, section-box (.challenge/.solution/.result), highlight-box
 
-Content frame: 890×353px. Content must fill this space comfortably — not overflowing, not half-empty.`;
+Content frame: 904×366px. Content must fill this space comfortably — not overflowing, not half-empty.`;
 
 // Focused prompt for editing slides - flexible template matching with variations
 // Exported for transparency in approval dialogs
@@ -1030,7 +1030,7 @@ UNSTRUCTURED TEXT (text dumps):
 - The goal is to make the content VISUAL and STRUCTURED, not to preserve exact wording of raw text
 
 FRAME FIT — CRITICAL:
-- Content MUST fit within the .frame (890×353px). NEVER let content overflow or extend beyond the frame.
+- Content MUST fit within the .frame (904×366px). NEVER let content overflow or extend beyond the frame.
 - If content is too dense, reduce item count or shorten text — clarity over density.
 - For side-by-side layouts (two-col, split-layout, card-row): ensure left and right content have BALANCED heights to prevent wrapping/overlap.
 - ALWAYS use pre-styled CSS classes for layout — do NOT create custom float, inline-block, or absolute positioning.

@@ -49,10 +49,16 @@ app-logs/
 # BMAD / project docs
 _bmad/
 CHAT_CONTEXT.md
-PROJECT_REFERENCE.md
+docs/TECHNICAL_RESEARCH_REPORT.md
+docs/plans/
 
-# Cursor
+# Cursor (ignore everything except specific rules we want tracked)
 .cursor/
+!.cursor/rules/
+.cursor/rules/*
+!.cursor/rules/project-reference.mdc
+!.cursor/rules/pwc-api-reference.mdc
+!.cursor/rules/ai-assistant-architecture.mdc
 
 # Temp diff files
 temp_diff*.txt

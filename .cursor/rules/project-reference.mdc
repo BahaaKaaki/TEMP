@@ -1,0 +1,20 @@
+---
+description: Read and maintain PROJECT_REFERENCE.md as living project context
+alwaysApply: true
+---
+
+# Project Reference
+
+At the start of every chat session, read `PROJECT_REFERENCE.md` in the repo root to load full project context (architecture, directory structure, state management, design system, conventions).
+
+When your work changes any of the following, update the relevant sections of `PROJECT_REFERENCE.md` before finishing:
+
+- Directory structure (new files, renamed or deleted modules)
+- Application flow (new routes, changed pipelines, new services)
+- State shape (new context fields, removed keys)
+- Design system (new tokens, templates, vibes, widgets)
+- API routes or middleware changes
+- Deployment or infrastructure changes
+- Completed work items (move from "Pending" to "Completed Work")
+
+Keep updates concise and factual. Do not rewrite unchanged sections.

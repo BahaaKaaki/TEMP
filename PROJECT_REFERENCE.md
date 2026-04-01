@@ -1,0 +1,543 @@
+# Edwin Slides Creator -- Full Project Reference
+
+> Auto-generated project reference for AI assistant context.
+> Last updated: 2026-04-01
+
+---
+
+## 1. Overview
+
+**Edwin Slides Creator** is an AI-powered presentation generator that creates professional slide decks in a Strategy& / PwC consulting style. It uses PwC Shared Services GenAI API for AI capabilities.
+
+- **Repository:** `https://github.com/pwc-me-adv-strategyand/edwin-slides-creator.git`
+- **Branch:** `feature/bugfixes-and-enhancements`
+- **Stack:** React 19 + Vite 7 (frontend), Express + TypeScript (backend)
+- **AI Provider:** PwC Shared Services GenAI API (`genai-sharedservice-emea.pwcinternal.com`)
+- **Deployment:** Azure App Service via `deploy.ps1`
+
+---
+
+## 2. Directory Structure
+
+```
+slide-themes-main/
+├── backend/                          # Express API server (port 3001)
+│   ├── src/
+│   │   ├── index.ts                  # Entry point: DB/Redis init, server start, graceful shutdown
+│   │   ├── app.ts                    # Express app: middleware, Basic Auth, routes, static serving
+│   │   ├── config/
+│   │   │   ├── env.ts                # Zod-validated environment variable schema
+│   │   │   ├── database.ts           # PostgreSQL pool + in-memory fallback
+│   │   │   ├── redis.ts              # Redis client + in-memory fallback
+│   │   │   └── logger.ts             # Winston logger setup
+│   │   ├── common/
+│   │   │   ├── middleware/
+│   │   │   │   ├── auth.middleware.ts # JWT auth middleware
+│   │   │   │   ├── error.middleware.ts# Global error handler
+│   │   │   │   └── rate-limit.middleware.ts # Rate limiter
+│   │   │   └── types/index.ts        # Shared TypeScript types
+│   │   ├── modules/
+│   │   │   ├── ai-proxy/             # Core: proxies AI calls to PwC Shared Services
+│   │   │   │   ├── ai-proxy.controller.ts  # proxyChat, proxyResponses, proxyModels
+│   │   │   │   └── ai-proxy.routes.ts      # /api/ai/chat, /api/ai/responses, /api/ai/models
+│   │   │   ├── auth/                 # User auth (JWT-based, not currently primary)
+│   │   │   │   ├── auth.controller.ts
+│   │   │   │   ├── auth.routes.ts
+│   │   │   │   ├── auth.service.ts
+│   │   │   │   └── jwt.service.ts
+│   │   │   ├── config/                # Server-managed configuration
+│   │   │   │   ├── config.controller.ts  # buildConfig(), getConfig() -- model defaults + feature flags
+│   │   │   │   └── config.routes.ts      # GET /api/config (no auth required)
+│   │   │   ├── organizations/        # Multi-org support (scaffolded)
+│   │   │   ├── themes/               # Theme CRUD (scaffolded)
+│   │   │   └── templates/            # Template CRUD (scaffolded)
+│   │   └── db/
+│   │       └── migrate.ts            # Database migration runner
+│   ├── package.json
+│   ├── docker-compose.yml            # Postgres 16, Redis 7, MinIO (optional)
+│   └── .env.example
+│
+├── slide-generator/                  # React frontend (port 5173)
+│   ├── src/
+│   │   ├── main.jsx                  # Root: StrictMode > PasswordGate > AuthProvider > App
+│   │   ├── App.jsx                   # SlideProvider > KnowledgeBaseProvider > AppContent
+│   │   ├── SimpleApp.jsx             # Simplified variant (unused in main flow)
+│   │   ├── components/               # 40+ React components
+│   │   │   ├── AIChatbot.jsx         # **CORE**: chatbot UI, routing, execution engine
+│   │   │   ├── Header.jsx            # Deck name, export (PPTX/PDF/HTML), settings
+│   │   │   ├── MainContent.jsx       # Preview vs editor toggle
+│   │   │   ├── SlidePreview.jsx      # Slide preview, comments, zoom, fullscreen, widget menu
+│   │   │   ├── SlideEditor.jsx       # Monaco HTML/CSS editor
+│   │   │   ├── SlideList.jsx         # Slide thumbnails, drag-reorder, multi-select
+│   │   │   ├── SmartActionCard.jsx   # Execution plan review/edit UI, storyline editing
+│   │   │   ├── ExecutionPlan.jsx     # Agent execution plan display
+│   │   │   ├── StorylinePanel.jsx    # Storyline display
+│   │   │   ├── StorylineWorkspace.jsx# Storyline editing workspace
+│   │   │   ├── TemplatePicker.jsx    # Template selection grid
+│   │   │   ├── TemplateManager.jsx   # Custom template management
+│   │   │   ├── ThemeCreator.tsx      # Theme creation tool
+│   │   │   ├── VibePreview.jsx       # Vibe preview panel
+│   │   │   ├── WidgetBrowser.jsx     # Widget browser
+│   │   │   ├── KnowledgeBaseManager.jsx # Knowledge base UI
+│   │   │   ├── SettingsModal.jsx     # Settings (models, work levels, etc.)
+│   │   │   ├── PasswordGate.jsx      # Basic HTTP auth gate
+│   │   │   ├── CommentPanel.jsx      # Per-slide comments
+│   │   │   ├── DebugPanel.jsx        # Debug tools
+│   │   │   ├── FlowStudio.jsx        # Flow studio (workflow builder)
+│   │   │   ├── PptxTransformer.jsx   # PPTX import/transform
+│   │   │   ├── AgentApprovalDialog.jsx # Agent approval flow
+│   │   │   ├── AgentTaskList.jsx     # Agent task list
+│   │   │   ├── AgentAiIOViewer.jsx   # Agent LLM I/O viewer
+│   │   │   └── ...
+│   │   ├── constants/
+│   │   │   └── slideActions.js       # PRIMARY_ACTIONS, MORE_ACTIONS (chatbot quick improve)
+│   │   ├── context/
+│   │   │   ├── SlideContext.jsx       # **CORE**: global state, settings, model defaults, actions
+│   │   │   ├── KnowledgeBaseContext.jsx # Knowledge base state
+│   │   │   └── AuthContext.tsx        # Auth state, backend availability
+│   │   ├── constants/
+│   │   │   └── slideActions.js          # PRIMARY_ACTIONS + MORE_ACTIONS quick action definitions
+│   │   ├── hooks/
+│   │   │   ├── useKeyboardShortcuts.js # Global Ctrl+Z, Ctrl+Shift+Z
+│   │   │   └── useAgenticExecution.js  # Agent lifecycle: create > run > pause > resume > done
+│   │   ├── services/                  # 25+ service modules
+│   │   │   ├── aiService.js           # **CORE**: barrel re-export of all ai/*.js sub-modules
+│   │   │   ├── consultingTeamAgent.js # Agentic workflow: manager/worker research/compile
+│   │   │   ├── genericAgent.js        # Generic agent with phase machine
+│   │   │   ├── agentExecutor.js       # Plan execution with dependencies
+│   │   │   ├── agentTaskSystem.js     # Task state and lifecycle
+│   │   │   ├── agentToolRegistry.js   # Tool definitions for agent
+│   │   │   ├── agentWorkspace.js      # Agent workspace state
+│   │   │   ├── templateEmbeddings.js  # Embedding-based template matching
+│   │   │   ├── templateMatcher.js     # Template selection for PPTX
+│   │   │   ├── templateValidation.js  # Template validation
+│   │   │   ├── pptxService.js         # PPTX export via PptxGenJS
+│   │   │   ├── pptxRenderers.js       # PPTX rendering helpers
+│   │   │   ├── pptxTemplateService.js # Apply uploaded .pptx templates
+│   │   │   ├── pptxTransformService.js# PPTX transformations
+│   │   │   ├── exportService.js       # HTML, JSON, PDF export
+│   │   │   ├── reportService.js       # HTML report generation (Chart.js)
+│   │   │   ├── documentParser.js      # Browser-side PDF/Word/Excel/PPTX/image parsing
+│   │   │   ├── knowledgeBase.js       # Knowledge base CRUD
+│   │   │   ├── knowledgeBaseRAG.js    # RAG retrieval (TF-IDF scoring)
+│   │   │   ├── ai/improveSlideOrchestrator.js # Shared slide-improve orchestrator (context + search)
+│   │   │   ├── layoutValidation.js    # Slide layout validation
+│   │   │   ├── layoutFitter.js        # Content fitting to layout
+│   │   │   ├── layoutCorrectionService.js # AI-based layout corrections
+│   │   │   ├── vibeRegenerator.js     # Regenerate slides with different vibes
+│   │   │   ├── skillRegistry.js       # Agent skill registry
+│   │   │   └── apiClient.ts           # Backend API client, auth, token refresh
+│   │   ├── utils/
+│   │   │   ├── slideTemplates.js      # **CORE**: 70+ HTML template definitions with PPTX renderers
+│   │   │   ├── slideMasters.js        # Base layouts (default, blank, cover, etc.)
+│   │   │   ├── slideWidgets.js        # Widget definitions
+│   │   │   ├── vibes.js              # Design variants (default, bold, corporate, creative, minimal, executive)
+│   │   │   ├── debugLog.js            # Debug logging utility
+│   │   │   └── auditLog.js            # Audit logging utility
+│   │   ├── styles/
+│   │   │   ├── slides.css             # **CORE**: ~17K lines, all slide CSS, tokens, vibes
+│   │   │   ├── app.css                # Application shell styles
+│   │   │   └── simple.css             # Simple variant styles
+│   │   ├── guides/
+
+│   │   └── data/
+│   │       └── knowledgeBaseExamples.js # Knowledge base example entries
+│   ├── index.html
+│   ├── vite.config.js                 # React plugin, proxy /api and /health to port 3001
+│   └── package.json
+│
+├── examples/                          # Sample HTML slide decks
+├── gpt-export/                        # ChatGPT custom GPT knowledge files
+├── deploy.ps1                         # Azure deployment script
+├── docs/
+│   ├── AI_ASSISTANT_ARCHITECTURE.md   # Full AI chat/generation flow reference
+│   ├── PWC_GENAI_API_REFERENCE.md     # API endpoints, models, search, benchmarks
+│   ├── TECHNICAL_RESEARCH_REPORT.md   # Agent patterns, React architectures, competitor analysis
+│   └── plans/                         # Feature implementation plans
+├── README.md                          # Main documentation
+├── CHAT_CONTEXT.md                    # AI session context
+└── .gitignore
+```
+
+---
+
+## 3. Application Flow -- End to End
+
+### 3.1 Startup Sequence
+
+```
+[Backend]
+  index.ts
+    └── initRedis() (optional, falls back to in-memory)
+    └── checkDatabaseHealth() (PostgreSQL or in-memory fallback)
+    └── app.listen(PORT=3001)
+
+[Frontend]
+  index.html
+    └── main.jsx
+        └── <PasswordGate>         // Basic Auth gate (checks backend /health with credentials)
+            └── <AuthProvider>     // Auth context (JWT, backend availability)
+                └── <App>
+                    └── <SlideProvider>         // Global state: slides, settings, CSS, vibes
+                        └── <KnowledgeBaseProvider>  // Knowledge base state
+                            └── <AppContent>
+                                ├── <Header />         // Deck name, export, settings
+                                ├── <SlideList />      // Slide thumbnails sidebar
+                                ├── <MainContent />    // Slide preview or Monaco editor
+                                └── <AIChatbot />      // Chat interface + execution engine
+```
+
+### 3.2 Request Flow (Browser to AI)
+
+```
+Browser (localhost:5173)
+  └── Frontend React app
+        └── fetch('/api/ai/chat', { model, messages, ... })
+              └── Vite dev proxy → localhost:3001
+                    └── Backend Express
+                          ├── Basic Auth check (if BASIC_AUTH_USER/PASS configured)
+                          ├── Rate limiting
+                          └── /api/ai/chat → ai-proxy.controller.ts
+                                └── fetch('https://genai-sharedservice-emea.pwcinternal.com/chat/completions')
+                                      (API-Key header injected server-side from PWC_API_KEY env var)
+```
+
+### 3.3 User Message Processing Pipeline
+
+When a user types a message in the chatbot:
+
+```
+1. handleSubmit(prompt)
+   ├── If agent is running → push to live input queue (real-time interaction)
+   ├── If budget command → add budget credits
+   ├── If "Edit All" mode toggled → switch to batch editing
+   ├── Auto-name deck (fire-and-forget, fast model) if deckName is default
+   └── Proceed to classification
+
+2. TIER 1: QUICK CLASSIFIER (classifyRequest)
+   ├── Model: classifierModel (gpt-5.4-mini), ~1-2s
+   ├── Input: user prompt, slide context
+   ├── Output: { scope, action, targetSlides, needsPlanner, needsSearch, instruction }
+   ├── scope=qa → direct chatWithContext, no slide changes (return)
+   ├── scope=single_slide + needsPlanner=false → DIRECT path (step 3a)
+   └── default / needsPlanner=true / failure → PLANNER path (step 3b)
+
+3a. DIRECT EXECUTION (single-slide, no router)
+   ├── Speed mode selects model: Fast → fastModel, Thinking → model
+   ├── Parallel classify + search (web search gated by searchToggle)
+   └── Execution: fillTemplateWithAI / generateSlides / improveSlide
+
+3b. FULL ROUTER (multi-step planner)
+   ├── AI Router (aiRouteRequest) — GPT 5.4 with structured step fields
+   │   ├── Step fields: action, templateId, title, subtitle, instruction,
+   │   │   facts, sources, layoutGuidance, contextSlides, contextFromStep,
+   │   │   sectionTracker, subSectionTracker, searchQuery, searchGoal
+   │   ├── Returns: plan[], contextStrategy, understanding
+   │   └── May return: needsClarification + questions
+   │
+   └── Rule-based fallback (routeRequest) — pattern matching, no API call
+
+4. PLAN REVIEW
+   ├── If < 5 non-destructive steps → auto-execute
+   ├── If answer_question only → auto-execute (just respond)
+   └── Otherwise → show SmartActionCard for user to review/modify/execute
+
+5. EXECUTION (executeFromSmartAction)
+   ├── Speed mode determines generation model for all steps
+   ├── Structured fields (title, subtitle, facts, sources) prepended to step prompt
+   ├── Build groups from router plan
+   ├── For each group → executeGroupParallel
+   │   ├── Accumulate create_slide steps into batch
+   │   ├── flushCreateBatch when batch is full or non-create step encountered
+   │   │   ├── Separate into: image slides, fixed-layout, templated, freestyle
+   │   │   ├── Templated → fillTemplatesBulkWithAI (one API call for batch)
+   │   │   ├── Freestyle → generateSlides (individual AI calls)
+   │   │   ├── Fixed → direct placeholder replacement (cover, sectionDivider)
+   │   │   ├── Image → generateImageSlide (image model)
+   │   │   └── flushInsertsInOrder (deterministic slide order)
+   │   └── Non-create steps (edit, delete, switch) → executeStep individually
+   └── Post-execution: sync storyline, update progress
+```
+
+### 3.4 Per-Slide Improve & Quick Actions (chatbot + `slideActions.js`)
+
+Improve, web-search toggle, template switch, and quick-action prompts live in the **chatbot panel** (not on `SlidePreview`). Action definitions are in `slide-generator/src/constants/slideActions.js` (`PRIMARY_ACTIONS`, `MORE_ACTIONS`).
+
+The improve flow still uses `improveSlideWithSearch` from `ai/improveSlideOrchestrator.js` — **lightweight**: only the current slide's HTML + CSS is sent (no neighbors, no deck structure, no position context) unless a different caller opts into richer context.
+
+```
+User instruction + Improve
+  └── improveSlideWithSearch(slide, instruction, settings, { skipSearch })
+      ├── builds simple slideInfo: html, customCSS, templateId, title
+      ├── enrichInstructionWithSearch: opt-in web search via /api/ai/responses (8K budget, head+tail trim)
+      └── improveSlide: sends slideInfo + instruction to LLM (no deckContext)
+```
+
+`buildEnrichedSlideInfo` (full deck context, neighbors, storyline, template ref) is exported for AIChatbot batch-edit paths.
+
+### 3.5 Agent Mode (Consulting Team Agent)
+
+When enabled (`enableAgenticMode: true`), a higher-level workflow runs:
+
+```
+User prompt
+  └── ConsultingTeamAgent
+      ├── Manager: Scope and plan
+      ├── Consultants: Research (parallel workers)
+      │   └── Each worker: web search + knowledge base + analysis
+      ├── Manager: Compile all research into structured content
+      ├── Manager: Review and refine
+      └── Output: "PRESENTATION CONTENT" → fed to router for slide creation
+```
+
+The agent uses a budget system, supports live user input during execution, and can pause for clarification/approval at checkpoints.
+
+### 3.6 Export Pipeline
+
+```
+Slides in state (HTML + CSS)
+  ├── PPTX: pptxService.js
+  │   ├── AI generates PptxGenJS code from HTML
+  │   ├── PptxGenJS renders .pptx file
+  │   └── Batch processing with parallel API calls
+  ├── PDF: jsPDF + html2canvas
+  │   └── Renders each slide to canvas, then to PDF pages
+  └── HTML: exportService.js
+      └── Full HTML document with embedded CSS
+```
+
+---
+
+## 4. Design System
+
+### 4.1 CSS Token Architecture
+
+All slides use CSS custom properties (tokens) for theming:
+
+| Token | Purpose |
+|-------|---------|
+| `--heading` | Headings, titles |
+| `--body` | Body text |
+| `--muted` | Subtle text, captions |
+| `--accent` | Primary accent (maroon #8E1E1E) |
+| `--accent-soft` | Light accent background |
+| `--on-accent` | Text on accent backgrounds |
+| `--page` | Page/slide background |
+| `--surface` | Card/container background |
+| `--surface-alt` | Alternate surface |
+| `--border` | Borders and dividers |
+
+Dark mode and vibes override these tokens automatically.
+
+### 4.2 Vibes (Design Variations)
+
+Vibes are orthogonal to templates -- they change aesthetics without affecting layout:
+
+| Vibe | Description |
+|------|-------------|
+| `default` | Clean Strategy& base styling |
+| `bold` | Impact-focused, larger elements, stronger weight |
+| `corporate` | Formal structure, numbered sections, tables |
+| `creative` | Dynamic layouts, asymmetry, visual storytelling |
+| `minimal` | Reduced elements, whitespace-focused |
+| `executive` | Premium, sophisticated, refined |
+
+Applied via `data-vibe` attribute on slide containers, styled in `slides.css`.
+
+Global vibe switcher / header vibe menu markup (classes like `.vibe-selector-btn`, `.vibe-switch-btn`, `.vibe-header-menu`) is hidden in `app.css` with `display: none !important` so the main UI does not surface vibe picking; slide HTML and `slides.css` vibe rules remain for backward compatibility.
+
+### 4.3 Templates (70+)
+
+Templates are HTML structures with placeholder content. Categories include:
+
+- **Opening:** cover, blank, instructionSlide
+- **Content:** threeCards, kpiMetrics, timeline, comparison, executiveSummary, barChartExhibit, peerBenchmark, waterfallChart, initiativesLongList, etc.
+- **Closing:** nextSteps, thankYou, etc.
+
+Each template has: `id`, `title`, `type`, `master`, `description`, `note`, `category`, `html`, and optional `pptxRendererCode`.
+
+### 4.4 Slide Masters
+
+Base layouts defined in `slideMasters.js`:
+- `default` -- standard layout with title, subtitle, frame, footer
+- `blank` -- full-page canvas
+- `cover` -- title slide layout
+
+---
+
+## 5. State Management
+
+### SlideContext (slide-generator/src/context/SlideContext.jsx)
+
+Core state shape:
+
+```javascript
+{
+  slides: [],                    // Array of { id, title, html, type, summary, pptxRendererCode }
+  sharedCSS: SLIDES_CSS,         // Full CSS (single source of truth)
+  activeSlideId: null,           // Currently selected slide
+  selectedSlideIds: [],          // Multi-selected slides (for export)
+  deckName: 'Untitled Deck',
+  vibe: 'default',              // Current design variation
+  imageVibe: 'default',         // Vibe for image-based slides
+  darkMode: false,
+  storyline: [],                // Array of { id, title, description, slideId, order }
+  storylineStatus: 'none',      // none | generated | approved | populated
+  settings: {
+    // User-controlled (persisted to localStorage)
+    speedMode: 'fast',           // 'fast' | 'thinking' — user-selectable generation tier
+    searchToggle: true,          // user toggle for web search
+    // Code-managed model assignments (always from initialState, never localStorage)
+    model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Thinking generation
+    fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
+    classifierModel: 'pwc:openai.gpt-5.4-mini',      // Tier 1 quick classifier
+    routerModel: 'pwc:openai.gpt-5.4',               // Tier 2 full planner
+    providers: [...],            // Provider registry (PwC Shared Services)
+    // ... many more settings (batch sizes, work levels, search, etc.)
+  }
+}
+```
+
+
+---
+
+## 6. Backend Architecture
+
+### API Routes
+
+| Route | Purpose |
+|-------|---------|
+| `GET /api/config` | Server-managed defaults from `EDWIN_*` env vars: models, search, generation, agent/batching (no auth) |
+| `POST /api/ai/chat` | Proxy to PwC `/chat/completions` |
+| `POST /api/ai/responses` | Proxy to PwC `/v1/responses` (search) |
+| `GET /api/ai/models` | Proxy to PwC `/models` |
+| `/api/v1/auth` | User auth (register, login, JWT) |
+| `/api/v1/organizations` | Organization CRUD |
+| `/api/v1/themes` | Theme CRUD |
+| `/api/v1/templates` | Template CRUD |
+| `POST /api/templates/pptx-master` | Upload PPTX master (multipart field `template`); saved as `uploads/pptx-master.pptx` |
+| `GET /api/templates/pptx-master` | Download stored PPTX master (404 if none) |
+| `GET /health` | Health check (no auth) |
+
+### Middleware Chain
+
+1. Helmet (security headers)
+2. CORS
+3. Compression
+4. Body parsing (50MB limit)
+5. Morgan HTTP logging
+6. Rate limiting
+7. Basic Auth (conditional: only when BASIC_AUTH_USER/PASS set)
+8. Routes
+9. Static file serving (production: built frontend from `backend/public`)
+10. Error handler
+
+### Key Design Decisions
+
+- **In-memory fallback:** Both database and Redis fall back to in-memory storage, so the app runs without Docker/infrastructure
+- **API key server-side:** `PWC_API_KEY` never reaches the browser; backend injects it on proxy calls
+- **Basic Auth:** Simple password gate for deployment; separate from JWT auth system
+
+---
+
+## 7. Deployment
+
+### Azure App Service
+
+- **Resource group:** `rg-edwin-slides`
+- **App Service:** `app-edwin-slides` (Linux, Node 20 LTS)
+- **Private endpoint:** IP `10.247.184.84`, subnet `snt-004`
+
+### deploy.ps1 Script
+
+```
+1. Build frontend (npm run build in slide-generator/)
+2. Build backend (npm run build in backend/)
+3. Copy frontend build → backend/public/
+4. Create deployment zip
+5. az webapp deploy → Azure App Service
+```
+
+Options: `-SkipBuild` (deploy only), `-SkipDeploy` (build only)
+
+---
+
+## 8. Key Patterns and Conventions
+
+### Router Architecture
+
+Two routers operate in tandem:
+2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
+
+The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `instruction`, `contextSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`.
+
+### Batch Processing
+
+Slides are created in batches for efficiency:
+- `fillTemplatesBulkWithAI`: one API call fills multiple template-based slides
+- `flushCreateBatch`: groups create steps, separates by type (templated/freestyle/image/fixed), processes each category optimally
+- `flushInsertsInOrder`: ensures slides appear in plan order regardless of parallel completion order
+
+### Section Trackers
+
+For structured decks (7+ slides):
+- `sectionTracker`: "1. Strategy", "2. Financials" (maroon tab on slide)
+- `subSectionTracker`: "Phase 1", "Phase 2" (grey tab, for multi-slide sections)
+- Executive summary items correspond 1:1 to section tracker groups
+
+---
+
+## 9. Testing
+
+No test files exist currently. `backend/package.json` has `"test": "vitest"` but no Vitest config or test files.
+
+---
+
+## 10. Completed Work (from CHAT_CONTEXT.md)
+
+1. Section divider rendering (bypass AI for cover/sectionDivider)
+2. Default model switched to Gemini 3.1
+3. Image-based chatbot logic
+4. Multi-slide download (selectedSlideIds + Export Selected)
+5. Template switching content fitting
+6. Switch template UI relocation
+7. Simplify buttons ("Express" -> "Regular", hide "Library")
+8. Storyline editing (reorder/delete in SmartActionCard)
+9. Conversational UX (greetings bypass, single-select clarification)
+10. Basic Auth (conditional middleware, 401 fixes)
+11. GitHub secret scanning (removed hardcoded creds)
+12. No bracket placeholders in router prompt
+13. Executive summary templates: removed duplicate `executiveSummary` in `slideTemplates.js`; merged `executiveSummary` into `summary-recap` family in `templateEmbeddings.js`; equal-weight variant randomization; router `searchAvailable` honors `chatRouterSearchEnabled`; clearer API connection errors (model in message) and router fallback `console.warn`
+14. Improve bar orchestrator: extracted `improveSlideOrchestrator.js` (facade pattern) with `buildEnrichedSlideInfo` and `improveSlideWithSearch` to consolidate duplicated `improveSlide` call sites; Improve bar is lightweight (slide HTML/CSS only, no deck context) with opt-in web search checkbox; AIChatbot batch-edit paths retain full deck context via `buildEnrichedSlideInfo`
+15. Search truncation fix: replaced 4K hard `substring` with `trimSearchResult` (8K budget, 60/40 head+tail split) in both `enrichInstructionWithSearch` and AIChatbot `buildSearchFactsBlock` so closing summary tables from search results are preserved
+16. UI declutter: added text labels to all Header icon buttons; commented out Widgets button/browser; consolidated per-slide download (PPTX/PDF) into Header Export dropdown ("Current Slide" section); hid Code tab behind `DEBUG_MODE` localStorage flag; removed zoom buttons from preview toolbar (Ctrl+scroll still works); moved fullscreen to floating hover button on slide wrapper; removed bottom status bar to reclaim vertical space
+17. Unified AI Panel: transformed floating chatbot overlay into docked right-side panel (flex child of `app-main`); absorbed quick action buttons and improve bar from SlidePreview into the panel; added "This Slide | Deck" context mode toggle; extracted `PRIMARY_ACTIONS`/`MORE_ACTIONS` to `src/constants/slideActions.js`; replaced all purple/indigo chatbot colors (98 occurrences) with maroon accent palette; commented out Image mode button; replaced style preference `<select>` with segmented control (Auto | Templates | Freestyle); panel open state persisted to localStorage via `isPanelOpen`/`togglePanel` in SlideContext; FAB button renders in App.jsx when panel is closed
+18. AI Chat UX overhaul: fixed edit_slide search gap (router pre-search context and per-step web search now injected into edit path); empty-slide edits promoted to create_slide so TemplatePicker appears in SmartActionCard; AI I/O viewer gated behind `DEBUG_MODE` localStorage flag with compact execution summary for non-debug users; completion messages rendered as styled HTML cards instead of raw markdown text; defensive fallback keys added to SlideList and TemplatePicker; localStorage slide loading ensures all slides have IDs
+19. Panel UX polish: SmartActionCard shows maroon progress bar + step counter during execution; FAB badge restyled from green to maroon tint; Auto/Templates/Freestyle toggle hidden in "This Slide" mode (Deck only); empty-slide promotion prefers slide's stored templateId; `contextMode` passed to AI router; context label shows truncated slide title; fixed chat scroll not updating when SmartActionCard appears (`scrollToBottom` now fires on `pendingSmartAction` and `isLoading` changes); "This Slide" mode on empty slides replaces quick actions with inline compact TemplatePicker and hint text
+20. "This Slide" auto-execute + quick action progress + image template cleanup: "This Slide" mode now auto-executes without SmartActionCard review (sets `autoExecute: true` when `contextMode === 'slide'`); quick action pills show inline spinner with action name during execution and post styled completion/error cards to chat history; image template buttons (Image Full, Image + Text) grayed out (`disabled` + `opacity: 0.4`) in both compact dropdown and full TemplatePicker grid; deck title in header constrained to single line with `text-overflow: ellipsis` and `max-width: 320px` to prevent two-line overflow; zero-slides guard in "This Slide" mode shows inline TemplatePicker with hint "Pick a layout to create your first slide" and disables chat input until a template is selected (selection auto-creates a slide via `actions.addSlide`)
+21. "This Slide" direct improve + panel UX overhaul: "This Slide" mode now bypasses the router entirely and calls `improveSlideWithSearch` directly (same as quick actions) for non-empty slides, or `fillTemplateWithAI` for empty slides with a template; no multi-slide plans, no SmartActionCard, single-slide-only. Quick actions redesigned: horizontal scrollable row (no wrap) for primary pills, "More" opens a floating dropdown overlay instead of inline expansion. Chat messages use `::before` flex spacer to push toward bottom (eliminates whitespace above footer). Unified input box (textarea + attach + send inside one bordered container). Header flex fix: `.header-left` gets `min-width: 0; flex-shrink: 1` and `.header-actions` gets `flex-shrink: 0` so long deck names shrink instead of pushing buttons off-screen.
+22. Three-tier chat feedback system for consultants: (a) **Tier 1 (default)**: result card shows "Done! Edited N slide(s)" with "Slide N -- Title" format, no AI I/O or execution-summary shown; (b) **Tier 2 (power user)**: optional "Show details" expandable under results reveals human-friendly tags (web search used, duration); (c) **Tier 3 (DEBUG_MODE)**: full raw AI I/O panel unchanged. Progress messages humanized throughout (`humanizeStepText` and `humanizePhase` helpers): "edit_slide (comparisonTable)" becomes "Edit Slide 1", "Step 1/3" becomes "Improving your slide...". Execution status messages use friendly phrasing. SmartActionCard simplified in non-debug mode: instruction textareas collapsed behind "Edit instructions" toggle, context chips and search toggles hidden, step reorder controls hidden; `debugMode` prop controls visibility. `createdSlides`/`editedSlides`/`deletedSlides` now track `{ index, title }` objects for result card formatting. Defensive key fixes in SlideList (`SlideThumbnail`) and TemplateManager to prevent `undefined-` duplicate key warnings.
+23. UI declutter batch (feat/ui-declutter): (a) **Sidebar shrunk** to 160px thumbnail-only with slide number badge overlay; removed title, type label, and action buttons from slide rows. (b) **Header cleanup**: commented out Import, Save, Transform, Info, Docs buttons; kept New, Export, Undo, Redo, Templates, History, Settings. (c) **Black-on-burgundy fix**: added CSS safety-net rules in `slides.css` for `[class*="accent-fill"]`, `[class*="highlight-badge"]` etc. that force `color: var(--on-accent)` on accent-background elements; updated freestyle-slide-guide.md with explicit contrast rule. (d) **Web search pill toggle** in This Slide input toolbar (default ON); `slideSearchEnabled` state in AIChatbot. (e) **Per-step search toggle** moved out of debugMode guard in SmartActionCard; context chips remain debug-only. (f) **Template switch per slide**: "Template" pill in quick actions opens TemplatePicker popover; calls `transformSlideToTemplate`. (g) **Storyline + neighbor context** injected into `edit_slide` prompt (deck position, prev/next slide titles, storyline with `[CURRENT]` marker). (h) **Reference slide HTML** from `step.contextSlides` injected into `edit_slide` prompt for match-design requests. (i) **Flash mini-router** in This Slide mode: fast model classifies request (`needsSearch`, `referenceSlides`, `isTemplateSwitch`); routes template switches directly, injects reference slide HTML, controls search. (j) **SettingsModal simplified**: two-tier layout (Essential + Generation visible to all; Roles and Advanced behind DEBUG_MODE); Essential tab surfaces providers, router/search/fast model pickers, search toggle, branding, concurrency. (k) **Parallel edit execution**: consecutive independent `edit_slide` steps targeting different slides now run via `Promise.all` with concurrency limit. (l) **PPTX CSS resolution**: `resolveCustomProperties()` in `cssExtraction.js` resolves `var(--token)` to hex before sending to PPTX AI prompt; wired into `pptxService.js`.
+
+24. Model routing and settings redesign: (a) **Router model changed** from `opus-4-6` to `gpt-5.4` for both `routerModel` and `chatRouterModel` -- GPT 5.4 has native web search support and produces fast structured JSON (~5s vs ~22s). (b) **Per-step search tightened**: `deriveSearchQuery` no longer auto-derives queries from titles/instructions; only router-set or user-toggled `searchQuery` triggers per-step search. Global `searchRawContext` from the router call still grounds every step via `buildSearchFactsBlock()`. (c) **This Slide storyline context**: "This Slide" mode now injects deck context (slide position, neighbor titles, storyline with `[CURRENT]` marker) into all paths (template fill, generate, improve), matching the deck-mode `edit_slide` behavior. (d) **Settings Essential redesign**: replaced three `ModelPicker` dropdowns with a comprehensive read-only "Model Roles" card showing all 8 model assignments (Main, Router Deck, Router Chat, Fast, Search, PPTX, Report, Image) with role descriptions; editable via `ModelPicker` in `DEBUG_MODE` only. Removed duplicate "Manager Name" from Generation section and duplicate "Max Concurrent API Calls" from Essential (kept in Generation/Parallelism).
+
+25. **This Slide mode optimization**: (a) Fixed model override -- generation now uses the main model (Opus) instead of the router model (GPT 5.4), matching Deck-mode quality. (b) Fixed `generateSlides` call passing `sharedCSS` as `slideCount` -- now correctly requests 1 slide instead of generating 3 and discarding 2. (c) Parallelized classification and web search via `Promise.all` instead of serial execution. (d) Eliminated unnecessary search query refinement LLM call for short queries (< 120 chars) -- appends date directly, saving 2-5s per request. (e) Removed `web_search_preview` inline tool from router API call since LiteLLM proxy rejects it; pre-search via dedicated endpoint provides context instead. (f) Fixed chat message disappearing race condition: `isAutoNamingRef` is now cleared inside the `useEffect` instead of via `setTimeout(0)`.
+
+26. **Flow audit and optimization**: (a) **Router migrated to Responses API** -- GPT router calls now use `/api/ai/responses` with inline `web_search_preview`, eliminating the separate pre-search step. Search and planning happen in a single call, saving ~15-20s per deck generation. Non-GPT routers (Gemini, Claude) and agent mode fall back to the legacy two-step pre-search + Chat Completions path. (b) **Fast model upgraded** from `gpt-5.4-nano` to `gpt-5.4-mini` for classification, auto-naming, and cover title correction -- better structured JSON output with minimal latency increase. (c) **Per-step search guidance strengthened** in the router system prompt, directing the router to aggressively add `searchQuery` to any slide presenting data, statistics, or current events. (d) **localStorage save debounced** with a 2s trailing timeout, reducing 15+ rapid writes during batch generation to a single write. (e) **Provider model list updated** to include `gpt-5.4`, `gpt-5.4-pro`, and `claude-sonnet-4-6`. Settings version bumped to v6 with migration from nano to mini.
+
+27. **Unified chat architecture**: (a) **Removed "This Slide / Deck" toggle** -- replaced manual scope selection with automatic Tier 1 Quick Classifier (`classifyRequest()` in `router.js`) that auto-detects scope (single_slide, multi_slide, full_deck, qa) using `classifierModel` (gpt-5.4-mini, ~1-2s). (b) **Speed mode toggle**: new "Fast / Thinking" UI toggle in the context bar; Fast uses `fastModel` (gpt-5.4, ~14s/slide), Thinking uses `model` (opus-4-6, ~20s/slide). Model selection wired into both direct execution and `executeFromSmartAction`. (c) **Search toggle**: checkbox in context bar replaces per-mode search pills; wired to `searchToggle` setting. (d) **Auto-execute threshold**: plans with < 5 non-destructive steps auto-execute without SmartActionCard review (replaces contextMode-based logic). (e) **Router prompt rewrite**: structured step fields (`title`, `subtitle`, `instruction`, `facts`, `sources` as separate fields); freestyle-first defaulting; centralized router-level research as default (per-slide `searchQuery` + `searchGoal` as exception); consultant storyline rules (pyramid principle, MECE, titles-as-storyline); content fidelity rules. (f) **Settings v7 migration**: `SETTINGS_VERSION` 6->7; `fastModel` changed from gpt-5.4-mini (classifier) to gpt-5.4 (generation); added `classifierModel`, `speedMode`, `searchToggle` fields; SettingsModal shows unified model roles (Thinking, Fast, Classifier, Router, Search, PPTX, Report, Image). (g) **Freestyle guide hardened**: fixed stale 890x353 frame size refs to 904x366 across 5 files; added no-fabrication rule; expanded anti-patterns (10 items); bare selector and global definition rules; output contract hardened.
+
+28. **Execution fixes and Fast model upgrade**: (a) **Structured field passthrough**: router.js plan mapping now passes `title`, `subtitle`, `facts`, `sources`, `searchGoal` through to execution (previously silently dropped). `content` field coerced to string. (b) **Router prompt tightened**: removed aggressive "MUST add searchQuery" rule; per-step `searchQuery` now requires paired `searchGoal` (exception-only). Added negative `contextSlides` rule for new decks (slideCount=0). (c) **SmartActionCard search UI**: per-step search toggle hidden when router already searched and step lacks `searchGoal`. (d) **Fast model changed**: `fastModel` default from `openai.gpt-5.4` (~14s) to `vertex_ai.gemini-3.1-flash-lite-preview` (~5s). Benchmarked: Flash Lite 5.3s/1K tokens, GPT 5.4 ~14s, Gemini 3 Flash 15.3s, Gemini 2.5 Flash 33.5s (too slow). (e) **Settings v9 migration**: `SETTINGS_VERSION` 8->9 with inline fastModel migration. (f) **Cross-slide edit routing**: classifier prompt + code guard to route "make slide X like slide Y" to planner when target differs from active slide; `slideIndex` now documented in router schema and inferred from instruction via `parseSlideReferences` when LLM omits it. (g) **Speculative search gated**: Tier 1 classifier `needsSearch: false` now prevents the direct path's speculative search from firing (saves API call + removes misleading "Searching..." UX).
+
+29. **Code-managed model assignments**: Model assignment settings (`model`, `fastModel`, `classifierModel`, `routerModel`, `chatRouterModel`, `deepAnalysisModel`, `pptxModel`, `reportModel`) are now always sourced from `initialState.settings` in SlideContext.jsx, never read back from localStorage. Changing a default model in code instantly propagates to all users on next page load -- no `SETTINGS_VERSION` bump or migration logic needed. Removed `OLD_DEFAULTS`, `migrateDefault()`, `migrateModelRef()`, and all version-specific model migration code. User-controlled preferences (`speedMode`, `searchToggle`, batch sizes, work levels, etc.) still persist to localStorage normally.
+
+---
+
+## 11. Pending / In Discussion
+
+- **Icon/image insertion in templates** -- `[Icon X]` placeholders filled with emoji by AI, CSS renders in colored boxes
+- **CSS glitch (curved brackets)** -- `border-radius` + `border-left` issue, deferred to Kamen
+- **Better save presentations** -- localStorage vs backend vs JSON export
+- **Database migration** -- PostgreSQL schemas exist but app runs on localStorage
+- **PPTX rendering fidelity** -- AI-driven HTML-to-PptxGenJS has interpretation differences
+- **Storyline generation in Regular mode** -- whether to auto-generate during plan phase

@@ -195,7 +195,7 @@ export function safeJSONParse(jsonStr, context = 'unknown') {
       return result;
     } catch (secondError) {
       // Re-throw with original error message for better debugging
-      console.error(`[${context}] JSON repair failed. Original:`, jsonStr.substring(0, 200));
+      console.error(`[${context}] JSON repair failed. Original:`, jsonStr);
       throw firstError;
     }
   }
@@ -1251,6 +1251,15 @@ Example — agent mode (cover + one step per body slide, NO executive summary, t
 }
 Note: groups [[0],[1,2,3],[4,5,6]] = cover alone → body slides in parallel → detail slides reference overview via contextFromStep:3
 
+Example — asking clarification questions (ONLY when criteria above are met):
+{
+  "questions": [
+    {"question": "What kind of deck should I create?", "options": ["Business update — performance, results, risks", "Strategy deck — market context, recommendations", "Project proposal — objectives, approach, timeline", "Training / educational — concepts, examples, takeaways"]},
+    {"question": "How many slides do you need?", "options": ["3-5 (concise brief)", "6-10 (standard deck)", "10+ (comprehensive)"]}
+  ]
+}
+CRITICAL: When asking questions, return ONLY the "questions" array — do NOT wrap questions in a "plan" with "answer_question". The "questions" key triggers the structured card UI with clickable options.
+
 REMEMBER:
 - DOCUMENTS/AGENT = rich context → extract and include ALL research (numbers, findings, context, explanations) in each step's instruction
 - In agent mode: YOU choose templates, agent provides content + research only
@@ -1648,7 +1657,7 @@ USER REQUEST: "${routerPrompt}"`;
   console.log('[AI Router] Calling router model:', routerModelRef);
   debugLog(LogLevel.INFO, 'aiRouteRequest', 'Calling AI router', {
     model: routerSettings.model,
-    prompt: userPrompt.slice(0, 100),
+    prompt: userPrompt,
     contextWords,
     contextChars,
     estimatedTokens,
@@ -1724,7 +1733,7 @@ USER REQUEST: "${routerPrompt}"`;
       // doesn't expose raw search results separately. The router's plan instructions
       // already incorporate search data, and per-step searchQuery handles grounding.
 
-      console.log('[AI Router] Full response:', response.substring(0, 500) + (response.length > 500 ? '...' : ''));
+      console.log('[AI Router] Full response:', response);
 
     } else {
       // ── PATH B: Legacy two-step (pre-search + Chat Completions) ──
@@ -1735,7 +1744,7 @@ USER REQUEST: "${routerPrompt}"`;
       if (searchConfigured && !canUseResponsesAPI) {
         try {
           const searchQuery = `${routerPrompt} latest ${currentDateString()}`;
-          console.log('[Router Search] Pre-searching for router context:', searchQuery.substring(0, 100));
+          console.log('[Router Search] Pre-searching for router context:', searchQuery);
           const searchBody = {
             model: settings.searchModel,
             input: searchQuery,
@@ -1763,7 +1772,7 @@ USER REQUEST: "${routerPrompt}"`;
             }
             if (resultText.trim()) {
               routerSearchRawText = resultText.trim();
-              routerSearchContext = `\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\n${routerSearchRawText.substring(0, 6000)}\n=== END SEARCH RESULTS ===\nIMPORTANT: Use the search results above to inform your plan with CURRENT, accurate data and dates. Do not rely on outdated training knowledge.\n`;
+              routerSearchContext = `\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\n${routerSearchRawText}\n=== END SEARCH RESULTS ===\nIMPORTANT: Use the search results above to inform your plan with CURRENT, accurate data and dates. Do not rely on outdated training knowledge.\n`;
               console.log('[Router Search] Pre-search returned', resultText.length, 'chars for router context');
             }
           } else {
@@ -1845,8 +1854,8 @@ USER REQUEST: "${routerPrompt}"`;
     const jsonMatch = cleanResponse.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('[AI Router] No JSON found in response:', cleanResponse);
-      debugLog(LogLevel.WARN, 'aiRouteRequest', 'No JSON in response', { responsePreview: cleanResponse.slice(0, 200) });
-      throw new Error(`AI router returned invalid response (no JSON). Response was: "${cleanResponse.slice(0, 100)}...". Please try again.`);
+      debugLog(LogLevel.WARN, 'aiRouteRequest', 'No JSON in response', { responsePreview: cleanResponse });
+      throw new Error(`AI router returned invalid response (no JSON). Response was: "${cleanResponse}". Please try again.`);
     }
 
     let parsed;
@@ -1857,7 +1866,7 @@ USER REQUEST: "${routerPrompt}"`;
       throw new Error(`AI router returned malformed JSON: ${parseError.message}. Please try again.`);
     }
 
-    console.log('[AI Router] Parsed:', parsed);
+    console.log('[AI Router] Parsed (full):', JSON.stringify(parsed, null, 2));
 
     // ─── Clarification questions — router needs more info before planning ───
     if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length > 0) {
@@ -2061,7 +2070,7 @@ USER REQUEST: "${routerPrompt}"`;
     // Attach pre-search context so downstream slide generation can use it
     // for ALL slides (including cover/dividers that lack their own searchQuery).
     if (routerSearchRawText) {
-      result.searchRawContext = routerSearchRawText.substring(0, 8000);
+      result.searchRawContext = routerSearchRawText;
       console.log('[Router Search] Attached searchRawContext to route result:', result.searchRawContext.length, 'chars');
     }
 
@@ -2090,7 +2099,7 @@ USER REQUEST: "${routerPrompt}"`;
     const routerRole = agentMode ? 'router:agent' : 'router:chatbot';
     audit(routerRole, result.intent === 'clarify' ? 'asked questions' : `routed: ${result.intent}`, {
       model: routerModelRef,
-      query: userPrompt.slice(0, 300),
+      query: userPrompt,
       context: `${parsed.plan?.length || 0} steps, confidence: ${parsed.confidence || 'n/a'}`,
       maxTokens: routerSettings.maxTokens || null,
       reasoningEffort: routerSettings.reasoningEffort || null,
@@ -2111,7 +2120,7 @@ USER REQUEST: "${routerPrompt}"`;
     const routerRole = agentMode ? 'router:agent' : 'router:chatbot';
     audit(routerRole, 'router failed', {
       model: routerModelRef,
-      query: userPrompt.slice(0, 300),
+      query: userPrompt,
       duration: Date.now() - routerCallStart,
       status: 'error',
       error: error.message,

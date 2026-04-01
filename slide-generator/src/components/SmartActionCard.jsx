@@ -333,6 +333,29 @@ export default function SmartActionCard({
     });
   }
 
+  const getStepState = (i) => {
+    if (!isExecuting || !progress) return null;
+    if (i < progress.current) return 'done';
+    if (i === progress.current) return 'active';
+    return 'pending';
+  };
+
+  const buildStepDescription = (step) => {
+    const stepAction = step.action || action;
+    const tmpl = step.templateId ? SLIDE_TEMPLATES[step.templateId] : null;
+    if (stepAction === 'create_slide' || stepAction === 'create_from_template') {
+      const name = tmpl ? tmpl.title : 'freestyle';
+      return step.layoutGuidance ? `${name} — ${step.layoutGuidance}` : name;
+    }
+    if (stepAction === 'edit_slide') return `Page ${(step.slideIndex ?? currentSlideIdx) + 1}`;
+    if (stepAction === 'delete_slide') return `Page ${(step.slideIndex ?? currentSlideIdx) + 1}`;
+    if (stepAction === 'switch_template') {
+      const target = `Page ${(step.slideIndex ?? currentSlideIdx) + 1}`;
+      return tmpl ? `${target} \u2192 ${tmpl.title}` : target;
+    }
+    return stepAction;
+  };
+
   // Render a single step row
   const renderStep = (step, i) => {
     const stepAction = step.action || action;
@@ -341,6 +364,21 @@ export default function SmartActionCard({
     const isCreateAction = stepAction === 'create_slide' || stepAction === 'create_from_template';
     const positionLabel = describePosition(step);
     const depStep = step.contextFromStep;
+    const stepState = getStepState(i);
+
+    if (isExecuting) {
+      return (
+        <div key={i} className={`sac-plan-step-compact ${stepState ? `step-${stepState}` : ''}`}>
+          <span className={`sac-step-num ${stepState ? `sac-step-num-${stepState}` : ''}`}>
+            {stepState === 'done' ? '\u2713' : i + 1}
+          </span>
+          <span className="sac-step-action-badge" style={{ background: cfg.color }}>
+            {cfg.icon} {cfg.label}
+          </span>
+          <span className="sac-step-desc">{buildStepDescription(step)}</span>
+        </div>
+      );
+    }
 
     return (
       <div key={i} className="sac-plan-step">
@@ -367,13 +405,6 @@ export default function SmartActionCard({
                   showFreestyle={true}
                   compact={true}
                 />
-                {/* Layout guidance badge for freestyle steps */}
-                {!stepTemplate && (
-                  <LayoutGuidanceInput
-                    value={step.layoutGuidance || null}
-                    onChange={(val) => updatePlanStep(i, { layoutGuidance: val })}
-                  />
-                )}
                 {positionLabel && (
                   <span className="sac-step-position">{positionLabel}</span>
                 )}
@@ -392,13 +423,21 @@ export default function SmartActionCard({
                   Page {(step.slideIndex ?? currentSlideIdx) + 1}
                 </span>
                 {step.templateId && (
-                  <span className="sac-step-template-name">→ {SLIDE_TEMPLATES[step.templateId]?.title || step.templateId}</span>
+                  <span className="sac-step-template-name">{'\u2192'} {SLIDE_TEMPLATES[step.templateId]?.title || step.templateId}</span>
                 )}
               </>
             ) : (
               <span>{stepAction}</span>
             )}
           </div>
+
+          {/* Layout guidance on its own line for freestyle steps */}
+          {isCreateAction && !stepTemplate && (
+            <LayoutGuidanceInput
+              value={step.layoutGuidance || null}
+              onChange={(val) => updatePlanStep(i, { layoutGuidance: val })}
+            />
+          )}
 
           {/* Instruction text - always visible in debug, collapsed in normal mode */}
           {debugMode ? (
@@ -448,7 +487,7 @@ export default function SmartActionCard({
           {/* Dependency indicator */}
           {depStep !== undefined && depStep !== null && (
             <div className="sac-step-dep">
-              ← uses output of step {depStep + 1}
+              {'\u2190'} uses output of step {depStep + 1}
             </div>
           )}
 
@@ -1028,9 +1067,12 @@ export default function SmartActionCard({
           font-size: 14px;
           color: #1e293b;
           font-weight: 500;
+          display: -webkit-box;
+          -webkit-line-clamp: 2;
+          -webkit-box-orient: vertical;
           overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
+          word-break: break-word;
+          line-height: 1.4;
         }
 
         .sac-summary-badge {
@@ -1047,8 +1089,8 @@ export default function SmartActionCard({
         .sac-spinner-inline {
           width: 14px;
           height: 14px;
-          border: 2px solid #e2e8f0;
-          border-top-color: #6366f1;
+          border: 2px solid rgba(142, 30, 30, 0.15);
+          border-top-color: #8E1E1E;
           border-radius: 50%;
           animation: sacSpin 0.8s linear infinite;
           flex-shrink: 0;
@@ -1133,6 +1175,7 @@ export default function SmartActionCard({
           padding: 16px 20px;
           background: #fafbfc;
           border-bottom: 1px solid #e2e8f0;
+          overflow: hidden;
         }
 
         .sac-plan-header {
@@ -1237,21 +1280,99 @@ export default function SmartActionCard({
           display: flex;
           align-items: flex-start;
           gap: 10px;
-          padding: 10px 12px;
+          padding: 12px 14px;
           background: white;
           border-radius: 10px;
           border: 1px solid #e2e8f0;
           box-shadow: 0 1px 3px rgba(0,0,0,0.04);
-          transition: border-color 0.15s;
+          transition: all 0.2s ease;
+          overflow: hidden;
         }
 
         .sac-plan-step:hover {
           border-color: #cbd5e1;
+          box-shadow: 0 2px 6px rgba(0,0,0,0.06);
         }
 
         .sac-plan-step.editing {
           border-color: #6366f1;
           background: #fafbff;
+        }
+
+        /* ---- Compact execution step ---- */
+        .sac-plan-step-compact {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          padding: 8px 12px;
+          background: white;
+          border-radius: 8px;
+          border: 1px solid #e2e8f0;
+          transition: all 0.2s ease;
+          overflow: hidden;
+        }
+
+        .sac-plan-step-compact.step-done {
+          background: #f8fdf9;
+          border-color: #d1fae5;
+          opacity: 0.7;
+        }
+
+        .sac-plan-step-compact.step-active {
+          border-color: #8E1E1E;
+          border-left: 3px solid #8E1E1E;
+          background: #fef7f7;
+          box-shadow: 0 2px 8px rgba(142, 30, 30, 0.08);
+        }
+
+        .sac-plan-step-compact.step-pending {
+          opacity: 0.45;
+        }
+
+        .sac-step-desc {
+          flex: 1;
+          font-size: 12px;
+          color: #475569;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          min-width: 0;
+        }
+
+        /* ---- Full review step (unchanged states for non-compact) ---- */
+        .sac-plan-step.step-done {
+          background: #f8fdf9;
+          border-color: #d1fae5;
+          opacity: 0.75;
+        }
+
+        .sac-plan-step.step-active {
+          border-color: #8E1E1E;
+          border-left: 3px solid #8E1E1E;
+          background: #fef7f7;
+          box-shadow: 0 2px 8px rgba(142, 30, 30, 0.08);
+        }
+
+        .sac-plan-step.step-pending {
+          opacity: 0.5;
+        }
+
+        .sac-step-num-done {
+          background: #22c55e !important;
+          font-size: 13px !important;
+        }
+
+        .sac-step-num-active {
+          animation: sacPulseNum 1.2s ease-in-out infinite;
+        }
+
+        .sac-step-num-pending {
+          background: #cbd5e1 !important;
+        }
+
+        @keyframes sacPulseNum {
+          0%, 100% { box-shadow: 0 0 0 0 rgba(142, 30, 30, 0.3); }
+          50% { box-shadow: 0 0 0 5px rgba(142, 30, 30, 0); }
         }
 
         .sac-step-controls {
@@ -1280,8 +1401,8 @@ export default function SmartActionCard({
         .sac-step-ctrl-del:hover:not(:disabled) { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
         .sac-step-num {
-          width: 24px;
-          height: 24px;
+          width: 26px;
+          height: 26px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1289,9 +1410,10 @@ export default function SmartActionCard({
           color: white;
           border-radius: 50%;
           font-weight: 700;
-          font-size: 11px;
+          font-size: 12px;
           flex-shrink: 0;
           margin-top: 1px;
+          transition: all 0.2s ease;
         }
 
         .sac-step-action-badge {
@@ -1311,8 +1433,9 @@ export default function SmartActionCard({
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 5px;
+          gap: 8px;
           min-width: 0;
+          overflow: hidden;
         }
 
         .sac-step-main {
@@ -1322,6 +1445,8 @@ export default function SmartActionCard({
           font-size: 13px;
           color: #334155;
           flex-wrap: wrap;
+          min-width: 0;
+          max-width: 100%;
         }
 
         .sac-step-target-label {
@@ -1377,17 +1502,17 @@ export default function SmartActionCard({
           border-radius: 6px;
         }
 
-        /* Layout Guidance text input for freestyle steps */
+        /* Layout Guidance text input for freestyle steps (own line in review mode) */
         .sac-layout-guidance-input {
-          padding: 3px 10px;
+          padding: 4px 12px;
           border: 1px solid rgba(139, 92, 246, 0.25);
-          border-radius: 12px;
+          border-radius: 8px;
           font-size: 11px;
           font-weight: 500;
           color: #7c3aed;
           background: rgba(139, 92, 246, 0.05);
-          min-width: 180px;
-          max-width: 260px;
+          width: 100%;
+          box-sizing: border-box;
           outline: none;
           transition: all 0.15s;
         }
@@ -1453,8 +1578,23 @@ export default function SmartActionCard({
           color: #94a3b8;
           cursor: pointer;
           user-select: none;
-          padding: 2px 0;
+          padding: 3px 8px;
           list-style: none;
+          border-radius: 4px;
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.15s;
+        }
+
+        .sac-step-instruction-summary::before {
+          content: '\\25B8';
+          font-size: 9px;
+          transition: transform 0.15s;
+        }
+
+        .sac-step-instruction-details[open] .sac-step-instruction-summary::before {
+          transform: rotate(90deg);
         }
 
         .sac-step-instruction-summary::-webkit-details-marker { display: none; }
@@ -1462,6 +1602,7 @@ export default function SmartActionCard({
 
         .sac-step-instruction-summary:hover {
           color: #64748b;
+          background: #f1f5f9;
         }
 
         /* Source content from router (factual mode) */
@@ -1591,6 +1732,7 @@ export default function SmartActionCard({
           display: flex;
           align-items: center;
           gap: 8px;
+          flex-wrap: wrap;
           margin-top: 4px;
           padding: 0 4px;
         }
@@ -1632,7 +1774,9 @@ export default function SmartActionCard({
         }
 
         .sac-search-query-input {
-          flex: 1;
+          flex: 1 1 120px;
+          width: 0;
+          min-width: 0;
           font-size: 11px;
           padding: 3px 8px;
           border: 1px solid #e2e8f0;
@@ -1873,18 +2017,27 @@ export default function SmartActionCard({
           display: flex;
           align-items: center;
           gap: 10px;
-          color: #6366f1;
+          color: #8E1E1E;
           font-size: 13px;
-          font-weight: 500;
+          font-weight: 600;
+          min-width: 0;
+          flex: 1;
+        }
+
+        .sac-executing-status > span:last-child {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .sac-spinner {
           width: 16px;
           height: 16px;
-          border: 2px solid #e0e7ff;
-          border-top-color: #6366f1;
+          border: 2px solid rgba(142, 30, 30, 0.15);
+          border-top-color: #8E1E1E;
           border-radius: 50%;
           animation: sacSpin 0.8s linear infinite;
+          flex-shrink: 0;
         }
 
         @keyframes sacSpin {
@@ -1904,32 +2057,32 @@ export default function SmartActionCard({
         }
 
         .sac-progress {
-          padding: 8px 16px 4px;
+          padding: 10px 20px 6px;
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
         }
 
         .sac-progress-bar {
           flex: 1;
-          height: 4px;
-          background: #f1f5f9;
-          border-radius: 2px;
+          height: 5px;
+          background: #e2e8f0;
+          border-radius: 3px;
           overflow: hidden;
         }
 
         .sac-progress-fill {
           height: 100%;
           background: linear-gradient(90deg, #8E1E1E, #c41230);
-          border-radius: 2px;
+          border-radius: 3px;
           transition: width 0.4s ease;
         }
 
         .sac-progress-label {
-          font-size: 11px;
-          color: #64748b;
+          font-size: 12px;
+          color: #475569;
           white-space: nowrap;
-          font-weight: 500;
+          font-weight: 600;
         }
       `}</style>
     </div>

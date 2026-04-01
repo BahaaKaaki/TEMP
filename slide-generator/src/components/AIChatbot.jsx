@@ -1651,7 +1651,7 @@ export default function AIChatbot() {
         // Use the refined prompt instead of original
         userPrompt = agentResult.refinedPrompt;
         effectivePrompt = userPrompt;
-        console.log('[AIChatbot] Agent refined prompt:', userPrompt.slice(0, 200) + '...');
+        console.log('[AIChatbot] Agent refined prompt:', userPrompt);
 
         // Feed agent's AI I/O into the step log
         const agentIO = agenticExecution.aiIOLog || agentResult.aiIOLog || [];
@@ -1998,6 +1998,8 @@ export default function AIChatbot() {
           routeResult = routeRequest(effectivePrompt, context);
         }
 
+        console.log('[AIChatbot] Route result (full):', JSON.stringify(routeResult, null, 2));
+
         // ─── Router clarification questions — show same UI as agent questions ───
         if (routeResult?.needsClarification && routeResult.questions?.length > 0) {
           const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -2176,8 +2178,13 @@ export default function AIChatbot() {
         // If the plan only has answer_question steps, auto-execute without approval
         const isAnswerOnly = planSteps.length > 0 && planSteps.every(s => s.action === 'answer_question');
         if (isAnswerOnly) {
+          const combinedText = planSteps.map(s => s.instruction || '').join('\n');
+          const looksLikeQuestion = /\?\s*$|\?\s*\n|pick one|choose|which|how many/im.test(combinedText);
           for (const step of planSteps) {
             addMessage('assistant', step.instruction || 'How can I help with your presentation?');
+          }
+          if (looksLikeQuestion) {
+            routerClarificationRef.current = { originalPrompt: effectivePrompt, context };
           }
           setIsLoading(false);
           return;
@@ -2530,6 +2537,16 @@ export default function AIChatbot() {
         }
         const stepPromptWithVibe = vibeHint ? `${stepPrompt}\n\n[Design Style: ${vibeHint}]` : stepPrompt;
 
+        console.log(`[SmartAction] Step ${stepIndex} FINAL PROMPT (${stepPrompt.length} chars):`, stepPrompt);
+        console.log(`[SmartAction] Step ${stepIndex} structured fields:`, {
+          hasFacts: Array.isArray(step.facts) && step.facts.length,
+          hasSources: Array.isArray(step.sources) && step.sources.length,
+          hasTitle: !!step.title,
+          hasSubtitle: !!step.subtitle,
+          hasLayoutGuidance: !!step.layoutGuidance,
+          searchQuery: step.searchQuery || null,
+        });
+
         // Map action names to user-friendly labels
         const actionLabels = {
           'analyze_content': 'Analyzing',
@@ -2686,7 +2703,7 @@ export default function AIChatbot() {
               && (!routerAlreadySearched || needsDeeperSearch);
             if (shouldRunStepSearch) {
               const datedQuery = `${effectiveSearchQuery} ${currentDateString()}`;
-              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
+              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${datedQuery}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
@@ -2861,7 +2878,7 @@ export default function AIChatbot() {
             const editNeedsDeeperSearch = !!step.searchGoal;
             if (editSearchQuery && settings.searchEnabled && (!routerAlreadySearched || editNeedsDeeperSearch)) {
               const datedQuery = `${editSearchQuery} ${currentDateString()}`;
-              console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
+              console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${datedQuery}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
@@ -3371,7 +3388,7 @@ export default function AIChatbot() {
               && (!routerAlreadySearched || batchNeedsDeeperSearch);
             if (shouldRunBatchSearch) {
               const datedQuery = `${effectiveBatchQuery} ${currentDateString()}`;
-              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${datedQuery.substring(0, 100)}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
+              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${datedQuery}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
@@ -3666,30 +3683,24 @@ Original request: ${userPrompt}`;
       } else {
         setExecutionStatus({ type: 'success', message: summaryMessage });
 
-        const truncTitle = (t, max = 45) => t && t.length > max ? t.slice(0, max) + '...' : (t || 'Untitled');
-        const formatSlideItem = (item) => `Slide ${item.index} &mdash; ${truncTitle(item.title)}`;
+        const truncTitle = (t, max = 50) => t && t.length > max ? t.slice(0, max) + '...' : (t || 'Untitled');
 
         let resultHtml = '<div class="execution-result-card">';
         resultHtml += `<div class="result-badge result-badge-success">Done! ${summaryMessage}</div>`;
 
-        if (createdSlides.length > 0) {
-          resultHtml += '<div class="result-section">';
-          resultHtml += '<span class="result-label">Created:</span> ';
-          resultHtml += createdSlides.map(s => `<span class="result-item">${formatSlideItem(s)}</span>`).join('');
-          resultHtml += '</div>';
-        }
-        if (editedSlides.length > 0) {
-          resultHtml += '<div class="result-section">';
-          resultHtml += '<span class="result-label">Edited:</span> ';
-          resultHtml += editedSlides.map(s => `<span class="result-item">${formatSlideItem(s)}</span>`).join('');
-          resultHtml += '</div>';
-        }
-        if (deletedSlides.length > 0) {
-          resultHtml += '<div class="result-section">';
-          resultHtml += '<span class="result-label">Removed:</span> ';
-          resultHtml += deletedSlides.map(s => `<span class="result-item">${formatSlideItem(s)}</span>`).join('');
-          resultHtml += '</div>';
-        }
+        const renderSection = (label, items, icon) => {
+          let html = `<div class="result-section"><div class="result-label">${icon} ${label}</div>`;
+          html += '<div class="result-list">';
+          items.forEach(s => {
+            html += `<div class="result-item"><span class="result-item-num">${s.index}</span><span class="result-item-title">${truncTitle(s.title)}</span></div>`;
+          });
+          html += '</div></div>';
+          return html;
+        };
+
+        if (createdSlides.length > 0) resultHtml += renderSection('Created', createdSlides, '&#10003;');
+        if (editedSlides.length > 0) resultHtml += renderSection('Edited', editedSlides, '&#9998;');
+        if (deletedSlides.length > 0) resultHtml += renderSection('Removed', deletedSlides, '&#10007;');
 
         resultHtml += '</div>';
 
@@ -5997,16 +6008,19 @@ Original request: ${userPrompt}`;
                         const isFreestyle = isCreateStep && (!step.templateId || step.templateId === 'freestyle');
                         const guidance = typeof step === 'object' ? step.layoutGuidance : null;
                         const stepIdx = typeof step === 'object' ? step.stepIndex : i;
-                        const isPending = i >= progress.current;
+                        const isPending = i > progress.current;
+                        const displayText = guidance && !isPending
+                          ? `${stepText} \u2014 ${guidance}`
+                          : stepText;
                         return (
                           <div
                             key={i}
                             className={`chatbot-plan-step ${i < progress.current ? 'completed' : i === progress.current ? 'active' : ''}`}
                           >
                             <span className="step-indicator">
-                              {i < progress.current ? '✓' : i === progress.current ? '●' : '○'}
+                              {i < progress.current ? '\u2713' : i === progress.current ? '\u25CF' : '\u25CB'}
                             </span>
-                            <span className="step-text">{stepText}</span>
+                            <span className="step-text">{displayText}</span>
                             {isFreestyle && isPending && (
                               <input
                                 className="layout-guidance-inline-input"
@@ -6030,9 +6044,6 @@ Original request: ${userPrompt}`;
                                   });
                                 }}
                               />
-                            )}
-                            {isFreestyle && !isPending && guidance && (
-                              <span className="layout-guidance-badge">{guidance}</span>
                             )}
                           </div>
                         );

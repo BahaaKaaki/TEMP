@@ -472,7 +472,9 @@ export default function SmartActionCard({
                 value={step.instruction || ''}
                 onChange={(e) => updatePlanStep(i, { instruction: e.target.value })}
                 placeholder="Enter instructions for this step..."
-                rows={2}
+                rows={1}
+                ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
               />
             </div>
           ) : (
@@ -484,7 +486,9 @@ export default function SmartActionCard({
                   value={step.instruction || ''}
                   onChange={(e) => updatePlanStep(i, { instruction: e.target.value })}
                   placeholder="Enter instructions for this step..."
-                  rows={2}
+                  rows={1}
+                  ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                  onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                 />
               </div>
             </details>
@@ -1572,19 +1576,19 @@ export default function SmartActionCard({
 
         .sac-step-titles {
           width: 100%;
-          display: grid;
-          grid-template-columns: 1fr 1fr;
+          display: flex;
+          flex-direction: column;
           gap: 4px;
         }
 
         .sac-step-title-input {
           width: 100%;
-          font-size: 12px;
+          font-size: 12.5px;
           font-weight: 600;
           color: #1e293b;
           border: 1px solid #e2e8f0;
           border-radius: 6px;
-          padding: 4px 6px;
+          padding: 5px 8px;
           background: #f8fafc;
           box-sizing: border-box;
           min-width: 0;
@@ -1599,12 +1603,12 @@ export default function SmartActionCard({
 
         .sac-step-subtitle-input {
           width: 100%;
-          font-size: 11px;
+          font-size: 11.5px;
           font-weight: 500;
           color: #64748b;
           border: 1px solid #e2e8f0;
           border-radius: 6px;
-          padding: 4px 6px;
+          padding: 4px 8px;
           background: #f8fafc;
           box-sizing: border-box;
           min-width: 0;
@@ -1625,15 +1629,17 @@ export default function SmartActionCard({
           width: 100%;
           font-size: 12px;
           color: #475569;
-          line-height: 1.35;
+          line-height: 1.4;
           padding: 5px 8px;
           border: 1px solid #e2e8f0;
           border-radius: 6px;
           background: #f8fafc;
-          resize: vertical;
-          min-height: 32px;
+          resize: none;
+          overflow: hidden;
+          field-sizing: content;
+          min-height: 28px;
           font-family: inherit;
-          transition: all 0.15s;
+          transition: border-color 0.15s, box-shadow 0.15s;
           box-sizing: border-box;
         }
 
@@ -1750,9 +1756,9 @@ export default function SmartActionCard({
 
         .sac-step-footer {
           display: flex;
-          align-items: center;
-          gap: 8px;
-          flex-wrap: wrap;
+          flex-direction: column;
+          gap: 4px;
+          width: 100%;
         }
 
         .sac-step-dep {
@@ -1823,8 +1829,7 @@ export default function SmartActionCard({
           display: flex;
           align-items: center;
           gap: 6px;
-          flex-wrap: wrap;
-          margin-top: 2px;
+          width: 100%;
           padding: 0;
         }
 
@@ -1865,8 +1870,7 @@ export default function SmartActionCard({
         }
 
         .sac-search-query-input {
-          flex: 1 1 120px;
-          width: 0;
+          flex: 1;
           min-width: 0;
           font-size: 11px;
           padding: 3px 8px;

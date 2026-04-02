@@ -177,7 +177,7 @@ Answer based on the context provided above. Be specific and quote actual content
  * @param {Object} settings - API settings
  * @returns {Promise<{useAgent: boolean, reason: string}>}
  */
-export async function triageRequest(userPrompt, context, settings) {
+export async function agentTriageRequest(userPrompt, context, settings) {
   const fastSettings = settings.fastModel
     ? { ...settings, model: settings.fastModel }
     : settings;

@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, triageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, triageRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, agentTriageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
 import { PRIMARY_ACTIONS, MORE_ACTIONS, ARABIC_TRANSLATION_PROMPT } from '../constants/slideActions';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
@@ -1217,48 +1217,67 @@ export default function AIChatbot() {
     // Show initial progress — agent mode will override with its own phases
     setProgress({ phase: 'Classifying...', current: 0, total: 1 });
 
-    // ─── UNIFIED CLASSIFIER: auto-detect scope instead of manual toggle ───
-    let autoScope = 'planner'; // default: full planner path
-    let classifierNeedsSearch = null; // Tier 1 verdict on search (null = no opinion)
-    if (activeSlide && !useAgenticMode && !useReportMode) {
-      try {
-        const classification = await classifyRequest(effectivePrompt, {
-          slides: currentState.slides,
-          activeSlideIndex: currentSlideIndex,
-          activeSlide,
-        }, currentState.settings);
-        console.log('[Unified] Classifier result:', classification);
-        classifierNeedsSearch = classification.needsSearch;
+    // ─── UNIFIED TRIAGE: always runs, replaces both Tier 1 classifier and Tier 2 mini-classifier ───
+    let triage = { scope: 'plan', needsSearch: false, searchQuery: null, isTemplateSwitch: false, templateId: null, targetSlides: [], instruction: effectivePrompt, questions: [] };
+    try {
+      triage = await triageRequest(effectivePrompt, {
+        slides: currentState.slides,
+        activeSlideIndex: currentSlideIndex,
+        activeSlide,
+      }, currentState.settings);
+      console.log('[Triage] Result:', triage);
+    } catch (triageErr) {
+      console.warn('[Triage] Failed, falling back to plan:', triageErr.message);
+    }
 
-        if (classification.scope === 'qa' && classification.action === 'answer') {
-          autoScope = 'qa';
-        } else if (!classification.needsPlanner && (classification.scope === 'single_slide')) {
-          const targets = classification.targetSlides || [];
-          const targetsDifferentSlide = targets.length > 0 && !targets.includes(currentSlideIndex);
-          if (targetsDifferentSlide) {
-            console.log('[Unified] Cross-slide reference detected (target: %o, active: %d) → routing to planner', targets, currentSlideIndex);
-            autoScope = 'planner';
-          } else {
-            autoScope = 'direct';
-          }
-        }
-      } catch (classifyErr) {
-        console.warn('[Unified] Classifier failed, falling back to planner:', classifyErr.message);
-      }
+    // ─── CLARIFY: show clarifying questions, wait for user response ───
+    if (triage.scope === 'clarify' && triage.questions.length > 0) {
+      const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+      const questionBlocksHtml = triage.questions.map((qb, qi) => {
+        const q = typeof qb === 'string' ? { question: qb, options: [] } : qb;
+        const optionCards = (q.options || []).map(opt => {
+          const escaped = escHtml(typeof opt === 'string' ? opt : opt.label || opt);
+          return `<button class="clarification-option-card" data-qi="${qi}" onclick="window.__toggleClarificationChip && window.__toggleClarificationChip(this)">${escaped}</button>`;
+        }).join('');
+        return `<div class="clarification-question-block" data-qi="${qi}">
+  <p class="clarification-question">${escHtml(q.question)}</p>
+  ${optionCards ? `<div class="clarification-options-grid">${optionCards}</div>` : ''}
+  <textarea class="clarification-freetext" data-qi="${qi}" rows="1" placeholder="Or type your own answer..."></textarea>
+</div>`;
+      }).join('\n');
+
+      const formattedQuestion = `
+<div class="clarification-card">
+  <div class="clarification-header">
+    <span class="clarification-title">${triage.questions.length > 1 ? 'A few quick questions' : 'Quick Question'}</span>
+  </div>
+  <div class="clarification-body">
+    ${questionBlocksHtml}
+    <div class="clarification-submit-row">
+      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers()">Submit Answers</button>
+    </div>
+  </div>
+</div>`;
+
+      addMessage('assistant', formattedQuestion, { isHTML: true });
+      routerClarificationRef.current = { originalPrompt: effectivePrompt };
+      setIsLoading(false);
+      setProgress(null);
+      return;
     }
 
     // ─── Q&A: direct response, no slide changes ───
-    if (autoScope === 'qa') {
+    if (triage.scope === 'qa') {
       try {
         setProgress({ phase: 'Thinking...', current: 0, total: 1 });
-        const speedModel = currentState.settings.speedMode === 'thinking'
+        const speedModel = currentState.settings.speedMode === 'quality'
           ? currentState.settings.model
           : currentState.settings.fastModel;
         const qaSettings = { ...currentState.settings, model: speedModel || currentState.settings.model };
         const qaResponse = await chatWithContext(effectivePrompt, '', qaSettings);
         addMessage('assistant', qaResponse || 'I could not generate a response.');
       } catch (qaErr) {
-        console.error('[Unified] Q&A failed:', qaErr);
+        console.error('[Triage] Q&A failed:', qaErr);
         addMessage('assistant', `Sorry, I ran into an error: ${qaErr.message}`);
       } finally {
         setIsLoading(false);
@@ -1270,10 +1289,9 @@ export default function AIChatbot() {
     setProgress({ phase: 'Working...', current: 0, total: 1 });
 
     // ─── DIRECT EXECUTION: single-slide actions (edit, improve, fill, template switch) ───
-    if (autoScope === 'direct' && activeSlide) {
+    if (triage.scope === 'direct' && activeSlide) {
       try {
-        // Speed mode determines generation model: 'thinking' = main model, 'fast' = fast model
-        const genModel = currentState.settings.speedMode === 'thinking'
+        const genModel = currentState.settings.speedMode === 'quality'
           ? currentState.settings.model
           : (currentState.settings.fastModel || currentState.settings.model);
         const slideSettings = {
@@ -1281,91 +1299,62 @@ export default function AIChatbot() {
           model: genModel,
           vibe: currentState.vibe || state.vibe,
         };
-        const searchConfigured = currentState.settings.chatRouterSearchEnabled !== false
-          && currentState.settings.searchEnabled
+        const searchConfigured = currentState.settings.searchEnabled
           && currentState.settings.searchEndpoint
           && currentState.settings.searchModel;
-        const fastModel = currentState.settings.fastModel || currentState.settings.model;
         const slideIsEmpty = isSlideEffectivelyEmpty(activeSlide);
 
-        // ── Parallel: classify + search at the same time for non-empty slides ──
-        // If Tier 1 classifier already said needsSearch: false, skip speculative search entirely
-        const searchEnabled = currentState.settings.searchToggle !== false;
-        let miniRoute = { needsSearch: searchEnabled, referenceSlides: [], isTemplateSwitch: false, templateId: null };
-
-        const doClassify = fastModel && !slideIsEmpty;
-        const doSearch = searchConfigured && searchEnabled && classifierNeedsSearch !== false;
-
-        const classifyPromise = doClassify ? (async () => {
-          const classifySettings = { ...slideSettings, model: fastModel, maxTokens: 150, temperature: 0.0 };
-          const slideIdx = currentState.slides.findIndex(s => s.id === activeSlide.id);
-          const slideList = currentState.slides.map((s, i) => `${i + 1}. "${s.title}"`).join(', ');
-          const classifyResult = await callWithModelFallback(
-            classifySettings,
-            'You classify slide editing requests. Return ONLY valid JSON, no markdown.',
-            `User request: "${effectivePrompt}"\nCurrent slide: #${slideIdx + 1} "${activeSlide.title}" (template: ${activeSlide.templateId || 'custom'})\nAll slides: ${slideList}\n\nReturn JSON: {"needsSearch": boolean (true if request needs current data/facts/statistics), "referenceSlides": [slide numbers if user references other slides, e.g. "like slide 3"], "isTemplateSwitch": boolean, "templateId": string or null}\n\nisTemplateSwitch rules:\n- TRUE only when user explicitly asks to SWITCH or CHANGE the template type (e.g. "switch to comparison", "change to timeline", "use the kpi template")\n- FALSE for content/structural edits like "add a column", "remove a row", "make it a 3-column layout", "add more detail", "change the title"\n- FALSE for styling changes like "make it bold", "change colors"\n- When in doubt, set false — the edit path handles layout changes fine`
-          );
-          if (classifyResult) {
-            const cleaned = classifyResult.replace(/```json?\n?|\n?```/g, '').trim();
-            try {
-              const parsed = JSON.parse(cleaned);
-              return {
-                needsSearch: searchEnabled && (parsed.needsSearch ?? true),
-                referenceSlides: Array.isArray(parsed.referenceSlides) ? parsed.referenceSlides.map(n => Number(n) - 1).filter(n => n >= 0 && n < currentState.slides.length) : [],
-                isTemplateSwitch: !!parsed.isTemplateSwitch,
-                templateId: parsed.templateId || null,
-              };
-            } catch { console.warn('[ThisSlide] Flash router returned invalid JSON, using defaults'); }
+        // Search runs if triage says content needs current data
+        const doSearch = searchConfigured && triage.needsSearch;
+        let searchResult = null;
+        if (doSearch) {
+          setProgress({ phase: 'Searching...', current: 0, total: 1 });
+          try {
+            let searchQuery = triage.searchQuery || effectivePrompt.trim();
+            if (searchQuery.length > 120) {
+              const fastModel = currentState.settings.fastModel || currentState.settings.model;
+              const fastSettings = { ...slideSettings, model: fastModel, maxTokens: 100, temperature: 0.1 };
+              const refinedQuery = await callWithModelFallback(
+                fastSettings,
+                'Turn this user request into a concise, specific web search query. Fix any typos. Add key terms for better results. Return ONLY the search query text, nothing else.',
+                searchQuery
+              );
+              searchQuery = (refinedQuery || searchQuery).trim();
+            }
+            searchQuery += ' latest ' + currentDateString();
+            console.log('[Direct] Search query:', searchQuery);
+            searchResult = await webSearch(searchQuery, currentState.settings);
+          } catch (searchErr) {
+            console.warn('[Direct] Search failed:', searchErr.message);
           }
-          return null;
-        })().catch(err => { console.warn('[ThisSlide] Flash router failed:', err.message); return null; }) : Promise.resolve(null);
-
-        // Search runs in parallel with classification -- skip the extra refinement
-        // call for short queries (< 120 chars) since they're already good search terms
-        const searchPromise = doSearch ? (async () => {
-          let searchQuery;
-          if (effectivePrompt.length > 120) {
-            const fastSettings = { ...slideSettings, model: fastModel, maxTokens: 100, temperature: 0.1 };
-            const refinedQuery = await callWithModelFallback(
-              fastSettings,
-              'Turn this user request into a concise, specific web search query. Fix any typos. Add key terms for better results. Return ONLY the search query text, nothing else.',
-              effectivePrompt
-            );
-            searchQuery = (refinedQuery || effectivePrompt).trim();
-          } else {
-            searchQuery = effectivePrompt.trim();
-          }
-          searchQuery += ' latest ' + currentDateString();
-          console.log('[ThisSlide] Search query:', searchQuery);
-          return webSearch(searchQuery, currentState.settings);
-        })().catch(err => { console.warn('[ThisSlide] Search failed:', err.message); return null; }) : Promise.resolve(null);
-
-        setProgress({ phase: doSearch ? 'Searching...' : 'Classifying...', current: 0, total: 1 });
-        const [classifyResult, searchResult] = await Promise.all([classifyPromise, searchPromise]);
-
-        if (classifyResult) {
-          miniRoute = classifyResult;
-          console.log('[ThisSlide] Flash router classification:', miniRoute);
         }
-        // If classifier says no search needed, discard any search result we fetched speculatively
-        const useSearchResult = doSearch && miniRoute.needsSearch && searchResult;
 
-        // Template switch: delegate to transformSlideToTemplate if flash router detected it.
-        // If the template is not found or the HTML comes back unchanged, fall through to edit path.
-        if (miniRoute.isTemplateSwitch && miniRoute.templateId) {
+        // Detect reference slides from prompt text (e.g. "like slide 3")
+        let referenceContext = '';
+        const slideRefMatch = effectivePrompt.match(/(?:like|from|match|copy|same as)\s+slide\s+(\d+)/i);
+        if (slideRefMatch) {
+          const refIdx = parseInt(slideRefMatch[1], 10) - 1;
+          const refSlide = currentState.slides[refIdx];
+          if (refSlide) {
+            referenceContext = `\n\n=== REFERENCE SLIDES (match their style/design) ===\n[Slide ${refIdx + 1}] "${refSlide.title}":\n${refSlide.html}\n=== END REFERENCE ===`;
+          }
+        }
+
+        // Template switch: delegate to transformSlideToTemplate if triage detected it.
+        if (triage.isTemplateSwitch && triage.templateId) {
           setProgress({ phase: 'Switching template...', current: 0, total: 1 });
-          const customTemplate = currentState.customTemplates?.find(t => t.id === miniRoute.templateId);
+          const customTemplate = currentState.customTemplates?.find(t => t.id === triage.templateId);
           const currentIndex = currentState.slides.findIndex(s => s.id === activeSlide.id);
           const deckContext = buildDeckContextForSwitch(currentState.slides, currentIndex);
           const transformedHtml = await transformSlideToTemplate(
-            activeSlide.html, miniRoute.templateId, slideSettings, customTemplate,
+            activeSlide.html, triage.templateId, slideSettings, customTemplate,
             { slideNumber: currentIndex + 1, totalSlides: currentState.slides.length },
             deckContext, effectivePrompt.trim() || null
           );
           if (transformedHtml && transformedHtml !== activeSlide.html) {
             const newTitle = extractTitleFromHTML(transformedHtml) || activeSlide.title;
-            actions.updateSlide(activeSlide.id, { html: transformedHtml, type: miniRoute.templateId, templateId: miniRoute.templateId, customCSS: '', pptxRendererCode: null });
-            addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${miniRoute.templateId}</strong></div>`, { isHTML: true });
+            actions.updateSlide(activeSlide.id, { html: transformedHtml, type: triage.templateId, templateId: triage.templateId, customCSS: '', pptxRendererCode: null });
+            addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${triage.templateId}</strong></div>`, { isHTML: true });
             setIsLoading(false);
             setProgress(null);
             abortControllerRef.current = null;
@@ -1374,20 +1363,9 @@ export default function AIChatbot() {
           console.log('[ThisSlide] Template switch returned unchanged HTML, falling through to edit path');
         }
 
-        // Build reference slide context from flash router
-        let referenceContext = '';
-        if (miniRoute.referenceSlides.length > 0) {
-          const refSlides = miniRoute.referenceSlides.slice(0, 2).map(idx => currentState.slides[idx]).filter(Boolean);
-          if (refSlides.length > 0) {
-            referenceContext = '\n\n=== REFERENCE SLIDES (match their style/design) ===\n' +
-              refSlides.map((rs, ri) => `[Slide ${miniRoute.referenceSlides[ri] + 1}] "${rs.title}":\n${rs.html}`).join('\n\n---\n\n') +
-              '\n=== END REFERENCE ===';
-          }
-        }
-
         // Enrich prompt with search results
         let enrichedPrompt = effectivePrompt;
-        if (useSearchResult) {
+        if (searchResult) {
           const dateStr = currentDateString();
           enrichedPrompt = effectivePrompt
             + `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${dateStr}) ===\n`
@@ -1395,7 +1373,7 @@ export default function AIChatbot() {
             + `\n=== END KEY FACTS ===\n`
             + 'IMPORTANT: Use ONLY dates, names, and facts from the above search context. '
             + 'Do NOT use outdated information from training data.\n';
-          console.log('[ThisSlide] Search enriched prompt with', searchResult.length, 'chars');
+          console.log('[Direct] Search enriched prompt with', searchResult.length, 'chars');
         }
 
         // Inject deck context (storyline, position, neighbors) so This Slide edits
@@ -1528,7 +1506,7 @@ export default function AIChatbot() {
             })),
             storylineSummary: (currentState.storyline || []).map(s => s.title).join(' → '),
           };
-          const triage = await triageRequest(userPrompt, triageContext, currentState.settings);
+          const triage = await agentTriageRequest(userPrompt, triageContext, currentState.settings);
           shouldRunAgent = triage.useAgent;
           console.log('[AIChatbot] AI triage:', triage.useAgent ? 'AGENT' : 'ROUTER', '-', triage.reason);
         }
@@ -2256,7 +2234,7 @@ export default function AIChatbot() {
     const routeResult = modifiedRouteResult;
 
     // Speed mode determines generation model
-    const genModel = settings.speedMode === 'thinking'
+    const genModel = settings.speedMode === 'quality'
       ? settings.model
       : (settings.fastModel || settings.model);
     const executionSettings = { ...settings, model: genModel };
@@ -2305,10 +2283,8 @@ export default function AIChatbot() {
 
       // Pre-search key facts from router — threaded into every slide for grounding
       const searchRawContext = routeResult.searchRawContext || '';
-      const routerAlreadySearched = !!searchRawContext;
       if (searchRawContext) {
-        console.log('[SmartAction] Router search context available for all slides:', searchRawContext.length, 'chars',
-          '(per-step search skipped unless step has searchGoal)');
+        console.log('[SmartAction] Router search context available for all slides:', searchRawContext.length, 'chars');
       }
 
       console.log('[SmartAction] Executing plan with', totalSteps, 'steps, parallel batch size:', parallelBatchSize, planSteps);
@@ -2527,9 +2503,17 @@ export default function AIChatbot() {
           stepPrompt = structuredParts.join('\n') + '\n' + stepPrompt;
         }
         if (Array.isArray(step.facts) && step.facts.length > 0) {
-          stepPrompt += '\n\nKey facts:\n' + step.facts.map(f => `- ${f}`).join('\n');
-        }
-        if (Array.isArray(step.sources) && step.sources.length > 0) {
+          stepPrompt += `\n\n=== VERIFIED FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n`;
+          stepPrompt += step.facts.map(f => `- ${f}`).join('\n');
+          if (Array.isArray(step.sources) && step.sources.length > 0) {
+            const srcLines = step.sources.map(s =>
+              typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
+            );
+            stepPrompt += '\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
+          }
+          stepPrompt += '\n=== END VERIFIED FACTS ===';
+          stepPrompt += '\nIMPORTANT: Use ONLY the dates, names, numbers, and facts above. Do NOT use outdated information from training data.\n';
+        } else if (Array.isArray(step.sources) && step.sources.length > 0) {
           const srcLines = step.sources.map(s =>
             typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
           );
@@ -2696,18 +2680,14 @@ export default function AIChatbot() {
             // Inject router-level search facts into every slide's prompt for grounding
             let enrichedStepPrompt = stepPromptWithVibe + buildSearchFactsBlock();
             const effectiveSearchQuery = deriveSearchQuery(step);
-            // Per-step search: skip if router already searched (routerAlreadySearched),
-            // UNLESS the step has a searchGoal indicating it needs deeper data.
-            const needsDeeperSearch = !!step.searchGoal;
-            const shouldRunStepSearch = effectiveSearchQuery && settings.searchEnabled
-              && (!routerAlreadySearched || needsDeeperSearch);
+            const shouldRunStepSearch = effectiveSearchQuery && settings.searchEnabled;
             if (shouldRunStepSearch) {
               const datedQuery = `${effectiveSearchQuery} ${currentDateString()}`;
               console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${datedQuery}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  enrichedStepPrompt = `${stepPromptWithVibe}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Use ONLY dates, names, numbers, and facts from the VERIFIED FACTS and WEB SEARCH RESULTS above. Do NOT substitute information from training data. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
@@ -2873,16 +2853,14 @@ export default function AIChatbot() {
             // Inject router-level search facts (same grounding as create_slide)
             editContext += buildSearchFactsBlock();
 
-            // Per-step web search: only if router didn't already search, or step has searchGoal
             const editSearchQuery = deriveSearchQuery(step);
-            const editNeedsDeeperSearch = !!step.searchGoal;
-            if (editSearchQuery && settings.searchEnabled && (!routerAlreadySearched || editNeedsDeeperSearch)) {
+            if (editSearchQuery && settings.searchEnabled) {
               const datedQuery = `${editSearchQuery} ${currentDateString()}`;
               console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${datedQuery}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Use ONLY dates, names, numbers, and facts from the VERIFIED FACTS and WEB SEARCH RESULTS above. Do NOT substitute information from training data. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] edit_slide step ${stepIndex}: search returned ${searchResult.length} chars`);
                 }
               } catch (searchErr) {
@@ -3357,8 +3335,41 @@ export default function AIChatbot() {
           if (isCreateStep) {
             // Prepare this step for batching
             const freshState = getFreshState();
-            const stepPromptLocal = step.instruction || userPrompt;
+            let stepPromptLocal = step.instruction || userPrompt;
+            const structuredParts = [];
+            if (step.title) structuredParts.push(`TITLE: ${step.title}`);
+            if (step.subtitle) structuredParts.push(`SUBTITLE: ${step.subtitle}`);
+            if (structuredParts.length > 0) {
+              stepPromptLocal = structuredParts.join('\n') + '\n' + stepPromptLocal;
+            }
+            if (Array.isArray(step.facts) && step.facts.length > 0) {
+              stepPromptLocal += `\n\n=== VERIFIED FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n`;
+              stepPromptLocal += step.facts.map(f => `- ${f}`).join('\n');
+              if (Array.isArray(step.sources) && step.sources.length > 0) {
+                const srcLines = step.sources.map(s =>
+                  typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
+                );
+                stepPromptLocal += '\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
+              }
+              stepPromptLocal += '\n=== END VERIFIED FACTS ===';
+              stepPromptLocal += '\nIMPORTANT: Use ONLY the dates, names, numbers, and facts above. Do NOT use outdated information from training data.\n';
+            } else if (Array.isArray(step.sources) && step.sources.length > 0) {
+              const srcLines = step.sources.map(s =>
+                typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
+              );
+              stepPromptLocal += '\n\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
+            }
             const stepPromptWithVibeLocal = vibeHint ? `${stepPromptLocal}\n\n[Design Style: ${vibeHint}]` : stepPromptLocal;
+
+            console.log(`[SmartAction] Batch step ${actualIndex} FINAL PROMPT (${stepPromptLocal.length} chars):`, stepPromptLocal);
+            console.log(`[SmartAction] Batch step ${actualIndex} structured fields:`, {
+              hasFacts: Array.isArray(step.facts) && step.facts.length,
+              hasSources: Array.isArray(step.sources) && step.sources.length,
+              hasTitle: !!step.title,
+              hasSubtitle: !!step.subtitle,
+              hasLayoutGuidance: !!step.layoutGuidance,
+              searchQuery: step.searchQuery || null,
+            });
 
             // Update UI progress
             setProgress({
@@ -3383,16 +3394,14 @@ export default function AIChatbot() {
             // Inject router-level search facts into every slide's prompt for grounding
             let enrichedPrompt = stepPromptWithVibeLocal + buildSearchFactsBlock();
             const effectiveBatchQuery = deriveSearchQuery(step);
-            const batchNeedsDeeperSearch = !!step.searchGoal;
-            const shouldRunBatchSearch = effectiveBatchQuery && settings.searchEnabled
-              && (!routerAlreadySearched || batchNeedsDeeperSearch);
+            const shouldRunBatchSearch = effectiveBatchQuery && settings.searchEnabled;
             if (shouldRunBatchSearch) {
               const datedQuery = `${effectiveBatchQuery} ${currentDateString()}`;
               console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${datedQuery}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  enrichedPrompt = `${stepPromptWithVibeLocal}\n\n=== WEB SEARCH RESULTS ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END SEARCH RESULTS ===\n\nUse the search results above for real, current data and facts. Cite specific numbers and sources.`;
+                  enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Use ONLY dates, names, numbers, and facts from the VERIFIED FACTS and WEB SEARCH RESULTS above. Do NOT substitute information from training data. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
@@ -5014,7 +5023,7 @@ Original request: ${userPrompt}`;
     try {
       const currentState = stateRef.current;
       const freshSlide = currentState.slides.find(s => s.id === slideId) || activeSlide;
-      const genModel = state.settings.speedMode === 'thinking'
+      const genModel = state.settings.speedMode === 'quality'
         ? state.settings.model
         : (state.settings.fastModel || state.settings.model);
       const improveSettings = {
@@ -5045,7 +5054,7 @@ Original request: ${userPrompt}`;
     setBusySlideIds(prev => new Set(prev).add(slideId));
     setActiveQuickAction('Reimagine Slide');
     try {
-      const genModel = state.settings.speedMode === 'thinking'
+      const genModel = state.settings.speedMode === 'quality'
         ? state.settings.model
         : (state.settings.fastModel || state.settings.model);
       const reimagineSettings = { ...state.settings, model: genModel, temperature: 0.85, vibe: state.vibe };
@@ -5161,25 +5170,15 @@ Original request: ${userPrompt}`;
             Fast
           </button>
           <button
-            className={`panel-scope-btn ${state.settings.speedMode === 'thinking' ? 'active' : ''}`}
-            onClick={() => actions.updateSettings({ speedMode: 'thinking' })}
-            title="Higher quality generation with deeper reasoning"
+            className={`panel-scope-btn ${state.settings.speedMode === 'quality' ? 'active' : ''}`}
+            onClick={() => actions.updateSettings({ speedMode: 'quality' })}
+            title="Higher quality generation using the premium model"
           >
-            Thinking
+            Quality
           </button>
         </div>
-        <button
-          type="button"
-          className={`panel-search-pill ${state.settings.searchToggle !== false ? 'active' : ''}`}
-          onClick={() => actions.updateSettings({ searchToggle: !(state.settings.searchToggle !== false) })}
-          title={state.settings.searchToggle !== false ? 'Web search enabled -- click to disable' : 'Web search disabled -- click to enable'}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <circle cx="11" cy="11" r="8" />
-            <path d="M21 21l-4.35-4.35" />
-          </svg>
-          Search
-        </button>
+        {/* Search toggle removed -- search availability is now controlled by settings.searchEnabled
+           and the triage/router decide when to use it */}
         {activeSlide && (
           <span className="panel-context-label">
             Slide {state.slides.findIndex(s => s.id === activeSlide.id) + 1} of {state.slides.length}
@@ -5488,7 +5487,6 @@ Original request: ${userPrompt}`;
               imageVibe={imageVibe}
               onImageVibeChange={useImageMode ? setImageVibe : null}
               debugMode={DEBUG_MODE}
-              routerAlreadySearched={!!pendingSmartAction.routeResult?.searchRawContext}
             />
           </div>
         )}

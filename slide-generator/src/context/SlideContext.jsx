@@ -62,9 +62,8 @@ const initialState = {
         ],
       },
     ],
-    // ── Unified chat: speed mode & search ──
-    speedMode: 'fast',           // 'fast' | 'thinking' — user-selectable generation tier
-    searchToggle: true,          // user toggle: allow LLM to use web search when needed
+    // ── Unified chat: speed mode ──
+    speedMode: 'fast',           // 'fast' | 'quality' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',         // "Thinking" generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
@@ -123,8 +122,8 @@ const initialState = {
     searchEnabled: true,
     searchEndpoint: '/api/ai/responses',
     searchApiKey: 'server-managed',
-    searchModel: 'openai.gpt-5.4',
-    searchContextSize: 'medium',
+    searchModel: 'openai.gpt-5.4-mini',
+    searchContextSize: 'high',
     searchMaxTokens: 32000,
     searchAuthHeader: 'api-key',
     searchIncludeSources: false,
@@ -300,7 +299,7 @@ function loadState() {
       // Model assignments are CODE-MANAGED: always sourced from initialState,
       // never read back from localStorage. Change a default in initialState →
       // all users pick it up on next page load. No version bump needed.
-      // User-controlled preferences (speedMode, searchToggle, batch sizes, etc.)
+      // User-controlled preferences (speedMode, batch sizes, etc.)
       // still persist normally via the ...parsed.settings spread.
       const loadedState = {
         ...initialState,
@@ -334,8 +333,11 @@ function loadState() {
         pptxModel: loadedState.settings.pptxModel,
         reportModel: loadedState.settings.reportModel,
         speedMode: loadedState.settings.speedMode,
-        searchToggle: loadedState.settings.searchToggle,
       });
+      // Migrate old 'thinking' speedMode to 'quality'
+      if (loadedState.settings.speedMode === 'thinking') {
+        loadedState.settings.speedMode = 'quality';
+      }
       return loadedState;
     }
   } catch (e) {

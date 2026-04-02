@@ -211,7 +211,6 @@ export default function SmartActionCard({
   imageVibe = 'default',
   onImageVibeChange = null,
   debugMode = false,
-  routerAlreadySearched = false,
 }) {
   const [selectedTemplate, setSelectedTemplate] = useState(routeResult?.templateMatch?.templateId || null);
   const [showDebug, setShowDebug] = useState(false);
@@ -431,6 +430,28 @@ export default function SmartActionCard({
             )}
           </div>
 
+          {/* Title and subtitle from router plan */}
+          {isCreateAction && (step.title || step.subtitle) && (
+            <div className="sac-step-titles">
+              {step.title && (
+                <input
+                  className="sac-step-title-input"
+                  value={step.title}
+                  onChange={(e) => updatePlanStep(i, { title: e.target.value })}
+                  placeholder="Slide title..."
+                />
+              )}
+              {step.subtitle && (
+                <input
+                  className="sac-step-subtitle-input"
+                  value={step.subtitle}
+                  onChange={(e) => updatePlanStep(i, { subtitle: e.target.value })}
+                  placeholder="Subtitle..."
+                />
+              )}
+            </div>
+          )}
+
           {/* Layout guidance on its own line for freestyle steps */}
           {isCreateAction && !stepTemplate && (
             <LayoutGuidanceInput
@@ -514,8 +535,7 @@ export default function SmartActionCard({
             </div>
           )}
 
-          {/* Per-step web search toggle — hidden when router already searched (unless step has searchGoal) */}
-          {(!routerAlreadySearched || step.searchGoal) && (
+          {/* Per-step web search toggle — always visible, user can add/remove search on any step */}
             <div className="sac-step-search-row">
               <button
                 type="button"
@@ -525,7 +545,10 @@ export default function SmartActionCard({
                   if (step.searchQuery) {
                     updatePlanStep(i, { searchQuery: null, searchGoal: null });
                   } else {
-                    updatePlanStep(i, { searchQuery: step.instruction?.slice(0, 80) || 'search query' });
+                    updatePlanStep(i, {
+                      searchQuery: step.instruction?.slice(0, 80) || 'search query',
+                      searchGoal: 'Retrieve current data for this slide',
+                    });
                   }
                 }}
               >
@@ -542,7 +565,6 @@ export default function SmartActionCard({
                 />
               )}
             </div>
-          )}
         </div>
       </div>
     );
@@ -1532,6 +1554,51 @@ export default function SmartActionCard({
           color: #a78bfa;
           font-weight: 400;
           font-style: italic;
+        }
+
+        .sac-step-titles {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .sac-step-title-input {
+          width: 100%;
+          font-size: 13px;
+          font-weight: 600;
+          color: #1e293b;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 5px 8px;
+          background: #f8fafc;
+          box-sizing: border-box;
+        }
+
+        .sac-step-title-input:focus {
+          outline: none;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+          background: white;
+        }
+
+        .sac-step-subtitle-input {
+          width: 100%;
+          font-size: 12px;
+          font-weight: 500;
+          color: #64748b;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 4px 8px;
+          background: #f8fafc;
+          box-sizing: border-box;
+        }
+
+        .sac-step-subtitle-input:focus {
+          outline: none;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+          background: white;
         }
 
         .sac-step-instruction-row {

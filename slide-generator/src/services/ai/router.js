@@ -1167,13 +1167,27 @@ Each slide is built by a separate AI call that sees ONLY its own instruction (+ 
 
 5. NUMBERS AND DATA POINTS: When specific numbers appear in one slide (e.g., "$4.2B market size"), repeat the EXACT same number in related slides. Don't let parallel sub-agents invent different figures.
 
-6. SEARCH — ROUTER-LEVEL IS DEFAULT: The router already performs web search during planning. Those results are automatically injected into every slide as grounding context. Do NOT add per-step "searchQuery" unless the step needs data the router did not cover (see DELEGATED PAGE-LEVEL SEARCH below). When you do add searchQuery, you MUST also add searchGoal. A searchQuery without searchGoal will be ignored.
+6. SEARCH GROUNDING — HOW IT WORKS:
+Your web search during planning gives YOU rich context for building the plan. The slide generation models that execute each step receive:
+  (a) A condensed baseline of ALL facts from your search (attached to every step automatically)
+  (b) The facts[] and sources[] you include in each step (with strong grounding instructions)
+  (c) OPTIONAL: Raw, detailed per-step search results — triggered ONLY when you set searchQuery + searchGoal
+Because the generation model sees condensed facts (not your full raw search prose), set searchQuery + searchGoal on slides that need MORE detail than your facts[] provide.
 
 SLIDE POSITIONING:
 - POSITION values: "start", "end", {"after_slide": N}, "after_previous"
 - Title/Cover slides MUST use position: "start"
 - Content slides use "end" or "after_previous"
 - Multiple slides: first gets specific position, rest use "after_previous"
+
+INLINE SEARCH BEHAVIOR:
+You have a web search tool. When the user's topic requires current data, external facts, or named entities:
+- Make MULTIPLE separate search calls for different entities or aspects — do NOT try to cover everything in one broad query
+- Search for each major entity, company, or topic area SEPARATELY to get thorough, targeted results
+- Use targeted queries with "latest", "most recent", or date ranges (e.g., "April 2026")
+- Verify you have the NEWEST information for each entity before finalizing your plan
+- For a topic covering 3+ entities (e.g., "compare AI labs"), make at least one search per entity
+- For structural edits, reformatting, or topics where you already have sufficient knowledge, skip searching entirely
 
 ROUTER-LEVEL RESEARCH (DEFAULT APPROACH):
 When external facts, statistics, market data, named entities, timelines, current events, or benchmarks are needed, the router should research centrally first, then distribute facts to each slide.
@@ -1186,26 +1200,48 @@ Default rule:
 - Prefer a shared research base at the executive-summary level, then reuse it across child slides
 - For current or changing topics, research current facts unless the user explicitly asks for a historical cut
 
-DELEGATED PAGE-LEVEL SEARCH (RARE EXCEPTION):
-The router's own web search already provides facts for the entire deck. Most slides should rely on router-level facts (via the "facts" array) and NOT have a searchQuery.
+PER-STEP SEARCH (searchQuery + searchGoal):
+Per-step search triggers a SEPARATE, dedicated web search call that feeds raw results directly to the slide generation model. This is independent from your own search — it runs a fresh query and returns raw, unfiltered results.
 
-Add step-level searchQuery + searchGoal ONLY when ALL of these are true:
-1. The slide needs data the router did not gather (niche, drill-down, or live data)
-2. You can write a precise, narrow searchQuery (not a broad topic)
-3. You include a searchGoal explaining exactly what the search must find
+PURPOSE: Per-step search should COMPLEMENT your research, not repeat it. Your facts[] contain what you already found. The per-step search should go DEEPER or VERIFY with different queries to catch what you may have missed.
 
-MANDATORY: Every searchQuery MUST have a paired searchGoal. Steps with searchQuery but no searchGoal are ignored.
+WHEN TO SET searchQuery + searchGoal:
+- Slides presenting multiple statistics, percentages, or financial figures
+- Detailed comparisons (vendor landscape, market sizing, peer benchmarks)
+- Current events with evolving timelines or recent developments
+- Specific named entities with recent data the generation model may not have
+
+WHEN YOUR facts[] ARRAY IS SUFFICIENT (no searchQuery needed):
+- Cover slides, section dividers, conceptual frameworks
+- Slides referencing only 1-2 simple facts already captured in facts[]
+- Slides that are purely structural or analytical (no external data)
+- Slides where the instruction already contains all needed specifics
+
+WRITING EFFECTIVE searchQuery VALUES:
+The searchQuery is used as a web search query by a different model. Write it to DISCOVER information, not echo what you already know.
+
+  CRITICAL RULES:
+  - DO NOT put specific facts or names you already found into searchQuery — those are already in facts[]
+  - DO frame the query to find the LATEST/MOST RECENT information on the topic
+  - DO use phrases like "most recent", "latest", "as of [current month year]", "[month] [year] update"
+  - DO ask the query from the perspective of "what might I have missed?"
+  - KEEP queries concise and search-engine-friendly (not full sentences)
 
   BAD: searchQuery without searchGoal
-  BAD searchQuery: "AI market"
-  GOOD searchQuery: "UAE generative AI market size 2024 2025 public estimates"
-  GOOD searchGoal: "Find 2-4 credible current estimates for UAE generative AI market size"
+  BAD searchQuery: "AI market" (too vague)
+  BAD searchQuery: "OpenAI GPT-5.4 Anthropic Claude Opus 4.6 Gemini 2.5 Pro comparison" (echoes your own findings back)
+  GOOD searchQuery: "most recent AI model releases each major lab April 2026"
+  GOOD searchQuery: "UAE generative AI market size latest estimates 2025 2026"
+  GOOD searchGoal: "Find the most current data for each entity on this slide, including any releases or updates I may have missed"
+
+MANDATORY: Every searchQuery MUST have a paired searchGoal. Steps with searchQuery but no searchGoal may be skipped.
 
 Rules:
-- For a typical 6-slide deck, expect 0-1 steps with searchQuery (not all of them)
+- For a typical 6-slide deck on current data, expect 2-4 steps with searchQuery (data-heavy content slides)
+- For an edit or restructuring request, expect 0 steps with searchQuery
 - AGENT MODE: When the prompt starts with "PRESENTATION CONTENT", do NOT add searchQuery — the agent already embedded data
-- Do NOT add searchQuery if: the instruction already contains specific numbers, or the slide is purely conceptual
-- Do NOT add searchQuery if: the router's own search already covered this topic
+- Do NOT add searchQuery if the instruction already contains all the specific numbers and data needed
+- The user can add or remove per-step search on any step in the plan review UI, so your judgment is a smart default, not a final decision
 
 RESPONSE FORMAT (JSON only):
 
@@ -1375,6 +1411,140 @@ export async function classifyRequest(userPrompt, context, settings) {
       searchQuery: null,
       templateId: null,
       instruction: userPrompt,
+    };
+  }
+}
+
+// ── Unified Triage System Prompt ──
+const TRIAGE_SYSTEM_PROMPT = `You are a presentation assistant triage agent. Given a user prompt and the current deck state, return a JSON classification.
+
+Return ONLY valid JSON with these fields:
+- scope: "clarify" | "qa" | "direct" | "plan"
+- needsSearch: boolean - true if the content requires current/real-time data
+- searchQuery: string or null - a concise search query if needsSearch is true
+- isTemplateSwitch: boolean - true if user wants to switch the slide template/layout
+- templateId: string or null - the target template if switching
+- targetSlides: array of 0-indexed slide indices affected (Slide 1 = index 0)
+- instruction: string - the core instruction for execution
+- questions: array of {question, options[]} - ONLY if scope is "clarify"
+
+SCOPES:
+- "clarify": The request is genuinely ambiguous and different interpretations would produce VERY different slides. Return 1-3 focused questions with options.
+  Examples that NEED clarification: "current war" (which conflict?), "our competitor" (which company?), "the project" (which project?)
+  Do NOT clarify: tone preferences, exact slide count, layout details, minor style choices.
+  Only clarify when missing information would MATERIALLY change the deck structure or content.
+- "qa": The user is asking a question or making conversation, NOT requesting slide changes.
+  Examples: "what does slide 3 say?", "thanks", "hello", "how many slides do I have?"
+- "direct": A single-slide action on the active slide — edit, improve, fill, or template switch. No multi-step planning needed.
+  Examples: "make this more concise", "add a third column", "switch to comparison template", "fix the title"
+- "plan": Multi-slide creation, deck restructuring, complex operations, or any request that needs the full router.
+  Examples: "create 6 slides about AI", "restructure the deck", "add 3 more slides on risks", "delete slides 2-4"
+
+isTemplateSwitch rules:
+- TRUE only when user explicitly asks to SWITCH or CHANGE the template type (e.g. "switch to comparison", "change to timeline")
+- FALSE for content edits like "add a column", "remove a row", "make it 3-column"
+- FALSE for styling changes like "make it bold", "change colors"
+- When in doubt, set false
+
+Additional rules:
+- Greetings, thanks, conversational → scope "qa"
+- Simple edits to active slide → scope "direct"
+- Creating new decks, adding multiple slides → scope "plan"
+- Requests mentioning current data, latest, recent → needsSearch true
+- Use 0-based indices: Slide 1 = index 0, Slide 3 = index 2
+- CROSS-SLIDE: "make slide X like slide Y" targeting a DIFFERENT slide → scope "plan"
+- EMPTY DECK + creation request → scope "plan"
+- If no active slide and request is not a question → scope "plan"`;
+
+/**
+ * Unified Triage -- replaces both the Tier 1 classifyRequest and Tier 2 mini-classifier.
+ * Always runs, even on empty decks. Returns scope, search needs, template switch detection,
+ * and optional clarifying questions.
+ *
+ * @param {string} userPrompt
+ * @param {Object} context - { slides, activeSlideIndex, activeSlide }
+ * @param {Object} settings - must include classifierModel (or fastModel fallback)
+ * @returns {Promise<Object>} triage result
+ */
+export async function triageRequest(userPrompt, context, settings) {
+  const {
+    slides = [],
+    activeSlideIndex = -1,
+    activeSlide = null,
+  } = context;
+
+  const triageModel = settings.classifierModel || settings.fastModel || 'pwc:openai.gpt-5.4-mini';
+  const triageSettings = {
+    ...settings,
+    model: triageModel,
+    maxTokens: 400,
+    temperature: 0,
+  };
+
+  const slideCount = slides.length;
+  const activeInfo = activeSlide
+    ? `ACTIVE SLIDE: Slide ${activeSlideIndex + 1} of ${slideCount} - "${activeSlide.title || 'Untitled'}"${activeSlide.templateId ? ` (template: ${activeSlide.templateId})` : ''}${activeSlide.html && activeSlide.html.length > 50 ? ' [has content]' : ' [empty]'}`
+    : `NO ACTIVE SLIDE (${slideCount} slides in deck)`;
+
+  const deckOverview = slideCount > 0
+    ? `DECK: ${slides.map((s, i) => `${i + 1}. ${s.title || 'Untitled'}${i === activeSlideIndex ? ' [ACTIVE]' : ''}`).join(', ')}`
+    : 'DECK: Empty (no slides yet)';
+
+  const userMessage = `${activeInfo}\n${deckOverview}\n\nUSER: ${userPrompt}`;
+
+  try {
+    const raw = await callWithModelFallback(
+      triageSettings,
+      TRIAGE_SYSTEM_PROMPT,
+      userMessage,
+      { role: 'text' }
+    );
+
+    const jsonMatch = raw?.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.warn('[Triage] No JSON in response, falling back to plan');
+      return {
+        scope: 'plan',
+        needsSearch: false,
+        searchQuery: null,
+        isTemplateSwitch: false,
+        templateId: null,
+        targetSlides: [],
+        instruction: userPrompt,
+        questions: [],
+      };
+    }
+
+    const parsed = JSON.parse(jsonMatch[0]);
+    console.log('[Triage] Result:', parsed);
+
+    const scope = ['clarify', 'qa', 'direct', 'plan'].includes(parsed.scope)
+      ? parsed.scope
+      : 'plan';
+
+    return {
+      scope,
+      needsSearch: !!parsed.needsSearch,
+      searchQuery: parsed.searchQuery || null,
+      isTemplateSwitch: !!parsed.isTemplateSwitch,
+      templateId: parsed.templateId || null,
+      targetSlides: Array.isArray(parsed.targetSlides) ? parsed.targetSlides : [],
+      instruction: parsed.instruction || userPrompt,
+      questions: scope === 'clarify' && Array.isArray(parsed.questions)
+        ? parsed.questions
+        : [],
+    };
+  } catch (err) {
+    console.error('[Triage] Error, falling back to plan:', err);
+    return {
+      scope: 'plan',
+      needsSearch: false,
+      searchQuery: null,
+      isTemplateSwitch: false,
+      templateId: null,
+      targetSlides: [],
+      instruction: userPrompt,
+      questions: [],
     };
   }
 }
@@ -2066,6 +2236,30 @@ USER REQUEST: "${routerPrompt}"`;
         parsedResponse: parsed,
       },
     };
+
+    // Path A (Responses API with inline search): the router searched inline but
+    // routerSearchRawText is empty because the API doesn't expose raw results.
+    // Synthesize searchRawContext from all facts/sources in the plan so
+    // buildSearchFactsBlock() can provide baseline grounding for every step.
+    if (canUseResponsesAPI && !routerSearchRawText && result.plan) {
+      const factLines = [];
+      for (const step of result.plan) {
+        if (Array.isArray(step.facts)) {
+          factLines.push(...step.facts);
+        }
+        if (Array.isArray(step.sources)) {
+          for (const src of step.sources) {
+            const label = typeof src === 'string' ? src : `${src.label || ''} (${src.url || ''})`;
+            factLines.push(label);
+          }
+        }
+      }
+      if (factLines.length > 0) {
+        routerSearchRawText = factLines.join('\n');
+        console.log('[Router Search] Synthesized searchRawContext from %d plan facts/sources (%d chars)',
+          factLines.length, routerSearchRawText.length);
+      }
+    }
 
     // Attach pre-search context so downstream slide generation can use it
     // for ALL slides (including cover/dividers that lack their own searchQuery).

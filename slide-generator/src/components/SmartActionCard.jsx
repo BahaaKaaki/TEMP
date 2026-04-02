@@ -381,18 +381,19 @@ export default function SmartActionCard({
 
     return (
       <div key={i} className="sac-plan-step">
-        <span className="sac-step-num">{i + 1}</span>
-        <span className="sac-step-action-badge" style={{ background: cfg.color }}>
-          {cfg.icon} {cfg.label}
-        </span>
-        {debugMode && (
-          <div className="sac-step-controls">
-            <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
-            <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
-            <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
-          </div>
-        )}
-        <div className="sac-step-content">
+        {/* Header row: number + badge + controls + template — all inline */}
+        <div className="sac-step-header">
+          <span className="sac-step-num">{i + 1}</span>
+          <span className="sac-step-action-badge" style={{ background: cfg.color }}>
+            {cfg.icon} {cfg.label}
+          </span>
+          {debugMode && (
+            <div className="sac-step-controls">
+              <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
+              <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
+              <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
+            </div>
+          )}
           <div className="sac-step-main">
             {isCreateAction ? (
               <>
@@ -429,7 +430,10 @@ export default function SmartActionCard({
               <span>{stepAction}</span>
             )}
           </div>
+        </div>
 
+        {/* Body: full-width fields below the header */}
+        <div className="sac-step-body">
           {/* Title and subtitle from router plan */}
           {isCreateAction && (step.title || step.subtitle) && (
             <div className="sac-step-titles">
@@ -1303,8 +1307,8 @@ export default function SmartActionCard({
 
         .sac-plan-step {
           display: flex;
-          align-items: flex-start;
-          gap: 8px;
+          flex-direction: column;
+          gap: 6px;
           padding: 10px 12px;
           background: white;
           border-radius: 10px;
@@ -1454,13 +1458,20 @@ export default function SmartActionCard({
           margin-top: 1px;
         }
 
-        .sac-step-content {
-          flex: 1;
+        .sac-step-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          min-width: 0;
+        }
+
+        .sac-step-body {
           display: flex;
           flex-direction: column;
           gap: 5px;
+          width: 100%;
           min-width: 0;
-          overflow: hidden;
         }
 
         .sac-step-main {
@@ -1471,7 +1482,7 @@ export default function SmartActionCard({
           color: #334155;
           flex-wrap: wrap;
           min-width: 0;
-          max-width: 100%;
+          flex: 1;
         }
 
         .sac-step-target-label {

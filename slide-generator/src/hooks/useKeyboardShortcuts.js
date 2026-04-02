@@ -1,5 +1,5 @@
-import { useEffect } from 'react';
-import { useSlides } from '../context/SlideContext';
+import { useContext, useEffect } from 'react';
+import SlideContext from '../context/SlideContext';
 
 /**
  * Hook to handle global keyboard shortcuts
@@ -7,9 +7,12 @@ import { useSlides } from '../context/SlideContext';
  * - Ctrl+Shift+Z / Ctrl+Y: Redo
  */
 export function useKeyboardShortcuts() {
-  const { actions, historyState } = useSlides();
+  const ctx = useContext(SlideContext);
+  const actions = ctx?.actions;
+  const historyState = ctx?.historyState;
 
   useEffect(() => {
+    if (!actions) return;
     const handleKeyDown = (e) => {
       // Skip if user is typing in an input, textarea, or contenteditable
       const target = e.target;

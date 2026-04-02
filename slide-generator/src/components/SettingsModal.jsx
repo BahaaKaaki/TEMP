@@ -1498,7 +1498,7 @@ export default function SettingsModal({ onClose }) {
       <div style={{ fontSize: 10, color: '#888', marginBottom: 10 }}>Server-managed model assignments for each pipeline stage.{DEBUG_MODE ? ' You can override any role below.' : ''}</div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
         {[
-          { key: 'model',           label: 'Quality',         desc: 'High-quality slide generation (Quality speed mode)',   role: 'chat' },
+          { key: 'model',           label: 'Premium',         desc: 'High-quality slide generation (Premium speed mode)',   role: 'chat' },
           { key: 'fastModel',       label: 'Fast',            desc: 'Balanced slide generation (Fast speed mode)',          role: 'chat' },
           { key: 'classifierModel', label: 'Classifier',      desc: 'Tier 1 quick intent classification',                  role: 'fast' },
           { key: 'routerModel',     label: 'Router',          desc: 'Tier 2 full planner for multi-slide requests',        role: 'chat' },

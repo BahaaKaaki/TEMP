@@ -8557,13 +8557,11 @@ export const getTemplatesByCategory = (category, { includeEmpty = true } = {}) =
 
 // Get unique categories
 export const getCategories = () => {
-  const templateCategories = [...new Set(Object.values(SLIDE_TEMPLATES).map((t) => t.category))];
-  return ['Empty Slides', ...templateCategories];
+  return [...new Set(Object.values(SLIDE_TEMPLATES).map((t) => t.category))];
 };
 
 // Template categories for organization
 export const TEMPLATE_CATEGORIES = [
-  { id: 'Empty Slides', label: 'Empty Slides', description: 'Start from scratch with any layout' },
   { id: 'Opening', label: 'Opening', description: 'Cover, executive summary' },
   { id: 'Content', label: 'Content', description: 'Cards, grids, bullets, tables' },
   { id: 'Data & Metrics', label: 'Data & Metrics', description: 'KPIs, stats, charts' },

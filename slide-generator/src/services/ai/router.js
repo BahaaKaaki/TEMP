@@ -724,8 +724,8 @@ export function getRouterSystemPrompt() {
 Your role is to understand the user's real request and intent, decide the right deck structure, perform or coordinate research when needed, and produce a consultant-grade execution plan.
 Think like a senior strategy partner: precise, hypothesis-led, MECE, pyramid-structured, evidence-based, narrative-driven, and practical.
 
-You must first understand the request and intent unless they are already clear.
-Do not jump straight into slide planning if the ask is ambiguous in a way that materially changes the structure, storyline, or research plan.
+Understand the request and intent. When context (conversation history, documents, slide state) makes the intent clear, proceed directly to planning.
+Only pause to ask questions when ambiguity would materially change the deck structure, storyline, or research plan.
 
 Output JSON only.
 
@@ -782,7 +782,13 @@ Do NOT ask questions when:
 - the deck already has slides and the user is iterating on it
 - the request starts with "PRESENTATION CONTENT" (agent mode, context is complete)
 - the prompt contains "User clarification:" (user already answered)
+- the RECENT CONVERSATION section provides enough context to resolve references like "this", "that", "it" in the user request
 - you can make a strong planning assumption and proceed
+
+RECENT CONVERSATION:
+When a RECENT CONVERSATION section is provided in the context, use it to understand what the user is referring to.
+References like "this topic", "that", "on this", "about it" should be resolved from the conversation.
+Do not ask clarification questions when the conversation makes the intent clear.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 PENDING PLAN — USER REPLIED VIA TEXT
@@ -1093,7 +1099,7 @@ RULES:
 - Use separate fields: title, subtitle, instruction, facts, sources — do not merge them into one combined block
 - EACH step referencing slides MUST have contextSlides with exact indices (up to 5)
 - Reference items by position (pillar 1, item 2, first bullet, etc.) - NEVER invent names
-- AUTO COVER: When creating a new deck from scratch (empty deck or no cover exists), ALWAYS add a cover slide as the FIRST step (templateId: "cover", position: "start"). This applies regardless of how many slides are being created.
+- AUTO COVER: When creating a new deck from scratch (empty deck or no cover exists) AND the user requests 3 or more slides, ALWAYS add a cover slide as the FIRST step (templateId: "cover", position: "start"). For 1-2 slide requests, do NOT add a cover — just create the requested content slides directly.
 - Greetings, thanks, bye, and other conversational messages must use "answer_question"
 
 DECK STRUCTURE & STORYTELLING (think like a senior consulting partner):
@@ -1457,7 +1463,20 @@ Additional rules:
 - Use 0-based indices: Slide 1 = index 0, Slide 3 = index 2
 - CROSS-SLIDE: "make slide X like slide Y" targeting a DIFFERENT slide → scope "plan"
 - EMPTY DECK (0 slides) + creation request → scope "plan"
-- If no active slide and request is not a question → scope "plan"`;
+- If no active slide and request is not a question → scope "plan"
+
+ATTACHED DOCUMENTS rules:
+- When ATTACHED DOCUMENTS are listed, the user has uploaded files whose content is available.
+- "create/build/make a presentation/deck from this/these" + attached docs → scope "plan"
+- "summarize this file on the slide" + active slide + attached docs → scope "direct"
+- "fill this slide with data from the document" + active slide + attached docs → scope "direct"
+- Creating MULTIPLE slides from attached docs → scope "plan"
+- Filling/editing a SINGLE active slide using attached docs → scope "direct"
+
+CHAT HISTORY rules:
+- When RECENT CHAT is provided, use it to resolve references like "this topic", "that", "it", "the same", etc.
+- If the user says "make a slide about this" after discussing a topic in chat, infer the topic from the conversation — do NOT ask for clarification.
+- Include the resolved topic in the "instruction" field so downstream steps have full context.`;
 
 /**
  * Unified Triage -- replaces both the Tier 1 classifyRequest and Tier 2 mini-classifier.
@@ -1465,7 +1484,7 @@ Additional rules:
  * and optional clarifying questions.
  *
  * @param {string} userPrompt
- * @param {Object} context - { slides, activeSlideIndex, activeSlide }
+ * @param {Object} context - { slides, activeSlideIndex, activeSlide, attachedFiles }
  * @param {Object} settings - must include classifierModel (or fastModel fallback)
  * @returns {Promise<Object>} triage result
  */
@@ -1474,6 +1493,8 @@ export async function triageRequest(userPrompt, context, settings) {
     slides = [],
     activeSlideIndex = -1,
     activeSlide = null,
+    attachedFiles = [],
+    chatHistory = [],
   } = context;
 
   const triageModel = settings.classifierModel || settings.fastModel || 'pwc:openai.gpt-5.4-mini';
@@ -1493,7 +1514,15 @@ export async function triageRequest(userPrompt, context, settings) {
     ? `DECK: ${slides.map((s, i) => `${i + 1}. ${s.title || 'Untitled'}${i === activeSlideIndex ? ' [ACTIVE]' : ''}`).join(', ')}`
     : 'DECK: Empty (no slides yet)';
 
-  const userMessage = `${activeInfo}\n${deckOverview}\n\nUSER: ${userPrompt}`;
+  const filesInfo = attachedFiles.length > 0
+    ? `\nATTACHED DOCUMENTS: ${attachedFiles.map(f => f.fileName || f.name || 'file').join(', ')}`
+    : '';
+
+  const recentChat = chatHistory.length > 0
+    ? `\nRECENT CHAT:\n${chatHistory.map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${m.content.slice(0, 150)}`).join('\n')}\n`
+    : '';
+
+  const userMessage = `${activeInfo}\n${deckOverview}${filesInfo}${recentChat}\n\nUSER: ${userPrompt}`;
 
   try {
     const raw = await callWithModelFallback(
@@ -1587,6 +1616,7 @@ export async function aiRouteRequest(userPrompt, context, settings) {
     preferImageSlides = false,
     // Panel scope: 'slide' = user focused on current slide, 'deck' = full deck operations
     contextMode = 'deck',
+    chatHistory = [],
   } = context;
 
   // Get router model - use big model if requested, otherwise unified routerModel
@@ -1787,6 +1817,10 @@ LAYOUT GUIDANCE (visual for image model): Put ONLY the diagram/framework descrip
 SEARCH: Include a searchQuery when real data would strengthen the title — the text model can use web search.\n`
     : `\nTEMPLATE RULE: Do NOT use "image-content" or "image-full" templates. The user has NOT selected image mode. Use only standard templates (freestyle, named templates like threeCards, twoColumns, etc.).\n`;
 
+  const recentConversation = chatHistory.length > 0
+    ? `\nRECENT CONVERSATION:\n${chatHistory.map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${m.content.slice(0, 200)}`).join('\n')}\n`
+    : '';
+
   const contextInfo = `CURRENT STATE:
 - Total slides: ${slideCount}
 - User is viewing slide index ${currentSlideIndex} (0-based) → slide ${currentSlideIndex + 1} of ${slideCount}. "this slide" or "current slide" = index ${currentSlideIndex}.
@@ -1805,7 +1839,7 @@ ${activeFlow ? `\nACTIVE FLOW: "${activeFlow.name}"
 Overall guidance: ${activeFlow.overallGuidance || 'none'}
 Sections:
 ${activeFlow.sections.map((s, i) => `  ${i + 1}. template="${s.templateHint}" | instruction="${s.instruction}"${s.isRepeatable ? ` | REPEATABLE (${s.repeatSource})` : ''}`).join('\n')}
-` : ''}
+` : ''}${recentConversation}
 USER REQUEST: "${routerPrompt}"`;
 
   let routerSearchRawText = '';

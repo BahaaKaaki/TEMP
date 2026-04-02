@@ -242,12 +242,9 @@ export default function SlidePreview({ onSwitchToCode }) {
     };
   }, [handleZoomFit, activeSlide?.id]);
 
-  // Context menu handlers for widget insertion
+  // Context menu handlers for widget insertion (disabled -- widgets not needed for now)
   const handleContextMenu = useCallback((e) => {
-    // Only show context menu in edit mode
-    if (!isEditMode && !isVisualEditMode) return;
-
-    e.preventDefault();
+    return;
 
     // Remove previous highlight
     if (contextMenu.targetElement) {
@@ -944,6 +941,9 @@ export default function SlidePreview({ onSwitchToCode }) {
           />
         </div>
 
+        {/* Comments UI hidden -- functionality preserved in code */}
+        {false && (
+        <>
         {/* Floating Comment Button */}
         <button
           className={`floating-comment-btn ${pendingCommentsCount > 0 ? 'has-comments' : ''} ${showCommentPanel ? 'active' : ''}`}
@@ -1007,6 +1007,8 @@ export default function SlidePreview({ onSwitchToCode }) {
 
           <CommentPanel slideId={activeSlide.id} />
         </div>
+        </>
+        )}
 
       </div>
       </div>
@@ -1538,7 +1540,7 @@ function injectSubSectionToHtml(html, subSectionLabel, sectionLabel) {
 // two-span (brand + page) and three-span (brand + source + page) layouts.
 function injectPageNumber(html, pageNumber, totalSlides) {
   if (!html || !pageNumber) return html;
-  const pageText = totalSlides ? `${pageNumber} / ${totalSlides}` : String(pageNumber);
+  const pageText = String(pageNumber);
   return html.replace(
     /(<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*<span(?:\s[^>]*)?>)[^<]*(<\/span>\s*<\/footer>)/i,
     `$1${pageText}$2`

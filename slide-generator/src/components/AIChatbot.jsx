@@ -285,6 +285,21 @@ function isSlideEffectivelyEmpty(slide) {
   return stripped.length < 30 || /^(Title|Subtitle|Add your content|Your title here|\s)*$/i.test(stripped);
 }
 
+function formatMarkdownToHtml(text) {
+  if (!text || typeof text !== 'string') return text;
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g, '<em>$1</em>');
+  html = html.replace(/^[\t ]*[*\-]\s+(.+)$/gm, '<li>$1</li>');
+  html = html.replace(/((?:<li>.*<\/li>\n?)+)/g, '<ul>$1</ul>');
+  html = html.replace(/\n{2,}/g, '<br/><br/>');
+  html = html.replace(/\n/g, '<br/>');
+  return html;
+}
+
 export default function AIChatbot() {
   const { state, actions, activeSlide, isPanelOpen, togglePanel } = useSlides();
   const knowledgeBase = useKnowledgeBase();
@@ -346,8 +361,7 @@ export default function AIChatbot() {
   const [messages, setMessages] = useState([
     {
       type: 'assistant',
-      content: 'What would you like to create? Use <strong>This Slide</strong> to work on a single slide, or <strong>Deck</strong> to build a full presentation.',
-      isHTML: true,
+      content: 'Just describe what you need — a single slide or a full deck. I\'ll figure out the rest.',
     },
   ]);
   const messagesEndRef = useRef(null);
@@ -1013,32 +1027,36 @@ export default function AIChatbot() {
     }
   }, [activeSlide]);
 
-  // Clear chat when a new deck is created (deckName changes and slides are empty)
+  // Clear chat when a new deck is created (deckGeneration increments on every startNewDeck)
+  const prevDeckGenRef = useRef(state.deckGeneration || 0);
   const prevDeckNameRef = useRef(state.deckName);
   const isAutoNamingRef = useRef(false);
   useEffect(() => {
+    const gen = state.deckGeneration || 0;
+    if (gen !== prevDeckGenRef.current) {
+      setMessages([{
+        type: 'assistant',
+        content: 'Just describe what you need — a single slide or a full deck. I\'ll figure out the rest.',
+      }]);
+      setUploadedFiles([]);
+      setPendingSmartAction(null);
+      setProgress(null);
+      setExecutionStatus(null);
+      setAgentModeProgress(null);
+      setLastAgentOutput(null);
+      setAgentOutputExpanded(false);
+      agenticExecution.clear();
+      currentStepAiIO.current = [];
+      console.log('[AIChatbot] New deck detected (generation %d -> %d) - all chat state reset', prevDeckGenRef.current, gen);
+      prevDeckGenRef.current = gen;
+      prevDeckNameRef.current = state.deckName;
+      return;
+    }
     if (state.deckName !== prevDeckNameRef.current) {
-      if (state.slides.length === 0 && !isAutoNamingRef.current) {
-        setMessages([{
-          type: 'assistant',
-          content: 'What would you like to create? Use <strong>This Slide</strong> to work on a single slide, or <strong>Deck</strong> to build a full presentation.',
-          isHTML: true,
-        }]);
-        setUploadedFiles([]);
-        setPendingSmartAction(null);
-        setProgress(null);
-        setExecutionStatus(null);
-        setAgentModeProgress(null);
-        setLastAgentOutput(null);
-        setAgentOutputExpanded(false);
-        agenticExecution.clear();
-        currentStepAiIO.current = [];
-        console.log('[AIChatbot] New deck detected - all chat state reset');
-      }
       isAutoNamingRef.current = false;
       prevDeckNameRef.current = state.deckName;
     }
-  }, [state.deckName, state.slides.length]);
+  }, [state.deckGeneration, state.deckName]);
 
   // Toggle AI I/O expansion for a message
   const toggleAiIO = (msgIndex) => {
@@ -1051,6 +1069,156 @@ export default function AIChatbot() {
       }
       return next;
     });
+  };
+
+  // Shared logic for single-slide actions: search, reference detection, template switch,
+  // fill empty slides, or improve existing slides. Returns result object or null.
+  // Called from both the normal direct path and the background-edit-during-execution path.
+  // knowledgeContext: optional { combined, knowledgeBase, sessionFiles } from buildKnowledgeContextForPrompt
+  const performDirectSlideEdit = async (slide, prompt, triage, { knowledgeContext } = {}) => {
+    const currentState = stateRef.current;
+    const genModel = currentState.settings.speedMode === 'premium'
+      ? currentState.settings.model
+      : (currentState.settings.fastModel || currentState.settings.model);
+    const slideSettings = {
+      ...currentState.settings,
+      model: genModel,
+      vibe: currentState.vibe || state.vibe,
+    };
+
+    const searchConfigured = currentState.settings.searchEnabled
+      && currentState.settings.searchEndpoint
+      && currentState.settings.searchModel;
+    const doSearch = searchConfigured && triage.needsSearch;
+    let searchResult = null;
+    if (doSearch) {
+      try {
+        let searchQuery = triage.searchQuery || prompt.trim();
+        if (searchQuery.length > 120) {
+          const fastModel = currentState.settings.fastModel || currentState.settings.model;
+          const fastSettings = { ...slideSettings, model: fastModel, maxTokens: 100, temperature: 0.1 };
+          const refinedQuery = await callWithModelFallback(
+            fastSettings,
+            'Turn this user request into a concise, specific web search query. Fix any typos. Add key terms for better results. Return ONLY the search query text, nothing else.',
+            searchQuery
+          );
+          searchQuery = (refinedQuery || searchQuery).trim();
+        }
+        searchQuery += ' latest ' + currentDateString();
+        console.log('[DirectEdit] Search query:', searchQuery);
+        searchResult = await webSearch(searchQuery, currentState.settings);
+      } catch (searchErr) {
+        console.warn('[DirectEdit] Search failed:', searchErr.message);
+      }
+    }
+
+    let referenceContext = '';
+    const slideRefMatch = prompt.match(/(?:like|from|match|copy|same as)\s+slide\s+(\d+)/i);
+    if (slideRefMatch) {
+      const refIdx = parseInt(slideRefMatch[1], 10) - 1;
+      const refSlide = currentState.slides[refIdx];
+      if (refSlide) {
+        referenceContext = `\n\n=== REFERENCE SLIDES (match their style/design) ===\n[Slide ${refIdx + 1}] "${refSlide.title}":\n${refSlide.html}\n=== END REFERENCE ===`;
+      }
+    }
+
+    if (triage.isTemplateSwitch && triage.templateId) {
+      const customTemplate = currentState.customTemplates?.find(t => t.id === triage.templateId);
+      const currentIndex = currentState.slides.findIndex(s => s.id === slide.id);
+      const deckCtx = buildDeckContextForSwitch(currentState.slides, currentIndex);
+      const transformedHtml = await transformSlideToTemplate(
+        slide.html, triage.templateId, slideSettings, customTemplate,
+        { slideNumber: currentIndex + 1, totalSlides: currentState.slides.length },
+        deckCtx, prompt.trim() || null
+      );
+      if (transformedHtml && transformedHtml !== slide.html) {
+        return {
+          action: 'template-switch',
+          html: transformedHtml,
+          title: extractTitleFromHTML(transformedHtml) || slide.title,
+          templateId: triage.templateId,
+          updateData: { html: transformedHtml, type: triage.templateId, templateId: triage.templateId, customCSS: '', pptxRendererCode: null },
+        };
+      }
+      console.log('[DirectEdit] Template switch returned unchanged HTML, falling through to edit');
+    }
+
+    let enrichedPrompt = prompt;
+    if (searchResult) {
+      const dateStr = currentDateString();
+      enrichedPrompt = prompt
+        + `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${dateStr}) ===\n`
+        + searchResult
+        + `\n=== END KEY FACTS ===\n`
+        + 'IMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.\n';
+    }
+
+    if (knowledgeContext?.combined) {
+      enrichedPrompt += `\n\n=== ATTACHED DOCUMENT CONTENT ===\n${knowledgeContext.combined}\n=== END DOCUMENT CONTENT ===\nUse the document content above to fulfill the user's request. Extract relevant data, facts, and structure from the documents.\n`;
+      console.log('[DirectEdit] Injected knowledge context:', knowledgeContext.combined.length, 'chars');
+    }
+
+    let deckContext = '';
+    if (currentState.slides.length > 1) {
+      const slideIdx = currentState.slides.findIndex(s => s.id === slide.id);
+      const totalSlides = currentState.slides.length;
+      const posLine = `Slide ${slideIdx + 1} of ${totalSlides}`;
+      const prevSlide = slideIdx > 0 ? currentState.slides[slideIdx - 1] : null;
+      const nextSlide = slideIdx < totalSlides - 1 ? currentState.slides[slideIdx + 1] : null;
+      const neighborLine = [
+        prevSlide ? `Previous: "${prevSlide.title}"` : null,
+        nextSlide ? `Next: "${nextSlide.title}"` : null,
+      ].filter(Boolean).join(' | ');
+      const storyline = currentState.storyline;
+      let storylineLine = '';
+      if (storyline?.length > 0) {
+        storylineLine = 'Storyline: ' + storyline.map((s, i) =>
+          `${i + 1}. ${s.title}${s.slideId && currentState.slides.findIndex(sl => sl.id === s.slideId) === slideIdx ? ' [CURRENT]' : ''}`
+        ).join(' | ');
+      }
+      deckContext = `\n\n=== DECK CONTEXT ===\n${posLine}${neighborLine ? '\n' + neighborLine : ''}${storylineLine ? '\n' + storylineLine : ''}\n=== END DECK CONTEXT ===`;
+    }
+
+    const slideIsEmpty = isSlideEffectivelyEmpty(slide);
+    if (slideIsEmpty) {
+      const templateId = slide.templateId;
+      const isRealTemplate = templateId && templateId !== 'freestyle' && !templateId.startsWith('empty-');
+      const template = isRealTemplate ? SLIDE_TEMPLATES[templateId] : null;
+
+      if (template) {
+        const filledHtml = await fillTemplateWithAI(template, enrichedPrompt + deckContext, slideSettings, [], { agentMode: false });
+        if (filledHtml) {
+          return {
+            action: 'filled',
+            html: filledHtml,
+            title: extractTitleFromHTML(filledHtml) || template.title,
+            templateTitle: template.title,
+            updateData: { html: filledHtml, title: extractTitleFromHTML(filledHtml) || template.title },
+          };
+        }
+      }
+
+      const slides = await generateSlides(enrichedPrompt + deckContext, slideSettings, 1);
+      if (slides && slides.length > 0) {
+        const s = slides[0];
+        return {
+          action: 'generated',
+          html: s.html,
+          title: s.title || 'Untitled Slide',
+          updateData: { html: s.html, title: s.title || 'Untitled Slide' },
+        };
+      }
+      return null;
+    }
+
+    const fullPrompt = enrichedPrompt + referenceContext + deckContext;
+    const result = await improveSlideWithSearch(slide, fullPrompt, slideSettings, { skipSearch: true });
+    const improvedHtml = result?.html || result;
+    const updateData = { html: improvedHtml, templateId: null };
+    if (result?.customCSS) updateData.customCSS = result.customCSS;
+    const newTitle = extractTitleFromHTML(improvedHtml);
+    if (newTitle) updateData.title = newTitle;
+    return { action: 'improved', html: improvedHtml, title: newTitle, updateData };
   };
 
   const handleSubmit = async (e) => {
@@ -1078,10 +1246,58 @@ export default function AIChatbot() {
       }
     }
 
-    if (isLoading) return;
+    // Allow background actions during SmartAction execution via triage
+    const smartActionExecuting = isLoading && !!pendingSmartAction;
+    if (isLoading && !smartActionExecuting) return;
 
     let userPrompt = prompt.trim();
     setPrompt('');
+
+    if (smartActionExecuting) {
+      addMessage('user', userPrompt);
+      const bgPrompt = userPrompt;
+      const bgSlide = activeSlide;
+      (async () => {
+        try {
+          const bgTriage = await triageRequest(bgPrompt, {
+            slides: stateRef.current.slides,
+            activeSlideIndex: bgSlide ? stateRef.current.slides.findIndex(s => s.id === bgSlide.id) : -1,
+            activeSlide: bgSlide,
+            attachedFiles: uploadedFiles.filter(f => f.content),
+            chatHistory: messages.filter(m => !m.isHTML).slice(-6),
+          }, stateRef.current.settings);
+          console.log('[BackgroundEdit] Triage:', bgTriage);
+
+          if ((bgTriage.scope === 'direct' || bgTriage.scope === 'clarify') && bgSlide) {
+            addMessage('assistant', '<div class="quick-action-done-card"><span class="quick-action-done-icon">&#9998;</span> Editing slide in background...</div>', { isHTML: true });
+            const bgKnowledge = buildKnowledgeContextForPrompt(bgPrompt, { fullContent: true });
+            const result = await performDirectSlideEdit(bgSlide, bgPrompt, bgTriage, { knowledgeContext: bgKnowledge });
+            if (result) {
+              actions.updateSlide(bgSlide.id, result.updateData);
+              addMessage('assistant', '<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Slide edited</div>', { isHTML: true });
+            }
+          } else if (bgTriage.scope === 'qa') {
+            const speedModel = stateRef.current.settings.speedMode === 'premium'
+              ? stateRef.current.settings.model
+              : stateRef.current.settings.fastModel;
+            const qaSettings = { ...stateRef.current.settings, model: speedModel || stateRef.current.settings.model };
+            const bgQaContext = {
+              currentSlide: bgSlide ? { slide: bgSlide, index: stateRef.current.slides.findIndex(s => s.id === bgSlide.id) } : null,
+              allSlides: stateRef.current.slides.length > 0 ? stateRef.current.slides : null,
+              totalSlides: stateRef.current.slides.length,
+            };
+            const qaResponse = await chatWithContext(bgPrompt, bgQaContext, qaSettings);
+            addMessage('assistant', qaResponse || 'I could not generate a response.');
+          } else if (bgTriage.scope === 'plan') {
+            addMessage('assistant', '<div class="quick-action-done-card"><span class="quick-action-done-icon">&#128203;</span> Got it — I\'ll handle this after the current plan finishes.</div>', { isHTML: true });
+          }
+        } catch (err) {
+          addMessage('assistant', `Background action failed: ${err.message}`);
+        }
+      })();
+      return;
+    }
+
     addMessage('user', userPrompt);
 
     // ─── Pending plan: handle text responses to a visible SmartActionCard ───
@@ -1218,12 +1434,15 @@ export default function AIChatbot() {
     setProgress({ phase: 'Classifying...', current: 0, total: 1 });
 
     // ─── UNIFIED TRIAGE: always runs, replaces both Tier 1 classifier and Tier 2 mini-classifier ───
+    const recentMessages = messages.filter(m => !m.isHTML).slice(-6);
     let triage = { scope: 'plan', needsSearch: false, searchQuery: null, isTemplateSwitch: false, templateId: null, targetSlides: [], instruction: effectivePrompt, questions: [] };
     try {
       triage = await triageRequest(effectivePrompt, {
         slides: currentState.slides,
         activeSlideIndex: currentSlideIndex,
         activeSlide,
+        attachedFiles: uploadedFiles.filter(f => f.content),
+        chatHistory: recentMessages,
       }, currentState.settings);
       console.log('[Triage] Result:', triage);
     } catch (triageErr) {
@@ -1270,11 +1489,16 @@ export default function AIChatbot() {
     if (triage.scope === 'qa') {
       try {
         setProgress({ phase: 'Thinking...', current: 0, total: 1 });
-        const speedModel = currentState.settings.speedMode === 'quality'
+        const speedModel = currentState.settings.speedMode === 'premium'
           ? currentState.settings.model
           : currentState.settings.fastModel;
         const qaSettings = { ...currentState.settings, model: speedModel || currentState.settings.model };
-        const qaResponse = await chatWithContext(effectivePrompt, '', qaSettings);
+        const qaContext = {
+          currentSlide: activeSlide ? { slide: activeSlide, index: currentSlideIndex } : null,
+          allSlides: currentState.slides.length > 0 ? currentState.slides : null,
+          totalSlides: currentState.slides.length,
+        };
+        const qaResponse = await chatWithContext(effectivePrompt, qaContext, qaSettings);
         addMessage('assistant', qaResponse || 'I could not generate a response.');
       } catch (qaErr) {
         console.error('[Triage] Q&A failed:', qaErr);
@@ -1288,150 +1512,18 @@ export default function AIChatbot() {
 
     setProgress({ phase: 'Working...', current: 0, total: 1 });
 
-    // ─── DIRECT EXECUTION: single-slide actions (edit, improve, fill, template switch) ───
+    // ─── DIRECT EXECUTION: single-slide actions via shared helper ───
     if (triage.scope === 'direct' && activeSlide) {
       try {
-        const genModel = currentState.settings.speedMode === 'quality'
-          ? currentState.settings.model
-          : (currentState.settings.fastModel || currentState.settings.model);
-        const slideSettings = {
-          ...currentState.settings,
-          model: genModel,
-          vibe: currentState.vibe || state.vibe,
-        };
-        const searchConfigured = currentState.settings.searchEnabled
-          && currentState.settings.searchEndpoint
-          && currentState.settings.searchModel;
-        const slideIsEmpty = isSlideEffectivelyEmpty(activeSlide);
-
-        // Search runs if triage says content needs current data
-        const doSearch = searchConfigured && triage.needsSearch;
-        let searchResult = null;
-        if (doSearch) {
-          setProgress({ phase: 'Searching...', current: 0, total: 1 });
-          try {
-            let searchQuery = triage.searchQuery || effectivePrompt.trim();
-            if (searchQuery.length > 120) {
-              const fastModel = currentState.settings.fastModel || currentState.settings.model;
-              const fastSettings = { ...slideSettings, model: fastModel, maxTokens: 100, temperature: 0.1 };
-              const refinedQuery = await callWithModelFallback(
-                fastSettings,
-                'Turn this user request into a concise, specific web search query. Fix any typos. Add key terms for better results. Return ONLY the search query text, nothing else.',
-                searchQuery
-              );
-              searchQuery = (refinedQuery || searchQuery).trim();
-            }
-            searchQuery += ' latest ' + currentDateString();
-            console.log('[Direct] Search query:', searchQuery);
-            searchResult = await webSearch(searchQuery, currentState.settings);
-          } catch (searchErr) {
-            console.warn('[Direct] Search failed:', searchErr.message);
-          }
-        }
-
-        // Detect reference slides from prompt text (e.g. "like slide 3")
-        let referenceContext = '';
-        const slideRefMatch = effectivePrompt.match(/(?:like|from|match|copy|same as)\s+slide\s+(\d+)/i);
-        if (slideRefMatch) {
-          const refIdx = parseInt(slideRefMatch[1], 10) - 1;
-          const refSlide = currentState.slides[refIdx];
-          if (refSlide) {
-            referenceContext = `\n\n=== REFERENCE SLIDES (match their style/design) ===\n[Slide ${refIdx + 1}] "${refSlide.title}":\n${refSlide.html}\n=== END REFERENCE ===`;
-          }
-        }
-
-        // Template switch: delegate to transformSlideToTemplate if triage detected it.
-        if (triage.isTemplateSwitch && triage.templateId) {
-          setProgress({ phase: 'Switching template...', current: 0, total: 1 });
-          const customTemplate = currentState.customTemplates?.find(t => t.id === triage.templateId);
-          const currentIndex = currentState.slides.findIndex(s => s.id === activeSlide.id);
-          const deckContext = buildDeckContextForSwitch(currentState.slides, currentIndex);
-          const transformedHtml = await transformSlideToTemplate(
-            activeSlide.html, triage.templateId, slideSettings, customTemplate,
-            { slideNumber: currentIndex + 1, totalSlides: currentState.slides.length },
-            deckContext, effectivePrompt.trim() || null
-          );
-          if (transformedHtml && transformedHtml !== activeSlide.html) {
-            const newTitle = extractTitleFromHTML(transformedHtml) || activeSlide.title;
-            actions.updateSlide(activeSlide.id, { html: transformedHtml, type: triage.templateId, templateId: triage.templateId, customCSS: '', pptxRendererCode: null });
-            addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${triage.templateId}</strong></div>`, { isHTML: true });
-            setIsLoading(false);
-            setProgress(null);
-            abortControllerRef.current = null;
-            return;
-          }
-          console.log('[ThisSlide] Template switch returned unchanged HTML, falling through to edit path');
-        }
-
-        // Enrich prompt with search results
-        let enrichedPrompt = effectivePrompt;
-        if (searchResult) {
-          const dateStr = currentDateString();
-          enrichedPrompt = effectivePrompt
-            + `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${dateStr}) ===\n`
-            + searchResult
-            + `\n=== END KEY FACTS ===\n`
-            + 'IMPORTANT: Use ONLY dates, names, and facts from the above search context. '
-            + 'Do NOT use outdated information from training data.\n';
-          console.log('[Direct] Search enriched prompt with', searchResult.length, 'chars');
-        }
-
-        // Inject deck context (storyline, position, neighbors) so This Slide edits
-        // are aware of the slide's role within the broader presentation.
-        let deckContext = '';
-        if (currentState.slides.length > 1) {
-          const slideIdx = currentState.slides.findIndex(s => s.id === activeSlide.id);
-          const totalSlides = currentState.slides.length;
-          const posLine = `Slide ${slideIdx + 1} of ${totalSlides}`;
-          const prevSlide = slideIdx > 0 ? currentState.slides[slideIdx - 1] : null;
-          const nextSlide = slideIdx < totalSlides - 1 ? currentState.slides[slideIdx + 1] : null;
-          const neighborLine = [
-            prevSlide ? `Previous: "${prevSlide.title}"` : null,
-            nextSlide ? `Next: "${nextSlide.title}"` : null,
-          ].filter(Boolean).join(' | ');
-          const storyline = currentState.storyline;
-          let storylineLine = '';
-          if (storyline?.length > 0) {
-            storylineLine = 'Storyline: ' + storyline.map((s, i) =>
-              `${i + 1}. ${s.title}${s.slideId && currentState.slides.findIndex(sl => sl.id === s.slideId) === slideIdx ? ' [CURRENT]' : ''}`
-            ).join(' | ');
-          }
-          deckContext = `\n\n=== DECK CONTEXT ===\n${posLine}${neighborLine ? '\n' + neighborLine : ''}${storylineLine ? '\n' + storylineLine : ''}\n=== END DECK CONTEXT ===`;
-        }
-
-        if (slideIsEmpty) {
-          const templateId = activeSlide.templateId;
-          const isRealTemplate = templateId && templateId !== 'freestyle' && !templateId.startsWith('empty-');
-          const template = isRealTemplate ? SLIDE_TEMPLATES[templateId] : null;
-
-          if (template) {
-            setProgress({ phase: 'Filling template...', current: 0, total: 1 });
-            const filledHtml = await fillTemplateWithAI(template, enrichedPrompt + deckContext, slideSettings, [], { agentMode: false });
-            if (filledHtml) {
-              const title = extractTitleFromHTML(filledHtml) || template.title;
-              actions.updateSlide(activeSlide.id, { html: filledHtml, title });
-              addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Filled: <strong>${template.title}</strong></div>`, { isHTML: true });
-            }
-          } else {
-            setProgress({ phase: 'Generating slide...', current: 0, total: 1 });
-            const slides = await generateSlides(enrichedPrompt + deckContext, slideSettings, 1);
-            if (slides && slides.length > 0) {
-              const s = slides[0];
-              actions.updateSlide(activeSlide.id, { html: s.html, title: s.title || 'Untitled Slide' });
-              addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Created: <strong>${s.title || 'Slide'}</strong></div>`, { isHTML: true });
-            }
-          }
-        } else {
-          setProgress({ phase: 'Improving slide...', current: 0, total: 1 });
-          const fullPrompt = enrichedPrompt + referenceContext + deckContext;
-          const result = await improveSlideWithSearch(activeSlide, fullPrompt, slideSettings, { skipSearch: true });
-          const improvedHtml = result?.html || result;
-          const updateData = { html: improvedHtml, templateId: null };
-          if (result?.customCSS) updateData.customCSS = result.customCSS;
-          const newTitle = extractTitleFromHTML(improvedHtml);
-          if (newTitle) updateData.title = newTitle;
-          actions.updateSlide(activeSlide.id, updateData);
-          addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Updated slide</div>`, { isHTML: true });
+        const fullKnowledge = buildKnowledgeContextForPrompt(effectivePrompt, { fullContent: true });
+        const result = await performDirectSlideEdit(activeSlide, effectivePrompt, triage, { knowledgeContext: fullKnowledge });
+        if (result) {
+          actions.updateSlide(activeSlide.id, result.updateData);
+          const label = result.action === 'template-switch' ? `Switched to: <strong>${result.templateId}</strong>`
+            : result.action === 'filled' ? `Filled: <strong>${result.templateTitle || result.title}</strong>`
+            : result.action === 'generated' ? `Created: <strong>${result.title || 'Slide'}</strong>`
+            : 'Updated slide';
+          addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> ${label}</div>`, { isHTML: true });
         }
       } catch (err) {
         if (err.name !== 'AbortError') {
@@ -1925,6 +2017,7 @@ export default function AIChatbot() {
           preferImageSlides: useImageMode && !!freshState.settings.imageModel,
           // Unified mode: classifier auto-detects scope, tell router "deck" context
           contextMode: 'deck',
+          chatHistory: recentMessages,
         };
 
         // ROUTING: Use AI router if enabled, otherwise rule-based
@@ -1953,16 +2046,17 @@ export default function AIChatbot() {
           // If coming from agent mode, say "Creating slides" not "Drafting a plan" (agent already planned)
           const routerPhaseMessage = shouldRunAgent ? 'Creating slides...' : 'Drafting a plan...';
           setProgress({ phase: routerPhaseMessage, current: 0, total: 1 });
+          const routerPrompt = triage.instruction || effectivePrompt;
           try {
-            routeResult = await aiRouteRequest(effectivePrompt, context, freshState.settings);
+            routeResult = await aiRouteRequest(routerPrompt, context, freshState.settings);
           } catch (routerErr) {
             console.warn('[Router] AI router failed, falling back to rule-based:', routerErr.message);
-            routeResult = routeRequest(effectivePrompt, context);
+            routeResult = routeRequest(routerPrompt, context);
           }
 
           // Record router AI I/O
           recordAiIO('router',
-            `Prompt: ${effectivePrompt}\n\nContext: ${JSON.stringify(context, null, 2)}`,
+            `Prompt: ${routerPrompt}\n\nContext: ${JSON.stringify(context, null, 2)}`,
             JSON.stringify(routeResult, null, 2),
             {
               model: routeResult.routerDebug?.model,
@@ -2234,7 +2328,7 @@ export default function AIChatbot() {
     const routeResult = modifiedRouteResult;
 
     // Speed mode determines generation model
-    const genModel = settings.speedMode === 'quality'
+    const genModel = settings.speedMode === 'premium'
       ? settings.model
       : (settings.fastModel || settings.model);
     const executionSettings = { ...settings, model: genModel };
@@ -2397,7 +2491,7 @@ export default function AIChatbot() {
       const buildSearchFactsBlock = () => {
         if (!searchRawContext) return '';
         const trimmed = trimSearchResult(searchRawContext);
-        return `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n${trimmed}\n=== END KEY FACTS ===\nIMPORTANT: Use ONLY dates, names, and facts from the above search context. Do NOT use outdated information from training data.\n`;
+        return `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n${trimmed}\n=== END KEY FACTS ===\nIMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.\n`;
       };
 
       // Only use router-set or user-set searchQuery; no auto-derivation.
@@ -2512,7 +2606,7 @@ export default function AIChatbot() {
             stepPrompt += '\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
           }
           stepPrompt += '\n=== END VERIFIED FACTS ===';
-          stepPrompt += '\nIMPORTANT: Use ONLY the dates, names, numbers, and facts above. Do NOT use outdated information from training data.\n';
+          stepPrompt += '\nIMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.\n';
         } else if (Array.isArray(step.sources) && step.sources.length > 0) {
           const srcLines = step.sources.map(s =>
             typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
@@ -2687,7 +2781,7 @@ export default function AIChatbot() {
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Use ONLY dates, names, numbers, and facts from the VERIFIED FACTS and WEB SEARCH RESULTS above. Do NOT substitute information from training data. Cite specific numbers and sources.`;
+                  enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
@@ -2860,7 +2954,7 @@ export default function AIChatbot() {
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Use ONLY dates, names, numbers, and facts from the VERIFIED FACTS and WEB SEARCH RESULTS above. Do NOT substitute information from training data. Cite specific numbers and sources.`;
+                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] edit_slide step ${stepIndex}: search returned ${searchResult.length} chars`);
                 }
               } catch (searchErr) {
@@ -3352,7 +3446,7 @@ export default function AIChatbot() {
                 stepPromptLocal += '\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
               }
               stepPromptLocal += '\n=== END VERIFIED FACTS ===';
-              stepPromptLocal += '\nIMPORTANT: Use ONLY the dates, names, numbers, and facts above. Do NOT use outdated information from training data.\n';
+              stepPromptLocal += '\nIMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.\n';
             } else if (Array.isArray(step.sources) && step.sources.length > 0) {
               const srcLines = step.sources.map(s =>
                 typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
@@ -3401,7 +3495,7 @@ export default function AIChatbot() {
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Use ONLY dates, names, numbers, and facts from the VERIFIED FACTS and WEB SEARCH RESULTS above. Do NOT substitute information from training data. Cite specific numbers and sources.`;
+                  enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
@@ -5023,7 +5117,7 @@ Original request: ${userPrompt}`;
     try {
       const currentState = stateRef.current;
       const freshSlide = currentState.slides.find(s => s.id === slideId) || activeSlide;
-      const genModel = state.settings.speedMode === 'quality'
+      const genModel = state.settings.speedMode === 'premium'
         ? state.settings.model
         : (state.settings.fastModel || state.settings.model);
       const improveSettings = {
@@ -5054,7 +5148,7 @@ Original request: ${userPrompt}`;
     setBusySlideIds(prev => new Set(prev).add(slideId));
     setActiveQuickAction('Reimagine Slide');
     try {
-      const genModel = state.settings.speedMode === 'quality'
+      const genModel = state.settings.speedMode === 'premium'
         ? state.settings.model
         : (state.settings.fastModel || state.settings.model);
       const reimagineSettings = { ...state.settings, model: genModel, temperature: 0.85, vibe: state.vibe };
@@ -5120,7 +5214,7 @@ Original request: ${userPrompt}`;
             className="chatbot-action-btn"
             onClick={() => {
               // Full reset — clear ALL chat state for a fresh start
-              setMessages([{ type: 'assistant', content: 'What would you like to create? Use <strong>This Slide</strong> to work on a single slide, or <strong>Deck</strong> to build a full presentation.', isHTML: true }]);
+              setMessages([{ type: 'assistant', content: 'Just describe what you need — a single slide or a full deck. I\'ll figure out the rest.' }]);
               setUploadedFiles([]);
               setPendingSmartAction(null);
               setProgress(null);
@@ -5159,26 +5253,8 @@ Original request: ${userPrompt}`;
         </div>
       </div>
 
-      {/* Speed mode + Search toggle bar */}
+      {/* Context bar -- slide info only (speed toggle moved to bottom input area) */}
       <div className="panel-context-bar">
-        <div className="panel-scope-toggle" role="group" aria-label="Speed mode">
-          <button
-            className={`panel-scope-btn ${state.settings.speedMode === 'fast' ? 'active' : ''}`}
-            onClick={() => actions.updateSettings({ speedMode: 'fast' })}
-            title="Faster generation with balanced quality"
-          >
-            Fast
-          </button>
-          <button
-            className={`panel-scope-btn ${state.settings.speedMode === 'quality' ? 'active' : ''}`}
-            onClick={() => actions.updateSettings({ speedMode: 'quality' })}
-            title="Higher quality generation using the premium model"
-          >
-            Quality
-          </button>
-        </div>
-        {/* Search toggle removed -- search availability is now controlled by settings.searchEnabled
-           and the triage/router decide when to use it */}
         {activeSlide && (
           <span className="panel-context-label">
             Slide {state.slides.findIndex(s => s.id === activeSlide.id) + 1} of {state.slides.length}
@@ -5192,7 +5268,7 @@ Original request: ${userPrompt}`;
       {/* Quick actions or template picker (when no active slide) */}
       {!activeSlide && state.slides.length === 0 && (
         <div className="panel-empty-slide-picker">
-          <div className="panel-empty-hint">Pick a layout to create your first slide, then describe your content below.</div>
+          <div className="panel-empty-hint">Describe your presentation below, or pick a layout to start with a specific slide.</div>
           <TemplatePicker
             selectedTemplate={null}
             onSelect={(templateId) => {
@@ -5207,7 +5283,7 @@ Original request: ${userPrompt}`;
       {activeSlide && (
         isSlideEffectivelyEmpty(activeSlide) ? (
           <div className="panel-empty-slide-picker">
-            <div className="panel-empty-hint">Choose a layout for this slide, then describe your content below.</div>
+            <div className="panel-empty-hint">Describe what this slide should contain, or pick a layout below.</div>
             <TemplatePicker
               selectedTemplate={activeSlide.templateId && !activeSlide.templateId.startsWith('empty-') ? activeSlide.templateId : null}
               onSelect={(templateId) => {
@@ -5395,7 +5471,7 @@ Original request: ${userPrompt}`;
               {msg.isHTML ? (
                 <div dangerouslySetInnerHTML={{ __html: msg.content }} />
               ) : (
-                msg.content
+                <div dangerouslySetInnerHTML={{ __html: formatMarkdownToHtml(msg.content) }} />
               )}
               {/* Tier 3 (DEBUG_MODE): full raw AI I/O panel */}
               {/* Tier 2 (non-debug): human-friendly "Details" expandable */}
@@ -6184,67 +6260,91 @@ Original request: ${userPrompt}`;
             onChange={handleFileUpload}
             style={{ display: 'none' }}
           />
-          {/* Style toggle + agent mode buttons */}
-          {(true || state.settings.enableAgenticMode) && (
-            <div className="chatbot-input-actions">
-              <div className="chatbot-action-group chatbot-mode-group">
-                {(
-                  <div className="panel-style-toggle" role="group" aria-label="Slide style">
-                    {['auto', 'templates', 'freestyle'].map(opt => (
-                      <button
-                        key={opt}
-                        type="button"
-                        className={`panel-style-btn ${(state.settings.slideStylePreference || 'auto') === opt ? 'active' : ''}`}
-                        onClick={() => actions.updateSettings({ slideStylePreference: opt })}
-                        title={opt === 'auto' ? 'AI decides template vs freestyle' : opt === 'templates' ? 'Force template-based slides' : 'Force freestyle HTML slides'}
-                      >
-                        {opt.charAt(0).toUpperCase() + opt.slice(1)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {state.settings.enableAgenticMode && (
-                  <>
-                    <button
-                      type="button"
-                      className={`chatbot-mode-btn ${useAgenticMode && !useReportMode ? 'active' : ''}`}
-                      onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(false); }}
-                      disabled={isLoading}
-                      title="Deep Deck - Research-powered slide presentation"
-                    >
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                        <line x1="8" y1="21" x2="16" y2="21" />
-                        <line x1="12" y1="17" x2="12" y2="21" />
-                      </svg>
-                      Deep Deck
-                    </button>
-                    <button
-                      type="button"
-                      className={`chatbot-mode-btn chatbot-report-mode ${useReportMode ? 'active' : ''}`}
-                      onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(true); }}
-                      disabled={isLoading}
-                      title="Deep Report - Research-powered interactive dashboard"
-                    >
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M3 3v18h18" />
-                        <path d="M18 9l-5 5-4-4-3 3" />
-                      </svg>
-                      Deep Report
-                    </button>
-                  </>
-                )}
+          {/* Bottom toggles: style + speed mode */}
+          <div className="chatbot-input-actions">
+            <div className="chatbot-action-group chatbot-mode-group">
+              {/* Auto / Freestyle pill slider */}
+              <div className="pill-toggle" role="group" aria-label="Slide style">
+                <button
+                  type="button"
+                  className={`pill-toggle-btn ${(state.settings.slideStylePreference || 'freestyle') === 'auto' ? 'active' : ''}`}
+                  onClick={() => actions.updateSettings({ slideStylePreference: 'auto' })}
+                  title="AI decides template vs freestyle"
+                >
+                  Auto
+                </button>
+                <button
+                  type="button"
+                  className={`pill-toggle-btn ${(state.settings.slideStylePreference || 'freestyle') === 'freestyle' ? 'active' : ''}`}
+                  onClick={() => actions.updateSettings({ slideStylePreference: 'freestyle' })}
+                  title="Force freestyle HTML slides"
+                >
+                  Freestyle
+                </button>
               </div>
+              {/* Fast / Premium pill slider */}
+              <div className="pill-toggle" role="group" aria-label="Speed mode">
+                <button
+                  type="button"
+                  className={`pill-toggle-btn ${state.settings.speedMode === 'fast' ? 'active' : ''}`}
+                  onClick={() => actions.updateSettings({ speedMode: 'fast' })}
+                  title="Faster generation with balanced quality"
+                >
+                  Fast
+                </button>
+                <button
+                  type="button"
+                  className={`pill-toggle-btn ${state.settings.speedMode === 'premium' ? 'active' : ''}`}
+                  onClick={() => actions.updateSettings({ speedMode: 'premium' })}
+                  title="Higher quality generation using the premium model"
+                >
+                  Premium
+                </button>
+              </div>
+              {state.settings.enableAgenticMode && (
+                <>
+                  <button
+                    type="button"
+                    className={`chatbot-mode-btn ${useAgenticMode && !useReportMode ? 'active' : ''}`}
+                    onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(false); }}
+                    disabled={isLoading}
+                    title="Deep Deck - Research-powered slide presentation"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                      <line x1="8" y1="21" x2="16" y2="21" />
+                      <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
+                    Deep Deck
+                  </button>
+                  <button
+                    type="button"
+                    className={`chatbot-mode-btn chatbot-report-mode ${useReportMode ? 'active' : ''}`}
+                    onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(true); }}
+                    disabled={isLoading}
+                    title="Deep Report - Research-powered interactive dashboard"
+                  >
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <path d="M3 3v18h18" />
+                      <path d="M18 9l-5 5-4-4-3 3" />
+                    </svg>
+                    Deep Report
+                  </button>
+                </>
+              )}
             </div>
-          )}
+          </div>
           {(() => {
-            const inputDisabled = (isLoading && !agenticExecution.isRunning);
+            const smartActionExecuting = isLoading && !!pendingSmartAction;
+            const inputDisabled = (isLoading && !agenticExecution.isRunning && !smartActionExecuting);
             const noSlidesYet = state.slides.length === 0;
             const placeholder = noSlidesYet
               ? 'Describe your presentation to get started...'
-              : agenticExecution.isRunning
-                ? 'Chat with the team while they work...'
-                : 'Describe your presentation goal or paste an image (Ctrl+V)...';
+              : smartActionExecuting
+                ? 'Type here to edit the active slide while the plan runs...'
+                : agenticExecution.isRunning
+                  ? 'Chat with the team while they work...'
+                  : 'Describe your presentation goal or paste an image (Ctrl+V)...';
             return (
               <div className="chatbot-input-box">
                 <textarea
@@ -6273,7 +6373,18 @@ Original request: ${userPrompt}`;
                       </svg>
                     )}
                   </button>
-                  {/* Search toggle moved to the context bar */}
+                  {/* Search toggle */}
+                  <button
+                    type="button"
+                    className={`panel-search-toggle-btn ${state.settings.searchEnabled ? 'active' : ''}`}
+                    onClick={() => actions.updateSettings({ searchEnabled: !state.settings.searchEnabled })}
+                    title={state.settings.searchEnabled ? 'Web search enabled (click to disable)' : 'Web search disabled (click to enable)'}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                      <circle cx="11" cy="11" r="8" />
+                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                    </svg>
+                  </button>
                   <button type="submit" className="chatbot-send-btn" disabled={inputDisabled || !prompt.trim()}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <line x1="22" y1="2" x2="11" y2="13" />

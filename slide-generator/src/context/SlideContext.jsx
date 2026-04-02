@@ -21,6 +21,7 @@ const initialState = {
   activeSlideId: null,
   selectedSlideIds: [],
   deckName: 'Untitled Deck',
+  deckGeneration: 0,
   vibe: 'default', // Design variation within theme: 'executive' | 'bold' | 'modern'
   imageVibe: 'default', // Vibe for image-based slides (persisted across reloads)
   darkMode: false, // Independent dark mode toggle (applies to all slides)
@@ -63,7 +64,7 @@ const initialState = {
       },
     ],
     // ── Unified chat: speed mode ──
-    speedMode: 'fast',           // 'fast' | 'quality' — user-selectable generation tier
+    speedMode: 'fast',           // 'fast' | 'premium' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',         // "Thinking" generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
@@ -334,9 +335,9 @@ function loadState() {
         reportModel: loadedState.settings.reportModel,
         speedMode: loadedState.settings.speedMode,
       });
-      // Migrate old 'thinking' speedMode to 'quality'
-      if (loadedState.settings.speedMode === 'thinking') {
-        loadedState.settings.speedMode = 'quality';
+      // Migrate old speedMode values to 'premium'
+      if (loadedState.settings.speedMode === 'thinking' || loadedState.settings.speedMode === 'quality') {
+        loadedState.settings.speedMode = 'premium';
       }
       return loadedState;
     }
@@ -967,9 +968,10 @@ function slideReducer(state, action) {
         deckVersions: autoSaveVersion
           ? [...state.deckVersions, autoSaveVersion]
           : state.deckVersions,
-        customTemplates: state.customTemplates, // Keep custom templates
-        flows: state.flows || [], // Keep flows
+        customTemplates: state.customTemplates,
+        flows: state.flows || [],
         deckName: action.payload?.name || 'Untitled Deck',
+        deckGeneration: (state.deckGeneration || 0) + 1,
       };
     }
 

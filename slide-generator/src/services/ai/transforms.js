@@ -98,9 +98,10 @@ export async function reimagineSlideWithVibe(slideHtml, vibeId, vibeConfig, sett
   const systemPrompt = `You are a Strategy& presentation designer applying the "${vibeConfig.name}" visual style.
 
 === CRITICAL: WHAT YOU MUST PRESERVE ===
-1. LAYOUT STRUCTURE - If slide has 3 cards, output must have 3 cards. If it has a table, keep the table. If it has a timeline, keep the timeline. NEVER flatten to plain text.
-2. ALL TEXT CONTENT - Every word, number, label, bullet point must appear exactly as in the original
-3. SEMANTIC MEANING - Cards stay cards, lists stay lists, metrics stay metrics
+1. CONTENT ESSENCE - The slide's message, data, arguments, and conclusions must remain identical. Do NOT rewrite, rephrase, summarize, or add content.
+2. ALL TEXT - Every word, number, label, bullet point must appear exactly as in the original. No paraphrasing.
+3. LAYOUT STRUCTURE - If slide has 3 cards, output must have 3 cards. If it has a table, keep the table. If it has a timeline, keep the timeline. NEVER flatten to plain text.
+4. SEMANTIC MEANING - Cards stay cards, lists stay lists, metrics stay metrics
 
 === WHAT YOU CHANGE: VISUAL STYLING ONLY ===
 Apply the "${vibeConfig.name}" vibe by changing ONLY:
@@ -130,9 +131,10 @@ ${slideHtml}
 
 INSTRUCTIONS:
 1. Keep the EXACT same layout structure (same number of cards/rows/columns)
-2. Keep ALL text content unchanged
-3. Only change visual styling: colors, borders, backgrounds, fonts, shadows
-4. Output complete slide HTML only`;
+2. Keep ALL text content word-for-word — do NOT rewrite, rephrase, add, or remove any content
+3. The slide's message and substance must be identical after reimagining
+4. Only change visual styling: colors, borders, backgrounds, fonts, shadows
+5. Output complete slide HTML only`;
 
   try {
     let content;

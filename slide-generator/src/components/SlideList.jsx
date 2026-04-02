@@ -129,10 +129,17 @@ export default function SlideList() {
         if (state.slides.length > 0) {
           actions.setActiveSlide(state.slides[state.slides.length - 1].id);
         }
-      } else if (e.key === 'Delete' && activeSlide && !e.ctrlKey && !e.metaKey) {
+      } else if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
-        if (window.confirm('Delete this slide?')) {
-          actions.deleteSlide(activeSlide.id);
+        if (selectedSlides.size > 1) {
+          if (window.confirm(`Delete ${selectedSlides.size} selected slides?`)) {
+            [...selectedSlides].forEach(id => actions.deleteSlide(id));
+            setSelectedSlides(new Set());
+          }
+        } else if (activeSlide) {
+          if (window.confirm('Delete this slide?')) {
+            actions.deleteSlide(activeSlide.id);
+          }
         }
       } else if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey) && activeSlide) {
         e.preventDefault();
@@ -144,7 +151,7 @@ export default function SlideList() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.slides, activeSlide, actions]);
+  }, [state.slides, state.selectedSlideIds, activeSlide, actions]);
 
   const handleDragStart = (e, slide) => {
     // If dragging a non-selected slide, reset selection to just this one
@@ -465,10 +472,43 @@ export default function SlideList() {
 
           {/* Keyboard shortcuts hint */}
           <div className="keyboard-hints">
-            <span title="Navigate slides">↑↓</span>
-            <span title="Duplicate (Ctrl+D)">⌘D</span>
-            <span title="Delete">Del</span>
+            <span title="Arrow keys to navigate slides">Arrows</span>
+            <span title="Hold Shift and click to select multiple slides">Shift + Click</span>
+            <span title="Delete selected slides">Del</span>
           </div>
+
+          {/* Multi-select action bar */}
+          {selectedSlides.size >= 2 && (
+            <div className="multi-select-bar">
+              <span className="multi-select-label">{selectedSlides.size} slides selected</span>
+              <button
+                className="multi-select-delete-btn"
+                onClick={() => {
+                  if (window.confirm(`Delete ${selectedSlides.size} selected slides?`)) {
+                    [...selectedSlides].forEach(id => actions.deleteSlide(id));
+                    setSelectedSlides(new Set());
+                  }
+                }}
+                title={`Delete ${selectedSlides.size} selected slides`}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3 6 5 6 21 6" />
+                  <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                </svg>
+                Delete
+              </button>
+              <button
+                className="multi-select-clear-btn"
+                onClick={() => setSelectedSlides(new Set())}
+                title="Clear selection"
+              >
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+          )}
 
           <div className="slide-list" ref={slideListRef} onClick={handleListClick}>
             {state.slides.length === 0 ? (
@@ -496,10 +536,6 @@ export default function SlideList() {
                     className={`slide-item ${activeSlide?.id === slide.id ? 'active' : ''} ${selectedSlides.has(slide.id) ? 'selected' : ''} ${isDragTarget ? `drag-target-${dragPosition}` : ''} ${isHighlighted ? 'context-highlighted' : ''}`}
                     style={{
                       paddingLeft: `${12 + (slide.depth || 0) * 16}px`,
-                      ...(selectedSlides.has(slide.id) ? {
-                        borderLeft: '2px solid var(--accent, #3b82f6)',
-                        background: 'rgba(59, 130, 246, 0.06)',
-                      } : {}),
                     }}
                     onClick={(e) => handleSlideClick(e, slide, index)}
                     onMouseEnter={(e) => handleMouseEnter(slide, e)}
@@ -522,8 +558,8 @@ export default function SlideList() {
                     <div className="slide-item-thumbnail">
                       <SlideThumbnail html={slide.html} customCSS={slide.customCSS} vibe={state.vibe} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id || index}-${slide.updatedAt || ''}`} />
                       <span className="slide-number-badge">{index + 1}</span>
-                      {/* Comment indicator badge */}
-                      {(slide.comments || []).filter(c => !c.addressed).length > 0 && (
+                      {/* Comment indicator badge -- hidden, functionality preserved */}
+                      {false && (slide.comments || []).filter(c => !c.addressed).length > 0 && (
                         <div className="slide-comment-badge" title={`${(slide.comments || []).filter(c => !c.addressed).length} pending comment(s)`}>
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />

@@ -1449,6 +1449,11 @@ export default function AIChatbot() {
       console.warn('[Triage] Failed, falling back to plan:', triageErr.message);
     }
 
+    // ─── CLARIFY: if search is needed, defer to the router (which has web search) ───
+    if (triage.scope === 'clarify' && triage.needsSearch) {
+      triage.scope = 'plan';
+    }
+
     // ─── CLARIFY: show clarifying questions, wait for user response ───
     if (triage.scope === 'clarify' && triage.questions.length > 0) {
       const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');

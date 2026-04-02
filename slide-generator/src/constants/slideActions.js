@@ -26,15 +26,26 @@ export const PRIMARY_ACTIONS = [
   },
 ];
 
-export const ARABIC_TRANSLATION_PROMPT = `Translate ALL text content on this slide to Arabic. This includes titles, subtitles, body text, labels, captions, legends, footnotes, and any visible text. Also translate numbers to Arabic-Indic numerals where contextually appropriate. Change the entire layout direction to RTL (right-to-left): flip horizontal alignment, swap left-aligned elements to right-aligned, mirror flex/grid layouts, and ensure reading order flows right-to-left. Preserve the logical relationships between elements — if a label points to a chart, keep that spatial association. If columns had a left-to-right progression, reverse it to right-to-left while keeping the logical sequence intact. Maintain the visual design, colors, spacing, and hierarchy. Set dir="rtl" on the root container. Use a clean Arabic font stack: 'Noto Sans Arabic', 'Segoe UI', 'Tahoma', sans-serif.
+export const ARABIC_TRANSLATION_PROMPT = `Translate ALL text content on this slide to Arabic. This includes titles, subtitles, body text, labels, captions, legends, footnotes, and any visible text. Also translate numbers to Arabic-Indic numerals where contextually appropriate. Set dir="rtl" on the root container. Use a clean Arabic font stack: 'Noto Sans Arabic', 'Segoe UI', 'Tahoma', sans-serif. Maintain the visual design, colors, spacing, and hierarchy.
+
+CRITICAL — RTL LAYOUT MIRRORING:
+Arabic reads right-to-left. You MUST mirror the entire spatial layout, not just text alignment:
+- Flip horizontal alignment: left-aligned becomes right-aligned and vice versa.
+- SWAP COLUMNS: If there are two columns (e.g. items 1-3 on the left, items 4-5 on the right), you MUST physically swap them so that items 1-3 appear on the RIGHT and items 4-5 on the LEFT. The first/primary content must be on the right because Arabic readers scan right-to-left.
+- For flex layouts: add flex-direction: row-reverse (or swap the HTML order of children).
+- For grid layouts: reverse the column order in the HTML or use direction: rtl on the grid container.
+- For absolutely positioned elements: swap left offsets to right offsets and vice versa.
+- Numbered sequences (1, 2, 3...) must flow right-to-left: item 1 on the far right, last item on the far left.
+- Timelines, process flows, and arrows must flow right-to-left.
+- Preserve logical relationships — if a label points to a chart, keep that spatial link.
 
 CRITICAL — FOOTER RULES:
-The <footer class="footer"> element has exactly three <span> children: (1) branding, (2) source, (3) page number.
+The <footer class="footer"> has exactly three <span> children: (1) branding, (2) source, (3) page number.
 - Do NOT translate, move, remove, or reorder ANY of the three footer spans.
 - Keep the branding span (e.g. "Strategy&") EXACTLY as-is — same text, same position (first span).
-- Keep the page number span (third span) as a plain Western numeral — do NOT convert it to Arabic-Indic numerals.
-- The source span (second span, class="source") may be translated if it contains Arabic-relevant text, but keep it in the second position.
-- Do NOT add dir="rtl" to the footer itself — it must remain LTR so branding stays on the left and page number on the right.
+- Keep the page number span (third span) as a plain Western numeral — do NOT convert to Arabic-Indic.
+- The source span (second, class="source") may be translated if it has content, but keep it in the second position.
+- Do NOT add dir="rtl" to the footer — it must remain LTR so branding stays left and page number stays right.
 
 CRITICAL — BRAND NAMES:
 Do NOT translate or reorder brand names and proper nouns such as "Strategy&", "PwC", or any company/product names. Keep them in their original Latin-script form. Wrap any Latin-script brand names outside the footer in <span dir="ltr" style="unicode-bidi:isolate"> to prevent RTL character reordering.`;

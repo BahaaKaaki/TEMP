@@ -512,6 +512,8 @@ export default function SmartActionCard({
             </div>
           )}
 
+          {/* Footer: context + search on the same row */}
+          <div className="sac-step-footer">
           {/* Context slides — debug mode only */}
           {debugMode && (
             <div className="sac-step-context-row">
@@ -535,7 +537,7 @@ export default function SmartActionCard({
             </div>
           )}
 
-          {/* Per-step web search toggle — always visible, user can add/remove search on any step */}
+          {/* Per-step web search toggle */}
             <div className="sac-step-search-row">
               <button
                 type="button"
@@ -565,6 +567,7 @@ export default function SmartActionCard({
                 />
               )}
             </div>
+          </div>
         </div>
       </div>
     );
@@ -1295,14 +1298,14 @@ export default function SmartActionCard({
         .sac-plan-steps {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
         }
 
         .sac-plan-step {
           display: flex;
           align-items: flex-start;
-          gap: 10px;
-          padding: 12px 14px;
+          gap: 8px;
+          padding: 10px 12px;
           background: white;
           border-radius: 10px;
           border: 1px solid #e2e8f0;
@@ -1423,8 +1426,8 @@ export default function SmartActionCard({
         .sac-step-ctrl-del:hover:not(:disabled) { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
         .sac-step-num {
-          width: 26px;
-          height: 26px;
+          width: 24px;
+          height: 24px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1432,7 +1435,7 @@ export default function SmartActionCard({
           color: white;
           border-radius: 50%;
           font-weight: 700;
-          font-size: 12px;
+          font-size: 11px;
           flex-shrink: 0;
           margin-top: 1px;
           transition: all 0.2s ease;
@@ -1441,8 +1444,8 @@ export default function SmartActionCard({
         .sac-step-action-badge {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 3px 10px;
+          gap: 3px;
+          padding: 2px 8px;
           color: white;
           border-radius: 6px;
           font-size: 11px;
@@ -1455,7 +1458,7 @@ export default function SmartActionCard({
           flex: 1;
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 5px;
           min-width: 0;
           overflow: hidden;
         }
@@ -1558,21 +1561,22 @@ export default function SmartActionCard({
 
         .sac-step-titles {
           width: 100%;
-          display: flex;
-          flex-direction: column;
+          display: grid;
+          grid-template-columns: 1fr 1fr;
           gap: 4px;
         }
 
         .sac-step-title-input {
           width: 100%;
-          font-size: 13px;
+          font-size: 12px;
           font-weight: 600;
           color: #1e293b;
           border: 1px solid #e2e8f0;
           border-radius: 6px;
-          padding: 5px 8px;
+          padding: 4px 6px;
           background: #f8fafc;
           box-sizing: border-box;
+          min-width: 0;
         }
 
         .sac-step-title-input:focus {
@@ -1584,14 +1588,15 @@ export default function SmartActionCard({
 
         .sac-step-subtitle-input {
           width: 100%;
-          font-size: 12px;
+          font-size: 11px;
           font-weight: 500;
           color: #64748b;
           border: 1px solid #e2e8f0;
           border-radius: 6px;
-          padding: 4px 8px;
+          padding: 4px 6px;
           background: #f8fafc;
           box-sizing: border-box;
+          min-width: 0;
         }
 
         .sac-step-subtitle-input:focus {
@@ -1607,17 +1612,18 @@ export default function SmartActionCard({
 
         .sac-step-instruction-input {
           width: 100%;
-          font-size: 13px;
+          font-size: 12px;
           color: #475569;
-          line-height: 1.4;
-          padding: 8px 10px;
+          line-height: 1.35;
+          padding: 5px 8px;
           border: 1px solid #e2e8f0;
           border-radius: 6px;
           background: #f8fafc;
           resize: vertical;
-          min-height: 40px;
+          min-height: 32px;
           font-family: inherit;
           transition: all 0.15s;
+          box-sizing: border-box;
         }
 
         .sac-step-instruction-input:hover {
@@ -1731,6 +1737,13 @@ export default function SmartActionCard({
           box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
         }
 
+        .sac-step-footer {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
         .sac-step-dep {
           display: inline-flex;
           align-items: center;
@@ -1798,10 +1811,10 @@ export default function SmartActionCard({
         .sac-step-search-row {
           display: flex;
           align-items: center;
-          gap: 8px;
+          gap: 6px;
           flex-wrap: wrap;
-          margin-top: 4px;
-          padding: 0 4px;
+          margin-top: 2px;
+          padding: 0;
         }
 
         .sac-search-pill {

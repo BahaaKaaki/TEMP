@@ -1435,10 +1435,12 @@ SCOPES:
   Only clarify when missing information would MATERIALLY change the deck structure or content.
 - "qa": The user is asking a question or making conversation, NOT requesting slide changes.
   Examples: "what does slide 3 say?", "thanks", "hello", "how many slides do I have?"
-- "direct": A single-slide action on the active slide — edit, improve, fill, or template switch. No multi-step planning needed.
-  Examples: "make this more concise", "add a third column", "switch to comparison template", "fix the title"
+- "direct": A single-slide action on the active slide — edit, improve, fill, populate, or template switch. No multi-step planning needed.
+  Examples: "make this more concise", "add a third column", "switch to comparison template", "fix the title", "fill this slide with X", "populate this with Y", "add content about Z"
+  IMPORTANT: If an active slide exists (even if empty), and the user wants to fill, populate, or add content to THAT slide, use "direct" — NOT "plan".
 - "plan": Multi-slide creation, deck restructuring, complex operations, or any request that needs the full router.
   Examples: "create 6 slides about AI", "restructure the deck", "add 3 more slides on risks", "delete slides 2-4"
+  Only use "plan" when the user wants MULTIPLE new slides or cross-slide operations.
 
 isTemplateSwitch rules:
 - TRUE only when user explicitly asks to SWITCH or CHANGE the template type (e.g. "switch to comparison", "change to timeline")
@@ -1449,11 +1451,12 @@ isTemplateSwitch rules:
 Additional rules:
 - Greetings, thanks, conversational → scope "qa"
 - Simple edits to active slide → scope "direct"
+- Active slide exists (even if [empty]) + user wants to fill/populate/edit it → scope "direct"
 - Creating new decks, adding multiple slides → scope "plan"
 - Requests mentioning current data, latest, recent → needsSearch true
 - Use 0-based indices: Slide 1 = index 0, Slide 3 = index 2
 - CROSS-SLIDE: "make slide X like slide Y" targeting a DIFFERENT slide → scope "plan"
-- EMPTY DECK + creation request → scope "plan"
+- EMPTY DECK (0 slides) + creation request → scope "plan"
 - If no active slide and request is not a question → scope "plan"`;
 
 /**

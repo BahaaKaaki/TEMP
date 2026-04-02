@@ -69,3 +69,6 @@ deploy-compare/
 
 # BMAD output
 _bmad-output/
+
+# Standalone PPTX test harness
+pptx-test/

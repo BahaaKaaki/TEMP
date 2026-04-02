@@ -26,7 +26,6 @@ import { getPptxVibeStyle, getPptxVibeHint, getPptxVibeColors } from '../utils/v
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
-const FORCED_PPTX_MODEL = 'pwc:vertex_ai.anthropic.claude-opus-4-6';
 const DEFAULT_PPTX_MODEL = 'gpt-4o';
 
 // ── Gold-standard translation examples (kept from old code) ─────────────────
@@ -650,11 +649,11 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   setFooterBranding(settings?.footerBranding || 'Strategy&');
 
   const useAI = settings && hasAnyCredentials(settings);
-  const modelRef = FORCED_PPTX_MODEL;
+  const modelRef = settings?.pptxModel || settings?.model || DEFAULT_PPTX_MODEL;
   const credentials = useAI ? getCredentialsForModel(settings, modelRef) : null;
 
   if (!useAI) console.warn('[PPTX] No API credentials — using fallback for all slides.');
-  else console.log(`[PPTX] Using forced model: ${FORCED_PPTX_MODEL}`);
+  else console.log('[PPTX] Using model:', modelRef);
 
   for (let i = 0; i < slides.length; i++) {
     const slide = slides[i];
@@ -728,7 +727,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   setFooterBranding(settings?.footerBranding || 'Strategy&');
 
   const useAI = settings && hasAnyCredentials(settings);
-  const modelRef = FORCED_PPTX_MODEL;
+  const modelRef = settings?.pptxModel || settings?.model || DEFAULT_PPTX_MODEL;
   const credentials = useAI ? getCredentialsForModel(settings, modelRef) : null;
 
   if (onProgress) onProgress({ phase: 'rendering', message: 'Generating slide...' });
@@ -777,7 +776,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 
 export async function testPPTXCodeGeneration(slide, slideNumber, totalSlides, settings) {
   if (!settings || !hasAnyCredentials(settings)) throw new Error('API key required.');
-  const modelRef = FORCED_PPTX_MODEL;
+  const modelRef = settings?.pptxModel || settings?.model || DEFAULT_PPTX_MODEL;
   const credentials = getCredentialsForModel(settings, modelRef);
   const result = await generateSlideWithRetry(slide, slideNumber, totalSlides, settings, credentials);
   return { code: result.code || '(fallback used)', validation: { valid: result.success, error: result.errors?.[0]?.message || null } };

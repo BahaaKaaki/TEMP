@@ -3120,7 +3120,7 @@ export default function AIChatbot() {
               slideToSwitch.html,
               switchInstruction,
               targetTemplate,
-              settings,
+              executionSettings,
               { slideNumber: slideIdx + 1, totalSlides: freshState.slides.length },
               deckCtx,
             );
@@ -4517,12 +4517,16 @@ Original request: ${userPrompt}`;
                   break;
                 }
 
+                const legacyGenModel = switchState.settings.speedMode === 'premium'
+                  ? switchState.settings.model
+                  : (switchState.settings.fastModel || switchState.settings.model);
+                const legacySwitchSettings = { ...switchState.settings, model: legacyGenModel };
                 const legacyDeckCtx = buildDeckContextForSwitch(switchState.slides, slideIndex);
                 const transformedHtml = await improveSlideWithTemplate(
                   slide.html,
                   instruction,
                   template,
-                  switchState.settings,
+                  legacySwitchSettings,
                   { slideNumber: slideIndex + 1, totalSlides: switchState.slides.length },
                   legacyDeckCtx,
                 );
@@ -5429,7 +5433,10 @@ Original request: ${userPrompt}`;
                             const currentState = stateRef.current;
                             const freshSlide = currentState.slides.find(s => s.id === sid) || activeSlide;
                             const slideIdx = currentState.slides.findIndex(s => s.id === sid);
-                            const switchSettings = { ...currentState.settings, model: currentState.settings.routerModel || currentState.settings.model, vibe: currentState.vibe };
+                            const switchGenModel = currentState.settings.speedMode === 'premium'
+                              ? currentState.settings.model
+                              : (currentState.settings.fastModel || currentState.settings.model);
+                            const switchSettings = { ...currentState.settings, model: switchGenModel, vibe: currentState.vibe };
                             const customTemplate = currentState.customTemplates?.find(t => t.id === templateId);
                             const deckContext = buildDeckContextForSwitch(currentState.slides, slideIdx);
                             const transformedHtml = await transformSlideToTemplate(

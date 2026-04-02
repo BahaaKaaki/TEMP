@@ -387,12 +387,19 @@ export default function SlidePreview({ onSwitchToCode }) {
 
   // Only include slide-specific CSS - slides.css is imported globally
   // Don't include state.sharedCSS as it duplicates the global import
+  // Scoped with [data-slide-id] to prevent flicker when switching slides:
+  // the CSS and innerHTML update in different render phases, so scoping
+  // ensures the new CSS doesn't affect the old slide during the transition.
   const combinedCSS = useMemo(() => {
-    if (activeSlide?.customCSS) {
-      return '/* Slide-specific CSS */\n' + activeSlide.customCSS;
+    if (activeSlide?.customCSS && activeSlide?.id) {
+      const scoped = activeSlide.customCSS.replace(
+        /\.slide\s/g,
+        `.slide[data-slide-id="${activeSlide.id}"] `
+      );
+      return '/* Slide-specific CSS */\n' + scoped;
     }
     return '';
-  }, [activeSlide?.customCSS]);
+  }, [activeSlide?.customCSS, activeSlide?.id]);
 
   // Inject data-vibe and data-dark-mode attributes into slide HTML for CSS styling
   const injectVibeAttribute = useCallback((html, vibe, darkMode) => {
@@ -464,6 +471,11 @@ export default function SlidePreview({ onSwitchToCode }) {
           `class="slide$1" data-subsection="${escaped}" style="--tracker-offset: ${trackerOffset}px"`
         );
       }
+      // Inject slide ID for CSS scoping (prevents flicker on slide switch)
+      html = html.replace(
+        /class="slide([^"]*)"/,
+        `class="slide$1" data-slide-id="${activeSlide.id}"`
+      );
       // Inject dynamic page number based on position in deck
       const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
       if (slideIndex >= 0) {

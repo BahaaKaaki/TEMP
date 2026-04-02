@@ -627,33 +627,6 @@ export default function TemplatePicker({
                       <span>Freestyle (AI chooses)</span>
                       {!selectedTemplate && <span className="item-check">✓</span>}
                     </button>
-                    <button
-                      className="template-dropdown-item"
-                      disabled
-                      style={{ opacity: 0.4, pointerEvents: 'none' }}
-                      title="Image mode is currently disabled"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" />
-                        <circle cx="8.5" cy="8.5" r="1.5" />
-                        <path d="M21 15l-5-5L5 21" />
-                      </svg>
-                      <span>Image Full (AI visual)</span>
-                    </button>
-                    <button
-                      className="template-dropdown-item"
-                      disabled
-                      style={{ opacity: 0.4, pointerEvents: 'none' }}
-                      title="Image mode is currently disabled"
-                    >
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <rect x="3" y="3" width="18" height="18" rx="2" />
-                        <line x1="3" y1="9" x2="21" y2="9" />
-                        <circle cx="10" cy="15" r="2" />
-                        <path d="M18 18l-3-3-2 2" />
-                      </svg>
-                      <span>Image + Text (illustrated)</span>
-                    </button>
                   </>
                 )}
                 {(!searchQuery || Object.keys(filteredByCategory).length > 0) && <div className="template-dropdown-divider" />}
@@ -809,39 +782,6 @@ export default function TemplatePicker({
                 </svg>
               </span>
             )}
-          </button>
-          <button
-            className="template-freestyle-option"
-            disabled
-            style={{ marginTop: 6, opacity: 0.4, pointerEvents: 'none' }}
-            title="Image mode is currently disabled"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <path d="M21 15l-5-5L5 21" />
-            </svg>
-            <div>
-              <span className="freestyle-title">Image Full</span>
-              <span className="freestyle-desc">Full-bleed AI-generated visual</span>
-            </div>
-          </button>
-          <button
-            className="template-freestyle-option"
-            disabled
-            style={{ marginTop: 6, opacity: 0.4, pointerEvents: 'none' }}
-            title="Image mode is currently disabled"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <line x1="3" y1="9" x2="21" y2="9" />
-              <circle cx="10" cy="15" r="2" />
-              <path d="M18 18l-3-3-2 2" />
-            </svg>
-            <div>
-              <span className="freestyle-title">Image + Text</span>
-              <span className="freestyle-desc">AI visual with title &amp; subtitle</span>
-            </div>
           </button>
         </div>
       )}

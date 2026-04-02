@@ -474,43 +474,6 @@ export default function AgentApprovalDialog({
                   </div>
                 )}
 
-                {/* Image slide options */}
-                <div
-                  className={`template-option alternative ${templateChoice === 'image-full' ? 'selected' : ''}`}
-                  onClick={() => setTemplateChoice('image-full')}
-                >
-                  <div className="template-option-header">
-                    <input
-                      type="radio"
-                      name="template-choice"
-                      checked={templateChoice === 'image-full'}
-                      onChange={() => setTemplateChoice('image-full')}
-                    />
-                    <span className="template-option-label">
-                      <strong>Image Full</strong>
-                      <span className="freestyle-badge" style={{ background: '#D97706', color: 'white' }}>AI Visual</span>
-                    </span>
-                  </div>
-                  <p className="template-option-reason">Full-bleed AI-generated image covering the entire slide.</p>
-                </div>
-                <div
-                  className={`template-option alternative ${templateChoice === 'image-content' ? 'selected' : ''}`}
-                  onClick={() => setTemplateChoice('image-content')}
-                >
-                  <div className="template-option-header">
-                    <input
-                      type="radio"
-                      name="template-choice"
-                      checked={templateChoice === 'image-content'}
-                      onChange={() => setTemplateChoice('image-content')}
-                    />
-                    <span className="template-option-label">
-                      <strong>Image + Text</strong>
-                      <span className="freestyle-badge" style={{ background: '#D97706', color: 'white' }}>AI Visual</span>
-                    </span>
-                  </div>
-                  <p className="template-option-reason">AI-generated illustration with textual title, subtitle, and footer.</p>
-                </div>
               </div>
             </div>
           )}

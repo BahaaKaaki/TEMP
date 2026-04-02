@@ -1385,16 +1385,12 @@ Provide JSON response:
                   onChange={(e) => setSlideGenMode(e.target.value)}
                   className="sw-gen-mode-select"
                 >
-                  <option value="auto">🎯 Auto (AI selects best)</option>
-                  <option value="freestyle">✨ Freestyle (no template)</option>
-                  <option value="image-full">🖼️ Image Full (AI visual)</option>
-                  <option value="image-content">🖼️ Image + Text (illustrated)</option>
+                  <option value="auto">Auto (AI selects best)</option>
+                  <option value="freestyle">Freestyle (no template)</option>
                 </select>
                 <p className="sw-gen-mode-hint">
                   {slideGenMode === 'auto' && 'AI picks the best template for each slide'}
                   {slideGenMode === 'freestyle' && 'AI creates slides without template constraints'}
-                  {slideGenMode === 'image-full' && 'AI generates a full-bleed image for each slide'}
-                  {slideGenMode === 'image-content' && 'AI generates an illustration with textual title & subtitle'}
                 </p>
                 <p className="sw-gen-mode-hint" style={{ marginTop: 4, fontStyle: 'normal', color: '#64748b' }}>
                   Override per-element by setting a template in edit mode

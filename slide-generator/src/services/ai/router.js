@@ -1818,10 +1818,7 @@ SEARCH: Include a searchQuery when real data would strengthen the title — the 
     : `\nTEMPLATE RULE: Do NOT use "image-content" or "image-full" templates. The user has NOT selected image mode. Use only standard templates (freestyle, named templates like threeCards, twoColumns, etc.).\n`;
 
   const recentConversation = chatHistory.length > 0
-    ? `\nRECENT CONVERSATION:\n${chatHistory.map(m => {
-        const limit = m.type === 'user' ? 2000 : 300;
-        return `${m.type === 'user' ? 'User' : 'Assistant'}: ${m.content.slice(0, limit)}`;
-      }).join('\n')}\n`
+    ? `\nRECENT CONVERSATION:\n${chatHistory.map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n')}\n`
     : '';
 
   const contextInfo = `CURRENT STATE:

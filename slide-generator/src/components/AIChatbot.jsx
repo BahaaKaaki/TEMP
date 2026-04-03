@@ -2051,7 +2051,15 @@ export default function AIChatbot() {
           // If coming from agent mode, say "Creating slides" not "Drafting a plan" (agent already planned)
           const routerPhaseMessage = shouldRunAgent ? 'Creating slides...' : 'Drafting a plan...';
           setProgress({ phase: routerPhaseMessage, current: 0, total: 1 });
-          const routerPrompt = triage.instruction || effectivePrompt;
+          // Always pass the full user message to the router so long pasted content
+          // (outlines, detailed briefs) is never lost. If triage resolved a vague
+          // reference (e.g. "this topic" -> "Lebanon conflict"), prepend that as context.
+          const triageResolved = triage.instruction
+            && triage.instruction !== effectivePrompt
+            && triage.instruction.length < effectivePrompt.length * 0.5;
+          const routerPrompt = triageResolved
+            ? `[Classifier context: ${triage.instruction}]\n\n${effectivePrompt}`
+            : effectivePrompt;
           try {
             routeResult = await aiRouteRequest(routerPrompt, context, freshState.settings);
           } catch (routerErr) {

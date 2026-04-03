@@ -59,7 +59,7 @@ slide-themes-main/
 │
 ├── slide-generator/                  # React frontend (port 5173)
 │   ├── src/
-│   │   ├── main.jsx                  # Root: StrictMode > PasswordGate > AuthProvider > App
+│   │   ├── main.jsx                  # Root: StrictMode > MsalProvider > AuthProvider > App
 │   │   ├── App.jsx                   # SlideProvider > KnowledgeBaseProvider > AppContent
 │   │   ├── SimpleApp.jsx             # Simplified variant (unused in main flow)
 │   │   ├── components/               # 40+ React components
@@ -80,7 +80,8 @@ slide-themes-main/
 │   │   │   ├── WidgetBrowser.jsx     # Widget browser
 │   │   │   ├── KnowledgeBaseManager.jsx # Knowledge base UI
 │   │   │   ├── SettingsModal.jsx     # Settings (models, work levels, etc.)
-│   │   │   ├── PasswordGate.jsx      # Basic HTTP auth gate
+│   │   │   ├── LoginPage.jsx         # Azure AD login (Strategy& branding, Microsoft sign-in)
+│   │   │   ├── AuthLoadingScreen.jsx # Post-login transition animation
 │   │   │   ├── CommentPanel.jsx      # Per-slide comments
 │   │   │   ├── DebugPanel.jsx        # Debug tools
 │   │   │   ├── FlowStudio.jsx        # Flow studio (workflow builder)
@@ -175,8 +176,8 @@ slide-themes-main/
 [Frontend]
   index.html
     └── main.jsx
-        └── <PasswordGate>         // Basic Auth gate (checks backend /health with credentials)
-            └── <AuthProvider>     // Auth context (JWT, backend availability)
+        └── <MsalProvider>        // Azure AD SSO via @azure/msal-browser
+            └── <AuthProvider>    // Auth context (frontend-comps)
                 └── <App>
                     └── <SlideProvider>         // Global state: slides, settings, CSS, vibes
                         └── <KnowledgeBaseProvider>  // Knowledge base state

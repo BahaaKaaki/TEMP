@@ -77,14 +77,41 @@ Transform the original content into this widget format. Return only the filled H
 // ============================================
 
 /**
- * Reimagine a slide's visual layout for a specific vibe
- * Uses the same API infrastructure as other AI functions
- *
- * @param {string} slideHtml - The original slide HTML
- * @param {string} vibeId - The target vibe (bold, corporate, creative, data, minimal)
- * @param {Object} vibeConfig - Vibe configuration { name, description, patterns }
- * @param {Object} settings - API settings
- * @returns {Promise<string>} - The reimagined slide HTML
+ * Extract structured content from slide HTML so the reimagine prompt
+ * receives plain text anchors instead of the original markup.
+ */
+function extractSlideContent(html) {
+  const text = (regex) => {
+    const m = html.match(regex);
+    return m ? m[1].replace(/<[^>]*>/g, '').trim() : '';
+  };
+
+  const title = text(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
+  const subtitle = text(/<h2[^>]*>([\s\S]*?)<\/h2>/i);
+
+  const footerMatch = html.match(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/i);
+  const footer = footerMatch ? footerMatch[0] : '';
+
+  let bodyHtml = html
+    .replace(/<h1[^>]*>[\s\S]*?<\/h1>/i, '')
+    .replace(/<h2[^>]*>[\s\S]*?<\/h2>/i, '')
+    .replace(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/i, '')
+    .replace(/<div[^>]*class="[^"]*section-tracker[^"]*"[^>]*>[\s\S]*?<\/div>/i, '');
+
+  const bodyText = bodyHtml
+    .replace(/<br\s*\/?>/gi, '\n')
+    .replace(/<\/(?:p|li|div|td|th|tr)>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+
+  return { title, subtitle, bodyText, footer };
+}
+
+/**
+ * Reimagine a slide's visual layout for a specific vibe.
+ * Extracts content first so the AI builds a fresh layout around
+ * immutable title/subtitle anchors.
  */
 export async function reimagineSlideWithVibe(slideHtml, vibeId, vibeConfig, settings) {
   const creds = getCredentials(settings);
@@ -93,48 +120,54 @@ export async function reimagineSlideWithVibe(slideHtml, vibeId, vibeConfig, sett
     throw new Error('API key is required. Please configure it in Settings.');
   }
 
-  console.log(`[reimagineSlideWithVibe] Starting: vibeId=${vibeId}, model=${creds.model}`);
+  console.log('[reimagineSlideWithVibe] Starting: vibeId=%s, model=%s', vibeId, creds.model);
 
-  const systemPrompt = `You are a Strategy& presentation designer applying the "${vibeConfig.name}" visual style.
+  const { title, subtitle, bodyText, footer } = extractSlideContent(slideHtml);
+  console.log('[reimagineSlideWithVibe] Extracted — title: %s, subtitle: %s, body length: %d',
+    title.substring(0, 60), subtitle.substring(0, 40), bodyText.length);
 
-=== CRITICAL: WHAT YOU MUST PRESERVE ===
-1. CONTENT ESSENCE - The slide's message, data, arguments, and conclusions must remain identical. Do NOT rewrite, rephrase, summarize, or add content.
-2. ALL TEXT - Every word, number, label, bullet point must appear exactly as in the original. No paraphrasing.
-3. LAYOUT STRUCTURE - If slide has 3 cards, output must have 3 cards. If it has a table, keep the table. If it has a timeline, keep the timeline. NEVER flatten to plain text.
-4. SEMANTIC MEANING - Cards stay cards, lists stay lists, metrics stay metrics
+  const systemPrompt = `You are a Strategy& presentation designer who REIMAGINES slide layouts.
 
-=== WHAT YOU CHANGE: VISUAL STYLING ONLY ===
-Apply the "${vibeConfig.name}" vibe by changing ONLY:
-- Colors and backgrounds
-- Border styles and thickness
-- Font weights and sizes (within limits)
-- Shadows and rounded corners
-- Icon/number styling
-- Spacing and padding
+=== YOUR TASK ===
+Create a completely NEW visual layout and design for the content below.
+You are NOT restyling existing HTML — you are designing from scratch.
 
+=== IMMUTABLE TEXT — COPY EXACTLY, CHARACTER FOR CHARACTER ===
+${title ? `H1 TITLE (use verbatim as the <h1>): "${title}"` : '(no title)'}
+${subtitle ? `H2 SUBTITLE (use verbatim as the <h2>): "${subtitle}"` : '(no subtitle)'}
+
+These strings are LOCKED. Do not rephrase, shorten, reword, or paraphrase them.
+If you change even one word in the title or subtitle, the output is INVALID.
+
+=== BODY CONTENT TO PRESENT ===
+${bodyText}
+
+Present this body content using a fresh layout of your choosing.
+You may restructure how information is grouped (cards, lists, columns, etc.)
+but every fact, number, label, and sentence must appear in the output.
+
+=== VISUAL STYLE: "${vibeConfig.name}" ===
 ${vibeConfig.gptDescription || vibeConfig.description}
-
 ${vibeConfig.patterns || ''}
 
 === TECHNICAL CONSTRAINTS ===
 - Frame content: max 860px wide × 350px tall
 - Font sizes: body 11-14px, titles 14-17px, accent numbers up to 48px
 - Colors: #8E1E1E (maroon), #A32020 (red), #111111 (text), #4A4F57 (grey), #E6E9EE (border), #F7F9FB (bg)
+${footer ? `- Include this exact footer at the end of the slide div:\n${footer}` : ''}
 
 === OUTPUT FORMAT ===
-Return ONLY valid HTML starting with <div class="slide ...> and ending with </div>. No markdown, no explanation.`;
+Return ONLY valid HTML starting with <div class="slide ...> and ending with </div>.
+No markdown fences, no explanation.`;
 
-  const userPrompt = `Apply "${vibeConfig.name.toUpperCase()}" visual styling to this slide.
+  const userPrompt = `Reimagine this slide with the "${vibeConfig.name.toUpperCase()}" style.
 
-ORIGINAL SLIDE:
-${slideHtml}
-
-INSTRUCTIONS:
-1. Keep the EXACT same layout structure (same number of cards/rows/columns)
-2. Keep ALL text content word-for-word — do NOT rewrite, rephrase, add, or remove any content
-3. The slide's message and substance must be identical after reimagining
-4. Only change visual styling: colors, borders, backgrounds, fonts, shadows
-5. Output complete slide HTML only`;
+CRITICAL REMINDERS:
+- The <h1> must contain EXACTLY: "${title}"
+- The <h2> must contain EXACTLY: "${subtitle}"
+- Design a FRESH layout — do NOT copy the original HTML structure
+- Every piece of body content must appear in the output
+- Output complete slide HTML only`;
 
   try {
     let content;

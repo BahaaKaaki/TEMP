@@ -90,7 +90,7 @@ const initialState = {
     pptxSystemPrompt: '',
     pptxCodeExample: '',
     pptxBatchSize: 10, // Number of slides to process per API call
-    pptxParallelBatches: 3, // Number of batches to process in parallel (concurrent API calls)
+    pptxParallelBatches: 5, // Number of batches to process in parallel (concurrent API calls)
     pptxGenerateOnCreate: false, // If true, generate PPTX code when slide is created (caches it)
     // AI Chatbot settings
     editAllBatchSize: 3, // Number of slides to process per batch in Edit All mode

@@ -26,6 +26,7 @@ import { getPptxVibeStyle, getPptxVibeHint, getPptxVibeColors } from '../utils/v
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
+const FORCED_PPTX_MODEL = 'pwc:vertex_ai.anthropic.claude-opus-4-6';
 const DEFAULT_PPTX_MODEL = 'gpt-4o';
 
 // ── Gold-standard translation examples (kept from old code) ─────────────────
@@ -394,6 +395,24 @@ function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback)
 --main = #111111, --secondary = #222222, --meta = #4A4F57, --coal = #4A4F57
 --success = #059669, --danger = #DC2626, --warning = #D97706
 
+========== DIMENSION MAPPING (HTML px → PptxGenJS inches) ==========
+HTML slide: 960px × 540px  |  PPTX slide: 13.333in × 7.5in
+Conversion: inches = px × 13.333 / 960  (≈ 0.01389 in/px)
+
+Key positions (px → inches):
+  Title:    left:28px top:24px  w:904px        → x:0.39  y:0.33  w:12.56
+  Subtitle: left:28px top:95px  w:904px        → x:0.39  y:1.32  w:12.56
+  Frame:    left:28px top:127px w:904px h:366px → x:0.39  y:1.76  w:12.56 h:5.08
+  Footer:   bottom of slide                    → y:7.05
+
+When CSS specifies pixel values for position or size, convert them:
+  px=28  → 0.39in    px=127 → 1.76in    px=904 → 12.56in
+  px=366 → 5.08in    px=960 → 13.333in  px=540 → 7.5in
+
+All content inside .frame maps to the PPTX region x:0.39 y:1.76 w:12.56 h:5.08.
+Position elements WITHIN that region — e.g. an element at frame-relative (10px, 20px)
+becomes x:(0.39 + 10×0.01389) = 0.53, y:(1.76 + 20×0.01389) = 2.04.
+
 ========== COLOR PALETTE ==========
 ${vibeColorCode}
 ${vibeHint}
@@ -649,42 +668,115 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   setFooterBranding(settings?.footerBranding || 'Strategy&');
 
   const useAI = settings && hasAnyCredentials(settings);
-  const modelRef = settings?.pptxModel || settings?.model || DEFAULT_PPTX_MODEL;
+  const modelRef = FORCED_PPTX_MODEL;
   const credentials = useAI ? getCredentialsForModel(settings, modelRef) : null;
 
   if (!useAI) console.warn('[PPTX] No API credentials — using fallback for all slides.');
-  else console.log('[PPTX] Using model:', modelRef);
+  else console.log(`[PPTX] Using forced model: ${FORCED_PPTX_MODEL}`);
 
-  for (let i = 0; i < slides.length; i++) {
-    const slide = slides[i];
-    const slideNum = i + 1;
+  const concurrency = Math.max(1, Math.min(10, settings?.pptxParallelBatches || 5));
+  const useParallel = useAI && concurrency > 1 && totalSlides > 1;
 
-    if (onProgress) onProgress({ phase: 'rendering', processed: i, total: totalSlides, message: `Slide ${slideNum} of ${totalSlides}...` });
+  if (useParallel) {
+    console.log(`[PPTX] Parallel export: ${concurrency} concurrent LLM calls for ${totalSlides} slides`);
 
-    let rendered = false;
+    // Phase 1: Generate PptxGenJS code for all slides in parallel (LLM calls are independent)
+    const aiResults = new Array(totalSlides).fill(null);
+    let completed = 0;
 
-    if (useAI) {
+    const generateOne = async (i) => {
+      const slide = slides[i];
+      const slideNum = i + 1;
       try {
         const result = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
-        if (result.success && result.slideFunctions) {
+        aiResults[i] = result;
+      } catch (err) {
+        console.error(`[PPTX] AI failed for slide ${slideNum}:`, err.message);
+        aiResults[i] = { success: false, error: err.message };
+      }
+      completed++;
+      if (onProgress) onProgress({
+        phase: 'rendering',
+        processed: completed,
+        total: totalSlides,
+        message: `Generated ${completed} of ${totalSlides} slides (${concurrency}x parallel)...`,
+      });
+    };
+
+    // Concurrency-limited execution: run up to `concurrency` LLM calls at once
+    const queue = slides.map((_, i) => i);
+    const workers = [];
+    for (let w = 0; w < concurrency; w++) {
+      workers.push((async () => {
+        while (queue.length > 0) {
+          const idx = queue.shift();
+          if (idx !== undefined) await generateOne(idx);
+        }
+      })());
+    }
+    await Promise.all(workers);
+
+    // Phase 2: Apply results to the pptx object sequentially (must be in order)
+    for (let i = 0; i < totalSlides; i++) {
+      const slide = slides[i];
+      const slideNum = i + 1;
+      const result = aiResults[i];
+      let rendered = false;
+
+      if (result?.success && result.slideFunctions) {
+        try {
           result.slideFunctions[0](pptx, slideNum, totalSlides);
-        rendered = true;
+          rendered = true;
           const lastSlide = pptx.slides?.[pptx.slides.length - 1];
           if (lastSlide) addSourceNote(lastSlide, slide.html);
           if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
+        } catch (execErr) {
+          console.error(`[PPTX] Execution failed for slide ${slideNum}:`, execErr.message);
+        }
+      }
+
+      if (!rendered) {
+        generateFallbackSlide(pptx, slide, slideNum, totalSlides);
+      }
+
+      if (slide.sectionLabel || slide.subSectionLabel) {
+        const s = pptx.slides;
+        if (s?.length > 0) addSectionTracker(s[s.length - 1], slide.sectionLabel, slide.subSectionLabel);
+      }
+    }
+  } else {
+    // Sequential fallback (no AI credentials, single concurrency, or single slide)
+    for (let i = 0; i < slides.length; i++) {
+      const slide = slides[i];
+      const slideNum = i + 1;
+
+      if (onProgress) onProgress({ phase: 'rendering', processed: i, total: totalSlides, message: `Slide ${slideNum} of ${totalSlides}...` });
+
+    let rendered = false;
+
+      if (useAI) {
+        try {
+          const result = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
+          if (result.success && result.slideFunctions) {
+            result.slideFunctions[0](pptx, slideNum, totalSlides);
+        rendered = true;
+            const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+            if (lastSlide) addSourceNote(lastSlide, slide.html);
+            if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
         }
       } catch (err) {
-        console.error(`[PPTX] AI failed for slide ${slideNum}:`, err.message);
+          console.error(`[PPTX] AI failed for slide ${slideNum}:`, err.message);
       }
     }
 
     if (!rendered) {
-      generateFallbackSlide(pptx, slide, slideNum, totalSlides);
-    }
+        generateFallbackSlide(pptx, slide, slideNum, totalSlides);
+      }
 
     if (slide.sectionLabel || slide.subSectionLabel) {
-      const s = pptx.slides;
-      if (s?.length > 0) addSectionTracker(s[s.length - 1], slide.sectionLabel, slide.subSectionLabel);
+        const s = pptx.slides;
+        if (s?.length > 0) addSectionTracker(s[s.length - 1], slide.sectionLabel, slide.subSectionLabel);
+      }
     }
   }
 
@@ -727,7 +819,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   setFooterBranding(settings?.footerBranding || 'Strategy&');
 
   const useAI = settings && hasAnyCredentials(settings);
-  const modelRef = settings?.pptxModel || settings?.model || DEFAULT_PPTX_MODEL;
+  const modelRef = FORCED_PPTX_MODEL;
   const credentials = useAI ? getCredentialsForModel(settings, modelRef) : null;
 
   if (onProgress) onProgress({ phase: 'rendering', message: 'Generating slide...' });
@@ -776,7 +868,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 
 export async function testPPTXCodeGeneration(slide, slideNumber, totalSlides, settings) {
   if (!settings || !hasAnyCredentials(settings)) throw new Error('API key required.');
-  const modelRef = settings?.pptxModel || settings?.model || DEFAULT_PPTX_MODEL;
+  const modelRef = FORCED_PPTX_MODEL;
   const credentials = getCredentialsForModel(settings, modelRef);
   const result = await generateSlideWithRetry(slide, slideNumber, totalSlides, settings, credentials);
   return { code: result.code || '(fallback used)', validation: { valid: result.success, error: result.errors?.[0]?.message || null } };

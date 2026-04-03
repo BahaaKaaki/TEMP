@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
+import { useMsal } from '@azure/msal-react';
+import { LogoutButton } from 'frontend-comps';
 import { useSlides } from '../context/SlideContext';
 import { downloadAsHTML, downloadAsJSON, exportToPDF, exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { extractRelevantCSS } from '../services/aiService';
@@ -21,6 +23,7 @@ import FeaturesLanding from './FeaturesLanding';
 import PptxTransformer from './PptxTransformer';
 
 export default function Header() {
+  const { instance } = useMsal();
   const { state, actions, historyState } = useSlides();
   const [showSettings, setShowSettings] = useState(false);
   const [showTemplateManager, setShowTemplateManager] = useState(false);
@@ -87,6 +90,16 @@ export default function Header() {
     const deckName = prompt('Enter name for the new deck:', 'Untitled Deck');
     if (deckName !== null) {
       actions.startNewDeck(deckName);
+    }
+  };
+
+  const handleLogout = async () => {
+    const account = instance.getActiveAccount() || instance.getAllAccounts()[0];
+    const appUrl = (window.__ENV && window.__ENV.VITE_APP_URL) || import.meta.env.VITE_APP_URL || window.location.origin;
+    if (account) {
+      await instance.logoutRedirect({ account, postLogoutRedirectUri: appUrl });
+    } else {
+      window.location.href = appUrl;
     }
   };
 
@@ -847,6 +860,8 @@ ${previewParts.join('\n\n')}`;
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
               </svg>
             </button>
+
+            <LogoutButton onClick={handleLogout} />
           </div>
         </div>
       </header>

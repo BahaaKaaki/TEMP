@@ -121,8 +121,10 @@ export function getAllVibes() {
 }
 
 // Get vibe context for AI regeneration
+// Returns empty string for default/base vibes so no vibe hint contaminates generation
 export function getVibePromptContext(vibeId) {
   const vibe = getVibe(vibeId);
+  if (vibe.isBase) return '';
   return vibe.gptDescription;
 }
 

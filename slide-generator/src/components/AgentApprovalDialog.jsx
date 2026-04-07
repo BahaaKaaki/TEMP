@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { buildContextString, EDIT_SYSTEM_PROMPT, getAgentPlanningGuidelines, DEFAULT_SYSTEM_PROMPT, FREESTYLE_COMPONENT_GUIDE } from '../services/aiService';
+import { buildContextString, EDIT_SYSTEM_PROMPT, getAgentPlanningGuidelines, DEFAULT_SYSTEM_PROMPT } from '../services/aiService';
+import { buildFreestyleSystemPrompt } from '../services/ai/freestylePromptBuilder.js';
 
 // Helper to build full prompt preview for transparency
 function buildFullPromptPreview(userPrompt, plan, contextString) {
@@ -193,10 +194,9 @@ export default function AgentApprovalDialog({
 
   // Get the actual guidelines being used (custom from settings or defaults)
   const customSystemPrompt = settings?.systemPrompt;
-  const customFreestyleGuide = settings?.freestyleGuide;
   const planningGuidelines = getAgentPlanningGuidelines();
   const executionGuidelines = customSystemPrompt || DEFAULT_SYSTEM_PROMPT;
-  const freestyleGuide = customFreestyleGuide || FREESTYLE_COMPONENT_GUIDE;
+  const freestyleGuide = buildFreestyleSystemPrompt(settings || {});
 
   // Use context strategy from plan if available
   const contextStrategy = plan?.contextStrategy;

@@ -6,6 +6,7 @@ import { searchTemplatesByEmbedding, searchTemplatesByKeywords, selectBestTempla
 import { getCredentials } from './models.js';
 import { callWithModelFallback, getFastModelSettings } from './apiClient.js';
 import { CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
+import { buildFreestyleSystemPrompt } from './freestylePromptBuilder.js';
 import { extractSingleSlide, flattenNestedFrames, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
 
@@ -65,9 +66,7 @@ export async function generateTemplate(description, settings, master = 'standard
 
   // Use the concise component guide for template creation
   // Use custom guide from settings if available, otherwise use default
-  const guideToUse = settings.freestyleGuide && settings.freestyleGuide.trim() !== ''
-    ? settings.freestyleGuide
-    : FREESTYLE_COMPONENT_GUIDE;
+  const guideToUse = buildFreestyleSystemPrompt(settings);
   const freestyleSystemPrompt = `You are an expert consulting presentation designer creating reusable slide templates.
 
 ${guideToUse}

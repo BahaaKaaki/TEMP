@@ -12,7 +12,7 @@ const DEFAULT_SHARED_CSS = SLIDES_CSS;
 // Model assignments are code-managed (always sourced from initialState, never
 // from localStorage) so model changes no longer require a version bump.
 // Reserve SETTINGS_VERSION for structural migrations only (new fields, format changes).
-const SETTINGS_VERSION = 10;
+const SETTINGS_VERSION = 11;
 
 // Initial state
 const initialState = {
@@ -169,8 +169,10 @@ const initialState = {
     parallelSlideGeneration: 3, // Legacy — kept for backward compat
     slideCreationBatchSize: 3, // Number of slides created per API call (1 = one-by-one, 3 = batch of 3)
     apiMaxConcurrent: 5, // Max simultaneous API calls (caps all paths: router, slides, agent, etc.)
-    // Freestyle/Template style guide (empty = use default)
-    freestyleGuide: '', // Custom component guide for freestyle slide/template generation
+    // Freestyle prompt section overrides (empty = use code defaults from md files)
+    freestyleShell: '',
+    freestyleTheme: '',
+    freestyleWriting: '',
     // Branding
     footerBranding: 'Strategy&', // Footer left text (firm name | topic). E.g., "Strategy&", "PwC | Digital Transformation"
     _settingsVersion: SETTINGS_VERSION,
@@ -298,14 +300,25 @@ function loadState() {
         }
       }
 
+      // MIGRATION v10 -> v11: freestyleGuide -> 3 section fields
+      if (parsed.settings?.freestyleGuide && parsed.settings.freestyleGuide.trim()) {
+        const legacy = parsed.settings.freestyleGuide;
+        if (!parsed.settings.freestyleShell) parsed.settings.freestyleShell = legacy;
+        if (!parsed.settings.freestyleTheme) parsed.settings.freestyleTheme = '';
+        if (!parsed.settings.freestyleWriting) parsed.settings.freestyleWriting = '';
+        delete parsed.settings.freestyleGuide;
+        console.log('[SlideContext] Migrated freestyleGuide to freestyleShell (v10 -> v11)');
+      }
+
       // Model assignments are CODE-MANAGED: always sourced from initialState,
-      // never read back from localStorage. Change a default in initialState →
+      // never read back from localStorage. Change a default in initialState ->
       // all users pick it up on next page load. No version bump needed.
       // User-controlled preferences (speedMode, batch sizes, etc.)
       // still persist normally via the ...parsed.settings spread.
       const loadedState = {
         ...initialState,
         ...parsed,
+        vibe: 'default',
         slides: migratedSlides,
         storyline: migratedStoryline,
         flows: parsed.flows || [],
@@ -1330,9 +1343,10 @@ function slideReducer(state, action) {
     }
 
     case ACTIONS.SET_VIBE: {
+      // Locked to default -- vibes are kept in code but not switchable
       return {
         ...state,
-        vibe: action.payload.vibe,
+        vibe: 'default',
       };
     }
 
@@ -1407,7 +1421,7 @@ function slideReducer(state, action) {
         slides: snapshot.slides,
         sharedCSS: snapshot.sharedCSS,
         deckName: snapshot.deckName,
-        vibe: snapshot.vibe,
+        vibe: 'default',
         darkMode: snapshot.darkMode ?? false,
         customTemplates: snapshot.customTemplates,
         deletedSystemTemplates: snapshot.deletedSystemTemplates,

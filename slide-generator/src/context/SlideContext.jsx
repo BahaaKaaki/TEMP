@@ -12,7 +12,7 @@ const DEFAULT_SHARED_CSS = SLIDES_CSS;
 // Model assignments are code-managed (always sourced from initialState, never
 // from localStorage) so model changes no longer require a version bump.
 // Reserve SETTINGS_VERSION for structural migrations only (new fields, format changes).
-const SETTINGS_VERSION = 9;
+const SETTINGS_VERSION = 10;
 
 // Initial state
 const initialState = {
@@ -64,7 +64,7 @@ const initialState = {
       },
     ],
     // ── Unified chat: speed mode ──
-    speedMode: 'fast',           // 'fast' | 'premium' — user-selectable generation tier
+    speedMode: 'premium',        // 'fast' | 'premium' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',         // "Thinking" generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
@@ -187,6 +187,7 @@ function loadState() {
     });
     if (saved) {
       const parsed = JSON.parse(saved);
+      const prevSettingsVersion = parsed.settings?._settingsVersion ?? 0;
       console.log('[SlideContext] Parsed state:', {
         deckName: parsed.deckName,
         slideCount: parsed.slides?.length || 0,
@@ -335,8 +336,12 @@ function loadState() {
         reportModel: loadedState.settings.reportModel,
         speedMode: loadedState.settings.speedMode,
       });
-      // Migrate old speedMode values to 'premium'
+      // Legacy labels from older builds
       if (loadedState.settings.speedMode === 'thinking' || loadedState.settings.speedMode === 'quality') {
+        loadedState.settings.speedMode = 'premium';
+      }
+      // One-time rollout: v10 sets default tier to Premium for everyone who still had v9 or older (typically Fast)
+      if (prevSettingsVersion < 10) {
         loadedState.settings.speedMode = 'premium';
       }
       return loadedState;

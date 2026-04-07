@@ -387,7 +387,7 @@ Core state shape:
   storylineStatus: 'none',      // none | generated | approved | populated
   settings: {
     // User-controlled (persisted to localStorage)
-    speedMode: 'fast',           // 'fast' | 'premium' — user-selectable generation tier
+    speedMode: 'premium',        // 'fast' | 'premium' — default Premium; v10 migration resets older saved state once
     // Code-managed model assignments (always from initialState, never localStorage)
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)

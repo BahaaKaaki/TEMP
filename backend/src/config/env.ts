@@ -49,10 +49,6 @@ const envSchema = z.object({
   PWC_API_KEY: z.string().default(''),
   PWC_API_BASE_URL: z.string().default('https://genai-sharedservice-emea.pwcinternal.com'),
 
-  // Basic Auth (set real values in .env or Azure App Settings)
-  BASIC_AUTH_USER: z.string().default(''),
-  BASIC_AUTH_PASS: z.string().default(''),
-
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });

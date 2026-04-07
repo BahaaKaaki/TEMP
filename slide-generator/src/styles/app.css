@@ -717,6 +717,15 @@ body {
   background: var(--accent-light);
 }
 
+.slide-item.selected {
+  border-color: var(--accent);
+  background: var(--accent-light);
+}
+
+.slide-item.selected.active {
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
 /* Context highlighted - slides selected as AI context */
 .slide-item.context-highlighted {
   border-color: #3b82f6;
@@ -2518,9 +2527,11 @@ body {
 /* Keyboard shortcuts hint */
 .keyboard-hints {
   display: flex;
-  gap: 8px;
-  padding: 6px 16px;
-  font-size: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+  padding: 5px 10px;
+  font-size: 9px;
   color: var(--text-muted);
   border-bottom: 1px solid var(--border-light);
   background: var(--bg-tertiary);
@@ -2534,12 +2545,70 @@ body {
 }
 
 .keyboard-hints span {
-  padding: 2px 6px;
+  padding: 1px 5px;
   background: var(--bg-secondary);
   border: 1px solid var(--border);
   border-radius: 3px;
-  font-family: monospace;
+  font-size: 9px;
+  white-space: nowrap;
   cursor: help;
+}
+
+/* ===== MULTI-SELECT ACTION BAR ===== */
+.multi-select-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(142, 30, 30, 0.06);
+  border-bottom: 1px solid rgba(142, 30, 30, 0.15);
+  font-size: 11px;
+}
+
+.multi-select-label {
+  color: var(--accent, #8E1E1E);
+  font-weight: 600;
+  flex: 1;
+}
+
+.multi-select-delete-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border: 1px solid rgba(220, 38, 38, 0.3);
+  border-radius: 4px;
+  background: rgba(220, 38, 38, 0.08);
+  color: #dc2626;
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.multi-select-delete-btn:hover {
+  background: rgba(220, 38, 38, 0.15);
+  border-color: rgba(220, 38, 38, 0.5);
+}
+
+.multi-select-clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.multi-select-clear-btn:hover {
+  background: rgba(0, 0, 0, 0.08);
+  color: var(--text-primary);
 }
 
 /* Slide hover preview */
@@ -4367,6 +4436,69 @@ body {
 
 .panel-search-pill.active:hover {
   background: rgba(142, 30, 30, 0.14);
+}
+
+/* ===== PILL TOGGLE (compact two-option slider) ===== */
+.pill-toggle {
+  display: inline-flex;
+  background: var(--bg-tertiary, #f1f5f9);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 1px;
+}
+
+.pill-toggle-btn {
+  padding: 3px 10px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  font-size: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.pill-toggle-btn:hover {
+  color: var(--text-primary, #334155);
+}
+
+.pill-toggle-btn.active {
+  background: white;
+  color: var(--accent, #8E1E1E);
+  box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+/* ===== SEARCH TOGGLE BUTTON (loupe icon in toolbar) ===== */
+.panel-search-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+
+.panel-search-toggle-btn:hover {
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text-primary, #334155);
+}
+
+.panel-search-toggle-btn.active {
+  color: #2563eb;
+}
+
+.panel-search-toggle-btn.active:hover {
+  background: rgba(37, 99, 235, 0.08);
 }
 
 .chatbot-actions {

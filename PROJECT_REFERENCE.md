@@ -1,7 +1,7 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-04-01
+> Last updated: 2026-04-02
 
 ---
 
@@ -59,7 +59,7 @@ slide-themes-main/
 │
 ├── slide-generator/                  # React frontend (port 5173)
 │   ├── src/
-│   │   ├── main.jsx                  # Root: StrictMode > PasswordGate > AuthProvider > App
+│   │   ├── main.jsx                  # Root: StrictMode > MsalProvider > AuthProvider > App
 │   │   ├── App.jsx                   # SlideProvider > KnowledgeBaseProvider > AppContent
 │   │   ├── SimpleApp.jsx             # Simplified variant (unused in main flow)
 │   │   ├── components/               # 40+ React components
@@ -80,7 +80,8 @@ slide-themes-main/
 │   │   │   ├── WidgetBrowser.jsx     # Widget browser
 │   │   │   ├── KnowledgeBaseManager.jsx # Knowledge base UI
 │   │   │   ├── SettingsModal.jsx     # Settings (models, work levels, etc.)
-│   │   │   ├── PasswordGate.jsx      # Basic HTTP auth gate
+│   │   │   ├── LoginPage.jsx         # Azure AD login (Strategy& branding, Microsoft sign-in)
+│   │   │   ├── AuthLoadingScreen.jsx # Post-login transition animation
 │   │   │   ├── CommentPanel.jsx      # Per-slide comments
 │   │   │   ├── DebugPanel.jsx        # Debug tools
 │   │   │   ├── FlowStudio.jsx        # Flow studio (workflow builder)
@@ -175,8 +176,8 @@ slide-themes-main/
 [Frontend]
   index.html
     └── main.jsx
-        └── <PasswordGate>         // Basic Auth gate (checks backend /health with credentials)
-            └── <AuthProvider>     // Auth context (JWT, backend availability)
+        └── <MsalProvider>        // Azure AD SSO via @azure/msal-browser
+            └── <AuthProvider>    // Auth context (frontend-comps)
                 └── <App>
                     └── <SlideProvider>         // Global state: slides, settings, CSS, vibes
                         └── <KnowledgeBaseProvider>  // Knowledge base state
@@ -214,18 +215,19 @@ When a user types a message in the chatbot:
    ├── Auto-name deck (fire-and-forget, fast model) if deckName is default
    └── Proceed to classification
 
-2. TIER 1: QUICK CLASSIFIER (classifyRequest)
+2. UNIFIED TRIAGE (triageRequest)
    ├── Model: classifierModel (gpt-5.4-mini), ~1-2s
-   ├── Input: user prompt, slide context
-   ├── Output: { scope, action, targetSlides, needsPlanner, needsSearch, instruction }
+   ├── Input: user prompt, slide context, deck overview
+   ├── Output: { scope, needsSearch, searchQuery, isTemplateSwitch, templateId, targetSlides, instruction, questions }
+   ├── scope=clarify → show clarification card with questions/options (return)
    ├── scope=qa → direct chatWithContext, no slide changes (return)
-   ├── scope=single_slide + needsPlanner=false → DIRECT path (step 3a)
-   └── default / needsPlanner=true / failure → PLANNER path (step 3b)
+   ├── scope=direct → DIRECT path (step 3a)
+   └── scope=plan / failure → PLANNER path (step 3b)
 
 3a. DIRECT EXECUTION (single-slide, no router)
-   ├── Speed mode selects model: Fast → fastModel, Thinking → model
-   ├── Parallel classify + search (web search gated by searchToggle)
-   └── Execution: fillTemplateWithAI / generateSlides / improveSlide
+   ├── Speed mode selects model: Fast → fastModel, Premium → model
+   ├── Search if triage.needsSearch (no separate classifier)
+   └── Execution: transformSlideToTemplate / fillTemplateWithAI / generateSlides / improveSlide
 
 3b. FULL ROUTER (multi-step planner)
    ├── AI Router (aiRouteRequest) — GPT 5.4 with structured step fields
@@ -385,12 +387,11 @@ Core state shape:
   storylineStatus: 'none',      // none | generated | approved | populated
   settings: {
     // User-controlled (persisted to localStorage)
-    speedMode: 'fast',           // 'fast' | 'thinking' — user-selectable generation tier
-    searchToggle: true,          // user toggle for web search
+    speedMode: 'premium',        // 'fast' | 'premium' — default Premium; v10 migration resets older saved state once
     // Code-managed model assignments (always from initialState, never localStorage)
-    model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Thinking generation
+    model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
-    classifierModel: 'pwc:openai.gpt-5.4-mini',      // Tier 1 quick classifier
+    classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
     routerModel: 'pwc:openai.gpt-5.4',               // Tier 2 full planner
     providers: [...],            // Provider registry (PwC Shared Services)
     // ... many more settings (batch sizes, work levels, search, etc.)
@@ -529,9 +530,13 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 28. **Execution fixes and Fast model upgrade**: (a) **Structured field passthrough**: router.js plan mapping now passes `title`, `subtitle`, `facts`, `sources`, `searchGoal` through to execution (previously silently dropped). `content` field coerced to string. (b) **Router prompt tightened**: removed aggressive "MUST add searchQuery" rule; per-step `searchQuery` now requires paired `searchGoal` (exception-only). Added negative `contextSlides` rule for new decks (slideCount=0). (c) **SmartActionCard search UI**: per-step search toggle hidden when router already searched and step lacks `searchGoal`. (d) **Fast model changed**: `fastModel` default from `openai.gpt-5.4` (~14s) to `vertex_ai.gemini-3.1-flash-lite-preview` (~5s). Benchmarked: Flash Lite 5.3s/1K tokens, GPT 5.4 ~14s, Gemini 3 Flash 15.3s, Gemini 2.5 Flash 33.5s (too slow). (e) **Settings v9 migration**: `SETTINGS_VERSION` 8->9 with inline fastModel migration. (f) **Cross-slide edit routing**: classifier prompt + code guard to route "make slide X like slide Y" to planner when target differs from active slide; `slideIndex` now documented in router schema and inferred from instruction via `parseSlideReferences` when LLM omits it. (g) **Speculative search gated**: Tier 1 classifier `needsSearch: false` now prevents the direct path's speculative search from firing (saves API call + removes misleading "Searching..." UX).
 
-29. **Code-managed model assignments**: Model assignment settings (`model`, `fastModel`, `classifierModel`, `routerModel`, `chatRouterModel`, `deepAnalysisModel`, `pptxModel`, `reportModel`) are now always sourced from `initialState.settings` in SlideContext.jsx, never read back from localStorage. Changing a default model in code instantly propagates to all users on next page load -- no `SETTINGS_VERSION` bump or migration logic needed. Removed `OLD_DEFAULTS`, `migrateDefault()`, `migrateModelRef()`, and all version-specific model migration code. User-controlled preferences (`speedMode`, `searchToggle`, batch sizes, work levels, etc.) still persist to localStorage normally.
+29. **Code-managed model assignments**: Model assignment settings (`model`, `fastModel`, `classifierModel`, `routerModel`, `chatRouterModel`, `deepAnalysisModel`, `pptxModel`, `reportModel`) are now always sourced from `initialState.settings` in SlideContext.jsx, never read back from localStorage. Changing a default model in code instantly propagates to all users on next page load -- no `SETTINGS_VERSION` bump or migration logic needed. Removed `OLD_DEFAULTS`, `migrateDefault()`, `migrateModelRef()`, and all version-specific model migration code. User-controlled preferences (`speedMode`, batch sizes, work levels, etc.) still persist to localStorage normally.
 
 30. **Template switch, parallel editing, and UX fixes**: (a) **Template CSS isolation**: `customCSS` cleared on template switch in both chat-triggered and picker-triggered paths, preventing old per-slide CSS from bleeding into new templates. (b) **Quick fix stale ref**: `handleQuickAction` now reads fresh slide from `stateRef.current` instead of closure-captured `activeSlide`; `templateId` cleared after quick fix edits so user can re-apply same template. (c) **Template re-selection**: removed early return for same `templateId` in picker `onSelect`, allowing re-application of current template after edits drift from structure. (d) **Image options removed**: disabled "Image Full" and "Image + Text" buttons removed from TemplatePicker (compact + full), TemplateManager AI mode toggle, StorylineWorkspace Default Template Mode, and AgentApprovalDialog. Backend `generateImageSlide` and PPTX renderers kept intact. (e) **Parallel slide editing**: replaced global `quickActionBusy` boolean with `busySlideIds` Set for per-slide busy tracking; quick action buttons disabled only for the slide being processed; user can switch slides and run quick actions / reimagine in parallel. (f) **Reimagine variation**: temperature overridden to 0.85 for reimagine calls; current slide HTML included as negative reference ("DO NOT reuse this layout"); random style hint from 8-item pool injected into prompt to force layout diversity.
+
+31. **Unified triage and search grounding fix**: (a) **Unified triage** (`triageRequest()` in `router.js`): replaces both Tier 1 `classifyRequest` and Tier 2 mini-classifier with a single LLM call; scopes: `clarify` (ambiguous queries), `qa`, `direct`, `plan`; includes `isTemplateSwitch` detection and `needsSearch` in one call. (b) **CLARIFY scope**: new scope for genuinely ambiguous queries; shows clarification card with questions/options; reuses existing `routerClarificationRef` pattern. (c) **Router prompt fix**: removed false auto-injection claim ("results are automatically injected into every slide"); replaced "RARE EXCEPTION" framing of per-step search with intelligent criteria (data-heavy slides get `searchQuery + searchGoal`, structural slides use `facts[]`); changed expected per-step search from "0-1 steps" to "2-4 steps" for data-heavy decks. (d) **Path A search synthesis**: after plan parsing, collects all facts/sources from plan steps to build synthetic `searchRawContext`; enables `buildSearchFactsBlock()` for every step on Path A (previously only Path B). (e) **Removed `routerAlreadySearched`**: per-step search now runs whenever `searchQuery` is set and `searchEnabled` is true; no conditional gating. (f) **Strengthened facts framing**: per-step facts wrapped in `=== VERIFIED FACTS FROM WEB SEARCH ===` with strong grounding instruction. (g) **SmartActionCard search toggle**: always visible (no `routerAlreadySearched` gate); toggle now sets both `searchQuery` and `searchGoal`. (h) **Removed `searchToggle` UI**: search availability controlled by `settings.searchEnabled` system flag; triage/router decide when to use it. (i) **Search model default**: changed from `openai.gpt-5.4` to `openai.gpt-5.4-mini` (half latency, comparable quality). (j) **Renamed `triageRequest` in agentServices.js** to `agentTriageRequest` to avoid naming conflict with new unified triage. (k) **Inline search behavior guidance**: added `INLINE SEARCH BEHAVIOR` section to router system prompt instructing the model to make multiple separate search calls for different entities rather than one broad query; tested 14 Responses API configurations -- system prompt guidance increases inline searches from ~1-2 to ~3-4 with only ~1-3s extra latency; `max_tool_calls` and `tool_choice` had no meaningful effect; `search_context_size: "high"` is optimal. (l) **Fixed batch path dropping structured fields**: the parallel batch execution path (`executeGroupParallel`) was only using `step.instruction` -- it dropped `title`, `subtitle`, `facts[]`, and `sources[]`; since ALL `create_slide` steps go through this batch path, no generated slide ever received the router's curated facts with strong grounding framing; fixed by replicating structured field injection from the sequential path. (m) **Fixed per-step search overwriting global context**: when per-step search succeeded, the prompt was reassigned dropping `buildSearchFactsBlock()` (global `searchRawContext`); also strengthened grounding instruction from "Use the search results" to "Use ONLY... Do NOT substitute information from training data"; applied to sequential, batch, and edit paths.
+
+32. **UI/UX improvements and routing fix**: (a) **Auto-cover suppressed for small requests**: router prompt AUTO COVER rule now only adds a cover slide when 3+ slides are requested; 1-2 slide creation goes straight to content. (b) **Page number format**: changed from `N / total` to just `N` in both HTML preview (`injectPageNumber` in SlidePreview.jsx) and PPTX export (`addFooter` in pptxRenderers.js), matching the master PPTX template. (c) **Comments UI hidden**: floating comment button, slide-out comment panel, and slide list comment badges all hidden via `{false && (...)}` guards; `CommentPanel.jsx` and all comment logic preserved in code. (d) **Speed mode renamed**: `'quality'` -> `'premium'` throughout codebase (SlideContext, AIChatbot, SettingsModal); migration handles both old `'thinking'` and `'quality'` values. (e) **Bottom toolbar redesign**: speed mode toggle moved from top context bar to bottom input area as compact pill-slider; style preference simplified from 3-option (Auto/Templates/Freestyle) to 2-option (Auto/Freestyle) pill-slider; both use consistent `pill-toggle` CSS component. (f) **Search toggle restored**: magnifying glass icon button added to input toolbar between attach and send buttons; toggles `settings.searchEnabled`; blue when active, muted when off. (g) **Edit during plan execution**: chat input stays functional while SmartActionCard is executing; user can type slide edits that run in parallel via `improveSlideWithSearch`; plan is unaffected. (h) **Multi-select delete**: Delete/Backspace key and visible "Delete N slides" bar when 2+ slides selected in the slide list; includes confirmation prompt.
 
 ---
 

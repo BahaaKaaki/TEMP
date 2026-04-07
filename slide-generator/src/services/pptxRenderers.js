@@ -46,7 +46,7 @@ export function setFooterBranding(branding) {
 
 export function addFooter(slide, slideNum, totalSlides) {
   if (!slide || !slideNum) return;
-  slide.addText(`${slideNum} / ${totalSlides}`, {
+  slide.addText(String(slideNum), {
     x: 11.5, y: 7.05, w: 1.3, h: 0.25,
     fontFace: 'Arial', fontSize: 10, color: COLORS.meta, align: 'right',
   });

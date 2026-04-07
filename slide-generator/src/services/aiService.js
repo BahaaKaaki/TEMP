@@ -54,6 +54,7 @@ export {
   routeRequest,
   aiRouteRequest,
   classifyRequest,
+  triageRequest,
 } from './ai/router.js';
 
 // ── cssExtraction.js — CSS extraction + context-fetch detection ──────────────
@@ -124,7 +125,7 @@ export {
 export {
   generatePptxRendererCode,
   chatWithContext,
-  triageRequest,
+  agentTriageRequest,
   agentChat,
   webSearch,
   researchWithSearch,

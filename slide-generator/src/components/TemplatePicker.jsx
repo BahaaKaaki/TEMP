@@ -454,7 +454,7 @@ export default function TemplatePicker({
 
   // Merge built-in templates with custom templates
   const templatesByCategory = useMemo(() => {
-    const builtIn = getTemplatesByCategory();
+    const builtIn = getTemplatesByCategory(undefined, { includeEmpty: false });
 
     // Add custom templates category if there are any
     if (state.customTemplates && state.customTemplates.length > 0) {

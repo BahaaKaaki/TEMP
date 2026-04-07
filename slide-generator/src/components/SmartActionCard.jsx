@@ -211,7 +211,6 @@ export default function SmartActionCard({
   imageVibe = 'default',
   onImageVibeChange = null,
   debugMode = false,
-  routerAlreadySearched = false,
 }) {
   const [selectedTemplate, setSelectedTemplate] = useState(routeResult?.templateMatch?.templateId || null);
   const [showDebug, setShowDebug] = useState(false);
@@ -382,18 +381,19 @@ export default function SmartActionCard({
 
     return (
       <div key={i} className="sac-plan-step">
-        <span className="sac-step-num">{i + 1}</span>
-        <span className="sac-step-action-badge" style={{ background: cfg.color }}>
-          {cfg.icon} {cfg.label}
-        </span>
-        {debugMode && (
-          <div className="sac-step-controls">
-            <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
-            <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
-            <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
-          </div>
-        )}
-        <div className="sac-step-content">
+        {/* Header row: number + badge + controls + template — all inline */}
+        <div className="sac-step-header">
+          <span className="sac-step-num">{i + 1}</span>
+          <span className="sac-step-action-badge" style={{ background: cfg.color }}>
+            {cfg.icon} {cfg.label}
+          </span>
+          {debugMode && (
+            <div className="sac-step-controls">
+              <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
+              <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
+              <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
+            </div>
+          )}
           <div className="sac-step-main">
             {isCreateAction ? (
               <>
@@ -430,6 +430,31 @@ export default function SmartActionCard({
               <span>{stepAction}</span>
             )}
           </div>
+        </div>
+
+        {/* Body: full-width fields below the header */}
+        <div className="sac-step-body">
+          {/* Title and subtitle from router plan */}
+          {isCreateAction && (step.title || step.subtitle) && (
+            <div className="sac-step-titles">
+              {step.title && (
+                <input
+                  className="sac-step-title-input"
+                  value={step.title}
+                  onChange={(e) => updatePlanStep(i, { title: e.target.value })}
+                  placeholder="Slide title..."
+                />
+              )}
+              {step.subtitle && (
+                <input
+                  className="sac-step-subtitle-input"
+                  value={step.subtitle}
+                  onChange={(e) => updatePlanStep(i, { subtitle: e.target.value })}
+                  placeholder="Subtitle..."
+                />
+              )}
+            </div>
+          )}
 
           {/* Layout guidance on its own line for freestyle steps */}
           {isCreateAction && !stepTemplate && (
@@ -447,7 +472,9 @@ export default function SmartActionCard({
                 value={step.instruction || ''}
                 onChange={(e) => updatePlanStep(i, { instruction: e.target.value })}
                 placeholder="Enter instructions for this step..."
-                rows={2}
+                rows={1}
+                ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
               />
             </div>
           ) : (
@@ -459,7 +486,9 @@ export default function SmartActionCard({
                   value={step.instruction || ''}
                   onChange={(e) => updatePlanStep(i, { instruction: e.target.value })}
                   placeholder="Enter instructions for this step..."
-                  rows={2}
+                  rows={1}
+                  ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
+                  onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
                 />
               </div>
             </details>
@@ -491,6 +520,8 @@ export default function SmartActionCard({
             </div>
           )}
 
+          {/* Footer: context + search on the same row */}
+          <div className="sac-step-footer">
           {/* Context slides — debug mode only */}
           {debugMode && (
             <div className="sac-step-context-row">
@@ -514,8 +545,7 @@ export default function SmartActionCard({
             </div>
           )}
 
-          {/* Per-step web search toggle — hidden when router already searched (unless step has searchGoal) */}
-          {(!routerAlreadySearched || step.searchGoal) && (
+          {/* Per-step web search toggle */}
             <div className="sac-step-search-row">
               <button
                 type="button"
@@ -525,7 +555,10 @@ export default function SmartActionCard({
                   if (step.searchQuery) {
                     updatePlanStep(i, { searchQuery: null, searchGoal: null });
                   } else {
-                    updatePlanStep(i, { searchQuery: step.instruction?.slice(0, 80) || 'search query' });
+                    updatePlanStep(i, {
+                      searchQuery: step.instruction?.slice(0, 80) || 'search query',
+                      searchGoal: 'Retrieve current data for this slide',
+                    });
                   }
                 }}
               >
@@ -542,7 +575,7 @@ export default function SmartActionCard({
                 />
               )}
             </div>
-          )}
+          </div>
         </div>
       </div>
     );
@@ -1273,14 +1306,14 @@ export default function SmartActionCard({
         .sac-plan-steps {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 6px;
         }
 
         .sac-plan-step {
           display: flex;
-          align-items: flex-start;
-          gap: 10px;
-          padding: 12px 14px;
+          flex-direction: column;
+          gap: 6px;
+          padding: 10px 12px;
           background: white;
           border-radius: 10px;
           border: 1px solid #e2e8f0;
@@ -1401,8 +1434,8 @@ export default function SmartActionCard({
         .sac-step-ctrl-del:hover:not(:disabled) { background: #fef2f2; color: #dc2626; border-color: #fecaca; }
 
         .sac-step-num {
-          width: 26px;
-          height: 26px;
+          width: 24px;
+          height: 24px;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -1410,7 +1443,7 @@ export default function SmartActionCard({
           color: white;
           border-radius: 50%;
           font-weight: 700;
-          font-size: 12px;
+          font-size: 11px;
           flex-shrink: 0;
           margin-top: 1px;
           transition: all 0.2s ease;
@@ -1419,8 +1452,8 @@ export default function SmartActionCard({
         .sac-step-action-badge {
           display: inline-flex;
           align-items: center;
-          gap: 4px;
-          padding: 3px 10px;
+          gap: 3px;
+          padding: 2px 8px;
           color: white;
           border-radius: 6px;
           font-size: 11px;
@@ -1429,13 +1462,20 @@ export default function SmartActionCard({
           margin-top: 1px;
         }
 
-        .sac-step-content {
-          flex: 1;
+        .sac-step-header {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          min-width: 0;
+        }
+
+        .sac-step-body {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 5px;
+          width: 100%;
           min-width: 0;
-          overflow: hidden;
         }
 
         .sac-step-main {
@@ -1446,7 +1486,7 @@ export default function SmartActionCard({
           color: #334155;
           flex-wrap: wrap;
           min-width: 0;
-          max-width: 100%;
+          flex: 1;
         }
 
         .sac-step-target-label {
@@ -1534,23 +1574,73 @@ export default function SmartActionCard({
           font-style: italic;
         }
 
+        .sac-step-titles {
+          width: 100%;
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+
+        .sac-step-title-input {
+          width: 100%;
+          font-size: 12.5px;
+          font-weight: 600;
+          color: #1e293b;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 5px 8px;
+          background: #f8fafc;
+          box-sizing: border-box;
+          min-width: 0;
+        }
+
+        .sac-step-title-input:focus {
+          outline: none;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+          background: white;
+        }
+
+        .sac-step-subtitle-input {
+          width: 100%;
+          font-size: 11.5px;
+          font-weight: 500;
+          color: #64748b;
+          border: 1px solid #e2e8f0;
+          border-radius: 6px;
+          padding: 4px 8px;
+          background: #f8fafc;
+          box-sizing: border-box;
+          min-width: 0;
+        }
+
+        .sac-step-subtitle-input:focus {
+          outline: none;
+          border-color: #6366f1;
+          box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+          background: white;
+        }
+
         .sac-step-instruction-row {
           width: 100%;
         }
 
         .sac-step-instruction-input {
           width: 100%;
-          font-size: 13px;
+          font-size: 12px;
           color: #475569;
           line-height: 1.4;
-          padding: 8px 10px;
+          padding: 5px 8px;
           border: 1px solid #e2e8f0;
           border-radius: 6px;
           background: #f8fafc;
-          resize: vertical;
-          min-height: 40px;
+          resize: none;
+          overflow: hidden;
+          field-sizing: content;
+          min-height: 28px;
           font-family: inherit;
-          transition: all 0.15s;
+          transition: border-color 0.15s, box-shadow 0.15s;
+          box-sizing: border-box;
         }
 
         .sac-step-instruction-input:hover {
@@ -1664,6 +1754,13 @@ export default function SmartActionCard({
           box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
         }
 
+        .sac-step-footer {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+          width: 100%;
+        }
+
         .sac-step-dep {
           display: inline-flex;
           align-items: center;
@@ -1731,10 +1828,9 @@ export default function SmartActionCard({
         .sac-step-search-row {
           display: flex;
           align-items: center;
-          gap: 8px;
-          flex-wrap: wrap;
-          margin-top: 4px;
-          padding: 0 4px;
+          gap: 6px;
+          width: 100%;
+          padding: 0;
         }
 
         .sac-search-pill {
@@ -1774,8 +1870,7 @@ export default function SmartActionCard({
         }
 
         .sac-search-query-input {
-          flex: 1 1 120px;
-          width: 0;
+          flex: 1;
           min-width: 0;
           font-size: 11px;
           padding: 3px 8px;

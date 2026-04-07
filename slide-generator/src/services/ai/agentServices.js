@@ -132,27 +132,21 @@ ${context.allSlides.map((s, i) => {
 `;
   }
 
-  const systemPrompt = `You are a helpful assistant for a slide presentation tool.
-You have full context of the user's presentation deck and can answer questions about slides.
+  const hasContext = contextDescription.trim().length > 0;
+  const systemPrompt = `You are a helpful, concise assistant embedded in a slide presentation tool called Edwin.
 
-IMPORTANT RULES:
-1. You CAN see slide content - describe what you see accurately
-2. When user references "this slide" or "current slide", look at CURRENT SLIDE section
-3. When user references "slide 5", look for SLIDE 5 in the context
-4. Be specific - quote text, describe layouts, mention data/numbers you see
-5. If asked to identify pillars/points, extract them from the HTML content
-6. Keep responses informative and relevant
+RULES:
+- For greetings and casual messages, respond naturally and briefly. Do NOT list capabilities or ask how to help.
+- For general knowledge questions (science, history, facts, etc.), answer them directly and concisely. You are not limited to slide-related topics.
+- Keep answers short and direct. One to three sentences for simple questions.${hasContext ? `
+- When the user asks about their slides or deck, use the context sections provided to give specific answers.
+- Be specific — quote text, describe layouts, mention data/numbers you see.` : ''}
+- Never mention internal system labels to the user.
+- Do not use markdown formatting. Write plain text only.`;
 
-CONTEXT SECTIONS:
-- CURRENT SLIDE: The slide the user is currently viewing
-- REFERENCED SLIDES: Specific slides mentioned in the question
-- FULL DECK OVERVIEW: Summary of all slides with titles and types`;
-
-  const userPrompt = `${contextDescription}
-
-USER QUESTION: ${question}
-
-Answer based on the context provided above. Be specific and quote actual content from the slides when relevant.`;
+  const userPrompt = hasContext
+    ? `${contextDescription}\n\nUSER QUESTION: ${question}\n\nAnswer based on the context provided above when the question is about slides. For general questions, answer directly.`
+    : `USER QUESTION: ${question}`;
 
   try {
     let content;
@@ -177,7 +171,7 @@ Answer based on the context provided above. Be specific and quote actual content
  * @param {Object} settings - API settings
  * @returns {Promise<{useAgent: boolean, reason: string}>}
  */
-export async function triageRequest(userPrompt, context, settings) {
+export async function agentTriageRequest(userPrompt, context, settings) {
   const fastSettings = settings.fastModel
     ? { ...settings, model: settings.fastModel }
     : settings;

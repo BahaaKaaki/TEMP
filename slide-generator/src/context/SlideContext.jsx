@@ -12,7 +12,7 @@ const DEFAULT_SHARED_CSS = SLIDES_CSS;
 // Model assignments are code-managed (always sourced from initialState, never
 // from localStorage) so model changes no longer require a version bump.
 // Reserve SETTINGS_VERSION for structural migrations only (new fields, format changes).
-const SETTINGS_VERSION = 9;
+const SETTINGS_VERSION = 10;
 
 // Initial state
 const initialState = {
@@ -21,6 +21,7 @@ const initialState = {
   activeSlideId: null,
   selectedSlideIds: [],
   deckName: 'Untitled Deck',
+  deckGeneration: 0,
   vibe: 'default', // Design variation within theme: 'executive' | 'bold' | 'modern'
   imageVibe: 'default', // Vibe for image-based slides (persisted across reloads)
   darkMode: false, // Independent dark mode toggle (applies to all slides)
@@ -62,9 +63,8 @@ const initialState = {
         ],
       },
     ],
-    // ── Unified chat: speed mode & search ──
-    speedMode: 'fast',           // 'fast' | 'thinking' — user-selectable generation tier
-    searchToggle: true,          // user toggle: allow LLM to use web search when needed
+    // ── Unified chat: speed mode ──
+    speedMode: 'premium',        // 'fast' | 'premium' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',         // "Thinking" generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
@@ -90,7 +90,7 @@ const initialState = {
     pptxSystemPrompt: '',
     pptxCodeExample: '',
     pptxBatchSize: 10, // Number of slides to process per API call
-    pptxParallelBatches: 3, // Number of batches to process in parallel (concurrent API calls)
+    pptxParallelBatches: 5, // Number of batches to process in parallel (concurrent API calls)
     pptxGenerateOnCreate: false, // If true, generate PPTX code when slide is created (caches it)
     // AI Chatbot settings
     editAllBatchSize: 3, // Number of slides to process per batch in Edit All mode
@@ -123,8 +123,8 @@ const initialState = {
     searchEnabled: true,
     searchEndpoint: '/api/ai/responses',
     searchApiKey: 'server-managed',
-    searchModel: 'openai.gpt-5.4',
-    searchContextSize: 'medium',
+    searchModel: 'openai.gpt-5.4-mini',
+    searchContextSize: 'high',
     searchMaxTokens: 32000,
     searchAuthHeader: 'api-key',
     searchIncludeSources: false,
@@ -187,6 +187,7 @@ function loadState() {
     });
     if (saved) {
       const parsed = JSON.parse(saved);
+      const prevSettingsVersion = parsed.settings?._settingsVersion ?? 0;
       console.log('[SlideContext] Parsed state:', {
         deckName: parsed.deckName,
         slideCount: parsed.slides?.length || 0,
@@ -300,7 +301,7 @@ function loadState() {
       // Model assignments are CODE-MANAGED: always sourced from initialState,
       // never read back from localStorage. Change a default in initialState →
       // all users pick it up on next page load. No version bump needed.
-      // User-controlled preferences (speedMode, searchToggle, batch sizes, etc.)
+      // User-controlled preferences (speedMode, batch sizes, etc.)
       // still persist normally via the ...parsed.settings spread.
       const loadedState = {
         ...initialState,
@@ -334,8 +335,15 @@ function loadState() {
         pptxModel: loadedState.settings.pptxModel,
         reportModel: loadedState.settings.reportModel,
         speedMode: loadedState.settings.speedMode,
-        searchToggle: loadedState.settings.searchToggle,
       });
+      // Legacy labels from older builds
+      if (loadedState.settings.speedMode === 'thinking' || loadedState.settings.speedMode === 'quality') {
+        loadedState.settings.speedMode = 'premium';
+      }
+      // One-time rollout: v10 sets default tier to Premium for everyone who still had v9 or older (typically Fast)
+      if (prevSettingsVersion < 10) {
+        loadedState.settings.speedMode = 'premium';
+      }
       return loadedState;
     }
   } catch (e) {
@@ -965,9 +973,10 @@ function slideReducer(state, action) {
         deckVersions: autoSaveVersion
           ? [...state.deckVersions, autoSaveVersion]
           : state.deckVersions,
-        customTemplates: state.customTemplates, // Keep custom templates
-        flows: state.flows || [], // Keep flows
+        customTemplates: state.customTemplates,
+        flows: state.flows || [],
         deckName: action.payload?.name || 'Untitled Deck',
+        deckGeneration: (state.deckGeneration || 0) + 1,
       };
     }
 

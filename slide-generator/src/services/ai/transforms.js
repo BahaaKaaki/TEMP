@@ -1,5 +1,4 @@
 import { debugLog, LogLevel } from '../../utils/debugLog';
-import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
 import { getCredentials, buildProviderHeaders } from './models.js';
 import { callWithModelFallback, buildRequestBody, parseAPIResponseContent } from './apiClient.js';
 

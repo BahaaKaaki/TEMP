@@ -1,7 +1,6 @@
 import { SLIDE_TEMPLATES } from '../../utils/slideTemplates';
 import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
-import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
 import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
 import { CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
@@ -248,16 +247,14 @@ export async function improveSlide(slideHtmlOrInfo, instruction, settings, deckC
     ? `\n(Using ${contextTier} context - deck information included below)`
     : '';
 
-  // Extract CSS that applies to this slide's classes
-  const relevantCSS = extractRelevantCSS(html);
+  // Build CSS context: the slide's customCSS (primary) + shell CSS (reference)
+  const relevantCSS = extractRelevantCSS(html, customCSS);
   let cssContext = '';
-  if (relevantCSS || customCSS) {
+  if (relevantCSS) {
     cssContext = `
 
-=== CSS STYLES FOR THIS SLIDE (read and understand these) ===
-These are the EXACT CSS rules that style this slide. Preserve all class names.
+=== CSS STYLES FOR THIS SLIDE ===
 ${relevantCSS}
-${customCSS ? `\n--- SLIDE-SPECIFIC CUSTOM CSS ---\n${customCSS}\n--- END CUSTOM CSS ---` : ''}
 === END CSS STYLES ===`;
   }
 
@@ -861,22 +858,21 @@ export async function transformSlideToTemplate(slideHtml, targetTemplateId, sett
 export function getMasterInstructions(master) {
   const instructions = {
     standard: `This master has:
-- Title area at top (30px from top)
-- Subtitle below title (101px from top)
-- Content frame starting at 137px from top, height 353px
+- Title area at top (24px from top, left 28px, width 904px)
+- Subtitle below title (95px from top)
+- Content frame at top:127px, 904x366px
 - Footer at bottom
 Use: <h1 class="title">...</h1>, <h2 class="subtitle">...</h2>, <div class="frame">...</div>, <footer class="footer">...</footer>`,
 
     blank: `This master is a BLANK CANVAS - NO title and NO subtitle!
-- Content frame starts at 35px from top with full height (455px)
+- Content frame starts at 28px from top, 904x468px (expanded height)
 - Footer at bottom
-- Use the entire slide area for content
 DO NOT include any <h1 class="title"> or <h2 class="subtitle"> elements.
 Use: <div class="frame">...</div>, <footer class="footer">...</footer>`,
 
     titleOnly: `This master has only a title - NO subtitle!
-- Title area at top (30px from top)
-- Content frame starting at 90px from top, height 400px (more vertical space)
+- Title area at top (24px from top, left 28px, width 904px)
+- Content frame at top:72px, 904x424px (more vertical space)
 - Footer at bottom
 DO NOT include <h2 class="subtitle"> element.
 Use: <h1 class="title">...</h1>, <div class="frame">...</div>, <footer class="footer">...</footer>`,
@@ -884,15 +880,14 @@ Use: <h1 class="title">...</h1>, <div class="frame">...</div>, <footer class="fo
     cover: `This master is for COVER/TITLE slides - centered, branded layout:
 - No standard title/subtitle structure
 - No footer (cover slides don't have page numbers)
-- Use centered cover elements
+- Frame at top:140px with auto height
 Use cover-specific classes: .cover-slide, .cover-category, .cover-title, .cover-branding, .cover-date
 Do NOT include regular .title, .subtitle, or .footer elements.`,
 
     emptyPage: `This master is a FULL PAGE with NO margins, NO borders, NO frame constraints!
-- Content starts at position 0,0 and fills the entire 960x540px slide
+- Content fills the entire 960x540px slide
 - No title, no subtitle, no footer - completely empty canvas
 - Use absolute positioning for elements anywhere on the slide
-- The entire slide area is available with no padding or margins
 DO NOT include any .title, .subtitle, .frame, or .footer elements.
 Position all content with absolute positioning directly in the .slide container.`,
   };

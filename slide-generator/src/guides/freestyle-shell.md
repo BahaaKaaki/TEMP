@@ -26,6 +26,20 @@ Slide: **960 x 540 px**. Every slide uses this skeleton:
 
 The `.slide`, `.title`, `.subtitle`, `.frame`, and `.footer` classes are styled by the base CSS. Do NOT restyle them. Your custom CSS applies only inside `.frame`.
 
+## Masters
+
+The `master-*` class on `.slide` selects a layout variant. Allowed masters:
+
+| Master | Class | Effect |
+|--------|-------|--------|
+| Standard | `master-standard` or `master-default` | Title + subtitle + 904x366 frame (default) |
+| Blank | `master-blank` | No title/subtitle; frame expands to 904x468 |
+| Title Only | `master-titleOnly` | No subtitle; frame at top:72px, 904x424 |
+| Cover | `master-cover` | No title/subtitle/footer; frame at top:140px, auto height |
+| Empty Page | `master-emptyPage` | No chrome; frame fills entire 960x540 |
+
+When generating for a non-standard master, adjust your layout to the frame dimensions listed above. The base CSS handles hiding unused elements automatically.
+
 ## Output format
 
 Return **only** a `<style>` block followed by the slide HTML. Do not add explanations, markdown fences, or notes.

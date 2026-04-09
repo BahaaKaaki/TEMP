@@ -2,7 +2,6 @@ import { useState, useMemo, useRef } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { generateSlides, generatePptxRendererCode, fillTemplateWithAI, selectTemplateWithAI, hasAnyApiKey, improveSlideWithSearch } from '../services/aiService';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
-import { getVibePromptContext } from '../utils/vibes';
 import TemplatePicker from './TemplatePicker';
 
 export default function AIPrompt() {
@@ -58,10 +57,6 @@ export default function AIPrompt() {
       let slides = [];
       let matchedTemplateInfo = null;
 
-      // Get vibe context for AI
-      const vibeHint = getVibePromptContext(currentState.vibe);
-      const promptWithVibe = vibeHint ? `${prompt}\n\n[Design Style: ${vibeHint}]` : prompt;
-
       // Check if auto-match is enabled and no manual selection
       if (autoMatchTemplate && !selectedTemplate) {
         // Use AI to select the best template
@@ -79,8 +74,8 @@ export default function AIPrompt() {
           // Generate slides using the AI-selected template
           for (let i = 0; i < slideCount; i++) {
             const contentDesc = slideCount > 1
-              ? `${promptWithVibe} (Slide ${i + 1} of ${slideCount})`
-              : promptWithVibe;
+              ? `${prompt} (Slide ${i + 1} of ${slideCount})`
+              : prompt;
 
             const filledHtml = await fillTemplateWithAI(templateToUse, contentDesc, settings);
             slides.push({
@@ -93,12 +88,12 @@ export default function AIPrompt() {
           }
         } else {
           // AI chose freestyle, generate without template
-          slides = await generateSlides(promptWithVibe, settings, slideCount, currentState.slides);
+          slides = await generateSlides(prompt, settings, slideCount, currentState.slides);
         }
       } else {
         // Manual template selection or freestyle (consistent with chatbot)
         const customTemplate = currentState.customTemplates?.find(t => t.id === selectedTemplate);
-        slides = await generateSlides(promptWithVibe, settings, slideCount, currentState.slides, selectedTemplate, customTemplate);
+        slides = await generateSlides(prompt, settings, slideCount, currentState.slides, selectedTemplate, customTemplate);
       }
 
       // Generate PPTX code for each slide if setting is enabled

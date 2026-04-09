@@ -91,7 +91,7 @@ function SimpleHeader({ onOpenSettings, onOpenTemplates }) {
           </button>
           {showExport && (
             <div className="dropdown-menu" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', minWidth: '160px', zIndex: 100 }}>
-              <button className="dropdown-item" onClick={() => { downloadAsHTML(state.slides, state.sharedCSS, 'presentation.html'); setShowExport(false); }}>
+              <button className="dropdown-item" onClick={() => { downloadAsHTML(state.slides, state.sharedCSS, 'presentation.html', state.theme); setShowExport(false); }}>
                 Export as HTML
               </button>
               <button className="dropdown-item" onClick={() => { downloadAsJSON(state.slides, state.sharedCSS, 'slides.json'); setShowExport(false); }}>

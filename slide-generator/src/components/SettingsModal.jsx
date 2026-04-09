@@ -4,6 +4,7 @@ import { DEFAULT_SYSTEM_PROMPT, setApiMaxConcurrent } from '../services/aiServic
 import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING } from '../services/ai/freestylePromptBuilder.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage } from '../services/pptxTemplateService';
+import { extractBranding } from '../services/brandingExtractor';
 
 // ─── Utility helpers ────────────────────────────────────────────────────────
 function stripProviderPrefix(model) {
@@ -383,6 +384,7 @@ export default function SettingsModal({ onClose }) {
   const [providerTestModel, setProviderTestModel] = useState({});
   const [pptxTemplateName, setPptxTemplateName] = useState(null);
   const [pptxTemplateLoading, setPptxTemplateLoading] = useState(false);
+  const [extractedBranding, setExtractedBranding] = useState(null);
   const [expandedAdvanced, setExpandedAdvanced] = useState({});
   const [newEndpointInput, setNewEndpointInput] = useState({});
   const [fetchedModels, setFetchedModels] = useState(() => {
@@ -600,11 +602,29 @@ export default function SettingsModal({ onClose }) {
     if (!file) return;
     if (!file.name.endsWith('.pptx')) { alert('Please upload a .pptx file'); return; }
     setPptxTemplateLoading(true);
-    try { await saveTemplateToStorage(await file.arrayBuffer(), file.name); setPptxTemplateName(file.name); }
-    catch (err) { alert('Failed to save: ' + err.message); }
+    try {
+      const buffer = await file.arrayBuffer();
+      await saveTemplateToStorage(buffer, file.name);
+      setPptxTemplateName(file.name);
+
+      const result = await extractBranding(buffer);
+      if (result) {
+        setExtractedBranding(result);
+      }
+    } catch (err) { alert('Failed to save: ' + err.message); }
     finally { setPptxTemplateLoading(false); }
   };
-  const handleTemplateClear = async () => { await clearTemplateFromStorage(); setPptxTemplateName(null); };
+  const handleTemplateClear = async () => {
+    await clearTemplateFromStorage();
+    setPptxTemplateName(null);
+    setExtractedBranding(null);
+  };
+  const applyExtractedTheme = () => {
+    if (extractedBranding?.theme) {
+      actions.updateTheme(extractedBranding.theme);
+      setExtractedBranding(null);
+    }
+  };
 
   // ─── Role helpers ──────────────────────────────────────────────────────────
   const updateRole = (roleKey, field, value) => {
@@ -1344,6 +1364,30 @@ export default function SettingsModal({ onClose }) {
                   {pptxTemplateLoading ? 'Saving...' : 'Click to upload .pptx template'}
                   <input type="file" accept=".pptx" onChange={handleTemplateUpload} style={{ display: 'none' }} disabled={pptxTemplateLoading} />
                 </label>
+              )}
+
+              {/* Branding preview after extraction */}
+              {extractedBranding && (
+                <div style={{ marginTop: 12, padding: 14, background: 'var(--zone1)', borderRadius: 8, border: '1px solid var(--border)' }}>
+                  <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Detected Brand Theme</div>
+                  <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                    {Object.entries(extractedBranding.theme.colors).slice(0, 12).map(([key, val]) => (
+                      <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
+                        <div style={{ width: 16, height: 16, borderRadius: 3, background: val, border: '1px solid var(--border)' }} />
+                        <span style={{ color: 'var(--meta)' }}>{key}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {extractedBranding.theme.fonts && (
+                    <div style={{ fontSize: 11, color: 'var(--meta)', marginBottom: 8 }}>
+                      Fonts: {extractedBranding.theme.fonts.title} / {extractedBranding.theme.fonts.body}
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn btn-primary btn-sm" onClick={applyExtractedTheme}>Apply Theme</button>
+                    <button className="btn btn-ghost btn-sm" onClick={() => setExtractedBranding(null)}>Dismiss</button>
+                  </div>
+                </div>
               )}
             </div>
 

@@ -60,7 +60,7 @@ export default function SimpleHeader() {
       alert('No slides to export');
       return;
     }
-    downloadAsHTML(state.slides, state.sharedCSS, 'presentation.html');
+    downloadAsHTML(state.slides, state.sharedCSS, 'presentation.html', state.theme);
     setShowExportMenu(false);
   };
 

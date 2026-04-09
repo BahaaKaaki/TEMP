@@ -81,7 +81,7 @@
 .slide h1, .slide h2, .slide h3, .slide h4, .slide h5, .slide h6, .slide .title, .slide [class*="title"] { color: var(--heading); }
 .slide p, .slide li, .slide td, .slide span:not([class*="title"]):not([class*="label"]) { color: var(--body); }
 .slide .subtitle, .slide .caption, .slide .meta, .slide small, .slide [class*="label"], .slide [class*="desc"] { color: var(--muted); }
-.slide .card, .slide .box, .slide .panel, .slide .cell, .slide [class*="card"], .slide [class*="box"], .slide [class*="block"], .slide [class*="item"]:not(li):not(.ba-item), .slide [class*="cell"] { background: linear-gradient(135deg, var(--page) 0%, var(--surface) 100%); border-color: var(--border); }
+.slide .card, .slide .box, .slide .panel, .slide .cell, .slide [class*="card"], .slide [class*="box"], .slide [class*="block"], .slide [class*="item"]:not(li):not(.ba-item), .slide [class*="cell"] { border-color: var(--border); }
 .slide .card-icon-circle, .slide .timeline-marker, .slide .kpi-value, .slide .value, .slide .number { color: var(--accent); }
 
 /* ===== TITLE, SUBTITLE, FRAME, FOOTER ===== */

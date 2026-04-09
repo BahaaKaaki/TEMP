@@ -134,7 +134,7 @@ export default function Header() {
       alert('No slides to download. Create some slides first!');
       return;
     }
-    downloadAsHTML(state.slides, state.sharedCSS, 'presentation.html');
+    downloadAsHTML(state.slides, state.sharedCSS, 'presentation.html', state.theme);
     setShowExportMenu(false);
   };
 
@@ -334,7 +334,7 @@ ${previewParts.join('\n\n')}`;
         ...state.settings,
         customTemplates: state.customTemplates || [],
         sharedCSS: state.sharedCSS || '',
-        vibe: state.vibe || 'bold',
+        theme: state.theme,
       } : null;
 
       console.log('[PPTX Export] Export settings:', exportSettings ? 'AI-enabled' : 'basic fallback');
@@ -391,7 +391,8 @@ ${previewParts.join('\n\n')}`;
         slides,
         state.sharedCSS,
         filename,
-        (progress) => setExportProgress(progress)
+        (progress) => setExportProgress(progress),
+        state.theme
       );
 
       setTimeout(() => {
@@ -450,9 +451,9 @@ ${previewParts.join('\n\n')}`;
         nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
         version: 1,
       });
-      const settingsWithVibe = { ...state.settings, vibe: state.vibe };
       const allTemplates = state.customTemplates || [];
-      await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, settingsWithVibe, null, allTemplates);
+      const singleSlideSettings = { ...state.settings, theme: state.theme, customTemplates: allTemplates };
+      await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, singleSlideSettings);
       setExportProgress({ phase: 'complete', message: 'Download complete!' });
       setTimeout(() => setExportProgress(null), 2000);
     } catch (err) {
@@ -475,7 +476,7 @@ ${previewParts.join('\n\n')}`;
         nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
         version: 1,
       });
-      await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename);
+      await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename, null, state.theme);
       setExportProgress({ phase: 'complete', message: 'Download complete!' });
       setTimeout(() => setExportProgress(null), 2000);
     } catch (err) {

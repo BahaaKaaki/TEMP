@@ -3,7 +3,6 @@ import { useSlides } from '../context/SlideContext';
 import { SLIDE_TEMPLATES, getTemplatesByCategory, getEmptySlideTemplates } from '../utils/slideTemplates';
 import { generateEmptySlideHTML } from '../utils/slideMasters';
 import { extractRelevantCSS } from '../services/aiService';
-import { VIBE_AWARE_CSS } from '../utils/vibes';
 import SlideValidationModal from './SlideValidationModal';
 import TemplatePicker from './TemplatePicker';
 
@@ -573,7 +572,7 @@ export default function SlideList() {
 
                     {/* Slide thumbnail with number overlay */}
                     <div className="slide-item-thumbnail">
-                      <SlideThumbnail html={slide.html} customCSS={slide.customCSS} vibe={state.vibe} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id || index}-${slide.updatedAt || ''}`} />
+                      <SlideThumbnail html={slide.html} customCSS={slide.customCSS} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id || index}-${slide.updatedAt || ''}`} />
                       <span className="slide-number-badge">{index + 1}</span>
                       {/* Comment indicator badge -- hidden, functionality preserved */}
                       {false && (slide.comments || []).filter(c => !c.addressed).length > 0 && (
@@ -646,7 +645,7 @@ export default function SlideList() {
           }}
         >
           <div className="hover-preview-content">
-            <SlideHoverPreview html={hoveredSlide.html} vibe={state.vibe} darkMode={state.darkMode} sectionLabel={hoveredSlide.sectionLabel} />
+            <SlideHoverPreview html={hoveredSlide.html} darkMode={state.darkMode} sectionLabel={hoveredSlide.sectionLabel} />
           </div>
           <div className="hover-preview-title">{hoveredSlide.title}</div>
         </div>
@@ -668,26 +667,14 @@ export default function SlideList() {
   );
 }
 
-// Inject data-vibe and data-dark-mode attributes into slide HTML for CSS styling
-function injectVibeAttribute(html, vibe, darkMode) {
-  // Remove existing attributes first
+// Inject data-dark-mode into slide HTML for CSS styling (strip stale data-vibe)
+function injectDarkModeAttribute(html, darkMode) {
   let cleanHtml = html.replace(/\s*data-vibe="[^"]*"/g, '');
   cleanHtml = cleanHtml.replace(/\s*data-dark-mode="[^"]*"/g, '');
-
-  // Build attributes string
-  let attrs = '';
-  if (vibe && vibe !== 'default') {
-    attrs += ` data-vibe="${vibe}"`;
-  }
-  if (darkMode) {
-    attrs += ` data-dark-mode="true"`;
-  }
-
-  if (!attrs) return cleanHtml;
-
+  if (!darkMode) return cleanHtml;
   return cleanHtml.replace(
     /class="slide([^"]*)"/,
-    `class="slide$1"${attrs}`
+    `class="slide$1" data-dark-mode="true"`
   );
 }
 
@@ -703,7 +690,7 @@ function injectSectionAttribute(html, sectionLabel) {
 }
 
 // Mini thumbnail component -- dynamically scales 960x540 slide to fit container
-function SlideThumbnail({ html, customCSS, vibe = 'default', darkMode = false, sectionLabel }) {
+function SlideThumbnail({ html, customCSS, darkMode = false, sectionLabel }) {
   const wrapperRef = useRef(null);
   const [scale, setScale] = useState(0.13);
 
@@ -722,30 +709,30 @@ function SlideThumbnail({ html, customCSS, vibe = 'default', darkMode = false, s
   if (safeHtml && safeHtml.includes('section-divider-slide') && !safeHtml.includes('master-blank')) {
     safeHtml = safeHtml.replace(/class="slide([^"]*)"/, 'class="slide master-blank$1"');
   }
-  let vibeHtml = injectVibeAttribute(safeHtml, vibe, darkMode);
-  vibeHtml = injectSectionAttribute(vibeHtml, sectionLabel);
+  let previewHtml = injectDarkModeAttribute(safeHtml, darkMode);
+  previewHtml = injectSectionAttribute(previewHtml, sectionLabel);
   const cssTag = customCSS ? `<style>${customCSS}</style>` : '';
   return (
     <div className="thumbnail-wrapper" ref={wrapperRef}>
       <div
         className="thumbnail-slide"
         style={{ transform: `scale(${scale})` }}
-        dangerouslySetInnerHTML={{ __html: cssTag + vibeHtml }}
+        dangerouslySetInnerHTML={{ __html: cssTag + previewHtml }}
       />
     </div>
   );
 }
 
 // Larger hover preview component
-function SlideHoverPreview({ html, vibe = 'default', darkMode = false, sectionLabel }) {
-  let vibeHtml = injectVibeAttribute(html, vibe, darkMode);
-  vibeHtml = injectSectionAttribute(vibeHtml, sectionLabel);
+function SlideHoverPreview({ html, darkMode = false, sectionLabel }) {
+  let previewHtml = injectDarkModeAttribute(html, darkMode);
+  previewHtml = injectSectionAttribute(previewHtml, sectionLabel);
   return (
     <div className="hover-slide-wrapper">
       <style>{getPreviewCSS()}</style>
       <div
         className="hover-slide-content"
-        dangerouslySetInnerHTML={{ __html: vibeHtml }}
+        dangerouslySetInnerHTML={{ __html: previewHtml }}
       />
     </div>
   );

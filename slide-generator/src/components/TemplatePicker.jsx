@@ -2,11 +2,10 @@ import { useState, useMemo, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { getAllTemplates, getTemplatesByCategory, getTemplate } from '../utils/slideTemplates';
 import { useSlides } from '../context/SlideContext';
-import { VIBE_AWARE_CSS } from '../utils/vibes';
 import { suggestTemplatesForContent } from '../services/templateEmbeddings';
 
 // Mini preview renderer for templates with actual slide HTML
-function TemplatePreview({ template, isSelected, onClick, vibe = 'bold' }) {
+function TemplatePreview({ template, isSelected, onClick }) {
   const containerRef = useRef(null);
   const [scale, setScale] = useState(0.15);
 
@@ -37,8 +36,8 @@ function TemplatePreview({ template, isSelected, onClick, vibe = 'bold' }) {
       title={template.description}
     >
       {/* Visual slide preview */}
-      <div className="template-preview-visual" ref={containerRef} data-vibe={vibe}>
-        <style>{getSlidePreviewStyles() + '\n' + VIBE_AWARE_CSS}</style>
+      <div className="template-preview-visual" ref={containerRef}>
+        <style>{getSlidePreviewStyles()}{template.css ? '\n' + template.css : ''}</style>
         <div
           className="template-mini-slide slide-preview-styled"
           style={{ transform: `scale(${scale})` }}
@@ -680,8 +679,8 @@ export default function TemplatePicker({
                       <h4>{hoveredTemplate.title}</h4>
                       <p>{hoveredTemplate.description}</p>
                     </div>
-                    <div className="preview-slide-container" data-vibe={state.vibe}>
-                      <style>{getSlidePreviewStyles() + '\n' + VIBE_AWARE_CSS}</style>
+                    <div className="preview-slide-container">
+                      <style>{getSlidePreviewStyles()}{hoveredTemplate.css ? '\n' + hoveredTemplate.css : ''}</style>
                       <div
                         className="preview-slide-mini slide-preview-styled"
                         dangerouslySetInnerHTML={{ __html: hoveredTemplate.html }}
@@ -753,7 +752,6 @@ export default function TemplatePicker({
                 template={template}
                 isSelected={selectedTemplate === template.id}
                 onClick={() => onSelect(template.id)}
-                vibe={state.vibe}
               />
             ))}
           </div>
@@ -802,7 +800,6 @@ export default function TemplatePicker({
                 template={template}
                 isSelected={selectedTemplate === template.id}
                 onClick={() => onSelect(template.id)}
-                vibe={state.vibe}
               />
             ))}
           </div>

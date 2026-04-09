@@ -2,72 +2,60 @@
 
 ## Design tokens
 
-Use `var(--token)` for all colors. Never hardcode hex, rgb, or named colors.
+Use `var(--token)` for ALL colors. Never hardcode hex, rgb, or named colors.
+Token values are set by the active theme and adapt automatically to any brand.
 
-| Purpose | Token |
-|---------|-------|
-| Headings | `var(--heading)` |
-| Body text | `var(--body)` |
-| Subtle/meta | `var(--muted)` |
-| Brand accent | `var(--accent)` |
-| Accent hover | `var(--accent-hover)` |
-| Light accent bg | `var(--accent-soft)` |
-| Text on accent | `var(--on-accent)` -- **REQUIRED** on any element with `var(--accent)` background |
-| Page background | `var(--page)` |
-| Card/container bg | `var(--surface)` |
-| Alternate surface | `var(--surface-alt)` |
-| Borders | `var(--border)` |
-| Positive/growth | `var(--success)` |
-| Positive bg | `var(--success-soft)` |
-| Warning | `var(--warning)` |
-| Warning bg | `var(--warning-soft)` |
-| Negative/decline | `var(--danger)` |
-| Negative bg | `var(--danger-soft)` |
+### Color tokens
 
-## Fonts
+| Purpose | Token | Usage |
+|---------|-------|-------|
+| Headings | `var(--heading)` | h1-h6, strong emphasis |
+| Body text | `var(--body)` | Paragraphs, list items |
+| Subtle/meta | `var(--muted)` | Captions, footnotes, secondary labels |
+| Brand accent | `var(--accent)` | Primary brand color -- borders, icons, emphasis |
+| Accent hover | `var(--accent-hover)` | Interactive hover states |
+| Light accent bg | `var(--accent-soft)` | Tinted backgrounds, icon containers |
+| Text on accent | `var(--on-accent)` | **REQUIRED** on any element with `var(--accent)` background |
+| Page background | `var(--page)` | Slide background |
+| Container bg | `var(--surface)` | Panels, boxes, containers |
+| Alternate surface | `var(--surface-alt)` | Secondary containers, zebra-stripe rows |
+| Borders | `var(--border)` | Dividers, outlines, table borders |
+| Positive/growth | `var(--success)` | Up arrows, growth indicators |
+| Positive bg | `var(--success-soft)` | Success highlight background |
+| Warning | `var(--warning)` | Caution indicators |
+| Warning bg | `var(--warning-soft)` | Warning highlight background |
+| Negative/decline | `var(--danger)` | Down arrows, risk indicators |
+| Negative bg | `var(--danger-soft)` | Danger highlight background |
 
-- **Georgia serif** for display numbers and emphasis.
-- **Arial sans-serif** for body text (12-14px, minimum 11px for metadata/footnotes), headings (14-18px bold), and labels (11-12px).
-- Never go below 10px for any element.
+### Font tokens
 
-## Contrast and accessibility
- 
-This is mandatory.
- 
-Only use `color: var(--on-accent)` on elements whose **own background** is dark or accent-colored, such as:
-- `background: var(--accent)`
-- dark banners
-- dark badges
-- dark panels
-- dark header bars
- 
-Do not force `var(--on-accent)` onto nested elements that have a light background.
- 
-Rules:
-- Every dark-filled element must explicitly set `color: var(--on-accent)`
-- Every text-bearing child that remains on that same dark background should also explicitly set `color: var(--on-accent)`
-- Any nested element with a light background such as `var(--surface)`, `var(--surface-alt)`, `white`, or `var(--accent-soft)` must explicitly reset text color to `var(--heading)` or `var(--body)`
-- Never rely on inheritance alone for contrast
-- Never use blanket selectors like:
-  - `.header * { color: var(--on-accent); }`
-  - `.banner * { color: white; }`
-  - `.accent-panel * { color: var(--on-accent); }`
+| Purpose | Token | Default |
+|---------|-------|---------|
+| Titles (h1) | `var(--font-title)` | Georgia, serif |
+| Section headings | `var(--font-heading)` | Arial, sans-serif |
+| Body & labels | `var(--font-body)` | Arial, sans-serif |
 
-## Design principles
+### Font sizing guide
 
-Think like a management consultant designing a slide for a C-suite audience:
+- h1.title: 28px, `var(--font-title)`, weight 400
+- h2.subtitle: 18px bold, `var(--font-heading)`, `var(--accent)`
+- h3/h4 section heads: 12-14px bold, `var(--font-heading)`
+- Body text: 11-12px, `var(--font-body)`
+- Small labels: 10px, `var(--font-body)`, `var(--muted)`
+- Footer: 10px, `var(--font-body)`, `var(--muted)`
 
-1. **Visual hierarchy.** The most important information should be the most visually prominent (larger, bolder, accent-colored). Secondary info should be smaller and muted.
-2. **White space.** Leave breathing room. A slide with 30% empty space reads better than one that is packed. Do not try to fill every pixel.
-3. **Alignment and rhythm.** Use consistent spacing, padding, and alignment. Elements should feel like they belong to a grid even if the grid is invisible.
-4. **Accent sparingly.** Use `var(--accent)` for emphasis -- borders, display numbers, key phrases, section headers. Body text stays in `var(--body)` or `var(--muted)`.
-5. **Professional polish.** Rounded corners (4-6px), subtle borders, consistent padding (12-16px), and clean typography signal quality. No harsh borders, no clashing colors.
+## Surface usage patterns
 
-## Visual anti-patterns
+- **Page background** (`var(--page)`): the slide itself -- usually white.
+- **Surface** (`var(--surface)`): primary containers, panels, boxes that sit on the page. Creates depth.
+- **Surface-alt** (`var(--surface-alt)`): secondary containers or alternating rows. Slightly darker than surface.
+- **Accent-soft** (`var(--accent-soft)`): call-out boxes, icon circles, highlights that need brand tint.
+- Never stack surface on surface -- use surface-alt or accent-soft for nested depth.
 
-1. **Unstyled numbers.** KPIs and statistics must be visually prominent -- large font, accent color, clear label. Never dump a number inline in a paragraph.
-2. **Restyling base classes.** Never restyle `.slide`, `.title`, `.subtitle`, `.frame`, or `.footer` in your `<style>` block.
-3. **CSS leakage.** Never emit selectors that could target another slide. All selectors must be scoped under `.slide .frame`.
-4. **Missing `<style>` block.** You MUST always output a `<style>` block with your custom CSS. Without it, the slide will be unstyled.
+## Status color patterns
 
-Make sure all text is readable, and contrast is managed well between text font color and shapes or background colors behind it.
+Use status tokens for data-driven content:
+- `var(--success)` / `var(--success-soft)`: growth, positive trends, completed items
+- `var(--warning)` / `var(--warning-soft)`: at-risk items, moderate concerns
+- `var(--danger)` / `var(--danger-soft)`: declines, blockers, critical issues
+- Pair with directional indicators: arrows, badges, or border-left accents

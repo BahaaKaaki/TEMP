@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
+import { DEFAULT_THEME } from '../utils/themeUtils';
 // Import full CSS as raw string so it's available in state for AI and exports
 import SLIDES_CSS from '../styles/slides.css?raw';
 const SlideContext = createContext(null);
@@ -22,7 +23,7 @@ const initialState = {
   selectedSlideIds: [],
   deckName: 'Untitled Deck',
   deckGeneration: 0,
-  vibe: 'default', // Design variation within theme: 'executive' | 'bold' | 'modern'
+  theme: DEFAULT_THEME, // Theme config: colors, fonts -- resolved to CSS vars at render time
   imageVibe: 'default', // Vibe for image-based slides (persisted across reloads)
   darkMode: false, // Independent dark mode toggle (applies to all slides)
   deckVersions: [], // Array of { id, name, timestamp, slides, sharedCSS }
@@ -325,7 +326,7 @@ function loadState() {
       const loadedState = {
         ...initialState,
         ...parsed,
-        vibe: 'default',
+        theme: parsed.theme || DEFAULT_THEME,
         slides: migratedSlides,
         storyline: migratedStoryline,
         flows: parsed.flows || [],
@@ -425,8 +426,8 @@ const ACTIONS = {
   SET_SKELETON_MODE: 'SET_SKELETON_MODE',
   APPROVE_SKELETON: 'APPROVE_SKELETON',
   APPROVE_ALL_SKELETONS: 'APPROVE_ALL_SKELETONS',
-  // Vibe system
-  SET_VIBE: 'SET_VIBE',
+  // Theme system
+  UPDATE_THEME: 'UPDATE_THEME',
   SET_IMAGE_VIBE: 'SET_IMAGE_VIBE',
   // Dark mode (independent toggle)
   SET_DARK_MODE: 'SET_DARK_MODE',
@@ -463,8 +464,8 @@ function getUndoableSnapshot(state) {
   return {
     slides: state.slides,
     sharedCSS: state.sharedCSS,
+    theme: state.theme,
     deckName: state.deckName,
-    vibe: state.vibe,
     darkMode: state.darkMode,
     customTemplates: state.customTemplates,
     deletedSystemTemplates: state.deletedSystemTemplates,
@@ -482,7 +483,6 @@ function snapshotsAreDifferent(a, b) {
   // Quick check on slides length and deck name
   if (a.slides?.length !== b.slides?.length) return true;
   if (a.deckName !== b.deckName) return true;
-  if (a.vibe !== b.vibe) return true;
   if (a.sharedCSS !== b.sharedCSS) return true;
   // Deep check on slides content
   return JSON.stringify(a.slides) !== JSON.stringify(b.slides);
@@ -954,6 +954,7 @@ function slideReducer(state, action) {
         timestamp: new Date().toISOString(),
         slides: JSON.parse(JSON.stringify(state.slides)), // Deep copy
         sharedCSS: state.sharedCSS,
+        theme: state.theme,
         deckName: state.deckName,
       };
       return {
@@ -970,6 +971,7 @@ function slideReducer(state, action) {
         ...state,
         slides: JSON.parse(JSON.stringify(version.slides)),
         sharedCSS: version.sharedCSS,
+        theme: version.theme || state.theme,
         deckName: version.deckName || state.deckName,
         activeSlideId: firstId,
         selectedSlideIds: firstId ? [firstId] : [],
@@ -991,6 +993,7 @@ function slideReducer(state, action) {
         timestamp: new Date().toISOString(),
         slides: JSON.parse(JSON.stringify(state.slides)),
         sharedCSS: state.sharedCSS,
+        theme: state.theme,
         deckName: state.deckName,
       } : null;
 
@@ -1356,11 +1359,10 @@ function slideReducer(state, action) {
       };
     }
 
-    case ACTIONS.SET_VIBE: {
-      // Locked to default -- vibes are kept in code but not switchable
+    case ACTIONS.UPDATE_THEME: {
       return {
         ...state,
-        vibe: 'default',
+        theme: { ...state.theme, ...action.payload.theme },
       };
     }
 
@@ -1434,8 +1436,8 @@ function slideReducer(state, action) {
         ...state,
         slides: snapshot.slides,
         sharedCSS: snapshot.sharedCSS,
+        theme: snapshot.theme || state.theme,
         deckName: snapshot.deckName,
-        vibe: 'default',
         darkMode: snapshot.darkMode ?? false,
         customTemplates: snapshot.customTemplates,
         deletedSystemTemplates: snapshot.deletedSystemTemplates,
@@ -1878,11 +1880,11 @@ export function SlideProvider({ children }) {
     approveAllSkeletons: () =>
       dispatchWithHistory({ type: ACTIONS.APPROVE_ALL_SKELETONS }),
 
-    // Vibe system
-    setVibe: (vibe) =>
-      dispatchWithHistory({ type: ACTIONS.SET_VIBE, payload: { vibe } }),
+    // Theme system
+    updateTheme: (theme) =>
+      dispatchWithHistory({ type: ACTIONS.UPDATE_THEME, payload: { theme } }),
 
-    // Image vibe (persisted — used for image-based slides)
+    // Image vibe (persisted -- used for image-based slides)
     setImageVibe: (vibe) =>
       dispatch({ type: ACTIONS.SET_IMAGE_VIBE, payload: { vibe } }),
 

@@ -1,7 +1,7 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-04-07
+> Last updated: 2026-04-09
 
 ---
 
@@ -132,18 +132,19 @@ slide-themes-main/
 │   │   │   ├── slideTemplates.js      # **CORE**: 70+ HTML template definitions with PPTX renderers
 │   │   │   ├── slideMasters.js        # Base layouts (default, blank, cover, etc.)
 │   │   │   ├── slideWidgets.js        # Widget definitions
-│   │   │   ├── vibes.js              # Design variants (default, bold, corporate, creative, minimal, executive)
+│   │   │   ├── themeUtils.js          # Theme config schema, DEFAULT_THEME, themeToCSS() converter
+│   │   │   ├── vibes.js              # Legacy design variants (retained for backward compat)
 │   │   │   ├── debugLog.js            # Debug logging utility
 │   │   │   └── auditLog.js            # Audit logging utility
 │   │   ├── styles/
-│   │   │   ├── slides.css             # **CORE**: ~17K lines, all slide CSS, tokens, vibes
+│   │   │   ├── slides.css             # **CORE**: minimal shell CSS (~134 lines), base tokens and structure
 │   │   │   ├── app.css                # Application shell styles
 │   │   │   └── simple.css             # Simple variant styles
 │   │   ├── guides/
 │   │   │   ├── freestyle-slide-guide.md    # Monolithic freestyle guide (legacy, kept for reference)
 │   │   │   ├── freestyle-shell.md          # Shell: canvas dimensions, HTML skeleton, CSS scoping rules
-│   │   │   ├── freestyle-theme.md          # Theme: design tokens, fonts, contrast, design principles
-│   │   │   ├── freestyle-vibe.md           # Vibe: active style variation (default = base Strategy&)
+│   │   │   ├── freestyle-theme.md          # Theme: design tokens, fonts, surface usage, status colors
+│   │   │   ├── freestyle-vibe.md           # Vibe: visual design principles, layout variety, color usage
 │   │   │   └── freestyle-writing.md        # Writing: content rules, layout archetypes, citations, process
 │   │   └── data/
 │   │       └── knowledgeBaseExamples.js # Knowledge base example entries
@@ -321,43 +322,43 @@ Slides in state (HTML + CSS)
 
 ## 4. Design System
 
-### 4.1 CSS Token Architecture
+### 4.1 CSS Architecture: Shell + Theme + Content
 
-All slides use CSS custom properties (tokens) for theming:
+Slide CSS is organized into three layers:
+
+1. **Shell** (`slides.css`) -- structural CSS for `.slide`, `.title`, `.subtitle`, `.frame`, `.footer` with canvas dimensions (960x540), absolute positions, and overflow rules. Includes master-specific overrides (`master-blank`, `master-titleOnly`, `master-cover`, `master-emptyPage`). Never modified by LLM or user.
+2. **Theme** (`state.theme` -> CSS custom properties via `themeToCSS()`) -- JSON config mapping semantic tokens to concrete values (colors, fonts). Injected at render and export time. Changing the theme recolors all slides instantly. Populated from `DEFAULT_THEME` or extracted from uploaded PPTX templates via `brandingExtractor.js`.
+3. **Content CSS** (per-slide `customCSS`) -- LLM-generated `<style>` blocks with scoped layout classes. Uses `var(--token)` for all colors so themes propagate automatically. Built-in templates carry pre-extracted component CSS (from `templateStyles.js`, sourced from `slides-legacy.css`).
+
+### 4.2 Design Tokens
 
 | Token | Purpose |
 |-------|---------|
 | `--heading` | Headings, titles |
 | `--body` | Body text |
 | `--muted` | Subtle text, captions |
-| `--accent` | Primary accent (maroon #8E1E1E) |
+| `--accent` | Primary accent (brand color) |
+| `--accent-hover` | Accent hover state |
 | `--accent-soft` | Light accent background |
 | `--on-accent` | Text on accent backgrounds |
 | `--page` | Page/slide background |
-| `--surface` | Card/container background |
+| `--surface` | Container background |
 | `--surface-alt` | Alternate surface |
 | `--border` | Borders and dividers |
+| `--success`, `--success-soft` | Positive/growth indicators |
+| `--warning`, `--warning-soft` | Caution indicators |
+| `--danger`, `--danger-soft` | Negative/decline indicators |
+| `--font-title` | Title font family |
+| `--font-heading` | Heading font family |
+| `--font-body` | Body font family |
 
-Dark mode and vibes override these tokens automatically.
+Theme config lives in `state.theme` (see `themeUtils.js` for schema and `themeToCSS()` conversion). Default theme: Strategy& brand (#8E1E1E accent, Georgia/Arial fonts).
 
-### 4.2 Vibes (Design Variations)
+### 4.3 Legacy Vibes
 
-Vibes are orthogonal to templates -- they change aesthetics without affecting layout:
+Vibes (`vibes.js`, `VibePreview.jsx`, `vibeRegenerator.js`) exist as dead code retained for potential future reuse. `state.vibe` has been removed from the context -- no component reads, injects, or passes deck-level vibe. The `imageVibe` system (for AI image slides) remains active and separate. PPTX export no longer uses vibe helpers -- it derives colors from `state.theme` via `themeToPptxPalette()`.
 
-| Vibe | Description |
-|------|-------------|
-| `default` | Clean Strategy& base styling |
-| `bold` | Impact-focused, larger elements, stronger weight |
-| `corporate` | Formal structure, numbered sections, tables |
-| `creative` | Dynamic layouts, asymmetry, visual storytelling |
-| `minimal` | Reduced elements, whitespace-focused |
-| `executive` | Premium, sophisticated, refined |
-
-Applied via `data-vibe` attribute on slide containers, styled in `slides.css`.
-
-Global vibe switcher / header vibe menu markup (classes like `.vibe-selector-btn`, `.vibe-switch-btn`, `.vibe-header-menu`) is hidden in `app.css` with `display: none !important` so the main UI does not surface vibe picking; slide HTML and `slides.css` vibe rules remain for backward compatibility.
-
-### 4.3 Templates (70+)
+### 4.3 Templates (115+)
 
 Templates are HTML structures with placeholder content. Categories include:
 
@@ -365,14 +366,18 @@ Templates are HTML structures with placeholder content. Categories include:
 - **Content:** threeCards, kpiMetrics, timeline, comparison, executiveSummary, barChartExhibit, peerBenchmark, waterfallChart, initiativesLongList, etc.
 - **Closing:** nextSteps, thankYou, etc.
 
-Each template has: `id`, `title`, `type`, `master`, `description`, `note`, `category`, `html`, and optional `pptxRendererCode`.
+Each template has: `id`, `title`, `type`, `master`, `description`, `note`, `category`, `html`, `css` (pre-extracted component CSS from legacy stylesheet), and optional `pptxRendererCode`. The `css` field is populated at import time from `templateStyles.js` and becomes the slide's `customCSS` when the template is applied.
 
 ### 4.4 Slide Masters
 
-Base layouts defined in `slideMasters.js`:
-- `default` -- standard layout with title, subtitle, frame, footer
-- `blank` -- full-page canvas
-- `cover` -- title slide layout
+Base layouts defined in `slideMasters.js`, with matching CSS overrides in `slides.css`:
+- `standard` / `default` -- title + subtitle + 904x366 frame + footer
+- `blank` -- no title/subtitle; frame expands to 904x468
+- `titleOnly` -- title only, no subtitle; frame at 72px, 904x424
+- `cover` -- no standard chrome; frame at 140px, auto height
+- `emptyPage` -- no chrome; frame fills entire 960x540
+
+Layout values in `slideMasters.js` are reconciled with `slides.css`. `getMasterCSSVariables()` generates CSS custom properties for a given master. LLM prompts (`freestyle-shell.md`, `getMasterInstructions()`) document available masters and their dimensions.
 
 ---
 
@@ -384,13 +389,13 @@ Core state shape:
 
 ```javascript
 {
-  slides: [],                    // Array of { id, title, html, type, summary, pptxRendererCode }
-  sharedCSS: SLIDES_CSS,         // Full CSS (single source of truth)
+  slides: [],                    // Array of { id, title, html, customCSS, type, summary, pptxRendererCode }
+  sharedCSS: SLIDES_CSS,         // Shell CSS (single source of truth)
+  theme: DEFAULT_THEME,          // Theme config: { name, colors: {...}, fonts: {...} }
   activeSlideId: null,           // Currently selected slide
   selectedSlideIds: [],          // Multi-selected slides (for export)
   deckName: 'Untitled Deck',
-  vibe: 'default',              // Current design variation
-  imageVibe: 'default',         // Vibe for image-based slides
+  imageVibe: 'default',         // Vibe for image-based slides (separate from removed deck vibe)
   darkMode: false,
   storyline: [],                // Array of { id, title, description, slideId, order }
   storylineStatus: 'none',      // none | generated | approved | populated
@@ -554,6 +559,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 33. **Router logging, reimagine, clarification, storyline, parallel edit, execution UX, and freestyle prompt architecture**: (a) **Structured router I/O logging**: added `console.groupCollapsed` input/output logs to all three router functions (`triageRequest`, `aiRouteRequest`, `routeRequest`) in `router.js`; triage logs model + user prompt + full input message + output; AI router logs model + context + parsed JSON + raw response; rule router logs prompt + intent + action. (b) **Reimagine title/subtitle preservation**: `handleReimagineSlide` in `AIChatbot.jsx` now extracts title and subtitle from slide HTML via `DOMParser`, counts main content sections in `.frame`, and uses `TITLE:` / `SUBTITLE:` markers with strong preservation instructions; title is always kept from the original slide instead of overwritten. (c) **Triage clarification removed**: `scope: "clarify"` always coerced to `scope: "plan"` so the router (with web search) handles all clarification; triage prompt schema simplified to `qa | direct | plan` only; clarification card rendering removed. (d) **Classifier-driven storyline**: triage now returns `needsStoryline: boolean`; when true, a rich multi-line storyline summary (title + description + key message per point) is passed to the router; `buildStorylineSummary()` helper replaces all flat `.map(s => s.title).join()` calls. (e) **Storyline bug fixes**: fixed `freshState.storyline?.summary` bug (storyline is an array, not an object with `.summary`); removed manual Storyline toggle button from `SmartActionCard.jsx` (inclusion is now automatic from classifier); storyline context injected into `buildContextForStep` for `create_slide` steps with position marker. (f) **Parallel edit fix**: removed `|| isLoading` from all 6 quick action button `disabled` props; buttons now only check `busySlideIds.has(activeSlide.id)`, allowing parallel quick actions on different slides while chat is processing. (g) **Execution progress UX**: replaced per-step technical rows during execution with consolidated progress card in `SmartActionCard.jsx` showing header ("Creating N slides..."), visual progress bar, and slide titles with checkmark/active/pending states; `buildStepDescription` updated to prefer `step.title` over "freestyle" label. (h) **Freestyle prompt split**: monolithic `freestyle-slide-guide.md` split into `freestyle-shell.md` (layout contract, CSS rules, archetypes, design principles), `freestyle-theme.md` (color tokens, fonts), `freestyle-writing.md` (content voice, process); `freestylePromptBuilder.js` composer assembles the three sections with per-section override support from settings. (i) **Freestyle wiring**: `generateSlides` in `slideGeneration.js` now uses `buildFreestyleSystemPrompt(settings)` instead of monolithic `FREESTYLE_SLIDE_GUIDE` import; `templateSelection.js` and `AgentApprovalDialog.jsx` also updated. (j) **Settings Prompts tab**: new "Prompts" tab in `SettingsModal.jsx` visible to all users (not behind DEBUG_MODE); shows 3 collapsible freestyle sections (Shell, Theme, Writing Profile) with actual code defaults from markdown files; each section shows "customized" badge when overridden with Reset button; "System Prompt Override" textarea relabeled and moved below sections; Report System Prompt included; old System Prompts block removed from Advanced tab. (k) **State migration**: `SlideContext.jsx` `SETTINGS_VERSION` bumped 10->11; `freestyleGuide` replaced with `freestyleShell`, `freestyleTheme`, `freestyleWriting`; migration copies legacy `freestyleGuide` to `freestyleShell`.
 
 34. **Freestyle prompt section reorganization**: (a) **Shell** rewritten to contain only layout concerns: canvas dimensions (960x540 slide, 904x366 frame), HTML skeleton, element positions, output format, CSS scoping rules, class naming conventions. Removed design tokens, layout archetypes, design principles, contrast rules, and anti-patterns that belonged elsewhere. (b) **Theme** expanded: design tokens table, font rules (Georgia/Arial with size ranges), critical contrast rule (on-accent for dark backgrounds), design principles (visual hierarchy, white space, alignment, accent usage, professional polish), visual anti-patterns (unstyled numbers, restyling base classes, CSS leakage, missing style block), and new closing readability/contrast line. (c) **Vibe** added as new fourth section (`freestyle-vibe.md`): contains base vibe description from `VIBES.default.gptDescription`; `freestyleVibe` state field added to SlideContext with v12 migration; visible in Settings Prompts tab as collapsible section. (d) **Writing Profile** expanded: content rules (titles, subtitles, density, bold leads, real content, no fabrication), all layout archetypes moved from Shell, source citations moved from Shell, content anti-patterns (plain bullet list, wall of text, uniform monotony), process checklist updated to reference archetypes locally. (e) **Builder updated**: `freestylePromptBuilder.js` now imports and composes 4 sections (shell + theme + vibe + writing) with per-section override support.
+
+35. **CSS Architecture Follow-ups**: (a) **Template CSS restoration**: renamed `slides copy.css` to `slides-legacy.css` (reference archive, not imported at runtime); built `scripts/extract-template-css.mjs` to parse template HTML, extract matching CSS rules from the legacy stylesheet, and generate `templateStyles.js` mapping template ID -> component CSS; `slideTemplates.js` attaches pre-extracted CSS via `attachTemplateCSS()` at import time; `handleUseTemplate` in TemplateManager.jsx uses `template.css` as `customCSS`; TemplatePicker and TemplateManager previews inject per-template CSS alongside preview styles. (b) **PPTX export pipeline alignment**: fixed runtime bug (undefined `customCSS` and `resolvedSlideCSS` vars in console.log); replaced `getPptxVibeStyle/Hint/Colors(vibe)` with `themeToPptxPalette(settings.theme)` deriving colors from `state.theme`; removed `settings.vibe` fallback; wired `state.theme` through export call chain in Header.jsx and SlidePreview.jsx; updated `resolveCustomProperties` to merge shell CSS defaults with theme overrides. (c) **Custom masters**: reconciled layout values in `slideMasters.js` with `slides.css` (28px left, 24px title, 904px width, etc.); added master-specific CSS overrides to `slides.css` for `master-blank`, `master-titleOnly`, `master-cover`, `master-emptyPage`; updated `freestyle-shell.md` with master documentation table; added `master-emptyPage` and `master-default` to freestyle validation whitelist; updated `getMasterInstructions()` in both `slideEditing.js` and `templateSelection.js` with corrected dimensions. (d) **Client branding extraction**: created `brandingExtractor.js` service that parses `ppt/theme/theme1.xml` from PPTX files via JSZip to extract `<a:clrScheme>` (dk1/dk2/lt1/lt2/accent1-6) and `<a:fontScheme>` (major/minor fonts), maps to `DEFAULT_THEME` shape; integrated into `handleTemplateUpload` in SettingsModal.jsx -- after upload, shows color/font preview with Apply/Dismiss actions; Apply calls `actions.updateTheme()`.
 
 ---
 

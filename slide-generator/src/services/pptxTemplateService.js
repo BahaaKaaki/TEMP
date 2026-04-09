@@ -91,40 +91,49 @@ export async function saveTemplateToStorage(arrayBuffer, fileName, chrome = null
 }
 
 export async function loadTemplateFromStorage() {
+  let serverData = null;
   try {
     const serverTemplate = await loadTemplateFromServer();
     if (serverTemplate) {
-      console.log(
-        '[PPTX Template] Loaded template from server:',
-        serverTemplate.fileName,
-        serverTemplate.data?.byteLength,
-        'bytes'
-      );
-      return {
+      serverData = {
         data: serverTemplate.data,
         fileName: serverTemplate.fileName,
         savedAt: Date.now(),
       };
+      console.log('[PPTX Template] Loaded from server:', serverData.fileName, serverData.data?.byteLength, 'bytes');
     }
   } catch (e) {
     console.warn('[PPTX Template] Server template unavailable, trying local:', e.message);
   }
 
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DB_STORE, 'readonly');
-    const req = tx.objectStore(DB_STORE).get(DB_KEY);
-    req.onsuccess = () => {
-      const result = req.result || null;
-      if (result) {
-        console.log('[PPTX Template] Loaded template from IndexedDB:', result.fileName, result.data?.byteLength, 'bytes');
-      } else {
-        console.log('[PPTX Template] No template found in IndexedDB');
-      }
-      resolve(result);
-    };
-    req.onerror = () => reject(req.error);
-  });
+  let localRecord = null;
+  try {
+    const db = await openDB();
+    localRecord = await new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).get(DB_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    console.warn('[PPTX Template] IndexedDB read failed:', e.message);
+  }
+
+  if (serverData) {
+    if (localRecord?.chrome) {
+      serverData.chrome = localRecord.chrome;
+      console.log('[PPTX Template] Merged chrome metadata from IndexedDB');
+    }
+    return serverData;
+  }
+
+  if (localRecord) {
+    console.log('[PPTX Template] Loaded from IndexedDB:', localRecord.fileName, localRecord.data?.byteLength, 'bytes');
+    return localRecord;
+  }
+
+  console.log('[PPTX Template] No template found');
+  return null;
 }
 
 export async function clearTemplateFromStorage() {
@@ -151,6 +160,17 @@ const WHITE_BG = '<p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidF
 function injectSlideBackground(slideXml) {
   if (/<p:bg\b/.test(slideXml)) return slideXml;
   return slideXml.replace(/(<p:cSld[^>]*>)/, `$1${WHITE_BG}`);
+}
+
+/**
+ * Add showMasterSp="0" to the <p:sld> root element so decorative shapes
+ * from the slide master (diamonds, text boxes, invisible EMFs) are hidden.
+ * The logo and footer are injected directly into the slide's spTree,
+ * so they are unaffected by this attribute.
+ */
+function hideMasterShapes(slideXml) {
+  if (/showMasterSp/.test(slideXml)) return slideXml;
+  return slideXml.replace(/<p:sld(\s)/, '<p:sld showMasterSp="0"$1');
 }
 
 const EMU_PER_INCH = 914400;
@@ -294,6 +314,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
     if (genZip.files[genSlidePath]) {
       let slideXml = await genZip.files[genSlidePath].async('string');
+      slideXml = hideMasterShapes(slideXml);
       slideXml = injectSlideBackground(slideXml);
       if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
       tplZip.file(genSlidePath, slideXml);

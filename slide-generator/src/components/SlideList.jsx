@@ -112,22 +112,30 @@ export default function SlideList() {
       if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
         e.preventDefault();
         if (currentIndex > 0) {
-          actions.setActiveSlide(state.slides[currentIndex - 1].id);
+          const id = state.slides[currentIndex - 1].id;
+          actions.setActiveSlide(id);
+          setSelectedSlides(new Set([id]));
         }
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
         e.preventDefault();
         if (currentIndex < state.slides.length - 1) {
-          actions.setActiveSlide(state.slides[currentIndex + 1].id);
+          const id = state.slides[currentIndex + 1].id;
+          actions.setActiveSlide(id);
+          setSelectedSlides(new Set([id]));
         }
       } else if (e.key === 'Home') {
         e.preventDefault();
         if (state.slides.length > 0) {
-          actions.setActiveSlide(state.slides[0].id);
+          const id = state.slides[0].id;
+          actions.setActiveSlide(id);
+          setSelectedSlides(new Set([id]));
         }
       } else if (e.key === 'End') {
         e.preventDefault();
         if (state.slides.length > 0) {
-          actions.setActiveSlide(state.slides[state.slides.length - 1].id);
+          const id = state.slides[state.slides.length - 1].id;
+          actions.setActiveSlide(id);
+          setSelectedSlides(new Set([id]));
         }
       } else if ((e.key === 'Delete' || e.key === 'Backspace') && !e.ctrlKey && !e.metaKey) {
         e.preventDefault();
@@ -152,6 +160,15 @@ export default function SlideList() {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state.slides, state.selectedSlideIds, activeSlide, actions]);
+
+  // Scroll active slide thumbnail into view when it changes
+  useEffect(() => {
+    if (!activeSlide || !slideListRef.current) return;
+    const activeEl = slideListRef.current.querySelector('.slide-item.active');
+    if (activeEl) {
+      activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [activeSlide?.id]);
 
   const handleDragStart = (e, slide) => {
     // If dragging a non-selected slide, reset selection to just this one

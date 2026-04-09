@@ -31,8 +31,16 @@ function detectVibeFromPrompt(prompt) {
   return 'default'; // professional strategy consulting
 }
 
-// Helper to parse slide references from prompt
-// Returns { referencedSlides: [...], cleanedPrompt: string }
+function buildStorylineSummary(storyline) {
+  if (!Array.isArray(storyline) || storyline.length === 0) return '';
+  return storyline.map((s, i) => {
+    let line = `${i + 1}. ${s.title || 'Untitled'}`;
+    if (s.description) line += ` -- ${s.description}`;
+    if (s.keyMessage) line += ` | Key: ${s.keyMessage}`;
+    return line;
+  }).join('\n');
+}
+
 function parseSlideReferences(prompt, slides, currentSlideIndex) {
   const references = [];
   let cleanedPrompt = prompt;
@@ -567,7 +575,7 @@ export default function AIChatbot() {
         // Default to first slide when none explicitly selected — never pass -1
         const currentSlideIdx = _rawIdx >= 0 ? _rawIdx : (freshState.slides.length > 0 ? 0 : -1);
         const currentSlide = currentSlideIdx >= 0 ? freshState.slides[currentSlideIdx] : null;
-        const storylineSummary = (freshState.storyline || []).map(s => s.title).join(' → ');
+        const storylineSummary = buildStorylineSummary(freshState.storyline);
         const slideSummaries = freshState.slides.map((s, idx) => {
           const pendingComments = (s.comments || []).filter(c => !c.addressed);
           return {
@@ -1385,13 +1393,8 @@ export default function AIChatbot() {
     // Auto-name deck: deferred to post-execution — uses the first slide's title
     // (no AI call needed; see autoNameFromFirstSlide in executeFromSmartAction)
 
-    // Parse vibe from prompt - user can say "in executive vibe" or "use modern style"
-    const { selectedVibe, cleanedPrompt: promptWithoutVibe } = parseVibeFromPrompt(userPrompt);
-    if (selectedVibe) {
-      actions.setVibe(selectedVibe);
-      const vibeName = VIBES[selectedVibe].name;
-      addMessage('assistant', `🎨 Switching to **${vibeName}** vibe`);
-    }
+    // Vibe is locked to 'default' -- skip vibe parsing from prompt
+    const selectedVibe = null;
 
     // Build knowledge context - but DON'T inject into main prompt
     // The router will see a brief exhibit, and analyze_content step gets the full content
@@ -1407,7 +1410,7 @@ export default function AIChatbot() {
 
     // Use cleaned prompt WITHOUT injected documents (router decides if analyze_content is needed)
     // Note: This will be updated if agent mode refines the prompt
-    let effectivePrompt = selectedVibe ? promptWithoutVibe : userPrompt;
+    let effectivePrompt = userPrompt;
 
     // ─── Router clarification re-submission — combine original prompt + answers ───
     if (routerClarificationRef.current) {
@@ -1449,45 +1452,9 @@ export default function AIChatbot() {
       console.warn('[Triage] Failed, falling back to plan:', triageErr.message);
     }
 
-    // ─── CLARIFY: if search is needed, defer to the router (which has web search) ───
-    if (triage.scope === 'clarify' && triage.needsSearch) {
+    // Always defer clarification to the router (which has web search context)
+    if (triage.scope === 'clarify') {
       triage.scope = 'plan';
-    }
-
-    // ─── CLARIFY: show clarifying questions, wait for user response ───
-    if (triage.scope === 'clarify' && triage.questions.length > 0) {
-      const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-      const questionBlocksHtml = triage.questions.map((qb, qi) => {
-        const q = typeof qb === 'string' ? { question: qb, options: [] } : qb;
-        const optionCards = (q.options || []).map(opt => {
-          const escaped = escHtml(typeof opt === 'string' ? opt : opt.label || opt);
-          return `<button class="clarification-option-card" data-qi="${qi}" onclick="window.__toggleClarificationChip && window.__toggleClarificationChip(this)">${escaped}</button>`;
-        }).join('');
-        return `<div class="clarification-question-block" data-qi="${qi}">
-  <p class="clarification-question">${escHtml(q.question)}</p>
-  ${optionCards ? `<div class="clarification-options-grid">${optionCards}</div>` : ''}
-  <textarea class="clarification-freetext" data-qi="${qi}" rows="1" placeholder="Or type your own answer..."></textarea>
-</div>`;
-      }).join('\n');
-
-      const formattedQuestion = `
-<div class="clarification-card">
-  <div class="clarification-header">
-    <span class="clarification-title">${triage.questions.length > 1 ? 'A few quick questions' : 'Quick Question'}</span>
-  </div>
-  <div class="clarification-body">
-    ${questionBlocksHtml}
-    <div class="clarification-submit-row">
-      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers()">Submit Answers</button>
-    </div>
-  </div>
-</div>`;
-
-      addMessage('assistant', formattedQuestion, { isHTML: true });
-      routerClarificationRef.current = { originalPrompt: effectivePrompt };
-      setIsLoading(false);
-      setProgress(null);
-      return;
     }
 
     // ─── Q&A: direct response, no slide changes ───
@@ -1601,7 +1568,7 @@ export default function AIChatbot() {
               title: s.title || 'Untitled',
               type: s.type || 'custom',
             })),
-            storylineSummary: (currentState.storyline || []).map(s => s.title).join(' → '),
+            storylineSummary: buildStorylineSummary(currentState.storyline),
           };
           const triage = await agentTriageRequest(userPrompt, triageContext, currentState.settings);
           shouldRunAgent = triage.useAgent;
@@ -1947,10 +1914,7 @@ export default function AIChatbot() {
         const currentSlideIdx = _rawIdx >= 0 ? _rawIdx : (freshState.slides.length > 0 ? 0 : -1);
         const currentSlide = currentSlideIdx >= 0 ? freshState.slides[currentSlideIdx] : null;
 
-        // Build storyline summary (titles only, for context)
-        const storylineSummary = (freshState.storyline || [])
-          .map(s => s.title)
-          .join(' → ');
+        const storylineSummary = buildStorylineSummary(freshState.storyline);
 
         // Build slide summaries for AI router — lightweight: index, title, template, pending comments
         const slideSummaries = freshState.slides.map((s, idx) => {
@@ -1998,7 +1962,7 @@ export default function AIChatbot() {
         const context = {
           slideCount: freshState.slides.length,
           currentSlideIndex: currentSlideIdx,
-          storylineSummary, // e.g., "Intro → Problem → Solution → Results"
+          storylineSummary: triage.needsStoryline ? storylineSummary : (storylineSummary ? storylineSummary.split('\n')[0] : ''),
           slideSummaries, // Array of {index, title, pendingComments}
           activeFlow: activeFlow || undefined,
           parallelBatchSize: freshState.settings?.parallelSlideGeneration || 3,
@@ -2573,6 +2537,15 @@ export default function AIChatbot() {
           }
         }
 
+        // Inject storyline context when classifier flagged needsStoryline
+        if (routeResult.contextNeeded?.includeStoryline && step.action === 'create_slide') {
+          const storyText = buildStorylineSummary(baseState.storyline);
+          if (storyText) {
+            const stepIdx = planSteps.indexOf(step);
+            contextForAI = `${contextForAI}\n\n=== STORYLINE CONTEXT ===\n${storyText}\nThis slide is position ${stepIdx + 1} in the narrative.\n=== END STORYLINE ===`;
+          }
+        }
+
         // Log context stats for debugging
         const contextWords = contextForAI.split(/\s+/).length;
         const contextChars = contextForAI.length;
@@ -2646,18 +2619,23 @@ export default function AIChatbot() {
           'delete_slide': 'Delete',
           'switch_template': 'Switch',
         };
-        setProgress({
-          phase: `Step ${stepIndex + 1}/${totalSteps}`,
-          current: stepIndex,
-          total: totalSteps,
-          plan: planSteps.map((s, idx) => ({
-            text: `${actionLabels[s.action] || s.action}${s.templateId ? ` (${s.templateId})` : ''}${s.searchQuery ? ' 🔍' : ''}`,
-            action: s.action,
-            templateId: s.templateId || null,
-            layoutGuidance: s.layoutGuidance || null,
-            stepIndex: idx,
-          })),
-          planStepsRef: planSteps,
+        setProgress(prev => {
+          const completed = new Set(prev?.completedSteps || []);
+          if (stepIndex > 0) completed.add(stepIndex - 1);
+          return {
+            phase: `Step ${stepIndex + 1}/${totalSteps}`,
+            current: stepIndex,
+            total: totalSteps,
+            completedSteps: completed,
+            plan: planSteps.map((s, idx) => ({
+              text: `${actionLabels[s.action] || s.action}${s.templateId ? ` (${s.templateId})` : ''}${s.searchQuery ? ' 🔍' : ''}`,
+              action: s.action,
+              templateId: s.templateId || null,
+              layoutGuidance: s.layoutGuidance || null,
+              stepIndex: idx,
+            })),
+            planStepsRef: planSteps,
+          };
         });
 
         // Update agent-mode widget if active (pink/green step tracker)
@@ -2707,7 +2685,7 @@ export default function AIChatbot() {
               documentContent,
               settings,
               {
-                storyline: freshState.storyline?.summary || '',
+                storyline: buildStorylineSummary(freshState.storyline),
                 slideCount: planSteps.filter(s => s.action === 'create_slide').length,
               }
             );
@@ -3421,7 +3399,16 @@ export default function AIChatbot() {
             flushInsertsInOrder(allBatchInserts);
           }
 
-          if (batch.length > 0) actions.syncStorylineFromSlides();
+          // Mark batch steps as completed now that slides are inserted
+          if (batch.length > 0) {
+            setProgress(prev => {
+              if (!prev) return prev;
+              const completed = new Set(prev.completedSteps || []);
+              for (const b of batch) completed.add(b.actualIndex);
+              return { ...prev, completedSteps: completed };
+            });
+            actions.syncStorylineFromSlides();
+          }
         };
 
         let createBatch = []; // Accumulates create_slide steps
@@ -3478,11 +3465,12 @@ export default function AIChatbot() {
               searchQuery: step.searchQuery || null,
             });
 
-            // Update UI progress
-            setProgress({
+            // Update UI progress (carry forward completedSteps, don't mark as done yet)
+            setProgress(prev => ({
               phase: `Step ${actualIndex + 1}/${totalSteps}`,
               current: actualIndex,
               total: totalSteps,
+              completedSteps: prev?.completedSteps || new Set(),
               plan: planSteps.map((s, idx) => ({
                 text: `${s.action}${s.templateId ? ` (${s.templateId})` : ''}`,
                 action: s.action,
@@ -3491,7 +3479,7 @@ export default function AIChatbot() {
                 stepIndex: idx,
               })),
               planStepsRef: planSteps,
-            });
+            }));
             setExecutionStatus({
               type: 'generating',
               message: `Step ${actualIndex + 1}/${totalSteps}: Creating slide${step.templateId ? ` (${step.templateId})` : ' (freestyle)'}...`,
@@ -3581,6 +3569,13 @@ export default function AIChatbot() {
                     }
                   }
                 }
+                // Mark all edit batch steps as completed
+                setProgress(prev => {
+                  if (!prev) return prev;
+                  const completed = new Set(prev.completedSteps || []);
+                  for (const { actualIndex: ai } of editBatch) completed.add(ai);
+                  return { ...prev, completedSteps: completed };
+                });
                 actions.syncStorylineFromSlides();
                 si = peekSi - 1;
               } else {
@@ -3590,6 +3585,12 @@ export default function AIChatbot() {
                   flushInsertsInOrder([{ stepIndex: result.stepIndex, slideDataArray: result.pendingSlides, step: result.step }]);
                   actions.syncStorylineFromSlides();
                 }
+                setProgress(prev => {
+                  if (!prev) return prev;
+                  const completed = new Set(prev.completedSteps || []);
+                  completed.add(actualIndex);
+                  return { ...prev, completedSteps: completed };
+                });
               }
             } else {
               console.log(`[SmartAction] Executing step ${si + 1}/${group.length} (index ${stepIndex})`);
@@ -3598,6 +3599,12 @@ export default function AIChatbot() {
                 flushInsertsInOrder([{ stepIndex: result.stepIndex, slideDataArray: result.pendingSlides, step: result.step }]);
                 actions.syncStorylineFromSlides();
               }
+              setProgress(prev => {
+                if (!prev) return prev;
+                const completed = new Set(prev.completedSteps || []);
+                completed.add(actualIndex);
+                return { ...prev, completedSteps: completed };
+              });
             }
           }
         }
@@ -3668,8 +3675,7 @@ Original request: ${userPrompt}`;
                 slideCount: freshState.slides.length,
                 currentSlideIndex: freshState.slides.length - 1,
                 slideSummaries,
-                storylineSummary: freshState.storyline?.summary || '',
-                // Pass analysis output for router to use
+                storylineSummary: buildStorylineSummary(freshState.storyline),
                 analysisOutput: {
                   slides: analysisOutput.slides,
                   summary: analysisOutput.summary,
@@ -3688,7 +3694,7 @@ Original request: ${userPrompt}`;
                 slideCount: freshState.slides.length,
                 currentSlideIndex: freshState.slides.length - 1,
                 slideSummaries,
-                storylineSummary: freshState.storyline?.summary || '',
+                storylineSummary: buildStorylineSummary(freshState.storyline),
               };
             }
 
@@ -3823,6 +3829,14 @@ Original request: ${userPrompt}`;
         const aiIOData = currentStepAiIO.current.length > 0 ? [...currentStepAiIO.current] : null;
         addMessage('assistant', resultHtml, { aiIO: aiIOData, isHTML: true });
       }
+
+      // Mark all plan steps as completed for the final UI state
+      setProgress(prev => {
+        if (!prev) return prev;
+        const completed = new Set(prev.completedSteps || []);
+        for (let i = 0; i < totalSteps; i++) completed.add(i);
+        return { ...prev, completedSteps: completed };
+      });
 
       // Mark all agent steps complete — keep visible as execution history
       setAgentModeProgress(prev => {
@@ -5175,6 +5189,18 @@ Original request: ${userPrompt}`;
       const prevTitle = currentState.slides[slideIdx - 1]?.title;
       const nextTitle = currentState.slides[slideIdx + 1]?.title;
 
+      // Extract title and subtitle from the slide HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(freshSlide.html || '', 'text/html');
+      const titleEl = doc.querySelector('h1.title');
+      const subtitleEl = doc.querySelector('h2.subtitle');
+      const slideTitle = titleEl?.textContent?.trim() || freshSlide.title || 'this topic';
+      const slideSubtitle = subtitleEl?.textContent?.trim() || '';
+
+      // Count main content sections in .frame for structure preservation
+      const frameEl = doc.querySelector('.frame');
+      const mainSections = frameEl ? frameEl.children.length : 0;
+
       const styleHints = [
         'Use a bold metrics-driven layout with large KPI numbers',
         'Use a multi-column card grid with icons',
@@ -5187,7 +5213,14 @@ Original request: ${userPrompt}`;
       ];
       const hint = styleHints[Math.floor(Math.random() * styleHints.length)];
 
-      let prompt = `Create a completely new slide about: ${freshSlide.title || 'this topic'}.`;
+      let prompt = `TITLE: ${slideTitle}`;
+      if (slideSubtitle) prompt += `\nSUBTITLE: ${slideSubtitle}`;
+      prompt += `\n\nRedesign the visual layout of this slide using a completely different structure.`;
+      prompt += `\nYou MUST use the EXACT title and subtitle provided above. Do not rephrase or modify them.`;
+      if (mainSections > 1) {
+        prompt += `\nThe slide currently has ${mainSections} main content sections. Preserve that count — keep the same number of ideas/pillars/points, but present them in a new visual layout.`;
+      }
+      prompt += `\nKeep all key ideas, data points, and arguments from the current slide — only change the visual presentation.`;
       prompt += `\n\nSTYLE DIRECTION: ${hint}`;
       prompt += `\n\n=== CURRENT SLIDE (DO NOT reuse this layout or structure) ===\n${(freshSlide.html || '').substring(0, 2000)}\n=== END CURRENT SLIDE ===`;
       prompt += `\nYou MUST use a DIFFERENT layout, structure, and visual approach than the current slide above.`;
@@ -5199,9 +5232,8 @@ Original request: ${userPrompt}`;
       const newSlides = await generateSlides(prompt, reimagineSettings, 1, currentState.slides);
       if (newSlides?.length > 0) {
         const s = newSlides[0];
-        const newTitle = s.title || extractTitleFromHTML(s.html) || freshSlide.title;
-        actions.updateSlide(slideId, { html: s.html, title: newTitle, customCSS: s.customCSS || '', templateId: null });
-        addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Reimagined: <strong>${newTitle}</strong></div>`, { isHTML: true });
+        actions.updateSlide(slideId, { html: s.html, title: slideTitle, customCSS: s.customCSS || '', templateId: null });
+        addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Reimagined: <strong>${slideTitle}</strong></div>`, { isHTML: true });
       }
     } catch (err) {
       console.error('[Reimagine] failed:', err);
@@ -5329,7 +5361,7 @@ Original request: ${userPrompt}`;
                   {/* Quick Fixes dropdown */}
                   <button
                     className={`panel-action-btn panel-action-btn--primary ${showMoreActions ? 'panel-action-btn--active' : ''}`}
-                    disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
+                    disabled={activeSlide && busySlideIds.has(activeSlide.id)}
                     onClick={() => { setShowMoreActions(!showMoreActions); setShowSlideTemplatePicker(false); }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -5344,7 +5376,7 @@ Original request: ${userPrompt}`;
                   {/* Reimagine Slide */}
                   <button
                     className="panel-action-btn"
-                    disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
+                    disabled={activeSlide && busySlideIds.has(activeSlide.id)}
                     onClick={handleReimagineSlide}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -5357,7 +5389,7 @@ Original request: ${userPrompt}`;
                   {/* Translate to Arabic */}
                   <button
                     className="panel-action-btn"
-                    disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
+                    disabled={activeSlide && busySlideIds.has(activeSlide.id)}
                     onClick={() => handleQuickAction(ARABIC_TRANSLATION_PROMPT, 'Translate to Arabic')}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -5370,7 +5402,7 @@ Original request: ${userPrompt}`;
                   {/* Template switcher */}
                   <button
                     className={`panel-action-btn ${showSlideTemplatePicker ? 'panel-action-btn--active' : ''}`}
-                    disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
+                    disabled={activeSlide && busySlideIds.has(activeSlide.id)}
                     onClick={() => { setShowSlideTemplatePicker(!showSlideTemplatePicker); setShowMoreActions(false); }}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -5399,7 +5431,7 @@ Original request: ${userPrompt}`;
                               <button
                                 key={id}
                                 className="panel-quick-pill panel-quick-pill-sm"
-                                disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
+                                disabled={activeSlide && busySlideIds.has(activeSlide.id)}
                                 onClick={() => { handleQuickAction(actionPrompt, label); setShowMoreActions(false); }}
                               >
                                 {label}
@@ -5409,7 +5441,7 @@ Original request: ${userPrompt}`;
                               <button
                                 key={id}
                                 className="panel-quick-pill panel-quick-pill-sm"
-                                disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || isLoading}
+                                disabled={activeSlide && busySlideIds.has(activeSlide.id)}
                                 onClick={() => { handleQuickAction(actionPrompt, label); setShowMoreActions(false); }}
                               >
                                 {label}
@@ -5561,7 +5593,7 @@ Original request: ${userPrompt}`;
         ))}
 
         {/* Smart Action Card - inline execution with real-time status */}
-        {pendingSmartAction && !pendingSmartAction.autoExecute && (
+        {pendingSmartAction && (
           <div className="smart-action-wrapper" style={{
             position: 'relative',
             zIndex: 100,
@@ -5583,6 +5615,7 @@ Original request: ${userPrompt}`;
               imageVibe={imageVibe}
               onImageVibeChange={useImageMode ? setImageVibe : null}
               debugMode={DEBUG_MODE}
+              autoExecute={!!pendingSmartAction.autoExecute}
             />
           </div>
         )}
@@ -6075,7 +6108,7 @@ Original request: ${userPrompt}`;
           );
         })()}
 
-        {isLoading && (!pendingSmartAction || pendingSmartAction.autoExecute) && !agenticExecution.isRunning && !agentModeProgress && (
+        {isLoading && !pendingSmartAction && !agenticExecution.isRunning && !agentModeProgress && (
           <div className="chatbot-message assistant chatbot-progress-message">
             <div className="chatbot-avatar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6102,17 +6135,20 @@ Original request: ${userPrompt}`;
                         const isFreestyle = isCreateStep && (!step.templateId || step.templateId === 'freestyle');
                         const guidance = typeof step === 'object' ? step.layoutGuidance : null;
                         const stepIdx = typeof step === 'object' ? step.stepIndex : i;
-                        const isPending = i > progress.current;
+                        const isDone = progress.completedSteps?.has(i) || false;
+                        const isInFlight = !isDone && i < progress.current;
+                        const isActive = !isDone && (i === progress.current || isInFlight);
+                        const isPending = !isDone && !isActive;
                         const displayText = guidance && !isPending
                           ? `${stepText} \u2014 ${guidance}`
                           : stepText;
                         return (
                           <div
                             key={i}
-                            className={`chatbot-plan-step ${i < progress.current ? 'completed' : i === progress.current ? 'active' : ''}`}
+                            className={`chatbot-plan-step ${isDone ? 'completed' : isActive ? 'active' : ''}`}
                           >
                             <span className="step-indicator">
-                              {i < progress.current ? '\u2713' : i === progress.current ? '\u25CF' : '\u25CB'}
+                              {isDone ? '\u2713' : isActive ? '\u25CF' : '\u25CB'}
                             </span>
                             <span className="step-text">{displayText}</span>
                             {isFreestyle && isPending && (
@@ -6148,7 +6184,7 @@ Original request: ${userPrompt}`;
                     <div className="chatbot-progress-bar">
                       <div
                         className="chatbot-progress-fill"
-                        style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                        style={{ width: `${((progress.completedSteps?.size || progress.current) / progress.total) * 100}%` }}
                       />
                     </div>
                   )}

@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
-import { DEFAULT_SYSTEM_PROMPT, FREESTYLE_COMPONENT_GUIDE, setApiMaxConcurrent } from '../services/aiService';
+import { DEFAULT_SYSTEM_PROMPT, setApiMaxConcurrent } from '../services/aiService';
+import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING } from '../services/ai/freestylePromptBuilder.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage } from '../services/pptxTemplateService';
 
@@ -1317,44 +1318,6 @@ export default function SettingsModal({ onClose }) {
 
         <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
 
-        {/* ── System Prompts ── */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={sectionTitle}>System Prompts</div>
-          <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => toggle('prompts')}>{expandedAdvanced.prompts ? 'Collapse' : 'Expand'}</button>
-        </div>
-
-        {expandedAdvanced.prompts ? (
-          <>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <label style={labelSmall}>Slide System Prompt</label>
-              <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => { if (window.confirm('Reset to default?')) setSettings({ ...settings, systemPrompt: '' }); }}>Reset</button>
-            </div>
-            <div className="form-group" style={{ marginBottom: 12 }}>
-              <textarea value={settings.systemPrompt || DEFAULT_SYSTEM_PROMPT} onChange={(e) => setSettings({ ...settings, systemPrompt: e.target.value })} style={{ width: '100%', minHeight: 150, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4 }} />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <label style={labelSmall}>Report System Prompt</label>
-              <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => setSettings({ ...settings, reportSystemPrompt: '' })}>Reset</button>
-            </div>
-            <div className="form-group" style={{ marginBottom: 12 }}>
-              <textarea value={settings.reportSystemPrompt || ''} onChange={(e) => setSettings({ ...settings, reportSystemPrompt: e.target.value })} placeholder="Leave empty for default." style={{ width: '100%', minHeight: 80, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4 }} />
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-              <label style={labelSmall}>Freestyle / Template Style Guide</label>
-              <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => { if (window.confirm('Reset?')) setSettings({ ...settings, freestyleGuide: '' }); }}>Reset</button>
-            </div>
-            <div className="form-group">
-              <textarea value={settings.freestyleGuide || FREESTYLE_COMPONENT_GUIDE} onChange={(e) => setSettings({ ...settings, freestyleGuide: e.target.value })} style={{ width: '100%', minHeight: 200, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4 }} />
-            </div>
-          </>
-        ) : (
-          <div style={{ ...hint, marginBottom: 12 }}>Customize system prompts for slide creation, report generation, and freestyle templates.</div>
-        )}
-
-        <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
-
         {/* ── PPTX Generation ── */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={sectionTitle}>PPTX Generation</div>
@@ -1485,6 +1448,98 @@ export default function SettingsModal({ onClose }) {
   };
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // ─── SECTION 5: Prompts ───────────────────────────────────────────────
+  // ═══════════════════════════════════════════════════════════════════════════
+  const renderPrompts = () => {
+    const promptSections = [
+      { key: 'freestyleShell',   label: 'Shell (Layout & Structure)',      defaultVal: DEFAULT_SHELL,   desc: 'Canvas dimensions, HTML skeleton, output format, CSS scoping rules, class naming.' },
+      { key: 'freestyleTheme',   label: 'Theme (Colors, Fonts & Style)',   defaultVal: DEFAULT_THEME,   desc: 'Design tokens, font families, contrast rules, design principles, visual anti-patterns.' },
+      { key: 'freestyleVibe',    label: 'Vibe (Style Variation)',          defaultVal: DEFAULT_VIBE,    desc: 'Active style variation applied on top of the theme. Currently locked to default.' },
+      { key: 'freestyleWriting', label: 'Writing Profile',                 defaultVal: DEFAULT_WRITING, desc: 'Title/subtitle style, text density, layout archetypes, source citations, content anti-patterns.' },
+    ];
+
+    return (
+      <>
+        <div style={sectionTitle}>Freestyle Prompt Sections</div>
+        <div style={{ ...hint, marginBottom: 12 }}>
+          These three sections compose the system prompt for freestyle slide generation. Edit a section to override the default, or leave empty to use the built-in version.
+        </div>
+
+        {promptSections.map(({ key, label, defaultVal, desc }) => {
+          const isCustom = settings[key] && settings[key].trim() !== '';
+          return (
+            <div key={key} style={{ marginBottom: 14 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button
+                    className="btn btn-ghost btn-sm"
+                    style={{ fontSize: 11, padding: '2px 0', fontWeight: 600 }}
+                    onClick={() => toggle(key)}
+                  >
+                    {expandedAdvanced[key] ? '\u25BE' : '\u25B8'} {label}
+                  </button>
+                  {isCustom && <span style={{ fontSize: 9, background: '#fef3c7', color: '#92400e', padding: '1px 6px', borderRadius: 8 }}>customized</span>}
+                </div>
+                {isCustom && (
+                  <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => { if (window.confirm('Reset to default?')) setSettings({ ...settings, [key]: '' }); }}>Reset</button>
+                )}
+              </div>
+              <div style={{ fontSize: 10, color: '#888', marginBottom: 4, paddingLeft: 12 }}>{desc}</div>
+              {expandedAdvanced[key] && (
+                <textarea
+                  value={isCustom ? settings[key] : defaultVal}
+                  onChange={(e) => setSettings({ ...settings, [key]: e.target.value })}
+                  placeholder="Leave empty to use the built-in default."
+                  style={{ width: '100%', minHeight: 180, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4, borderRadius: 6, border: '1px solid var(--border)', padding: 8 }}
+                />
+              )}
+            </div>
+          );
+        })}
+
+        <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
+        <div style={sectionTitle}>System Prompt Override</div>
+        <div style={{ ...hint, marginBottom: 8 }}>
+          When set, this replaces all freestyle prompt sections above for slide generation. Leave empty to use the modular sections.
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <label style={labelSmall}>Override Prompt</label>
+          {settings.systemPrompt && settings.systemPrompt.trim() !== '' && (
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => { if (window.confirm('Clear override?')) setSettings({ ...settings, systemPrompt: '' }); }}>Clear</button>
+          )}
+        </div>
+        <div className="form-group" style={{ marginBottom: 12 }}>
+          <textarea
+            value={settings.systemPrompt || ''}
+            onChange={(e) => setSettings({ ...settings, systemPrompt: e.target.value })}
+            placeholder="Leave empty to use the freestyle prompt sections above."
+            style={{ width: '100%', minHeight: 100, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4, borderRadius: 6, border: '1px solid var(--border)', padding: 8 }}
+          />
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
+        <div style={sectionTitle}>Report System Prompt</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+          <label style={labelSmall}>Report Prompt</label>
+          {settings.reportSystemPrompt && settings.reportSystemPrompt.trim() !== '' && (
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => setSettings({ ...settings, reportSystemPrompt: '' })}>Reset</button>
+          )}
+        </div>
+        <div className="form-group">
+          <textarea
+            value={settings.reportSystemPrompt || ''}
+            onChange={(e) => setSettings({ ...settings, reportSystemPrompt: e.target.value })}
+            placeholder="Leave empty for default."
+            style={{ width: '100%', minHeight: 80, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4, borderRadius: 6, border: '1px solid var(--border)', padding: 8 }}
+          />
+        </div>
+      </>
+    );
+  };
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // ─── SIDEBAR SECTIONS ──────────────────────────────────────────────────
   // ═══════════════════════════════════════════════════════════════════════════
 
@@ -1574,12 +1629,13 @@ export default function SettingsModal({ onClose }) {
 
   const SECTIONS = (() => {
     const sections = [
-      { id: 'essential',   label: 'Essential',   icon: '◈' },
-      { id: 'generation',  label: 'Generation',  icon: '◉' },
+      { id: 'essential',   label: 'Essential',   icon: '\u25C8' },
+      { id: 'generation',  label: 'Generation',  icon: '\u25C9' },
+      { id: 'prompts',     label: 'Prompts',     icon: '\u25A3' },
     ];
     if (DEBUG_MODE) {
-      sections.push({ id: 'roles', label: 'Roles', icon: '◆' });
-      sections.push({ id: 'advanced', label: 'Advanced', icon: '◫' });
+      sections.push({ id: 'roles', label: 'Roles', icon: '\u25C6' });
+      sections.push({ id: 'advanced', label: 'Advanced', icon: '\u25EB' });
     }
     return sections;
   })();
@@ -1623,6 +1679,7 @@ export default function SettingsModal({ onClose }) {
           <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
             {activeSection === 'essential' && renderEssential()}
             {activeSection === 'generation' && renderGeneration()}
+            {activeSection === 'prompts' && renderPrompts()}
             {activeSection === 'roles' && renderRoles()}
             {activeSection === 'advanced' && renderAdvanced()}
           </div>

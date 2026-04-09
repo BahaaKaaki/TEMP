@@ -598,6 +598,11 @@ export function routeRequest(userPrompt, context) {
     },
   };
 
+  console.groupCollapsed(`[Rule Router] ${result.intent} → ${result.action}${result.templateMatch?.templateId ? ` (${result.templateMatch.templateId})` : ''}`);
+  console.log('INPUT', { userPrompt: userPrompt.slice(0, 200), slideCount, currentSlideIndex });
+  console.log('OUTPUT', { intent: result.intent, action: result.action, plan: result.plan?.map(s => ({ action: s.action, templateId: s.templateId })), templateMatch: result.templateMatch?.templateId || null });
+  console.groupEnd();
+
   return result;
 }
 
@@ -1425,20 +1430,16 @@ export async function classifyRequest(userPrompt, context, settings) {
 const TRIAGE_SYSTEM_PROMPT = `You are a presentation assistant triage agent. Given a user prompt and the current deck state, return a JSON classification.
 
 Return ONLY valid JSON with these fields:
-- scope: "clarify" | "qa" | "direct" | "plan"
+- scope: "qa" | "direct" | "plan"
 - needsSearch: boolean - true if the content requires current/real-time data
+- needsStoryline: boolean - true if the request involves editing across the deck or needs awareness of the narrative flow
 - searchQuery: string or null - a concise search query if needsSearch is true
 - isTemplateSwitch: boolean - true if user wants to switch the slide template/layout
 - templateId: string or null - the target template if switching
 - targetSlides: array of 0-indexed slide indices affected (Slide 1 = index 0)
 - instruction: string - the core instruction for execution
-- questions: array of {question, options[]} - ONLY if scope is "clarify"
 
 SCOPES:
-- "clarify": The request is genuinely ambiguous and different interpretations would produce VERY different slides. Return 1-3 focused questions with options.
-  Examples that NEED clarification: "current war" (which conflict?), "our competitor" (which company?), "the project" (which project?)
-  Do NOT clarify: tone preferences, exact slide count, layout details, minor style choices.
-  Only clarify when missing information would MATERIALLY change the deck structure or content.
 - "qa": The user is asking a question or making conversation, NOT requesting slide changes.
   Examples: "what does slide 3 say?", "thanks", "hello", "how many slides do I have?"
 - "direct": A single-slide action on the active slide — edit, improve, fill, populate, or template switch. No multi-step planning needed.
@@ -1452,6 +1453,12 @@ isTemplateSwitch rules:
 - TRUE only when user explicitly asks to SWITCH or CHANGE the template type (e.g. "switch to comparison", "change to timeline")
 - FALSE for content edits like "add a column", "remove a row", "make it 3-column"
 - FALSE for styling changes like "make it bold", "change colors"
+- When in doubt, set false
+
+needsStoryline rules:
+- TRUE when the request involves creating a multi-slide deck, restructuring the deck, or editing with awareness of the narrative arc
+- TRUE for "edit the deck", "restructure", "reorder slides", "add context slides", or any cross-slide narrative operation
+- FALSE for single-slide edits, template switches, Q&A, or isolated content changes
 - When in doubt, set false
 
 Additional rules:
@@ -1518,8 +1525,12 @@ export async function triageRequest(userPrompt, context, settings) {
     ? `\nATTACHED DOCUMENTS: ${attachedFiles.map(f => f.fileName || f.name || 'file').join(', ')}`
     : '';
 
+  const trimMsg = (text) => {
+    if (text.length <= 600) return text;
+    return text.slice(0, 300) + ' ... ' + text.slice(-300);
+  };
   const recentChat = chatHistory.length > 0
-    ? `\nRECENT CHAT:\n${chatHistory.map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${m.content.slice(0, 150)}`).join('\n')}\n`
+    ? `\nRECENT CHAT:\n${chatHistory.map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${trimMsg(m.content)}`).join('\n')}\n`
     : '';
 
   const userMessage = `${activeInfo}\n${deckOverview}${filesInfo}${recentChat}\n\nUSER: ${userPrompt}`;
@@ -1538,6 +1549,7 @@ export async function triageRequest(userPrompt, context, settings) {
       return {
         scope: 'plan',
         needsSearch: false,
+        needsStoryline: false,
         searchQuery: null,
         isTemplateSwitch: false,
         templateId: null,
@@ -1548,29 +1560,37 @@ export async function triageRequest(userPrompt, context, settings) {
     }
 
     const parsed = JSON.parse(jsonMatch[0]);
-    console.log('[Triage] Result:', parsed);
 
-    const scope = ['clarify', 'qa', 'direct', 'plan'].includes(parsed.scope)
+    const scope = ['qa', 'direct', 'plan'].includes(parsed.scope)
       ? parsed.scope
       : 'plan';
 
-    return {
+    const triageResult = {
       scope,
       needsSearch: !!parsed.needsSearch,
+      needsStoryline: !!parsed.needsStoryline,
       searchQuery: parsed.searchQuery || null,
       isTemplateSwitch: !!parsed.isTemplateSwitch,
       templateId: parsed.templateId || null,
       targetSlides: Array.isArray(parsed.targetSlides) ? parsed.targetSlides : [],
       instruction: parsed.instruction || userPrompt,
-      questions: scope === 'clarify' && Array.isArray(parsed.questions)
-        ? parsed.questions
-        : [],
+      questions: [],
     };
+
+    console.groupCollapsed(`[Triage] scope=${triageResult.scope} | search=${triageResult.needsSearch} | model=${triageModel}`);
+    console.log('INPUT', { model: triageModel, slideCount, activeSlide: activeSlide?.title || null, userPrompt: userPrompt.slice(0, 200) });
+    console.log('FULL INPUT MESSAGE', userMessage);
+    console.log('OUTPUT', triageResult);
+    console.log('RAW RESPONSE', raw);
+    console.groupEnd();
+
+    return triageResult;
   } catch (err) {
     console.error('[Triage] Error, falling back to plan:', err);
     return {
       scope: 'plan',
       needsSearch: false,
+      needsStoryline: false,
       searchQuery: null,
       isTemplateSwitch: false,
       templateId: null,
@@ -2324,6 +2344,14 @@ USER REQUEST: "${routerPrompt}"`;
       template: result.templateMatch?.templateId,
       confidence: parsed.confidence,
     });
+
+    console.groupCollapsed(`[AI Router] ${result.intent} → ${result.plan?.length || 0} steps | model=${routerModelRef} | search=${canUseResponsesAPI ? 'inline' : effectiveSearchEnabled ? 'pre-search' : 'off'}`);
+    console.log('INPUT', { model: routerModelRef, userPrompt: userPrompt.slice(0, 300), slideCount, contextMode, searchAvailable: effectiveSearchEnabled });
+    console.log('FULL CONTEXT INFO', contextInfo);
+    console.log('OUTPUT', { intent: result.intent, confidence: parsed.confidence, planSteps: result.plan?.map(s => ({ action: s.action, templateId: s.templateId, title: s.title })), searchRawContextLen: routerSearchRawText?.length || 0 });
+    console.log('RAW RESPONSE', response);
+    console.log('PARSED JSON', parsed);
+    console.groupEnd();
 
     // Audit log for router calls — visible in AuditLogViewer
     const routerDuration = Date.now() - routerCallStart;

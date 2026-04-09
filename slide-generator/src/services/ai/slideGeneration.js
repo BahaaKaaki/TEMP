@@ -2,10 +2,10 @@ import { SLIDE_TEMPLATES } from '../../utils/slideTemplates';
 import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
-import FREESTYLE_SLIDE_GUIDE from '../../guides/freestyle-slide-guide.md?raw';
 import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
 import { CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, getWorkLevelInstructions } from './constants.js';
+import { buildFreestyleSystemPrompt } from './freestylePromptBuilder.js';
 import { generateSlideSummary, buildDeckContext } from './slideContext.js';
 import { currentDateString } from './router.js';
 import { LAYOUT_GUIDANCE_MAP } from './imageGeneration.js';
@@ -115,11 +115,7 @@ export async function generateSlides(prompt, settings, slideCount = 3, existingS
     // User has a custom system prompt - use it
     activeSystemPrompt = systemPrompt;
   } else if (isFreestyle && !customTemplate) {
-    // Freestyle mode: single markdown guide is the entire system prompt
-    // User's custom guide from settings takes priority if set
-    activeSystemPrompt = settings.freestyleGuide && settings.freestyleGuide.trim() !== ''
-      ? settings.freestyleGuide
-      : FREESTYLE_SLIDE_GUIDE;
+    activeSystemPrompt = buildFreestyleSystemPrompt(settings);
   } else {
     // Template mode: use full examples
     activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
@@ -372,6 +368,18 @@ Even for PRECISE content, always use CSS components (card-row, split-layout, con
 
 Return the slide(s) as raw HTML, separated by a blank line between each slide.`;
   }
+
+  console.groupCollapsed(
+    '[SlideGeneration] Full LLM prompt (system: %d chars, user: %d chars)',
+    activeSystemPrompt.length, userPrompt.length
+  );
+  console.groupCollapsed('System prompt (%d chars)', activeSystemPrompt.length);
+  console.log(activeSystemPrompt);
+  console.groupEnd();
+  console.groupCollapsed('User prompt (%d chars)', userPrompt.length);
+  console.log(userPrompt);
+  console.groupEnd();
+  console.groupEnd();
 
   try {
     let content;

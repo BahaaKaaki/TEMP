@@ -1,7 +1,7 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-04-02
+> Last updated: 2026-04-07
 
 ---
 
@@ -140,7 +140,11 @@ slide-themes-main/
 │   │   │   ├── app.css                # Application shell styles
 │   │   │   └── simple.css             # Simple variant styles
 │   │   ├── guides/
-
+│   │   │   ├── freestyle-slide-guide.md    # Monolithic freestyle guide (legacy, kept for reference)
+│   │   │   ├── freestyle-shell.md          # Shell: canvas dimensions, HTML skeleton, CSS scoping rules
+│   │   │   ├── freestyle-theme.md          # Theme: design tokens, fonts, contrast, design principles
+│   │   │   ├── freestyle-vibe.md           # Vibe: active style variation (default = base Strategy&)
+│   │   │   └── freestyle-writing.md        # Writing: content rules, layout archetypes, citations, process
 │   │   └── data/
 │   │       └── knowledgeBaseExamples.js # Knowledge base example entries
 │   ├── index.html
@@ -155,6 +159,11 @@ slide-themes-main/
 │   ├── PWC_GENAI_API_REFERENCE.md     # API endpoints, models, search, benchmarks
 │   ├── TECHNICAL_RESEARCH_REPORT.md   # Agent patterns, React architectures, competitor analysis
 │   └── plans/                         # Feature implementation plans
+├── _bmad/                            # BMAD Method v6.2.2 (gitignored, local tooling)
+│   ├── core/                         # Core skills (help, brainstorming, party mode, reviews)
+│   ├── bmm/                          # BMad Method Module (PM, architecture, dev workflows)
+│   └── _config/                      # Manifests, IDE config (cursor.yaml)
+├── _bmad-output/                     # BMAD planning/implementation artifacts (gitignored)
 ├── README.md                          # Main documentation
 ├── CHAT_CONTEXT.md                    # AI session context
 └── .gitignore
@@ -219,9 +228,9 @@ When a user types a message in the chatbot:
    ├── Model: classifierModel (gpt-5.4-mini), ~1-2s
    ├── Input: user prompt, slide context, deck overview
    ├── Output: { scope, needsSearch, searchQuery, isTemplateSwitch, templateId, targetSlides, instruction, questions }
-   ├── scope=clarify → show clarification card with questions/options (return)
    ├── scope=qa → direct chatWithContext, no slide changes (return)
    ├── scope=direct → DIRECT path (step 3a)
+   ├── needsStoryline=true → rich storyline summary included in router context
    └── scope=plan / failure → PLANNER path (step 3b)
 
 3a. DIRECT EXECUTION (single-slide, no router)
@@ -387,7 +396,11 @@ Core state shape:
   storylineStatus: 'none',      // none | generated | approved | populated
   settings: {
     // User-controlled (persisted to localStorage)
-    speedMode: 'premium',        // 'fast' | 'premium' — default Premium; v10 migration resets older saved state once
+    speedMode: 'premium',        // 'fast' | 'premium'
+    freestyleShell: '',           // Override for Shell prompt section (empty = code default)
+    freestyleTheme: '',           // Override for Theme prompt section (empty = code default)
+    freestyleVibe: '',            // Override for Vibe prompt section (empty = code default)
+    freestyleWriting: '',         // Override for Writing Profile section (empty = code default)
     // Code-managed model assignments (always from initialState, never localStorage)
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
@@ -537,6 +550,10 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 31. **Unified triage and search grounding fix**: (a) **Unified triage** (`triageRequest()` in `router.js`): replaces both Tier 1 `classifyRequest` and Tier 2 mini-classifier with a single LLM call; scopes: `clarify` (ambiguous queries), `qa`, `direct`, `plan`; includes `isTemplateSwitch` detection and `needsSearch` in one call. (b) **CLARIFY scope**: new scope for genuinely ambiguous queries; shows clarification card with questions/options; reuses existing `routerClarificationRef` pattern. (c) **Router prompt fix**: removed false auto-injection claim ("results are automatically injected into every slide"); replaced "RARE EXCEPTION" framing of per-step search with intelligent criteria (data-heavy slides get `searchQuery + searchGoal`, structural slides use `facts[]`); changed expected per-step search from "0-1 steps" to "2-4 steps" for data-heavy decks. (d) **Path A search synthesis**: after plan parsing, collects all facts/sources from plan steps to build synthetic `searchRawContext`; enables `buildSearchFactsBlock()` for every step on Path A (previously only Path B). (e) **Removed `routerAlreadySearched`**: per-step search now runs whenever `searchQuery` is set and `searchEnabled` is true; no conditional gating. (f) **Strengthened facts framing**: per-step facts wrapped in `=== VERIFIED FACTS FROM WEB SEARCH ===` with strong grounding instruction. (g) **SmartActionCard search toggle**: always visible (no `routerAlreadySearched` gate); toggle now sets both `searchQuery` and `searchGoal`. (h) **Removed `searchToggle` UI**: search availability controlled by `settings.searchEnabled` system flag; triage/router decide when to use it. (i) **Search model default**: changed from `openai.gpt-5.4` to `openai.gpt-5.4-mini` (half latency, comparable quality). (j) **Renamed `triageRequest` in agentServices.js** to `agentTriageRequest` to avoid naming conflict with new unified triage. (k) **Inline search behavior guidance**: added `INLINE SEARCH BEHAVIOR` section to router system prompt instructing the model to make multiple separate search calls for different entities rather than one broad query; tested 14 Responses API configurations -- system prompt guidance increases inline searches from ~1-2 to ~3-4 with only ~1-3s extra latency; `max_tool_calls` and `tool_choice` had no meaningful effect; `search_context_size: "high"` is optimal. (l) **Fixed batch path dropping structured fields**: the parallel batch execution path (`executeGroupParallel`) was only using `step.instruction` -- it dropped `title`, `subtitle`, `facts[]`, and `sources[]`; since ALL `create_slide` steps go through this batch path, no generated slide ever received the router's curated facts with strong grounding framing; fixed by replicating structured field injection from the sequential path. (m) **Fixed per-step search overwriting global context**: when per-step search succeeded, the prompt was reassigned dropping `buildSearchFactsBlock()` (global `searchRawContext`); also strengthened grounding instruction from "Use the search results" to "Use ONLY... Do NOT substitute information from training data"; applied to sequential, batch, and edit paths.
 
 32. **UI/UX improvements and routing fix**: (a) **Auto-cover suppressed for small requests**: router prompt AUTO COVER rule now only adds a cover slide when 3+ slides are requested; 1-2 slide creation goes straight to content. (b) **Page number format**: changed from `N / total` to just `N` in both HTML preview (`injectPageNumber` in SlidePreview.jsx) and PPTX export (`addFooter` in pptxRenderers.js), matching the master PPTX template. (c) **Comments UI hidden**: floating comment button, slide-out comment panel, and slide list comment badges all hidden via `{false && (...)}` guards; `CommentPanel.jsx` and all comment logic preserved in code. (d) **Speed mode renamed**: `'quality'` -> `'premium'` throughout codebase (SlideContext, AIChatbot, SettingsModal); migration handles both old `'thinking'` and `'quality'` values. (e) **Bottom toolbar redesign**: speed mode toggle moved from top context bar to bottom input area as compact pill-slider; style preference simplified from 3-option (Auto/Templates/Freestyle) to 2-option (Auto/Freestyle) pill-slider; both use consistent `pill-toggle` CSS component. (f) **Search toggle restored**: magnifying glass icon button added to input toolbar between attach and send buttons; toggles `settings.searchEnabled`; blue when active, muted when off. (g) **Edit during plan execution**: chat input stays functional while SmartActionCard is executing; user can type slide edits that run in parallel via `improveSlideWithSearch`; plan is unaffected. (h) **Multi-select delete**: Delete/Backspace key and visible "Delete N slides" bar when 2+ slides selected in the slide list; includes confirmation prompt.
+
+33. **Router logging, reimagine, clarification, storyline, parallel edit, execution UX, and freestyle prompt architecture**: (a) **Structured router I/O logging**: added `console.groupCollapsed` input/output logs to all three router functions (`triageRequest`, `aiRouteRequest`, `routeRequest`) in `router.js`; triage logs model + user prompt + full input message + output; AI router logs model + context + parsed JSON + raw response; rule router logs prompt + intent + action. (b) **Reimagine title/subtitle preservation**: `handleReimagineSlide` in `AIChatbot.jsx` now extracts title and subtitle from slide HTML via `DOMParser`, counts main content sections in `.frame`, and uses `TITLE:` / `SUBTITLE:` markers with strong preservation instructions; title is always kept from the original slide instead of overwritten. (c) **Triage clarification removed**: `scope: "clarify"` always coerced to `scope: "plan"` so the router (with web search) handles all clarification; triage prompt schema simplified to `qa | direct | plan` only; clarification card rendering removed. (d) **Classifier-driven storyline**: triage now returns `needsStoryline: boolean`; when true, a rich multi-line storyline summary (title + description + key message per point) is passed to the router; `buildStorylineSummary()` helper replaces all flat `.map(s => s.title).join()` calls. (e) **Storyline bug fixes**: fixed `freshState.storyline?.summary` bug (storyline is an array, not an object with `.summary`); removed manual Storyline toggle button from `SmartActionCard.jsx` (inclusion is now automatic from classifier); storyline context injected into `buildContextForStep` for `create_slide` steps with position marker. (f) **Parallel edit fix**: removed `|| isLoading` from all 6 quick action button `disabled` props; buttons now only check `busySlideIds.has(activeSlide.id)`, allowing parallel quick actions on different slides while chat is processing. (g) **Execution progress UX**: replaced per-step technical rows during execution with consolidated progress card in `SmartActionCard.jsx` showing header ("Creating N slides..."), visual progress bar, and slide titles with checkmark/active/pending states; `buildStepDescription` updated to prefer `step.title` over "freestyle" label. (h) **Freestyle prompt split**: monolithic `freestyle-slide-guide.md` split into `freestyle-shell.md` (layout contract, CSS rules, archetypes, design principles), `freestyle-theme.md` (color tokens, fonts), `freestyle-writing.md` (content voice, process); `freestylePromptBuilder.js` composer assembles the three sections with per-section override support from settings. (i) **Freestyle wiring**: `generateSlides` in `slideGeneration.js` now uses `buildFreestyleSystemPrompt(settings)` instead of monolithic `FREESTYLE_SLIDE_GUIDE` import; `templateSelection.js` and `AgentApprovalDialog.jsx` also updated. (j) **Settings Prompts tab**: new "Prompts" tab in `SettingsModal.jsx` visible to all users (not behind DEBUG_MODE); shows 3 collapsible freestyle sections (Shell, Theme, Writing Profile) with actual code defaults from markdown files; each section shows "customized" badge when overridden with Reset button; "System Prompt Override" textarea relabeled and moved below sections; Report System Prompt included; old System Prompts block removed from Advanced tab. (k) **State migration**: `SlideContext.jsx` `SETTINGS_VERSION` bumped 10->11; `freestyleGuide` replaced with `freestyleShell`, `freestyleTheme`, `freestyleWriting`; migration copies legacy `freestyleGuide` to `freestyleShell`.
+
+34. **Freestyle prompt section reorganization**: (a) **Shell** rewritten to contain only layout concerns: canvas dimensions (960x540 slide, 904x366 frame), HTML skeleton, element positions, output format, CSS scoping rules, class naming conventions. Removed design tokens, layout archetypes, design principles, contrast rules, and anti-patterns that belonged elsewhere. (b) **Theme** expanded: design tokens table, font rules (Georgia/Arial with size ranges), critical contrast rule (on-accent for dark backgrounds), design principles (visual hierarchy, white space, alignment, accent usage, professional polish), visual anti-patterns (unstyled numbers, restyling base classes, CSS leakage, missing style block), and new closing readability/contrast line. (c) **Vibe** added as new fourth section (`freestyle-vibe.md`): contains base vibe description from `VIBES.default.gptDescription`; `freestyleVibe` state field added to SlideContext with v12 migration; visible in Settings Prompts tab as collapsible section. (d) **Writing Profile** expanded: content rules (titles, subtitles, density, bold leads, real content, no fabrication), all layout archetypes moved from Shell, source citations moved from Shell, content anti-patterns (plain bullet list, wall of text, uniform monotony), process checklist updated to reference archetypes locally. (e) **Builder updated**: `freestylePromptBuilder.js` now imports and composes 4 sections (shell + theme + vibe + writing) with per-section override support.
 
 ---
 

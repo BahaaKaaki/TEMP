@@ -211,10 +211,10 @@ export default function SmartActionCard({
   imageVibe = 'default',
   onImageVibeChange = null,
   debugMode = false,
+  autoExecute = false,
 }) {
   const [selectedTemplate, setSelectedTemplate] = useState(routeResult?.templateMatch?.templateId || null);
   const [showDebug, setShowDebug] = useState(false);
-  const [includeStoryline, setIncludeStoryline] = useState(routeResult?.contextNeeded?.includeStoryline || false);
 
   // Editable plan - initialized from routeResult.plan
   const [editedPlan, setEditedPlan] = useState(() => {
@@ -310,7 +310,6 @@ export default function SmartActionCard({
     contextNeeded: {
       ...routeResult?.contextNeeded,
       slideIndices: buildFinalSlideIndices(),
-      includeStoryline,
     },
   });
 
@@ -334,8 +333,8 @@ export default function SmartActionCard({
 
   const getStepState = (i) => {
     if (!isExecuting || !progress) return null;
-    if (i < progress.current) return 'done';
-    if (i === progress.current) return 'active';
+    if (progress.completedSteps?.has(i)) return 'done';
+    if (i <= progress.current) return 'active';
     return 'pending';
   };
 
@@ -343,16 +342,19 @@ export default function SmartActionCard({
     const stepAction = step.action || action;
     const tmpl = step.templateId ? SLIDE_TEMPLATES[step.templateId] : null;
     if (stepAction === 'create_slide' || stepAction === 'create_from_template') {
-      const name = tmpl ? tmpl.title : 'freestyle';
-      return step.layoutGuidance ? `${name} — ${step.layoutGuidance}` : name;
+      if (step.title) return step.title;
+      if (tmpl) return tmpl.title;
+      if (step.layoutGuidance) return step.layoutGuidance;
+      if (step.instruction) return step.instruction.slice(0, 60);
+      return 'New slide';
     }
-    if (stepAction === 'edit_slide') return `Page ${(step.slideIndex ?? currentSlideIdx) + 1}`;
-    if (stepAction === 'delete_slide') return `Page ${(step.slideIndex ?? currentSlideIdx) + 1}`;
+    if (stepAction === 'edit_slide') return `Editing slide ${(step.slideIndex ?? currentSlideIdx) + 1}`;
+    if (stepAction === 'delete_slide') return `Removing slide ${(step.slideIndex ?? currentSlideIdx) + 1}`;
     if (stepAction === 'switch_template') {
-      const target = `Page ${(step.slideIndex ?? currentSlideIdx) + 1}`;
+      const target = `Slide ${(step.slideIndex ?? currentSlideIdx) + 1}`;
       return tmpl ? `${target} \u2192 ${tmpl.title}` : target;
     }
-    return stepAction;
+    return stepAction.replace(/_/g, ' ');
   };
 
   // Render a single step row
@@ -671,29 +673,51 @@ export default function SmartActionCard({
         </div>
       )}
 
-      {/* Plan display */}
-      {plan.length > 0 && (
+      {/* Plan display -- hidden during auto-execute (user did not choose to review) */}
+      {plan.length > 0 && !isExecuting && !autoExecute && (
         <div className="sac-plan-summary">
           <div className="sac-plan-header">
             <span className="sac-plan-title">Execution Plan</span>
             {routeResult.remainingCount > 0 && (
               <span className="sac-plan-more">+{routeResult.remainingCount} more</span>
             )}
-            <button
-              className={`sac-storyline-toggle ${includeStoryline ? 'active' : ''}`}
-              onClick={() => setIncludeStoryline(!includeStoryline)}
-              title={includeStoryline ? 'Storyline context enabled' : 'Click to include storyline context'}
-            >
-              <span>📖</span>
-              <span>Storyline</span>
-            </button>
           </div>
           {renderPlan()}
         </div>
       )}
 
+      {/* Consolidated execution progress */}
+      {plan.length > 0 && isExecuting && (
+        <div className="sac-exec-progress">
+          <div className="sac-exec-header">
+            {progress && progress.current < plan.length
+              ? `Creating ${plan.length} slide${plan.length > 1 ? 's' : ''}...`
+              : 'Finishing up...'}
+          </div>
+          <div className="sac-exec-bar-track">
+            <div
+              className="sac-exec-bar-fill"
+              style={{ width: `${progress ? Math.round(((progress.completedSteps?.size || 0) / plan.length) * 100) : 0}%` }}
+            />
+          </div>
+          <div className="sac-exec-steps-list">
+            {plan.map((step, i) => {
+              const st = getStepState(i);
+              return (
+                <div key={i} className={`sac-exec-step ${st ? `sac-exec-step--${st}` : ''}`}>
+                  <span className="sac-exec-step-icon">
+                    {st === 'done' ? '\u2713' : st === 'active' ? '\u25CF' : '\u25CB'}
+                  </span>
+                  <span className="sac-exec-step-label">{buildStepDescription(step)}</span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Single-action fallback (no plan) - Template & Context */}
-      {(!plan || plan.length === 0) && (
+      {(!plan || plan.length === 0) && !autoExecute && (
         <div className="sac-body">
           <div className="sac-section">
             <div className="sac-section-label">Template</div>
@@ -741,7 +765,7 @@ export default function SmartActionCard({
       )}
 
       {/* Vibe picker — shown when plan has image steps */}
-      {onImageVibeChange && plan.some(s => s.templateId === 'image-full' || s.templateId === 'image-content') && (
+      {!autoExecute && onImageVibeChange && plan.some(s => s.templateId === 'image-full' || s.templateId === 'image-content') && (
         <div className="sac-vibe-picker">
           <span className="sac-vibe-label">Style:</span>
           {Object.values(VIBES).map(v => (
@@ -762,31 +786,31 @@ export default function SmartActionCard({
       {isExecuting && progress && progress.total > 1 && (
         <div className="sac-progress">
           <div className="sac-progress-bar">
-            <div className="sac-progress-fill" style={{ width: `${Math.min(100, ((progress.current + 1) / progress.total) * 100)}%` }} />
+            <div className="sac-progress-fill" style={{ width: `${Math.min(100, (((progress.completedSteps?.size || 0) + 1) / progress.total) * 100)}%` }} />
           </div>
-          <span className="sac-progress-label">Step {Math.min(progress.current + 1, progress.total)} of {progress.total}</span>
+          <span className="sac-progress-label">Step {Math.min((progress.completedSteps?.size || 0) + 1, progress.total)} of {progress.total}</span>
         </div>
       )}
 
       {/* Footer */}
-      {!isExecuting ? (
+      {!isExecuting && !autoExecute ? (
         <div className="sac-footer">
           <button className="sac-btn sac-btn-cancel" onClick={onCancel}>Cancel</button>
           <button className="sac-btn sac-btn-execute" onClick={handleExecute}>
             {actionConfig.icon} Execute
           </button>
         </div>
-      ) : (
+      ) : isExecuting ? (
         <div className="sac-footer sac-footer-executing">
           <div className="sac-executing-status">
             <span className="sac-spinner" />
             <span>{executionStatus?.message || 'Executing...'}</span>
           </div>
           <button className="sac-btn sac-btn-stop" onClick={onCancel}>
-            ⏹ Stop
+            Stop
           </button>
         </div>
-      )}
+      ) : null}
 
       <style>{`
         .smart-action-card {
@@ -1232,33 +1256,6 @@ export default function SmartActionCard({
           background: #e2e8f0;
           padding: 2px 8px;
           border-radius: 10px;
-        }
-
-        .sac-storyline-toggle {
-          display: inline-flex;
-          align-items: center;
-          gap: 4px;
-          margin-left: auto;
-          padding: 4px 10px;
-          background: white;
-          border: 1px solid #d1d5db;
-          border-radius: 12px;
-          font-size: 11px;
-          color: #6b7280;
-          cursor: pointer;
-          transition: all 0.15s;
-        }
-
-        .sac-storyline-toggle:hover {
-          border-color: #8b5cf6;
-          color: #7c3aed;
-        }
-
-        .sac-storyline-toggle.active {
-          background: #ede9fe;
-          border-color: #8b5cf6;
-          color: #7c3aed;
-          font-weight: 500;
         }
 
         /* ---- Phase groups ---- */
@@ -2178,6 +2175,76 @@ export default function SmartActionCard({
           color: #475569;
           white-space: nowrap;
           font-weight: 600;
+        }
+
+        /* ---- Consolidated execution progress ---- */
+        .sac-exec-progress {
+          padding: 12px 14px;
+          background: #fafbfc;
+          border: 1px solid #e5e7eb;
+          border-radius: 10px;
+          margin-top: 8px;
+        }
+        .sac-exec-header {
+          font-size: 13px;
+          font-weight: 600;
+          color: #1e293b;
+          margin-bottom: 8px;
+        }
+        .sac-exec-bar-track {
+          height: 6px;
+          background: #e5e7eb;
+          border-radius: 3px;
+          overflow: hidden;
+          margin-bottom: 10px;
+        }
+        .sac-exec-bar-fill {
+          height: 100%;
+          background: #8E1E1E;
+          border-radius: 3px;
+          transition: width 0.4s ease;
+        }
+        .sac-exec-steps-list {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+        }
+        .sac-exec-step {
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          font-size: 12px;
+          color: #94a3b8;
+          transition: color 0.2s;
+        }
+        .sac-exec-step--done {
+          color: #16a34a;
+        }
+        .sac-exec-step--active {
+          color: #1e293b;
+          font-weight: 600;
+        }
+        .sac-exec-step-icon {
+          font-size: 10px;
+          width: 14px;
+          text-align: center;
+          flex-shrink: 0;
+        }
+        .sac-exec-step--done .sac-exec-step-icon {
+          color: #16a34a;
+        }
+        .sac-exec-step--active .sac-exec-step-icon {
+          color: #8E1E1E;
+          animation: exec-pulse 1s ease-in-out infinite;
+        }
+        @keyframes exec-pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+        .sac-exec-step-label {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
       `}</style>
     </div>

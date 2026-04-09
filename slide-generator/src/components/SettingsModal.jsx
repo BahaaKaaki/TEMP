@@ -604,10 +604,11 @@ export default function SettingsModal({ onClose }) {
     setPptxTemplateLoading(true);
     try {
       const buffer = await file.arrayBuffer();
-      await saveTemplateToStorage(buffer, file.name);
+      const result = await extractBranding(buffer);
+      const chrome = result?.chrome || null;
+      await saveTemplateToStorage(buffer, file.name, chrome);
       setPptxTemplateName(file.name);
 
-      const result = await extractBranding(buffer);
       if (result) {
         setExtractedBranding(result);
       }
@@ -620,10 +621,14 @@ export default function SettingsModal({ onClose }) {
     setExtractedBranding(null);
   };
   const applyExtractedTheme = () => {
-    if (extractedBranding?.theme) {
+    if (!extractedBranding) return;
+    if (extractedBranding.theme) {
       actions.updateTheme(extractedBranding.theme);
-      setExtractedBranding(null);
     }
+    if (extractedBranding.chrome?.footerText) {
+      setSettings(s => ({ ...s, footerBranding: extractedBranding.chrome.footerText }));
+    }
+    setExtractedBranding(null);
   };
 
   // ─── Role helpers ──────────────────────────────────────────────────────────

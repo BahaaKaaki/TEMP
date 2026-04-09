@@ -140,7 +140,7 @@ STANDARD FONTS:
 - Body text: Arial 12-14pt, color secondary
 - Card titles: Arial 16pt bold, color main
 
-STANDARD POSITIONS:
+DEFAULT POSITIONS (may be overridden by template positions in the user prompt):
 - Title: x:0.48, y:0.42, w:12.36
 - Subtitle: x:0.48, y:1.40, w:12.36
 - Content area starts at y:1.90
@@ -370,6 +370,22 @@ function extractInlineStyle(html) {
   return match ? match[1].trim() : '';
 }
 
+function buildPositionBlock(tplPositions) {
+  if (!tplPositions || Object.keys(tplPositions).length === 0) return null;
+  const t = tplPositions.title;
+  const b = tplPositions.body;
+  const f = tplPositions.footer || tplPositions.slideNum;
+  const lines = ['(from uploaded client template)'];
+  if (t) lines.push(`  Title:    x:${t.x}  y:${t.y}  w:${t.w}  h:${t.h}`);
+  if (tplPositions.subtitle) {
+    const s = tplPositions.subtitle;
+    lines.push(`  Subtitle: x:${s.x}  y:${s.y}  w:${s.w}  h:${s.h}`);
+  }
+  if (b) lines.push(`  Frame:    x:${b.x}  y:${b.y}  w:${b.w}  h:${b.h}`);
+  if (f) lines.push(`  Footer:   y:${f.y}`);
+  return lines.join('\n');
+}
+
 function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
   const palette = themeToPptxPalette(settings?.theme);
 
@@ -395,6 +411,8 @@ function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback)
     .replace(/<footer[\s\S]*?<\/footer>/gi, '')
     .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"');
 
+  const tplPos = buildPositionBlock(settings?.templatePositions);
+
   let prompt = `TASK: Convert this HTML slide to a PptxGenJS function.
 
 ========== RESOLVED CSS VARIABLE VALUES ==========
@@ -404,19 +422,18 @@ ${palette.resolvedVars}
 HTML slide: 960px x 540px  |  PPTX slide: 13.333in x 7.5in
 Conversion: inches = px * 13.333 / 960  (approx 0.01389 in/px)
 
-Key positions (px -> inches):
+Key positions ${tplPos || `(px -> inches):
   Title:    left:28px top:24px  w:904px        -> x:0.39  y:0.33  w:12.56
   Subtitle: left:28px top:95px  w:904px        -> x:0.39  y:1.32  w:12.56
   Frame:    left:28px top:127px w:904px h:366px -> x:0.39  y:1.76  w:12.56 h:5.08
-  Footer:   bottom of slide                    -> y:7.05
+  Footer:   bottom of slide                    -> y:7.05`}
 
 When CSS specifies pixel values for position or size, convert them:
   px=28  -> 0.39in    px=127 -> 1.76in    px=904 -> 12.56in
   px=366 -> 5.08in    px=960 -> 13.333in  px=540 -> 7.5in
 
-All content inside .frame maps to the PPTX region x:0.39 y:1.76 w:12.56 h:5.08.
-Position elements WITHIN that region -- e.g. an element at frame-relative (10px, 20px)
-becomes x:(0.39 + 10*0.01389) = 0.53, y:(1.76 + 20*0.01389) = 2.04.
+All content inside .frame maps to the PPTX region starting at the Frame position above.
+Position elements WITHIN that region relatively.
 
 ========== COLOR PALETTE ==========
 ${palette.colorCode}
@@ -669,6 +686,12 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
+  let templateData = null;
+  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
+  if (templateData?.chrome?.positions && settings) {
+    settings = { ...settings, templatePositions: templateData.chrome.positions };
+  }
+
   const totalSlides = slides.length;
   setFooterBranding(settings?.footerBranding || 'Strategy&');
 
@@ -787,13 +810,10 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
 
   if (onProgress) onProgress({ phase: 'finalizing', processed: totalSlides, total: totalSlides, message: 'Creating PowerPoint file...' });
 
-  let templateData = null;
-  try { templateData = await loadTemplateFromStorage(); } catch (e) { console.warn('[PPTX] Template load error:', e); }
-
   if (templateData?.data) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
-      const merged = await applyTemplateToGenerated(buf, templateData.data);
+      const merged = await applyTemplateToGenerated(buf, templateData.data, templateData.chrome || null);
       downloadArrayBuffer(merged, filename);
     } catch (e) {
       console.error('[PPTX] Template merge failed:', e);
@@ -821,6 +841,13 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   pptx.title = filename.replace('.pptx', '');
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
+
+  let templateData = null;
+  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
+  if (templateData?.chrome?.positions && settings) {
+    settings = { ...settings, templatePositions: templateData.chrome.positions };
+  }
+
   setFooterBranding(settings?.footerBranding || 'Strategy&');
 
   const useAI = settings && hasAnyCredentials(settings);
@@ -853,13 +880,10 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 
   if (onProgress) onProgress({ phase: 'finalizing', message: 'Creating PowerPoint file...' });
 
-    let templateData = null;
-  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
-
   if (templateData?.data) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
-      const merged = await applyTemplateToGenerated(buf, templateData.data);
+      const merged = await applyTemplateToGenerated(buf, templateData.data, templateData.chrome || null);
       downloadArrayBuffer(merged, filename);
     } catch (e) { await pptx.writeFile({ fileName: filename }); }
     } else {

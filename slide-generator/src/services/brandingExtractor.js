@@ -2,17 +2,14 @@ import JSZip from 'jszip';
 
 import { DEFAULT_THEME } from '../utils/themeUtils';
 
+const EMU_PER_INCH = 914400;
+
 /**
- * Extract brand colors and fonts from a PPTX file's theme XML.
- *
- * PPTX files contain an Office Theme at `ppt/theme/theme1.xml` with:
- *   - <a:clrScheme>: dk1, dk2, lt1, lt2, accent1-accent6, hlink, folHlink
- *   - <a:fontScheme>: majorFont (headings) and minorFont (body)
- *
- * This function parses those elements and maps them to the app's theme shape.
+ * Extract brand colors, fonts, logo, footer text, and layout positions
+ * from a PPTX file.
  *
  * @param {ArrayBuffer} pptxBuffer - The raw PPTX file bytes
- * @returns {Promise<{theme: object, raw: object}|null>} Extracted theme or null
+ * @returns {Promise<{theme: object, raw: object, chrome: object}|null>}
  */
 export async function extractBranding(pptxBuffer) {
   const zip = await JSZip.loadAsync(pptxBuffer);
@@ -30,7 +27,8 @@ export async function extractBranding(pptxBuffer) {
   if (!colors && !fonts) return null;
 
   const theme = mapToAppTheme(colors, fonts);
-  return { theme, raw: { colors, fonts } };
+  const chrome = await extractChrome(zip);
+  return { theme, raw: { colors, fonts }, chrome };
 }
 
 function extractColors(doc) {
@@ -164,4 +162,187 @@ function mixHex(hex1, hex2, ratio) {
 function isLightColor(hex) {
   const { r, g, b } = hexToRgb(hex);
   return (r * 299 + g * 587 + b * 114) / 1000 > 128;
+}
+
+// ── Template Chrome Extraction ──────────────────────────────────────────────
+
+function emuToInch(emu) {
+  return parseFloat((parseInt(emu, 10) / EMU_PER_INCH).toFixed(3));
+}
+
+function extractShapePosition(shapeXml) {
+  const offMatch = shapeXml.match(/<a:off\s+x="(\d+)"\s+y="(\d+)"/);
+  const extMatch = shapeXml.match(/<a:ext\s+cx="(\d+)"\s+cy="(\d+)"/);
+  if (!offMatch || !extMatch) return null;
+  return {
+    x: emuToInch(offMatch[1]),
+    y: emuToInch(offMatch[2]),
+    w: emuToInch(extMatch[1]),
+    h: emuToInch(extMatch[2]),
+  };
+}
+
+/**
+ * Extract chrome (logo, footer text, layout positions) from a PPTX zip.
+ */
+async function extractChrome(zip) {
+  const chrome = { logo: null, footerText: null, positions: null };
+
+  try {
+    chrome.logo = await extractLogo(zip);
+  } catch (e) {
+    console.warn('[Chrome] Logo extraction failed:', e.message);
+  }
+
+  try {
+    const layoutResult = await extractLayoutInfo(zip);
+    chrome.footerText = layoutResult.footerText;
+    chrome.positions = layoutResult.positions;
+  } catch (e) {
+    console.warn('[Chrome] Layout extraction failed:', e.message);
+  }
+
+  return chrome;
+}
+
+/**
+ * Find the logo image from the slide master.
+ * Looks for small image shapes in the header zone (top 1.5" of slide, area < 15% of slide).
+ */
+async function extractLogo(zip) {
+  const masterPath = 'ppt/slideMasters/slideMaster1.xml';
+  const masterRelsPath = 'ppt/slideMasters/_rels/slideMaster1.xml.rels';
+
+  const masterFile = zip.file(masterPath);
+  const relsFile = zip.file(masterRelsPath);
+  if (!masterFile || !relsFile) return null;
+
+  const masterXml = await masterFile.async('string');
+  const relsXml = await relsFile.async('string');
+
+  const rIdToTarget = {};
+  const relMatches = relsXml.matchAll(/Id="(rId\d+)"[^>]*Target="([^"]+)"/g);
+  for (const m of relMatches) {
+    rIdToTarget[m[1]] = m[2];
+  }
+
+  const SLIDE_AREA = 13.333 * 7.5;
+  const spRegex = /<p:sp\b[\s\S]*?<\/p:sp>|<p:pic\b[\s\S]*?<\/p:pic>/g;
+  let match;
+  const candidates = [];
+
+  while ((match = spRegex.exec(masterXml)) !== null) {
+    const shapeXml = match[0];
+    const blipMatch = shapeXml.match(/<a:blip[^>]*r:embed="(rId\d+)"/);
+    if (!blipMatch) continue;
+
+    const pos = extractShapePosition(shapeXml);
+    if (!pos) continue;
+
+    const area = pos.w * pos.h;
+    const areaRatio = area / SLIDE_AREA;
+    if (areaRatio > 0.15) continue;
+    if (pos.y + pos.h > 2.0) continue;
+
+    const rId = blipMatch[1];
+    let mediaPath = rIdToTarget[rId];
+    if (!mediaPath) continue;
+    if (!mediaPath.startsWith('ppt/')) {
+      mediaPath = 'ppt/slideMasters/' + mediaPath.replace(/^\.\.\//, '');
+      mediaPath = mediaPath.replace('ppt/slideMasters/../', 'ppt/');
+    }
+
+    const mediaFile = zip.file(mediaPath);
+    if (!mediaFile) continue;
+
+    const imageData = await mediaFile.async('base64');
+    const ext = mediaPath.split('.').pop().toLowerCase();
+    const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml' };
+
+    candidates.push({
+      image: `data:${mimeMap[ext] || 'image/png'};base64,${imageData}`,
+      mediaPath,
+      ...pos,
+      areaRatio,
+    });
+  }
+
+  if (candidates.length === 0) return null;
+  candidates.sort((a, b) => b.areaRatio - a.areaRatio);
+  const best = candidates[0];
+  console.log('[Chrome] Found logo: %s at (%.2f, %.2f) %.2f x %.2f in', best.mediaPath, best.x, best.y, best.w, best.h);
+  return best;
+}
+
+/**
+ * Extract footer text and placeholder positions from the "content" layout.
+ */
+async function extractLayoutInfo(zip) {
+  const result = { footerText: null, positions: {} };
+
+  const layoutFiles = Object.keys(zip.files)
+    .filter(f => /^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(f))
+    .sort((a, b) => parseInt(a.match(/(\d+)/g).pop()) - parseInt(b.match(/(\d+)/g).pop()));
+
+  let contentLayoutXml = null;
+  for (const path of layoutFiles) {
+    const xml = await zip.files[path].async('string');
+
+    let isContent = false;
+    const typeMatch = xml.match(/<p:sldLayout[^>]*type="([^"]+)"/);
+    if (typeMatch && (typeMatch[1] === 'obj' || typeMatch[1] === 'tx')) {
+      isContent = true;
+    }
+    if (!isContent) {
+      const nameMatch = xml.match(/<p:cSld\s+name="([^"]+)"/);
+      if (nameMatch) {
+        const n = nameMatch[1].toLowerCase();
+        if (n.includes('content') || n.includes('title and')) isContent = true;
+      }
+    }
+
+    if (isContent) { contentLayoutXml = xml; break; }
+  }
+
+  if (!contentLayoutXml && layoutFiles.length >= 2) {
+    contentLayoutXml = await zip.files[layoutFiles[1]].async('string');
+  }
+  if (!contentLayoutXml) return result;
+
+  const spRegex = /<p:sp\b[\s\S]*?<\/p:sp>/g;
+  let match;
+  while ((match = spRegex.exec(contentLayoutXml)) !== null) {
+    const shapeXml = match[0];
+    if (!/<p:ph\b/.test(shapeXml)) continue;
+
+    const phTypeMatch = shapeXml.match(/<p:ph[^>]*type="([^"]+)"/);
+    const phType = phTypeMatch ? phTypeMatch[1] : 'body';
+    const pos = extractShapePosition(shapeXml);
+    if (!pos) continue;
+
+    if (phType === 'title' || phType === 'ctrTitle') {
+      result.positions.title = pos;
+    } else if (phType === 'subTitle') {
+      result.positions.subtitle = pos;
+    } else if (phType === 'body' || (!phTypeMatch && !result.positions.body)) {
+      result.positions.body = pos;
+    } else if (phType === 'ftr') {
+      result.positions.footer = pos;
+      const textMatch = shapeXml.match(/<a:t>([^<]+)<\/a:t>/);
+      if (textMatch) result.footerText = textMatch[1].trim();
+    } else if (phType === 'sldNum') {
+      result.positions.slideNum = pos;
+    } else if (phType === 'dt') {
+      result.positions.date = pos;
+    }
+  }
+
+  if (Object.keys(result.positions).length > 0) {
+    console.log('[Chrome] Layout positions:', JSON.stringify(result.positions));
+  }
+  if (result.footerText) {
+    console.log('[Chrome] Footer text:', result.footerText);
+  }
+
+  return result;
 }

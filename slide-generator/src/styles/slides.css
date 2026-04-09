@@ -194,3 +194,45 @@
   width: 960px;
   height: 540px;
 }
+
+/* ===== SECTION TRACKER TABS ===== */
+
+.slide[data-section]::before {
+  content: attr(data-section);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  padding: 4px 14px;
+  background: var(--maroon, #800020);
+  color: #fff;
+  font: 700 10px/1.4 Arial, sans-serif;
+  letter-spacing: 0.3px;
+  border-radius: 0 0 4px 0;
+  white-space: nowrap;
+}
+.slide[data-section][data-subsection]::before {
+  border-radius: 0;
+}
+
+.slide[data-subsection]::after {
+  content: attr(data-subsection);
+  position: absolute;
+  top: 0;
+  z-index: 10;
+  padding: 4px 12px;
+  background: #6b7280;
+  color: #fff;
+  font: 600 9px/1.4 Arial, sans-serif;
+  letter-spacing: 0.2px;
+  border-radius: 0 0 4px 0;
+  white-space: nowrap;
+}
+.slide[data-section][data-subsection]::after {
+  left: var(--tracker-offset, 80px);
+  border-radius: 0 0 4px 0;
+}
+.slide:not([data-section])[data-subsection]::after {
+  left: 0;
+  border-radius: 0 0 4px 0;
+}

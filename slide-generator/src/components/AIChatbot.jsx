@@ -1143,7 +1143,7 @@ export default function AIChatbot() {
           html: transformedHtml,
           title: extractTitleFromHTML(transformedHtml) || slide.title,
           templateId: triage.templateId,
-          updateData: { html: transformedHtml, type: triage.templateId, templateId: triage.templateId, customCSS: '', pptxRendererCode: null },
+          updateData: { html: transformedHtml, type: triage.templateId, templateId: triage.templateId, customCSS: SLIDE_TEMPLATES[triage.templateId]?.css || '', pptxRendererCode: null },
         };
       }
       console.log('[DirectEdit] Template switch returned unchanged HTML, falling through to edit');
@@ -5477,7 +5477,7 @@ Original request: ${userPrompt}`;
                               deckContext, null
                             );
                             const newTitle = extractTitleFromHTML(transformedHtml) || freshSlide.title;
-                            actions.updateSlide(sid, { html: transformedHtml, type: templateId, templateId, title: newTitle, customCSS: '', pptxRendererCode: null });
+                            actions.updateSlide(sid, { html: transformedHtml, type: templateId, templateId, title: newTitle, customCSS: SLIDE_TEMPLATES[templateId]?.css || '', pptxRendererCode: null });
                             addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${templateId}</strong></div>`, { isHTML: true });
                           } catch (err) {
                             addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Template switch failed: ${err.message}</div>`, { isHTML: true });

@@ -211,6 +211,7 @@ export default function SmartActionCard({
   imageVibe = 'default',
   onImageVibeChange = null,
   debugMode = false,
+  autoExecute = false,
 }) {
   const [selectedTemplate, setSelectedTemplate] = useState(routeResult?.templateMatch?.templateId || null);
   const [showDebug, setShowDebug] = useState(false);
@@ -332,8 +333,8 @@ export default function SmartActionCard({
 
   const getStepState = (i) => {
     if (!isExecuting || !progress) return null;
-    if (i < progress.current) return 'done';
-    if (i === progress.current) return 'active';
+    if (progress.completedSteps?.has(i)) return 'done';
+    if (i <= progress.current) return 'active';
     return 'pending';
   };
 
@@ -672,8 +673,8 @@ export default function SmartActionCard({
         </div>
       )}
 
-      {/* Plan display */}
-      {plan.length > 0 && !isExecuting && (
+      {/* Plan display -- hidden during auto-execute (user did not choose to review) */}
+      {plan.length > 0 && !isExecuting && !autoExecute && (
         <div className="sac-plan-summary">
           <div className="sac-plan-header">
             <span className="sac-plan-title">Execution Plan</span>
@@ -696,7 +697,7 @@ export default function SmartActionCard({
           <div className="sac-exec-bar-track">
             <div
               className="sac-exec-bar-fill"
-              style={{ width: `${progress ? Math.round(((progress.current || 0) / plan.length) * 100) : 0}%` }}
+              style={{ width: `${progress ? Math.round(((progress.completedSteps?.size || 0) / plan.length) * 100) : 0}%` }}
             />
           </div>
           <div className="sac-exec-steps-list">
@@ -716,7 +717,7 @@ export default function SmartActionCard({
       )}
 
       {/* Single-action fallback (no plan) - Template & Context */}
-      {(!plan || plan.length === 0) && (
+      {(!plan || plan.length === 0) && !autoExecute && (
         <div className="sac-body">
           <div className="sac-section">
             <div className="sac-section-label">Template</div>
@@ -764,7 +765,7 @@ export default function SmartActionCard({
       )}
 
       {/* Vibe picker — shown when plan has image steps */}
-      {onImageVibeChange && plan.some(s => s.templateId === 'image-full' || s.templateId === 'image-content') && (
+      {!autoExecute && onImageVibeChange && plan.some(s => s.templateId === 'image-full' || s.templateId === 'image-content') && (
         <div className="sac-vibe-picker">
           <span className="sac-vibe-label">Style:</span>
           {Object.values(VIBES).map(v => (
@@ -785,31 +786,31 @@ export default function SmartActionCard({
       {isExecuting && progress && progress.total > 1 && (
         <div className="sac-progress">
           <div className="sac-progress-bar">
-            <div className="sac-progress-fill" style={{ width: `${Math.min(100, ((progress.current + 1) / progress.total) * 100)}%` }} />
+            <div className="sac-progress-fill" style={{ width: `${Math.min(100, (((progress.completedSteps?.size || 0) + 1) / progress.total) * 100)}%` }} />
           </div>
-          <span className="sac-progress-label">Step {Math.min(progress.current + 1, progress.total)} of {progress.total}</span>
+          <span className="sac-progress-label">Step {Math.min((progress.completedSteps?.size || 0) + 1, progress.total)} of {progress.total}</span>
         </div>
       )}
 
       {/* Footer */}
-      {!isExecuting ? (
+      {!isExecuting && !autoExecute ? (
         <div className="sac-footer">
           <button className="sac-btn sac-btn-cancel" onClick={onCancel}>Cancel</button>
           <button className="sac-btn sac-btn-execute" onClick={handleExecute}>
             {actionConfig.icon} Execute
           </button>
         </div>
-      ) : (
+      ) : isExecuting ? (
         <div className="sac-footer sac-footer-executing">
           <div className="sac-executing-status">
             <span className="sac-spinner" />
             <span>{executionStatus?.message || 'Executing...'}</span>
           </div>
           <button className="sac-btn sac-btn-stop" onClick={onCancel}>
-            ⏹ Stop
+            Stop
           </button>
         </div>
-      )}
+      ) : null}
 
       <style>{`
         .smart-action-card {

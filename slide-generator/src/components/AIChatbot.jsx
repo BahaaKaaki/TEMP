@@ -2619,18 +2619,23 @@ export default function AIChatbot() {
           'delete_slide': 'Delete',
           'switch_template': 'Switch',
         };
-        setProgress({
-          phase: `Step ${stepIndex + 1}/${totalSteps}`,
-          current: stepIndex,
-          total: totalSteps,
-          plan: planSteps.map((s, idx) => ({
-            text: `${actionLabels[s.action] || s.action}${s.templateId ? ` (${s.templateId})` : ''}${s.searchQuery ? ' 🔍' : ''}`,
-            action: s.action,
-            templateId: s.templateId || null,
-            layoutGuidance: s.layoutGuidance || null,
-            stepIndex: idx,
-          })),
-          planStepsRef: planSteps,
+        setProgress(prev => {
+          const completed = new Set(prev?.completedSteps || []);
+          if (stepIndex > 0) completed.add(stepIndex - 1);
+          return {
+            phase: `Step ${stepIndex + 1}/${totalSteps}`,
+            current: stepIndex,
+            total: totalSteps,
+            completedSteps: completed,
+            plan: planSteps.map((s, idx) => ({
+              text: `${actionLabels[s.action] || s.action}${s.templateId ? ` (${s.templateId})` : ''}${s.searchQuery ? ' 🔍' : ''}`,
+              action: s.action,
+              templateId: s.templateId || null,
+              layoutGuidance: s.layoutGuidance || null,
+              stepIndex: idx,
+            })),
+            planStepsRef: planSteps,
+          };
         });
 
         // Update agent-mode widget if active (pink/green step tracker)
@@ -3394,7 +3399,16 @@ export default function AIChatbot() {
             flushInsertsInOrder(allBatchInserts);
           }
 
-          if (batch.length > 0) actions.syncStorylineFromSlides();
+          // Mark batch steps as completed now that slides are inserted
+          if (batch.length > 0) {
+            setProgress(prev => {
+              if (!prev) return prev;
+              const completed = new Set(prev.completedSteps || []);
+              for (const b of batch) completed.add(b.actualIndex);
+              return { ...prev, completedSteps: completed };
+            });
+            actions.syncStorylineFromSlides();
+          }
         };
 
         let createBatch = []; // Accumulates create_slide steps
@@ -3451,11 +3465,12 @@ export default function AIChatbot() {
               searchQuery: step.searchQuery || null,
             });
 
-            // Update UI progress
-            setProgress({
+            // Update UI progress (carry forward completedSteps, don't mark as done yet)
+            setProgress(prev => ({
               phase: `Step ${actualIndex + 1}/${totalSteps}`,
               current: actualIndex,
               total: totalSteps,
+              completedSteps: prev?.completedSteps || new Set(),
               plan: planSteps.map((s, idx) => ({
                 text: `${s.action}${s.templateId ? ` (${s.templateId})` : ''}`,
                 action: s.action,
@@ -3464,7 +3479,7 @@ export default function AIChatbot() {
                 stepIndex: idx,
               })),
               planStepsRef: planSteps,
-            });
+            }));
             setExecutionStatus({
               type: 'generating',
               message: `Step ${actualIndex + 1}/${totalSteps}: Creating slide${step.templateId ? ` (${step.templateId})` : ' (freestyle)'}...`,
@@ -3554,6 +3569,13 @@ export default function AIChatbot() {
                     }
                   }
                 }
+                // Mark all edit batch steps as completed
+                setProgress(prev => {
+                  if (!prev) return prev;
+                  const completed = new Set(prev.completedSteps || []);
+                  for (const { actualIndex: ai } of editBatch) completed.add(ai);
+                  return { ...prev, completedSteps: completed };
+                });
                 actions.syncStorylineFromSlides();
                 si = peekSi - 1;
               } else {
@@ -3563,6 +3585,12 @@ export default function AIChatbot() {
                   flushInsertsInOrder([{ stepIndex: result.stepIndex, slideDataArray: result.pendingSlides, step: result.step }]);
                   actions.syncStorylineFromSlides();
                 }
+                setProgress(prev => {
+                  if (!prev) return prev;
+                  const completed = new Set(prev.completedSteps || []);
+                  completed.add(actualIndex);
+                  return { ...prev, completedSteps: completed };
+                });
               }
             } else {
               console.log(`[SmartAction] Executing step ${si + 1}/${group.length} (index ${stepIndex})`);
@@ -3571,6 +3599,12 @@ export default function AIChatbot() {
                 flushInsertsInOrder([{ stepIndex: result.stepIndex, slideDataArray: result.pendingSlides, step: result.step }]);
                 actions.syncStorylineFromSlides();
               }
+              setProgress(prev => {
+                if (!prev) return prev;
+                const completed = new Set(prev.completedSteps || []);
+                completed.add(actualIndex);
+                return { ...prev, completedSteps: completed };
+              });
             }
           }
         }
@@ -3795,6 +3829,14 @@ Original request: ${userPrompt}`;
         const aiIOData = currentStepAiIO.current.length > 0 ? [...currentStepAiIO.current] : null;
         addMessage('assistant', resultHtml, { aiIO: aiIOData, isHTML: true });
       }
+
+      // Mark all plan steps as completed for the final UI state
+      setProgress(prev => {
+        if (!prev) return prev;
+        const completed = new Set(prev.completedSteps || []);
+        for (let i = 0; i < totalSteps; i++) completed.add(i);
+        return { ...prev, completedSteps: completed };
+      });
 
       // Mark all agent steps complete — keep visible as execution history
       setAgentModeProgress(prev => {
@@ -5551,7 +5593,7 @@ Original request: ${userPrompt}`;
         ))}
 
         {/* Smart Action Card - inline execution with real-time status */}
-        {pendingSmartAction && !pendingSmartAction.autoExecute && (
+        {pendingSmartAction && (
           <div className="smart-action-wrapper" style={{
             position: 'relative',
             zIndex: 100,
@@ -5573,6 +5615,7 @@ Original request: ${userPrompt}`;
               imageVibe={imageVibe}
               onImageVibeChange={useImageMode ? setImageVibe : null}
               debugMode={DEBUG_MODE}
+              autoExecute={!!pendingSmartAction.autoExecute}
             />
           </div>
         )}
@@ -6065,7 +6108,7 @@ Original request: ${userPrompt}`;
           );
         })()}
 
-        {isLoading && (!pendingSmartAction || pendingSmartAction.autoExecute) && !agenticExecution.isRunning && !agentModeProgress && (
+        {isLoading && !pendingSmartAction && !agenticExecution.isRunning && !agentModeProgress && (
           <div className="chatbot-message assistant chatbot-progress-message">
             <div className="chatbot-avatar">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6092,17 +6135,20 @@ Original request: ${userPrompt}`;
                         const isFreestyle = isCreateStep && (!step.templateId || step.templateId === 'freestyle');
                         const guidance = typeof step === 'object' ? step.layoutGuidance : null;
                         const stepIdx = typeof step === 'object' ? step.stepIndex : i;
-                        const isPending = i > progress.current;
+                        const isDone = progress.completedSteps?.has(i) || false;
+                        const isInFlight = !isDone && i < progress.current;
+                        const isActive = !isDone && (i === progress.current || isInFlight);
+                        const isPending = !isDone && !isActive;
                         const displayText = guidance && !isPending
                           ? `${stepText} \u2014 ${guidance}`
                           : stepText;
                         return (
                           <div
                             key={i}
-                            className={`chatbot-plan-step ${i < progress.current ? 'completed' : i === progress.current ? 'active' : ''}`}
+                            className={`chatbot-plan-step ${isDone ? 'completed' : isActive ? 'active' : ''}`}
                           >
                             <span className="step-indicator">
-                              {i < progress.current ? '\u2713' : i === progress.current ? '\u25CF' : '\u25CB'}
+                              {isDone ? '\u2713' : isActive ? '\u25CF' : '\u25CB'}
                             </span>
                             <span className="step-text">{displayText}</span>
                             {isFreestyle && isPending && (
@@ -6138,7 +6184,7 @@ Original request: ${userPrompt}`;
                     <div className="chatbot-progress-bar">
                       <div
                         className="chatbot-progress-fill"
-                        style={{ width: `${(progress.current / progress.total) * 100}%` }}
+                        style={{ width: `${((progress.completedSteps?.size || progress.current) / progress.total) * 100}%` }}
                       />
                     </div>
                   )}

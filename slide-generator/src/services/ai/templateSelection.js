@@ -114,8 +114,8 @@ Return ONLY the HTML wrapped in <div class="slide">...</div>. The layout MUST ma
       .trim();
 
     // If slide wrapper is missing, try to wrap the content
-    if (!content.includes('class="slide"') && !content.includes("class='slide'")) {
-      // Check if it has frame content we can wrap
+    // Match class="slide" or class="slide ..." (with extra classes like master-blank)
+    if (!/class=["']slide[\s"']/i.test(content)) {
       if (content.includes('class="frame"') || content.includes("class='frame'")) {
         content = `<div class="slide">
   <h1 class="title">[Title]</h1>
@@ -127,7 +127,6 @@ Return ONLY the HTML wrapped in <div class="slide">...</div>. The layout MUST ma
   </footer>
 </div>`;
       } else {
-        // Wrap the entire content in a basic slide structure
         content = `<div class="slide">
   <h1 class="title">[Title]</h1>
   <h2 class="subtitle">[Subtitle]</h2>
@@ -916,7 +915,9 @@ Return ONLY the filled HTML, no explanations.`;
     content = extractSingleSlide(content) || '';
 
     // If slide wrapper is missing, wrap the content properly
-    if (!content.includes('class="slide"') && !content.includes("class='slide'")) {
+    // Use regex to match class="slide" or class="slide ..." (with extra classes)
+    const hasSlideClass = (s) => /class=["']slide[\s"']/i.test(s);
+    if (!hasSlideClass(content)) {
       // Blank-master templates (section dividers etc.) use custom structure without title/subtitle/frame
       const isBlankMasterTemplate = template && (template.master === 'blank' || (template.html && template.html.includes('master-blank')));
       if (isBlankMasterTemplate) {
@@ -975,7 +976,7 @@ Return ONLY the filled HTML, no explanations.`;
     }
 
     // Final validation - this should now always pass
-    if (!content.includes('class="slide"') && !content.includes("class='slide'")) {
+    if (!hasSlideClass(content)) {
       // Last resort: force wrap
       content = `<div class="slide">
   <h1 class="title">This content was generated based on template structure</h1>
@@ -1184,8 +1185,8 @@ Return ONLY the HTML slides separated by <!-- SLIDE_SEPARATOR -->, no explanatio
     const processedSlides = slides.map((slideHtml, i) => {
       let processed = extractSingleSlide(slideHtml);
 
-      // Wrap if needed
-      if (!processed.includes('class="slide"') && !processed.includes("class='slide'")) {
+      // Wrap if needed (regex handles class="slide" and class="slide ..." with extra classes)
+      if (!/class=["']slide[\s"']/i.test(processed)) {
         const hasFrame = processed.includes('class="frame"') || processed.includes("class='frame'");
         const hasTitle = processed.includes('class="title"') || processed.includes("class='title'");
         const hasFooter = processed.includes('class="footer"') || processed.includes("class='footer'");

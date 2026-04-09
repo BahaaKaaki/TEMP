@@ -12,7 +12,7 @@ const DEFAULT_SHARED_CSS = SLIDES_CSS;
 // Model assignments are code-managed (always sourced from initialState, never
 // from localStorage) so model changes no longer require a version bump.
 // Reserve SETTINGS_VERSION for structural migrations only (new fields, format changes).
-const SETTINGS_VERSION = 11;
+const SETTINGS_VERSION = 12;
 
 // Initial state
 const initialState = {
@@ -172,6 +172,7 @@ const initialState = {
     // Freestyle prompt section overrides (empty = use code defaults from md files)
     freestyleShell: '',
     freestyleTheme: '',
+    freestyleVibe: '',
     freestyleWriting: '',
     // Branding
     footerBranding: 'Strategy&', // Footer left text (firm name | topic). E.g., "Strategy&", "PwC | Digital Transformation"
@@ -308,6 +309,12 @@ function loadState() {
         if (!parsed.settings.freestyleWriting) parsed.settings.freestyleWriting = '';
         delete parsed.settings.freestyleGuide;
         console.log('[SlideContext] Migrated freestyleGuide to freestyleShell (v10 -> v11)');
+      }
+
+      // MIGRATION v11 -> v12: add freestyleVibe field
+      if (parsed.settings && !('freestyleVibe' in parsed.settings)) {
+        parsed.settings.freestyleVibe = '';
+        console.log('[SlideContext] Added freestyleVibe field (v11 -> v12)');
       }
 
       // Model assignments are CODE-MANAGED: always sourced from initialState,
@@ -562,6 +569,7 @@ function slideReducer(state, action) {
         slides: newSlides,
         storyline: newStoryline,
         activeSlideId: newSlide.id,
+        selectedSlideIds: [newSlide.id],
       };
     }
 
@@ -638,6 +646,7 @@ function slideReducer(state, action) {
         slides: newSlides,
         storyline: newStoryline,
         activeSlideId: skipActiveChange ? state.activeSlideId : newSlide.id,
+        ...(skipActiveChange ? {} : { selectedSlideIds: [newSlide.id] }),
       };
     }
 
@@ -720,6 +729,7 @@ function slideReducer(state, action) {
         slides: updatedSlides,
         storyline: newStoryline,
         activeSlideId: newActiveId,
+        selectedSlideIds: newActiveId ? [newActiveId] : [],
       };
     }
 
@@ -911,10 +921,12 @@ function slideReducer(state, action) {
           updatedAt: new Date().toISOString(),
         };
       });
+      const firstImportedId = importedSlides[0]?.id;
       return {
         ...state,
         slides: [...state.slides, ...importedSlides],
-        activeSlideId: importedSlides[0]?.id || state.activeSlideId,
+        activeSlideId: firstImportedId || state.activeSlideId,
+        selectedSlideIds: firstImportedId ? [firstImportedId] : state.selectedSlideIds,
       };
     }
 
@@ -953,12 +965,14 @@ function slideReducer(state, action) {
     case ACTIONS.RESTORE_VERSION: {
       const version = state.deckVersions.find(v => v.id === action.payload.id);
       if (!version) return state;
+      const firstId = version.slides[0]?.id || null;
       return {
         ...state,
         slides: JSON.parse(JSON.stringify(version.slides)),
         sharedCSS: version.sharedCSS,
         deckName: version.deckName || state.deckName,
-        activeSlideId: version.slides[0]?.id || null,
+        activeSlideId: firstId,
+        selectedSlideIds: firstId ? [firstId] : [],
       };
     }
 
@@ -1430,6 +1444,7 @@ function slideReducer(state, action) {
         storylineStatus: snapshot.storylineStatus,
         skeletonMode: snapshot.skeletonMode,
         activeSlideId: snapshot.activeSlideId,
+        selectedSlideIds: snapshot.activeSlideId ? [snapshot.activeSlideId] : [],
       };
     }
 

@@ -1525,8 +1525,12 @@ export async function triageRequest(userPrompt, context, settings) {
     ? `\nATTACHED DOCUMENTS: ${attachedFiles.map(f => f.fileName || f.name || 'file').join(', ')}`
     : '';
 
+  const trimMsg = (text) => {
+    if (text.length <= 600) return text;
+    return text.slice(0, 300) + ' ... ' + text.slice(-300);
+  };
   const recentChat = chatHistory.length > 0
-    ? `\nRECENT CHAT:\n${chatHistory.map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${m.content.slice(0, 150)}`).join('\n')}\n`
+    ? `\nRECENT CHAT:\n${chatHistory.map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${trimMsg(m.content)}`).join('\n')}\n`
     : '';
 
   const userMessage = `${activeInfo}\n${deckOverview}${filesInfo}${recentChat}\n\nUSER: ${userPrompt}`;

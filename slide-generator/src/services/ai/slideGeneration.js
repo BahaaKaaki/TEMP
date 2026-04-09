@@ -369,6 +369,18 @@ Even for PRECISE content, always use CSS components (card-row, split-layout, con
 Return the slide(s) as raw HTML, separated by a blank line between each slide.`;
   }
 
+  console.groupCollapsed(
+    '[SlideGeneration] Full LLM prompt (system: %d chars, user: %d chars)',
+    activeSystemPrompt.length, userPrompt.length
+  );
+  console.groupCollapsed('System prompt (%d chars)', activeSystemPrompt.length);
+  console.log(activeSystemPrompt);
+  console.groupEnd();
+  console.groupCollapsed('User prompt (%d chars)', userPrompt.length);
+  console.log(userPrompt);
+  console.groupEnd();
+  console.groupEnd();
+
   try {
     let content;
 

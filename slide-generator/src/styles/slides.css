@@ -377,10 +377,15 @@
   color: var(--muted);
 }
 
-/* SURFACES - use --surface token */
+/* SURFACES - use --surface token
+   Exclude text-level elements (p, h1-h6, span, etc.) so that inner labels/titles
+   inside cards don't inherit the container background (prevents white-on-white). */
 .slide .card, .slide .box, .slide .panel, .slide .cell,
-.slide [class*="card"], .slide [class*="box"], .slide [class*="block"],
-.slide [class*="item"]:not(li):not(.ba-item), .slide [class*="cell"] {
+.slide [class*="card"]:not(p):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(span):not(small):not(strong):not(em):not(label),
+.slide [class*="box"]:not(p):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(span):not(small):not(strong):not(em):not(label),
+.slide [class*="block"]:not(p):not(h1):not(h2):not(h3):not(h4):not(h5):not(h6):not(span):not(small):not(strong):not(em):not(label),
+.slide [class*="item"]:not(li):not(.ba-item):not(p):not(span):not(small):not(strong):not(em):not(label),
+.slide [class*="cell"]:not(p):not(span):not(small):not(strong):not(em):not(label) {
   background: linear-gradient(135deg, var(--page) 0%, var(--surface) 100%);
   border-color: var(--border);
 }
@@ -414,6 +419,7 @@
 .slide [class*="highlight-badge"], .slide [class*="highlight-tag"],
 .slide [class*="highlight-label"], .slide [class*="highlight-header"],
 .slide [class*="highlight-banner"], .slide [class*="highlight-block"] {
+  background: var(--accent);
   color: var(--on-accent);
 }
 
@@ -12914,7 +12920,7 @@
 .slide[data-vibe="dark"] .value, .slide[data-dark-mode="true"] .value,
 .slide[data-vibe="dark"] .number, .slide[data-dark-mode="true"] .number,
 .slide[data-vibe="dark"] [class*="value"], .slide[data-dark-mode="true"] [class*="value"],
-.slide[data-vibe="dark"] [class*="num"], .slide[data-dark-mode="true"] [class*="num"] {
+.slide[data-vibe="dark"] [class*="-num"], .slide[data-dark-mode="true"] [class*="-num"] {
   color: var(--on-accent) !important;
 }
 
@@ -12928,7 +12934,7 @@
 /* Dark: Status colors for dark backgrounds */
 .slide[data-vibe="dark"] [class*="success"], .slide[data-dark-mode="true"] [class*="success"],
 .slide[data-vibe="dark"] [class*="positive"], .slide[data-dark-mode="true"] [class*="positive"],
-.slide[data-vibe="dark"] [class*="pro"], .slide[data-dark-mode="true"] [class*="pro"],
+.slide[data-vibe="dark"] [class*="-pro"], .slide[data-dark-mode="true"] [class*="-pro"],
 .slide[data-vibe="dark"] [class*="completed"], .slide[data-dark-mode="true"] [class*="completed"] {
   color: var(--success) !important;
 }
@@ -12942,7 +12948,7 @@
 .slide[data-vibe="dark"] [class*="danger"], .slide[data-dark-mode="true"] [class*="danger"],
 .slide[data-vibe="dark"] [class*="negative"], .slide[data-dark-mode="true"] [class*="negative"],
 .slide[data-vibe="dark"] [class*="error"], .slide[data-dark-mode="true"] [class*="error"],
-.slide[data-vibe="dark"] [class*="con"], .slide[data-dark-mode="true"] [class*="con"] {
+.slide[data-vibe="dark"] [class*="-con"], .slide[data-dark-mode="true"] [class*="-con"] {
   color: var(--danger) !important;
 }
 

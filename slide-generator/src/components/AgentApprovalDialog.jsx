@@ -196,7 +196,7 @@ export default function AgentApprovalDialog({
   const customSystemPrompt = settings?.systemPrompt;
   const planningGuidelines = getAgentPlanningGuidelines();
   const executionGuidelines = customSystemPrompt || DEFAULT_SYSTEM_PROMPT;
-  const freestyleGuide = buildFreestyleSystemPrompt(settings || {});
+  const freestyleGuide = isOpen ? buildFreestyleSystemPrompt(settings || {}) : '';
 
   // Use context strategy from plan if available
   const contextStrategy = plan?.contextStrategy;

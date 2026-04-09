@@ -435,7 +435,7 @@ export default function SlidePreview({ onSwitchToCode }) {
     if (slideRef.current && activeSlide) {
       // Ensure HTML is wrapped in a .slide div
       let html = activeSlide.html || '';
-      if (!html.includes('class="slide"') && !html.includes("class='slide'")) {
+      if (!/class=["']slide[\s"']/i.test(html)) {
         html = `<div class="slide">${html}</div>`;
       }
       // Ensure section-divider and separator slides have the blank master class
@@ -841,8 +841,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         newHtml = newHtml.replace(/\s*data-vibe="[^"]*"/g, '');
 
         // Ensure the slide wrapper is preserved
-        if (!newHtml.includes('class="slide"') && !newHtml.includes("class='slide'")) {
-          // Content lost its wrapper, re-wrap it
+        if (!/class=["']slide[\s"']/i.test(newHtml)) {
           newHtml = `<div class="slide">${newHtml}</div>`;
         }
 

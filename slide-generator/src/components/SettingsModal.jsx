@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { DEFAULT_SYSTEM_PROMPT, setApiMaxConcurrent } from '../services/aiService';
-import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_WRITING } from '../services/ai/freestylePromptBuilder.js';
+import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING } from '../services/ai/freestylePromptBuilder.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage } from '../services/pptxTemplateService';
 
@@ -1452,9 +1452,10 @@ export default function SettingsModal({ onClose }) {
   // ═══════════════════════════════════════════════════════════════════════════
   const renderPrompts = () => {
     const promptSections = [
-      { key: 'freestyleShell',   label: 'Shell (Layout & Structure)',  defaultVal: DEFAULT_SHELL,   desc: 'Canvas skeleton, CSS scoping rules, layout archetypes, design principles, anti-patterns.' },
-      { key: 'freestyleTheme',   label: 'Theme (Design Tokens)',      defaultVal: DEFAULT_THEME,   desc: 'Color tokens, font families, size ranges, contrast rules.' },
-      { key: 'freestyleWriting', label: 'Writing Profile',            defaultVal: DEFAULT_WRITING, desc: 'Title style, subtitle style, text density, content fidelity rules.' },
+      { key: 'freestyleShell',   label: 'Shell (Layout & Structure)',      defaultVal: DEFAULT_SHELL,   desc: 'Canvas dimensions, HTML skeleton, output format, CSS scoping rules, class naming.' },
+      { key: 'freestyleTheme',   label: 'Theme (Colors, Fonts & Style)',   defaultVal: DEFAULT_THEME,   desc: 'Design tokens, font families, contrast rules, design principles, visual anti-patterns.' },
+      { key: 'freestyleVibe',    label: 'Vibe (Style Variation)',          defaultVal: DEFAULT_VIBE,    desc: 'Active style variation applied on top of the theme. Currently locked to default.' },
+      { key: 'freestyleWriting', label: 'Writing Profile',                 defaultVal: DEFAULT_WRITING, desc: 'Title/subtitle style, text density, layout archetypes, source citations, content anti-patterns.' },
     ];
 
     return (

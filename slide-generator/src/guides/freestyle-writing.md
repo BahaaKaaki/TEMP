@@ -2,7 +2,7 @@
 
 ## Executive writing style
 
-Write in a message-led executive style: use larger paragraph titles to state the slide's key messages, apply bold within body text to emphasize the real substance, use color strategically and sparingly to guide attention, use contrast deliberately through size, weight, fill, and tone to create clear hierarchy and make important ideas stand out instantly, and keep supporting copy concise, factual, and easy for a senior reader to grasp in seconds.
+Write in a message-led executive style: use larger paragraph titles to state the slide's key messages, apply bold within body text to emphasize the real substance, use color strategically and sparingly to guide attention, use contrast deliberately through size, weight, fill, and tone to create clear hierarchy and make important ideas stand out instantly, and keep supporting copy, factual, and easy for a senior reader to grasp in seconds.
 
 ## Content rules
 

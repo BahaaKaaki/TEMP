@@ -1311,6 +1311,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         <FullscreenModal
           slides={state.slides}
           currentSlideId={activeSlide?.id}
+          theme={state.theme}
           combinedCSS={combinedCSS}
           onClose={() => setIsFullscreen(false)}
           onNavigate={(slideId) => actions.setActiveSlide(slideId)}
@@ -1482,7 +1483,7 @@ function injectPageNumber(html, pageNumber, totalSlides) {
 }
 
 // Fullscreen Modal Component with proper scaling and navigation
-function FullscreenModal({ slides, currentSlideId, vibe, combinedCSS, onClose, onNavigate }) {
+function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, onNavigate }) {
   const [scale, setScale] = useState(1);
   const [currentIndex, setCurrentIndex] = useState(() =>
     slides.findIndex(s => s.id === currentSlideId)
@@ -1606,7 +1607,7 @@ function FullscreenModal({ slides, currentSlideId, vibe, combinedCSS, onClose, o
       }}
     >
       {/* Inject CSS */}
-      <style>{getBaseCSS() + '\n' + themeToCSS(state.theme) + '\n' + combinedCSS}</style>
+      <style>{getBaseCSS() + '\n' + themeToCSS(theme) + '\n' + combinedCSS}</style>
 
       {/* Scaled slide wrapper */}
       <div

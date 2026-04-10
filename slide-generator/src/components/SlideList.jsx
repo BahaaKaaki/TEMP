@@ -380,7 +380,7 @@ export default function SlideList() {
 
     if (template) {
       // Extract relevant CSS for this template's HTML
-      const relevantCSS = extractRelevantCSS(template.html);
+      const relevantCSS = extractRelevantCSS(template.html, template.css || '');
 
       actions.addSlide({
         title: template.title,

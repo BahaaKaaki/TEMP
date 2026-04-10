@@ -20,6 +20,20 @@ Every visual choice should serve clarity, credibility, and impact.
 5. **Consulting typography** -- insight-driven headings, not labels.
    Every h3/h4 should read like a mini-conclusion someone can scan without the body text.
 
+## Design variety
+
+Do not default to accent top borders, left rails, or repeated card caps.
+
+Vary hierarchy through shape, fill contrast, spacing, containment, typography, and selective color.
+
+Use border-based emphasis only occasionally.
+
+Prefer structured containers, section labels, bands, chips, badges, and chevrons when appropriate.
+
+The slide should feel consulting-like but not formulaic.
+
+When generating multiple slides, vary the structural pattern between slides -- do not repeat the same card grid or layout on every slide.
+
 ## Layout variety
 
 Choose layout based on content type:

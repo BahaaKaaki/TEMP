@@ -44,6 +44,10 @@ Token values are set by the active theme and adapt automatically to any brand.
 - Small labels: 10px, `var(--font-body)`, `var(--muted)`
 - Footer: 10px, `var(--font-body)`, `var(--muted)`
 
+## Contrast and readability
+
+Ensure all text remains highly readable at a glance: use strong contrast between text and background, avoid low-contrast pairings, reserve accent colors for emphasis rather than long text blocks, and always use `var(--on-accent)` for any text placed on an accent-colored background.
+
 ## Surface usage patterns
 
 - **Page background** (`var(--page)`): the slide itself -- usually white.

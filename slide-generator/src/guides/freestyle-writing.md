@@ -1,5 +1,9 @@
 # Writing Profile -- Language & Content
 
+## Executive writing style
+
+Write in a message-led executive style: use larger paragraph titles to state the slide's key messages, apply bold within body text to emphasize the real substance, use color strategically and sparingly to guide attention, use contrast deliberately through size, weight, fill, and tone to create clear hierarchy and make important ideas stand out instantly, and keep supporting copy concise, factual, and easy for a senior reader to grasp in seconds.
+
 ## Content rules
 
 1. **Titles**: h1 states a "so what" insight with a verb. Not a generic label.

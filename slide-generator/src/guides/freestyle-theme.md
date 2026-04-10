@@ -41,8 +41,8 @@ Token values are set by the active theme and adapt automatically to any brand.
 - h2.subtitle: 18px bold, `var(--font-heading)`, `var(--accent)`
 - h3/h4 section heads: 14px bold, `var(--font-heading)`
 - Body text: 12px, `var(--font-body)`
-- Small labels: 11px, `var(--font-body)`, `var(--muted)`
-- Footer: 9px, `var(--font-body)`, `var(--muted)`
+- Small labels (avoid, default to body text, use only when needed): 10px, `var(--font-body)`, `var(--muted)`
+- Footer: 10px, `var(--font-body)`, `var(--muted)`
 
 ## Contrast
 

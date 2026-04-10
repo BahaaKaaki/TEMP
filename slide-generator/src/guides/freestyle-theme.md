@@ -44,9 +44,9 @@ Token values are set by the active theme and adapt automatically to any brand.
 - Small labels: 10px, `var(--font-body)`, `var(--muted)`
 - Footer: 10px, `var(--font-body)`, `var(--muted)`
 
-## Contrast and readability
+## Contrast
 
-Ensure all text remains highly readable at a glance: use strong contrast between text and background, avoid low-contrast pairings, reserve accent colors for emphasis rather than long text blocks, and always use `var(--on-accent)` for any text placed on an accent-colored background.
+Ensure text remains easy to read through contrast. The current palette is: `var(--heading)` = near-black for headings, `var(--body)` = dark gray for body text, `var(--muted)` = medium gray for secondary text, `var(--accent)` = primary brand accent, `var(--accent-hover)` = stronger accent state, `var(--accent-soft)` = light accent tint, `var(--page)` = white page background, `var(--surface)` = light panel background, `var(--surface-alt)` = alternate light panel background, `var(--border)` = light divider/border, `var(--success)` / `var(--success-soft)` = positive signal and soft background, `var(--warning)` / `var(--warning-soft)` = caution signal and soft background, and `var(--danger)` / `var(--danger-soft)` = risk signal and soft background.
 
 ## Surface usage patterns
 

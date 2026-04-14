@@ -793,7 +793,11 @@ export function extractSingleSlide(content) {
   const slideOpenings = cleanContent.match(/<div\s+class=["']slide[^"']*["']/gi) || [];
 
   if (slideOpenings.length <= 1) {
-    // Only one or zero slides - return as is
+    // Strip any preamble text the model may have prepended before the slide div
+    const slideStart = cleanContent.search(/<div\s+class=["']slide/i);
+    if (slideStart > 0) {
+      cleanContent = cleanContent.substring(slideStart);
+    }
     return cleanContent;
   }
 

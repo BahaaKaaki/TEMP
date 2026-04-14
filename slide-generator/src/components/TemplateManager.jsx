@@ -4,6 +4,7 @@ import { SLIDE_TEMPLATES, TEMPLATE_CATEGORIES, getTemplatesByCategory, findMatch
 import { SLIDE_MASTERS, getAllSlideMasters } from '../utils/slideMasters';
 import { generateTemplate, generatePptxRendererCode, fillTemplateWithAI, extractRelevantCSS, hasAnyApiKey } from '../services/aiService';
 import { validateTemplate, quickValidate, VALIDATION_STATUS, VALIDATION_STEPS } from '../services/templateValidation';
+import { getSlidePreviewStyles } from './TemplatePicker';
 import ValidationModal from './ValidationModal';
 
 export default function TemplateManager({ onClose }) {
@@ -242,7 +243,7 @@ function TemplateCard({ template, onPreview, onEdit, onDelete, onUse, onReset })
     <div className="template-card">
       <div className="template-card-preview" onClick={onPreview}>
         <div className="template-thumbnail">
-          <TemplateThumbnail html={template.html} />
+          <TemplateThumbnail html={template.html} css={template.css} />
         </div>
         {!template.isBuiltIn && (
           <span className="template-badge">Custom</span>
@@ -296,11 +297,12 @@ function TemplateCard({ template, onPreview, onEdit, onDelete, onUse, onReset })
 }
 
 // Template Thumbnail
-function TemplateThumbnail({ html }) {
+function TemplateThumbnail({ html, css }) {
   return (
     <div className="template-thumb-wrapper">
+      <style>{getSlidePreviewStyles()}{css ? '\n' + css : ''}</style>
       <div
-        className="template-thumb-content"
+        className="template-thumb-content slide-preview-styled"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </div>

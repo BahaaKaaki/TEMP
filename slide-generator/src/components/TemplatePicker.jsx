@@ -810,7 +810,7 @@ export default function TemplatePicker({
 }
 
 // CSS styles for rendering slide previews correctly
-function getSlidePreviewStyles() {
+export function getSlidePreviewStyles() {
   return `
 .slide-preview-styled {
   background: #fff;

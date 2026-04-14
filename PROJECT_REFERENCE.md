@@ -1,7 +1,7 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-04-09
+> Last updated: 2026-04-14
 
 ---
 
@@ -240,11 +240,17 @@ When a user types a message in the chatbot:
    └── Execution: transformSlideToTemplate / fillTemplateWithAI / generateSlides / improveSlide
 
 3b. FULL ROUTER (multi-step planner)
-   ├── AI Router (aiRouteRequest) — GPT 5.4 with structured step fields
+   ├── AI Router (aiRouteRequest) — GPT 5.4 with agentic search + Structured Outputs
+   │   ├── Path A: Responses API with web_search_preview (GPT models)
+   │   │   ├── Agentic search: reasoning.effort='low', multi-query research
+   │   │   ├── Structured Outputs: text.format json_schema enforces field population
+   │   │   └── Result: searchSource='inline', facts/sources per step
+   │   ├── Path B: Pre-search + Chat Completions (non-GPT / fallback)
+   │   │   └── Result: searchSource='presearch', raw text in searchRawContext
    │   ├── Step fields: action, templateId, title, subtitle, instruction,
    │   │   facts, sources, layoutGuidance, contextSlides, contextFromStep,
    │   │   sectionTracker, subSectionTracker, searchQuery, searchGoal
-   │   ├── Returns: plan[], contextStrategy, understanding
+   │   ├── Returns: plan[], searchSource, contextStrategy, understanding
    │   └── May return: needsClarification + questions
    │
    └── Rule-based fallback (routeRequest) — pattern matching, no API call
@@ -486,9 +492,20 @@ Options: `-SkipBuild` (deploy only), `-SkipDeploy` (build only)
 ### Router Architecture
 
 Two routers operate in tandem:
+1. **AI Router** (`aiRouteRequest`): GPT 5.4 with agentic web search (`reasoning: { effort: 'low' }`) and Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Identity: "Strategy& Middle East, GCC region". Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
 2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
 
-The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `instruction`, `contextSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`.
+The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level.
+
+### Web Search Architecture
+
+Search operates at two layers:
+
+1. **Router-level agentic search** (always on): The router uses `web_search_preview` tool with `reasoning.effort: 'low'` to perform multi-query research during planning. Facts and sources are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'` to signal downstream code.
+
+2. **Per-step search** (controlled by `settings.searchEnabled` toggle): For steps with `searchQuery` + `searchGoal`, a separate `webSearch()` call runs during slide execution. The search receives `searchGoal` as `instructions` and appends already-known facts as context to avoid redundant re-searching.
+
+**Deduplication**: When `searchSource === 'inline'`, the global `buildSearchFactsBlock()` is skipped for steps that already have their own `facts[]` (avoiding 100% duplication). Steps without facts (cover, dividers) still receive the global block as a fallback.
 
 ### Batch Processing
 
@@ -567,6 +584,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 37. **PPTX Export Fix -- Chrome Recovery and Master Shape Isolation**: (a) **Chrome recovery at export time**: `loadTemplateFromStorage()` now always checks IndexedDB for chrome metadata when loading from the server (server stores binary only, not chrome). If chrome is still missing (cross-browser, cleared storage), `exportToPPTX`/`exportSingleSlideToPPTX` re-extract chrome from the template binary via new `extractChromeFromBuffer()` export. (b) **Master shape hiding**: generated slides now include `showMasterSp="0"` on the `<p:sld>` root, hiding decorative shapes (colored diamonds, "Confidential" text boxes, invisible think-cell EMFs) from the template's slide master while preserving the theme/colors. Logo and footer are injected directly into the slide's `<p:spTree>` so they remain visible. (c) **Logo extraction hardened**: EMF/WMF files filtered from logo candidates (non-renderable placeholders). Minimum area threshold (0.01 sq in) rejects sub-pixel invisible shapes. Scans multiple slide masters instead of just master 1. (d) **Layout position scoring**: replaced first-match layout selection with ranked scoring system. Layouts with explicit title+body+subtitle positions score highest. Correctly handles layouts with inherited (no explicit coordinates) positions by ranking them lower. Multiple body placeholders in custom layouts (e.g., "Content slide _ VCS") are disambiguated: largest area = main body, small placeholder between title and body = subtitle. (e) **Color mapping fix**: accent6 (typically red) now maps to `danger` instead of accent5 (which was mapping blue to danger in NEOM's theme). (f) **Footer text fallback**: if no footer text found in layout placeholders, also checks master footer placeholders. Export uses `templateData.chrome.footerText` as fallback when `settings.footerBranding` is unset.
 
 38. **Template preview CSS, logout button, AI text stripping**: (a) **TemplateManager thumbnail CSS**: `TemplateThumbnail` now injects `getSlidePreviewStyles()` + per-template `css` via `<style>` tag and applies `slide-preview-styled` class, matching TemplatePicker's preview rendering; `getSlidePreviewStyles` exported from `TemplatePicker.jsx` and imported in `TemplateManager.jsx`. (b) **Logout button visibility**: replaced `frontend-comps` `LogoutButton` (which used Tailwind classes not present in this app) with a native `<button>` using `header-action-btn header-action-btn-icon` classes and an inline SVG log-out icon, matching Settings and other header buttons. (c) **AI preamble stripping**: `extractSingleSlide` in `slideGeneration.js` now strips any text the model prepends before the `<div class="slide">` tag when exactly one slide is found, preventing raw prose from rendering above the slide in `SlidePreview`.
+
+39. **Master plan batch (12 items)**: (a) **Cover title differentiation**: router prompt now distinguishes cover titles (3-8 word noun-phrase, no verbs) from body slide titles (8-12 word insight with verb); cover correction prompt enforces noun-phrase format. (b) **Subtitle range widened**: all subtitle rules changed from "2-4 word" to "2-6 word" across `router.js`, `freestyle-writing.md`, `freestyle-slide-guide.md`, and `constants.js`. (c) **Consultant identity**: router prompt identity updated to "senior consulting partner at Strategy& Middle East, primarily serving clients across the GCC region". (d) **Stop button fix**: three bugs fixed -- `abortControllerRef` no longer nulled after abort (signal stays readable); abort checks added inside `flushCreateBatch` (between bulk/freestyle/image generation phases); `AbortSignal` threaded through `callGeminiAPI` -> `callWithModelFallback` -> `generateSlides` -> all `fetch()` calls so in-flight HTTP requests are cancelled. (e) **Settings redesign**: non-debug users see a simplified single-column modal with Template (PPTX upload), Preferences (free-text guidance), Branding (footer + agent name), and Design Style (preset picker). Debug mode shows full sidebar + all sections. (f) **User preferences**: new `userPreferences` string in settings; injected into router `contextInfo` as `USER PREFERENCES` block and into `generateSlides` user prompt; persists across sessions. (g) **Deck structure context**: `slideSummaries` now include `sectionLabel` and `subSectionLabel` from existing slides; `slideList` in router context shows section/subsection markers; storyline always passed in full (no truncation). (h) **Freestyle presets**: new `FREESTYLE_PRESETS` registry in `freestylePromptBuilder.js` with 4 presets (Strategy& Default, Minimal Clean, Bold Impact, Data-Heavy); `freestylePreset` setting selects the active preset; preset-specific vibe overrides injected into system prompt. (i) **Plan editor (storyline manager)**: SmartActionCard step controls (reorder, delete) enabled for all users (previously debug-only); title/subtitle inputs always visible on create steps; section tracker badges shown per step; instruction editing accessible via expandable details (open by default in debug mode).
 
 ---
 

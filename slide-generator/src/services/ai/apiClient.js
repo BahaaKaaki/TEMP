@@ -122,6 +122,7 @@ When the image shows a slide/presentation to recreate:
       method: 'POST',
       headers: buildGeminiHeaders(creds),
       body: JSON.stringify(requestBody),
+      ...(opts.signal ? { signal: opts.signal } : {}),
     });
 
     if (!response.ok) {
@@ -157,6 +158,7 @@ When the image shows a slide/presentation to recreate:
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
+      ...(opts.signal ? { signal: opts.signal } : {}),
     });
 
     if (!response.ok) {
@@ -208,17 +210,17 @@ export function _releaseApiSlot() {
 }
 
 // Call Gemini API with proper format (handles all providers despite the name)
-export async function callGeminiAPI(settings, systemPrompt, userPrompt) {
+export async function callGeminiAPI(settings, systemPrompt, userPrompt, opts = {}) {
   // Acquire a concurrency slot (blocks if API_MAX_CONCURRENT already in flight)
   await _acquireApiSlot();
   try {
-    return await _callGeminiAPIInner(settings, systemPrompt, userPrompt);
+    return await _callGeminiAPIInner(settings, systemPrompt, userPrompt, opts);
   } finally {
     _releaseApiSlot();
   }
 }
 
-async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
+async function _callGeminiAPIInner(settings, systemPrompt, userPrompt, opts = {}) {
   const creds = getCredentials(settings);
   const { maxTokens } = settings;
   delete settings._routerSearchGroundingDebug;
@@ -262,6 +264,7 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
           headers,
           credentials: 'same-origin',
           body: JSON.stringify(requestBody),
+          ...(opts.signal ? { signal: opts.signal } : {}),
         });
         if (!response.ok) {
           const error = await response.json().catch(() => ({}));
@@ -410,6 +413,7 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt) {
         method: 'POST',
         headers: buildGeminiHeaders(creds),
         body: JSON.stringify(body),
+        ...(opts.signal ? { signal: opts.signal } : {}),
       });
 
       if (!response.ok) {
@@ -726,9 +730,9 @@ export async function callWithModelFallback(settings, systemPrompt, userPrompt, 
   const { providerId, modelName } = parseModelRef(modelRef);
 
   try {
-    return await callGeminiAPI(settings, systemPrompt, userPrompt);
+    return await callGeminiAPI(settings, systemPrompt, userPrompt, opts);
   } catch (err) {
-    if (err.isRateLimit) throw err;
+    if (err.isRateLimit || err.name === 'AbortError') throw err;
 
     const fallbacks = getFallbackModels(settings, providerId, modelName, opts.role);
     if (fallbacks.length === 0) throw err;
@@ -740,9 +744,9 @@ export async function callWithModelFallback(settings, systemPrompt, userPrompt, 
         const ref = `${providerId}:${fallbackModel}`;
         console.log(`[ModelFallback] Trying fallback: ${ref}`);
         const fbSettings = { ...settings, model: ref };
-        return await callGeminiAPI(fbSettings, systemPrompt, userPrompt);
+        return await callGeminiAPI(fbSettings, systemPrompt, userPrompt, opts);
       } catch (fbErr) {
-        if (fbErr.isRateLimit) throw fbErr;
+        if (fbErr.isRateLimit || fbErr.name === 'AbortError') throw fbErr;
         console.warn(`[ModelFallback] "${fallbackModel}" also failed: ${fbErr.message.slice(0, 100)}`);
       }
     }

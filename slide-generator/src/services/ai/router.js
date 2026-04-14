@@ -723,8 +723,92 @@ export function currentDateString() {
   return new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
+/**
+ * JSON Schema for Structured Outputs (text.format) in the Responses API.
+ * Forces the model to populate every field -- title, subtitle, sectionTracker
+ * can no longer be silently omitted. Optional fields use nullable types.
+ */
+export function getRouterOutputSchema() {
+  const sourceObj = {
+    type: 'object',
+    properties: {
+      label: { type: 'string' },
+      url: { type: ['string', 'null'] },
+      note: { type: ['string', 'null'] },
+    },
+    required: ['label', 'url', 'note'],
+    additionalProperties: false,
+  };
+
+  const questionObj = {
+    type: 'object',
+    properties: {
+      question: { type: 'string' },
+      options: { type: 'array', items: { type: 'string' } },
+    },
+    required: ['question', 'options'],
+    additionalProperties: false,
+  };
+
+  const stepObj = {
+    type: 'object',
+    properties: {
+      action: { type: 'string' },
+      slideIndex: { type: ['integer', 'null'] },
+      templateId: { type: ['string', 'null'] },
+      position: {
+        anyOf: [
+          { type: 'string' },
+          {
+            type: 'object',
+            properties: { after_slide: { type: 'integer' } },
+            required: ['after_slide'],
+            additionalProperties: false,
+          },
+          { type: 'null' },
+        ],
+      },
+      title: { type: ['string', 'null'] },
+      subtitle: { type: ['string', 'null'] },
+      instruction: { type: 'string' },
+      facts: { anyOf: [{ type: 'array', items: { type: 'string' } }, { type: 'null' }] },
+      sources: { anyOf: [{ type: 'array', items: sourceObj }, { type: 'null' }] },
+      layoutGuidance: { type: ['string', 'null'] },
+      contextSlides: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
+      contextFromStep: { type: ['integer', 'null'] },
+      sectionTracker: { type: ['string', 'null'] },
+      subSectionTracker: { type: ['string', 'null'] },
+      searchQuery: { type: ['string', 'null'] },
+      searchGoal: { type: ['string', 'null'] },
+    },
+    required: [
+      'action', 'slideIndex', 'templateId', 'position',
+      'title', 'subtitle', 'instruction',
+      'facts', 'sources', 'layoutGuidance',
+      'contextSlides', 'contextFromStep',
+      'sectionTracker', 'subSectionTracker',
+      'searchQuery', 'searchGoal',
+    ],
+    additionalProperties: false,
+  };
+
+  return {
+    type: 'object',
+    properties: {
+      plan: { anyOf: [{ type: 'array', items: stepObj }, { type: 'null' }] },
+      questions: { anyOf: [{ type: 'array', items: questionObj }, { type: 'null' }] },
+      groups: { anyOf: [{ type: 'array', items: { type: 'array', items: { type: 'integer' } } }, { type: 'null' }] },
+      sourceSlides: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
+      needsStoryline: { type: ['boolean', 'null'] },
+      needsReplanning: { type: ['boolean', 'null'] },
+    },
+    required: ['plan', 'questions', 'groups', 'sourceSlides', 'needsStoryline', 'needsReplanning'],
+    additionalProperties: false,
+  };
+}
+
 export function getRouterSystemPrompt() {
-  return `You are an experienced consulting partner, work router, and research planner for slide presentations.
+  return `You are a senior consulting partner at Strategy& Middle East, primarily serving clients across the GCC region. You are also the work router and research planner for slide presentations.
 
 Your role is to understand the user's real request and intent, decide the right deck structure, perform or coordinate research when needed, and produce a consultant-grade execution plan.
 Think like a senior strategy partner: precise, hypothesis-led, MECE, pyramid-structured, evidence-based, narrative-driven, and practical.
@@ -738,23 +822,14 @@ TODAY: ${currentDateString()}
 
 # PRIORITY ORDER
 1. Return valid JSON matching the required schema
-2. Preserve explicit user instructions and user-authored content exactly
-3. Correctly understand the user's intent and choose the right deck structure
-4. Build a clear consultant-style storyline: answer first, then support
-5. Maintain cross-slide coherence in structure, terminology, numbers, and sources
-6. Perform router-level research when external facts are needed
-7. Choose the best-fit templates and slide sequencing
-8. Apply visual variety intelligently, not randomly
-
-# INTERNAL WORKFLOW (DO NOT OUTPUT)
-Before building the plan, think through this sequence:
-1. Understand the request and the real intent behind it
-2. Decide whether clarification is truly needed
-3. Define the governing thought or main answer the deck should convey
-4. Define the high-level story spine and section structure
-5. Decide whether an executive summary is needed
-6. Decide what research should be done centrally by the router
-7. Build the page-level plan with dependencies, facts, sources, and trackers
+2. Every create_slide step MUST have a non-empty "title" and "subtitle". Cover slides: title is a short noun-phrase deck title (3-8 words, no verbs, no full sentences — think report cover). Body slides: title is an 8-12 word business insight with a verb. Subtitle: 2-6 word noun phrase for all slides. Never leave title or subtitle empty or null.
+3. Preserve explicit user instructions and user-authored content exactly
+4. Correctly understand the user's intent and choose the right deck structure
+5. Build a clear consultant-style storyline: answer first, then support
+6. Maintain cross-slide coherence in structure, terminology, numbers, and sources
+7. Perform router-level research when external facts are needed
+8. Choose the best-fit templates and slide sequencing
+9. Apply visual variety intelligently, not randomly
 
 # WHEN TO ASK QUESTIONS
 Default behavior: build the plan.
@@ -1033,16 +1108,12 @@ YOUR JOB (router):
 - Simple template adjustments ONLY if user explicitly asked (e.g., "3 cards instead of 4")
 - Add STRUCTURAL DIRECTIVES when coherence requires it (see below)
 
-CONTENT FIDELITY — PRESERVE THE ESSENCE (CRITICAL):
-You are a ROUTER, not an editor. Your job is to SELECT templates and PASS THROUGH content — not to rewrite, paraphrase, or reinterpret the user's content.
-- NEVER change the meaning, tone, or form of the user's content. If the user provides questions, they MUST remain as questions. If the user provides bullet points, they MUST remain as bullet points. If the user provides specific phrasing, PRESERVE it.
-- WRONG: User says "What are our growth levers?" → Router rewrites to "Key growth levers" (turned question into statement)
-- RIGHT: User says "What are our growth levers?" → Router passes "What are our growth levers?" as-is in "instruction"
-- WRONG: User says "3 risks: supply chain, currency, regulation" → Router rewrites to "Three key risk categories in operations"
-- RIGHT: Pass "3 risks: supply chain, currency, regulation" as-is in "instruction"
-- When the user provides STRUCTURED CONTENT (slide-by-slide specs, numbered items, specific data), pass it through VERBATIM in the "instruction" field. Do not summarize, reorganize, or rephrase.
-- You may ADD context in "facts" and "sources" fields, but NEVER SUBTRACT or MODIFY what the user wrote in "instruction".
-- Map user-provided content into the appropriate fields: titles go in "title", explicit content goes in "instruction", supporting evidence goes in "facts".
+CONTENT FIDELITY (CRITICAL):
+You are a ROUTER, not an editor. SELECT templates and PASS THROUGH user content verbatim -- do not rewrite, paraphrase, or reinterpret.
+- Preserve the user's exact meaning, tone, and form (questions stay as questions, bullets stay as bullets, specific phrasing stays intact)
+- Structured user content (slide-by-slide specs, numbered items, data) goes VERBATIM into "instruction"
+- You may ADD context in "facts" and "sources" but NEVER subtract or modify "instruction"
+- Map content to fields: titles go in "title", body content in "instruction", evidence in "facts"
 
 EXECUTION'S JOB (step):
 - Visual structure, layout, arrangement, styling
@@ -1138,8 +1209,8 @@ Each step may include these separate fields. Do NOT merge them into one combined
 - slideIndex: (REQUIRED for edit_slide and delete_slide) 0-based index of the slide to modify. Slide 1 = 0, Slide 7 = 6.
 - templateId: which template to use
 - position: where to place the slide
-- title: the main headline — 8-12 word business insight with a verb, makes a strategic claim
-- subtitle: reinforcing sub-headline — 2-4 word noun phrase, no verbs
+- title: for cover slides — short noun-phrase deck title (3-8 words, no verbs). For body slides — 8-12 word business insight with a verb, makes a strategic claim
+- subtitle: reinforcing sub-headline — 2-6 word noun phrase, no verbs. Must differ from sectionTracker.
 - instruction: the slide body content, user-provided wording, or core directive
 - facts: array of supporting evidence, data points, or proof points needed to populate the slide
 - sources: array of backing references for externally sourced facts (each: {label, url, note})
@@ -1158,15 +1229,24 @@ Field separation rules:
 - If the user provides explicit content, preserve it exactly in "instruction"; put additional evidence in "facts"
 
 TITLES AND SUBTITLES TELL THE STORY (CRITICAL):
-Titles and subtitles must be self-sufficient and readable on their own.
+Every create_slide step MUST have both "title" and "subtitle" as non-empty strings. NEVER leave them empty, null, or omit them.
 
-If someone reads only the title and subtitle of each slide in sequence, they should understand the full story of the deck. Each slide's title and subtitle together must fully transmit that slide's message.
+Cover title: Short noun-phrase deck title (3-8 words). No verbs, no full sentences. Think report cover page (e.g. "Digital Transformation Strategy 2026", "GCC Market Entry Assessment").
+Body slide title: 8-12 word business insight with a verb. Makes a strategic claim about the slide's content.
+Subtitle (all slides): 2-6 word noun phrase. Reinforces the title with a category or framing. The subtitle must NOT duplicate the sectionTracker — they serve different purposes (subtitle = thematic framing visible on the slide; sectionTracker = navigation tab label).
+
+Titles and subtitles must be self-sufficient and readable on their own. If someone reads only the title and subtitle of each slide in sequence, they should understand the full story of the deck.
 
 - BAD: title "Market Overview", subtitle "Saudi Arabia" (labels, not a story)
+- BAD: title "", subtitle "" (empty fields — NEVER do this)
+- BAD: subtitle "4. Applications", sectionTracker "4. Applications" (duplicated — subtitle must differ from tracker)
 - GOOD: title "Demand is recovering, but growth remains concentrated in two segments", subtitle "Recovery Analysis"
-- GOOD sequence: "Iraq is a $12B untapped market" → "Three entry paths with different risk profiles" → "Phased approach minimizes risk"
+- GOOD: subtitle "Modern Applications", sectionTracker "4. Applications" (different framing, no duplication)
+- GOOD sequence: "Iraq is a $12B untapped market" -> "Three entry paths with different risk profiles" -> "Phased approach minimizes risk"
 
 When the agent provides a SLIDE TITLE in the instruction, use it as the title field. Do not replace it with a generic label.
+
+SELF-CHECK: Before returning, verify every body create_slide step has a non-empty "title" containing a business insight with a verb. Cover titles must be short noun-phrase deck titles (3-8 words, no verbs). Fix any empty or generic titles.
 
 CROSS-SLIDE COHERENCE (CRITICAL — slides are generated independently in parallel):
 Each slide is built by a separate AI call that sees ONLY its own instruction (+ any contextSlides). Slides do NOT see each other's content during generation. YOU are the only one who sees the whole picture, so YOU must ensure coherence:
@@ -1185,10 +1265,9 @@ Each slide is built by a separate AI call that sees ONLY its own instruction (+ 
 
 6. SEARCH GROUNDING — HOW IT WORKS:
 Your web search during planning gives YOU rich context for building the plan. The slide generation models that execute each step receive:
-  (a) A condensed baseline of ALL facts from your search (attached to every step automatically)
-  (b) The facts[] and sources[] you include in each step (with strong grounding instructions)
-  (c) OPTIONAL: Raw, detailed per-step search results — triggered ONLY when you set searchQuery + searchGoal
-Because the generation model sees condensed facts (not your full raw search prose), set searchQuery + searchGoal on slides that need MORE detail than your facts[] provide.
+  (a) The facts[] and sources[] you include in each step (primary grounding data)
+  (b) OPTIONAL: Raw, detailed per-step search results — triggered ONLY when you set searchQuery + searchGoal
+Because each step sees only its own facts[] (not your full search context), include ALL relevant facts for each step. Set searchQuery + searchGoal on slides that need MORE detail than your facts[] provide.
 
 SLIDE POSITIONING:
 - POSITION values: "start", "end", {"after_slide": N}, "after_previous"
@@ -1204,6 +1283,19 @@ You have a web search tool. When the user's topic requires current data, externa
 - Verify you have the NEWEST information for each entity before finalizing your plan
 - For a topic covering 3+ entities (e.g., "compare AI labs"), make at least one search per entity
 - For structural edits, reformatting, or topics where you already have sufficient knowledge, skip searching entirely
+
+SEARCH QUERY STRATEGY — CRITICAL:
+Do NOT restrict every query to site: prefixes. site: queries only match the exact domain and miss subdomains, developer portals, release notes, and changelog pages.
+
+For each entity or topic, use a TWO-PASS approach:
+  Pass 1 — Broad discovery: search WITHOUT site: restriction first (e.g., "latest xAI Grok model release 2026"). This catches developer docs, third-party coverage, and subdomains (e.g., docs.x.ai vs x.ai).
+  Pass 2 — Official verification: optionally follow up with a site-specific query if you need to verify against the official source.
+
+Additional rules:
+- Always include at least one BROAD query (no site: prefix) per major entity to catch what site-specific queries miss
+- Developer docs and API release notes often live on separate subdomains (docs.*, api.*, developer.*) — site: queries on the main domain will miss these
+- If a broad query surfaces a newer version or release than your site-specific query found, search again to verify it
+- Do NOT assume your first search found the latest — always cross-check with at least one differently-phrased query per entity
 
 ROUTER-LEVEL RESEARCH (DEFAULT APPROACH):
 When external facts, statistics, market data, named entities, timelines, current events, or benchmarks are needed, the router should research centrally first, then distribute facts to each slide.
@@ -1264,7 +1356,7 @@ RESPONSE FORMAT (JSON only):
 Example — simple request (no agent, no documents):
 {
   "plan": [
-    {"action":"create_slide","templateId":"cover","position":"start","title":"Digital transformation priorities for 2026 are now clear","subtitle":"Transformation Strategy","instruction":"Digital Transformation Strategy"},
+    {"action":"create_slide","templateId":"cover","position":"start","title":"Digital Transformation Strategy 2026","subtitle":"Transformation Priorities","instruction":"Digital Transformation Strategy"},
     {"action":"create_slide","templateId":"freestyle","position":"after_previous","title":"Three priorities will drive the majority of near-term value creation","subtitle":"Strategic Priorities","instruction":"3 priorities: 1) modernize core systems, 2) improve growth analytics, 3) automate service workflows","facts":["Core systems modernization accounts for the largest share of operational delays","Commercial teams lack consistent customer-level analytics","Service workflows remain highly manual in three high-volume processes"],"layoutGuidance":"one governing message with 3 priority areas, each supported by one proof point"},
     {"action":"create_slide","templateId":"freestyle","position":"after_previous","title":"A phased rollout minimizes risk while delivering quick wins","subtitle":"Implementation Roadmap","instruction":"Implementation roadmap: 5 key milestones for H2 2026","layoutGuidance":"5 implementation milestones with deliverables and timeline"}
   ],
@@ -1651,7 +1743,7 @@ export async function aiRouteRequest(userPrompt, context, settings) {
   // Unified router: single model for all routing (chatRouterModel kept for backward compat)
   const effectiveRouterModel = useBigModel ? bigModel
     : (settings.routerModel || settings.chatRouterModel || defaultRouterModel);
-  const effectiveReasoningEffort = settings.routerReasoningEffort || settings.chatRouterReasoningEffort || 'low';
+  const effectiveReasoningEffort = settings.routerReasoningEffort || settings.chatRouterReasoningEffort || 'medium';
   const effectiveMaxTokens = !agentMode
     ? (settings.chatRouterMaxTokens || 16384)
     : (settings.routerMaxTokens || 16384);
@@ -1690,11 +1782,14 @@ export async function aiRouteRequest(userPrompt, context, settings) {
   console.log('[Router Search]', 'Responses API inline search:', canUseResponsesAPI ? 'YES' : 'NO (fallback to pre-search)',
     { isGPTRouter, hasSearchEndpoint: !!settings.searchEndpoint, searchEnabled: effectiveSearchEnabled, agentMode });
 
-  // Build compact slide list — index, title, and template type. Mark the current slide.
+  // Build compact slide list — index, title, template, section labels. Mark the current slide.
   const slideList = slideSummaries.length > 0
     ? slideSummaries.map(s => {
         const isCurrent = s.index === currentSlideIndex;
-        let line = `  ${s.index}: "${s.title}" (${s.template || 'custom'})${isCurrent ? '  ← CURRENT SLIDE' : ''}`;
+        let line = `  ${s.index}: "${s.title}" (${s.template || 'custom'})`;
+        if (s.sectionLabel) line += ` [${s.sectionLabel}]`;
+        if (s.subSectionLabel) line += ` > ${s.subSectionLabel}`;
+        if (isCurrent) line += '  <- CURRENT SLIDE';
         if (s.pendingComments && s.pendingComments.length > 0) {
           line += ` [COMMENTS: ${s.pendingComments.join('; ')}]`;
         }
@@ -1864,7 +1959,7 @@ ${activeFlow ? `\nACTIVE FLOW: "${activeFlow.name}"
 Overall guidance: ${activeFlow.overallGuidance || 'none'}
 Sections:
 ${activeFlow.sections.map((s, i) => `  ${i + 1}. template="${s.templateHint}" | instruction="${s.instruction}"${s.isRepeatable ? ` | REPEATABLE (${s.repeatSource})` : ''}`).join('\n')}
-` : ''}${recentConversation}
+` : ''}${recentConversation}${settings.userPreferences ? `\nUSER PREFERENCES (apply to all slides unless overridden):\n${settings.userPreferences}\n` : ''}
 USER REQUEST: "${routerPrompt}"`;
 
   let routerSearchRawText = '';
@@ -1912,6 +2007,14 @@ USER REQUEST: "${routerPrompt}"`;
         input: contextInfo,
         tools: [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }],
         max_output_tokens: effectiveMaxTokens,
+        text: {
+          format: {
+            type: 'json_schema',
+            name: 'slide_plan',
+            strict: true,
+            schema: getRouterOutputSchema(),
+          },
+        },
       };
       if (effectiveReasoningEffort && effectiveReasoningEffort !== 'none') {
         responsesBody.reasoning = { effort: effectiveReasoningEffort };
@@ -1924,15 +2027,30 @@ USER REQUEST: "${routerPrompt}"`;
           settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;
       }
 
-      const resp = await fetch(responsesEndpoint, {
+      let resp = await fetch(responsesEndpoint, {
         method: 'POST', headers: responsesHeaders, body: JSON.stringify(responsesBody),
       });
 
+      // Fallback: if the proxy rejects text.format, retry without it
       if (!resp.ok) {
         const errData = await resp.json().catch(() => ({}));
         const errMsg = errData.error?.message || `Responses API error: ${resp.status}`;
-        console.warn('[Router Search] Responses API failed, falling back to Chat Completions:', errMsg);
-        throw new Error(errMsg);
+        const isFormatError = errMsg.includes('text') || errMsg.includes('format') || errMsg.includes('json_schema') || resp.status === 400;
+        if (isFormatError && responsesBody.text) {
+          console.warn('[Router Search] Structured output rejected by proxy, retrying without text.format:', errMsg);
+          delete responsesBody.text;
+          resp = await fetch(responsesEndpoint, {
+            method: 'POST', headers: responsesHeaders, body: JSON.stringify(responsesBody),
+          });
+        }
+        if (!resp.ok) {
+          const finalErr = isFormatError
+            ? await resp.json().catch(() => ({}))
+            : errData;
+          const finalMsg = finalErr.error?.message || errMsg;
+          console.warn('[Router Search] Responses API failed, falling back to Chat Completions:', finalMsg);
+          throw new Error(finalMsg);
+        }
       }
 
       const data = await resp.json();
@@ -2280,6 +2398,7 @@ USER REQUEST: "${routerPrompt}"`;
         })(),
       },
       aiRouted: true,
+      searchSource: canUseResponsesAPI ? 'inline' : 'presearch',
       // Batch continuation - if more slides are requested than max batch (5)
       remainingCount: parsed.remainingCount || 0,
       // Debug info for UI display

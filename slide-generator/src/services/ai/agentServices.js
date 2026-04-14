@@ -429,9 +429,11 @@ export async function agentChat(prompt, settings, options = {}) {
  *
  * @param {string} query - The search query
  * @param {Object} settings - API settings (must have search config)
+ * @param {Object} [options] - Optional parameters
+ * @param {string} [options.instructions] - Search goal / instructions for the search model
  * @returns {Promise<string>} The search result text
  */
-export async function webSearch(query, settings) {
+export async function webSearch(query, settings, options = {}) {
   // Check if search is enabled and configured
   if (!settings.searchEnabled) {
     console.log('[webSearch] Search is disabled');
@@ -457,6 +459,9 @@ export async function webSearch(query, settings) {
       ],
       max_output_tokens: settings.searchMaxTokens || 128000,
     };
+    if (options.instructions) {
+      requestBody.instructions = options.instructions;
+    }
 
     console.log('[webSearch] Searching:', query.substring(0, 100) + '...');
 

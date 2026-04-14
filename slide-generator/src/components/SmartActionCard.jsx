@@ -389,13 +389,14 @@ export default function SmartActionCard({
           <span className="sac-step-action-badge" style={{ background: cfg.color }}>
             {cfg.icon} {cfg.label}
           </span>
-          {debugMode && (
-            <div className="sac-step-controls">
-              <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
-              <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
-              <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
-            </div>
+          {step.sectionTracker && (
+            <span className="sac-section-badge">{step.sectionTracker}{step.subSectionTracker ? ` > ${step.subSectionTracker}` : ''}</span>
           )}
+          <div className="sac-step-controls">
+            <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
+            <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
+            <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
+          </div>
           <div className="sac-step-main">
             {isCreateAction ? (
               <>
@@ -437,24 +438,20 @@ export default function SmartActionCard({
         {/* Body: full-width fields below the header */}
         <div className="sac-step-body">
           {/* Title and subtitle from router plan */}
-          {isCreateAction && (step.title || step.subtitle) && (
+          {isCreateAction && (
             <div className="sac-step-titles">
-              {step.title && (
-                <input
-                  className="sac-step-title-input"
-                  value={step.title}
-                  onChange={(e) => updatePlanStep(i, { title: e.target.value })}
-                  placeholder="Slide title..."
-                />
-              )}
-              {step.subtitle && (
-                <input
-                  className="sac-step-subtitle-input"
-                  value={step.subtitle}
-                  onChange={(e) => updatePlanStep(i, { subtitle: e.target.value })}
-                  placeholder="Subtitle..."
-                />
-              )}
+              <input
+                className="sac-step-title-input"
+                value={step.title || ''}
+                onChange={(e) => updatePlanStep(i, { title: e.target.value })}
+                placeholder="Slide title..."
+              />
+              <input
+                className="sac-step-subtitle-input"
+                value={step.subtitle || ''}
+                onChange={(e) => updatePlanStep(i, { subtitle: e.target.value })}
+                placeholder="Subtitle..."
+              />
             </div>
           )}
 
@@ -466,8 +463,9 @@ export default function SmartActionCard({
             />
           )}
 
-          {/* Instruction text - always visible in debug, collapsed in normal mode */}
-          {debugMode ? (
+          {/* Instruction text - always editable */}
+          <details className="sac-step-instruction-details" open={debugMode || undefined}>
+            <summary className="sac-step-instruction-summary">Instructions</summary>
             <div className="sac-step-instruction-row">
               <textarea
                 className="sac-step-instruction-input"
@@ -479,22 +477,7 @@ export default function SmartActionCard({
                 onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
               />
             </div>
-          ) : (
-            <details className="sac-step-instruction-details">
-              <summary className="sac-step-instruction-summary">Edit instructions</summary>
-              <div className="sac-step-instruction-row">
-                <textarea
-                  className="sac-step-instruction-input"
-                  value={step.instruction || ''}
-                  onChange={(e) => updatePlanStep(i, { instruction: e.target.value })}
-                  placeholder="Enter instructions for this step..."
-                  rows={1}
-                  ref={(el) => { if (el) { el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; } }}
-                  onInput={(e) => { e.target.style.height = 'auto'; e.target.style.height = e.target.scrollHeight + 'px'; }}
-                />
-              </div>
-            </details>
-          )}
+          </details>
 
           {/* Source content from router (factual mode) - collapsible */}
           {step.content && (
@@ -1457,6 +1440,19 @@ export default function SmartActionCard({
           font-weight: 600;
           flex-shrink: 0;
           margin-top: 1px;
+        }
+
+        .sac-section-badge {
+          display: inline-flex;
+          align-items: center;
+          padding: 2px 8px;
+          background: #f1f5f9;
+          color: #64748b;
+          border-radius: 4px;
+          font-size: 10px;
+          font-weight: 500;
+          flex-shrink: 0;
+          border: 1px solid #e2e8f0;
         }
 
         .sac-step-header {

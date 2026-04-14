@@ -171,10 +171,13 @@ const initialState = {
     slideCreationBatchSize: 3, // Number of slides created per API call (1 = one-by-one, 3 = batch of 3)
     apiMaxConcurrent: 5, // Max simultaneous API calls (caps all paths: router, slides, agent, etc.)
     // Freestyle prompt section overrides (empty = use code defaults from md files)
+    freestylePreset: 'default',
     freestyleShell: '',
     freestyleTheme: '',
     freestyleVibe: '',
     freestyleWriting: '',
+    // User preferences -- persistent free-text guidance injected into all LLM prompts
+    userPreferences: '',
     // Branding
     footerBranding: 'Strategy&', // Footer left text (firm name | topic). E.g., "Strategy&", "PwC | Digital Transformation"
     _settingsVersion: SETTINGS_VERSION,

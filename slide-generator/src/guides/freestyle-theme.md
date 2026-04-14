@@ -44,9 +44,11 @@ Token values are set by the active theme and adapt automatically to any brand.
 - Small labels (avoid, default to body text, use only when needed): 10px, `var(--font-body)`, `var(--muted)`
 - Footer: 10px, `var(--font-body)`, `var(--muted)`
 
-## Contrast
+## Contrast (CRITICAL)
 
-Ensure text remains easy to read through contrast. The current palette is: `var(--heading)` = near-black for headings, `var(--body)` = dark gray for body text, `var(--muted)` = medium gray for secondary text, `var(--accent)` = primary brand accent, `var(--accent-hover)` = stronger accent state, `var(--accent-soft)` = light accent tint, `var(--page)` = white page background, `var(--surface)` = light panel background, `var(--surface-alt)` = alternate light panel background, `var(--border)` = light divider/border, `var(--success)` / `var(--success-soft)` = positive signal and soft background, `var(--warning)` / `var(--warning-soft)` = caution signal and soft background, and `var(--danger)` / `var(--danger-soft)` = risk signal and soft background.
+**MANDATORY**: Any element with `var(--accent)`, `var(--accent-hover)`, `var(--success)`, `var(--warning)`, or `var(--danger)` as background MUST use `var(--on-accent)` (white) or another light color for ALL text inside it. Never place `var(--heading)`, `var(--body)`, or any dark color on a dark background. This is the most common visual defect -- check every filled header, banner, badge, and card cap.
+
+The current palette: `var(--heading)` = near-black, `var(--body)` = dark gray, `var(--muted)` = medium gray, `var(--accent)` = dark maroon, `var(--accent-hover)` = dark red, `var(--accent-soft)` = light pink tint, `var(--on-accent)` = white, `var(--page)` = white, `var(--surface)` = light gray, `var(--surface-alt)` = slightly darker light gray, `var(--border)` = light divider.
 
 ## Surface usage patterns
 

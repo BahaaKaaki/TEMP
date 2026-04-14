@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { DEFAULT_SYSTEM_PROMPT, setApiMaxConcurrent } from '../services/aiService';
-import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING } from '../services/ai/freestylePromptBuilder.js';
+import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, FREESTYLE_PRESETS } from '../services/ai/freestylePromptBuilder.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage } from '../services/pptxTemplateService';
 import { extractBranding } from '../services/brandingExtractor';
@@ -1676,6 +1676,119 @@ export default function SettingsModal({ onClose }) {
     </>
   );
 
+  // ─── Simplified settings for non-debug users ──────────────────────────────
+  const renderSimplifiedSettings = () => (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {/* PPTX Template */}
+      <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Template</div>
+        <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>Upload a PowerPoint template to apply its slide masters, theme colors, and fonts.</div>
+        {pptxTemplateName ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--page, #fff)', borderRadius: 6, border: '1px solid var(--border)' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
+              <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active</div>
+            </div>
+            <button className="btn btn-ghost btn-sm" onClick={handleTemplateClear} style={{ color: '#dc3545' }}>Remove</button>
+            <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', margin: 0 }}>Replace<input type="file" accept=".pptx" onChange={handleTemplateUpload} style={{ display: 'none' }} /></label>
+          </div>
+        ) : (
+          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px', border: '2px dashed var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--meta)', fontSize: 13 }}>
+            {pptxTemplateLoading ? 'Saving...' : 'Click to upload .pptx template'}
+            <input type="file" accept=".pptx" onChange={handleTemplateUpload} style={{ display: 'none' }} disabled={pptxTemplateLoading} />
+          </label>
+        )}
+        {extractedBranding && (
+          <div style={{ marginTop: 12, padding: 14, background: 'var(--page, #fff)', borderRadius: 8, border: '1px solid var(--border)' }}>
+            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Detected Brand Theme</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+              {Object.entries(extractedBranding.theme.colors).slice(0, 12).map(([key, val]) => (
+                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
+                  <div style={{ width: 16, height: 16, borderRadius: 3, background: val, border: '1px solid var(--border)' }} />
+                  <span style={{ color: 'var(--meta)' }}>{key}</span>
+                </div>
+              ))}
+            </div>
+            {extractedBranding.theme.fonts && (
+              <div style={{ fontSize: 11, color: 'var(--meta)', marginBottom: 8 }}>
+                Fonts: {extractedBranding.theme.fonts.title} / {extractedBranding.theme.fonts.body}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="btn btn-primary btn-sm" onClick={applyExtractedTheme}>Apply Theme</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => setExtractedBranding(null)}>Dismiss</button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* User Preferences */}
+      <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Preferences</div>
+        <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>General instructions applied to every deck. The AI uses these as persistent context for planning and slide generation.</div>
+        <textarea
+          value={settings.userPreferences || ''}
+          onChange={(e) => setSettings({ ...settings, userPreferences: e.target.value })}
+          placeholder={'Examples:\n- Write in Arabic\n- Focus on Saudi Arabia and UAE markets\n- Use data-driven, chart-heavy slides\n- Keep language simple and direct'}
+          style={{
+            width: '100%', minHeight: 100, maxHeight: 200, resize: 'vertical',
+            fontSize: 12, fontFamily: 'inherit', lineHeight: 1.5,
+            padding: '10px 12px', borderRadius: 6,
+            border: '1px solid var(--border, #e2e8f0)',
+            background: 'var(--page, #fff)',
+            color: 'var(--text-primary)',
+          }}
+        />
+      </div>
+
+      {/* Branding */}
+      <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Branding</div>
+        <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>Footer text and agent name that appear on every slide.</div>
+        <div style={{ display: 'flex', gap: 12 }}>
+          <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, display: 'block' }}>Footer Text</label>
+            <input type="text" value={settings.footerBranding || 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Strategy&" style={{ fontSize: 12 }} />
+          </div>
+          <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+            <label style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, display: 'block' }}>Agent Name</label>
+            <input type="text" value={settings.agentManagerName || 'Edwin'} onChange={(e) => setSettings({ ...settings, agentManagerName: e.target.value.trim() || 'Edwin' })} placeholder="Edwin" style={{ fontSize: 12 }} />
+          </div>
+        </div>
+      </div>
+
+      {/* Design Style */}
+      <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Design Style</div>
+        <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>Controls the visual approach for generated slides. Each style adjusts layout density, typography, and emphasis.</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 10 }}>
+          {Object.values(FREESTYLE_PRESETS).map(preset => (
+            <button
+              key={preset.id}
+              onClick={() => setSettings({ ...settings, freestylePreset: preset.id })}
+              style={{
+                padding: '12px 14px',
+                borderRadius: 8,
+                border: (settings.freestylePreset || 'default') === preset.id
+                  ? '2px solid var(--accent, #8E1E1E)'
+                  : '1px solid var(--border, #e2e8f0)',
+                background: (settings.freestylePreset || 'default') === preset.id
+                  ? 'var(--accent-soft, #fdf6f6)'
+                  : 'var(--page, #fff)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                transition: 'border-color 0.15s, background 0.15s',
+              }}
+            >
+              <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 3 }}>{preset.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--meta, #888)', lineHeight: 1.3 }}>{preset.description}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+
   const SECTIONS = (() => {
     const sections = [
       { id: 'essential',   label: 'Essential',   icon: '\u25C8' },
@@ -1689,6 +1802,33 @@ export default function SettingsModal({ onClose }) {
     return sections;
   })();
 
+  // ─── Simplified modal for normal users ──────────────────────────────────────
+  if (!DEBUG_MODE) {
+    return (
+      <div className="modal-overlay" onClick={onClose}>
+        <div
+          className="modal"
+          onClick={(e) => e.stopPropagation()}
+          style={{ maxWidth: 520, width: '94%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}
+        >
+          <div className="modal-header" style={{ flexShrink: 0 }}>
+            <h2>Settings</h2>
+            <button className="modal-close" onClick={onClose}>&times;</button>
+          </div>
+          <div style={{ flex: 1, overflow: 'auto', padding: '20px 24px' }}>
+            {renderSimplifiedSettings()}
+          </div>
+          <div className="modal-footer" style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ flex: 1 }} />
+            <button className="btn btn-ghost" onClick={onClose}>Cancel</button>
+            <button className="btn btn-primary" onClick={handleSave}>Save Settings</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ─── Full debug modal with sidebar ────────────────────────────────────────
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div

@@ -7,7 +7,7 @@ Write in a message-led executive style: use larger paragraph titles to state the
 ## Content rules
 
 1. **Titles**: h1 states a "so what" insight with a verb. Not a generic label.
-2. **Subtitles**: h2 is a 2-4 word noun phrase. No verbs, no periods.
+2. **Subtitles**: h2 is a 2-6 word noun phrase. No verbs, no periods.
 3. **Text density**: Keep text concise. Bullets should be 10-20 words each. Card descriptions 15-30 words. Prefer concise phrasing over decorative verbosity.
 4. **Bold leads**: For list items, use `<strong>Bold lead (3-6 words)</strong> -- supporting detail`.
 5. **Real content**: Fill with the actual content from the user's prompt. Never use placeholder text like "Lorem ipsum" or "[Description]".

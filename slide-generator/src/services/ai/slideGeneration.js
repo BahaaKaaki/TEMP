@@ -73,6 +73,15 @@ export function validateFreestyleHTML(html, customCSS) {
     }
   }
 
+  // Check for dark-on-dark contrast violations: accent background without on-accent text
+  if (customCSS) {
+    const accentBgRe = /background\s*:\s*var\(--accent\)/gi;
+    const hasAccentBg = accentBgRe.test(customCSS);
+    if (hasAccentBg && !customCSS.includes('var(--on-accent)')) {
+      issues.push('Contrast violation: element uses var(--accent) background but text is not set to var(--on-accent). Dark text on a dark maroon background is unreadable — add color: var(--on-accent) to elements with accent backgrounds.');
+    }
+  }
+
   // Warn about bare unstyled lists (plain <ul> or <ol> without a styled wrapper)
   if (!isCover) {
     const frameMatch = html.match(/<div[^>]*class="[^"]*\bframe\b[^"]*"[^>]*>([\s\S]*?)<\/div>\s*<footer/i);
@@ -89,7 +98,7 @@ export function validateFreestyleHTML(html, customCSS) {
   return issues;
 }
 
-export async function generateSlides(prompt, settings, slideCount = 3, existingSlides = [], templateId = null, customTemplate = null, contextInfo = null) {
+export async function generateSlides(prompt, settings, slideCount = 3, existingSlides = [], templateId = null, customTemplate = null, contextInfo = null, opts = {}) {
   // Apply slideCreator role overrides if configured
   const scRole = settings.roleSettings?.slideCreator || {};
   const effectiveSettings = { ...settings };
@@ -364,7 +373,7 @@ Rules for PRECISE content:
 - Only trim content if it physically overflows the 366px frame — and even then, cut the least important parts, don't reword what remains.
 
 Even for PRECISE content, always use CSS components (card-row, split-layout, content-list, grid-2x2, etc.) rather than raw paragraphs or unstyled lists. Structure their content into the layout — each point becomes a card, a list item, a grid cell, etc.
-
+${settings.userPreferences ? `\nUSER PREFERENCES (apply unless contradicted by the specific request above):\n${settings.userPreferences}\n` : ''}
 Return the slide(s) as raw HTML, separated by a blank line between each slide.`;
   }
 
@@ -383,7 +392,7 @@ Return the slide(s) as raw HTML, separated by a blank line between each slide.`;
   try {
     let content;
 
-    content = await callWithModelFallback(settings, activeSystemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, activeSystemPrompt, userPrompt, opts);
 
     // Safety check: if AI returned JSON instead of HTML, retry once with clear instruction
     const isJsonResponse = content.trim().startsWith('{') && content.trim().endsWith('}');

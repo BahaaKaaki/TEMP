@@ -459,7 +459,6 @@ export default function AIChatbot() {
 
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      abortControllerRef.current = null;
     }
     setIsLoading(false);
     setProgress(null);
@@ -582,6 +581,8 @@ export default function AIChatbot() {
             index: idx,
             title: s.title || 'Untitled',
             template: s.templateId || s.layoutType || s.type || 'custom',
+            sectionLabel: s.sectionLabel || null,
+            subSectionLabel: s.subSectionLabel || null,
             pendingComments: pendingComments.length > 0 ? pendingComments.map(c => c.text) : undefined,
           };
         });
@@ -1914,13 +1915,15 @@ export default function AIChatbot() {
 
         const storylineSummary = buildStorylineSummary(freshState.storyline);
 
-        // Build slide summaries for AI router — lightweight: index, title, template, pending comments
+        // Build slide summaries for AI router — index, title, template, section labels, pending comments
         const slideSummaries = freshState.slides.map((s, idx) => {
           const pendingComments = (s.comments || []).filter(c => !c.addressed);
           return {
             index: idx,
             title: s.title || 'Untitled',
             template: s.templateId || s.layoutType || s.type || 'custom',
+            sectionLabel: s.sectionLabel || null,
+            subSectionLabel: s.subSectionLabel || null,
             pendingComments: pendingComments.length > 0 ? pendingComments.map(c => c.text) : undefined,
           };
         });
@@ -1960,7 +1963,7 @@ export default function AIChatbot() {
         const context = {
           slideCount: freshState.slides.length,
           currentSlideIndex: currentSlideIdx,
-          storylineSummary: triage.needsStoryline ? storylineSummary : (storylineSummary ? storylineSummary.split('\n')[0] : ''),
+          storylineSummary: storylineSummary || '',
           slideSummaries, // Array of {index, title, pendingComments}
           activeFlow: activeFlow || undefined,
           parallelBatchSize: freshState.settings?.parallelSlideGeneration || 3,
@@ -2458,12 +2461,18 @@ export default function AIChatbot() {
         }
       };
 
-      // Helper: build context string for a step, including contextSlides, contextFromStep, and content
-      // Build a grounding block from router pre-search to attach to every slide prompt.
-      // This ensures even slides without their own searchQuery (cover, dividers)
-      // get access to current factual context.
-      const buildSearchFactsBlock = () => {
+      // Build a grounding block from router pre-search to attach to slide prompts.
+      // When searchSource is 'inline' (Path A), each step already has its own
+      // facts[]/sources[] from the router's agentic search -- the global block
+      // would be 100% duplicated. Only inject the global block for:
+      //   - Path B (presearch): global raw text is genuinely different from step facts
+      //   - Path A steps WITHOUT their own facts (cover, dividers): fallback grounding
+      const searchSource = routeResult.searchSource || 'presearch';
+      const buildSearchFactsBlock = (step) => {
         if (!searchRawContext) return '';
+        if (searchSource === 'inline' && Array.isArray(step?.facts) && step.facts.length > 0) {
+          return '';
+        }
         const trimmed = trimSearchResult(searchRawContext);
         return `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n${trimmed}\n=== END KEY FACTS ===\nIMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.\n`;
       };
@@ -2471,7 +2480,6 @@ export default function AIChatbot() {
       // Only use router-set or user-set searchQuery; no auto-derivation.
       // The router (GPT 5.4 with native search) decides which steps need per-step search,
       // and the user can toggle it on/off in SmartActionCard.
-      // Global searchRawContext is still appended via buildSearchFactsBlock() to every step.
       const deriveSearchQuery = (step) => {
         if (step.searchQuery) return step.searchQuery;
         return null;
@@ -2758,24 +2766,28 @@ export default function AIChatbot() {
 
             let stepSettings = executionSettings;
             // Inject router-level search facts into every slide's prompt for grounding
-            let enrichedStepPrompt = stepPrompt + buildSearchFactsBlock();
+            let enrichedStepPrompt = stepPrompt + buildSearchFactsBlock(step);
             const effectiveSearchQuery = deriveSearchQuery(step);
             const shouldRunStepSearch = effectiveSearchQuery && settings.searchEnabled;
             if (shouldRunStepSearch) {
-              const datedQuery = `${effectiveSearchQuery} ${currentDateString()}`;
-              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${datedQuery}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
+              const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
+              const datedQuery = knownFacts
+                ? `${effectiveSearchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
+                : `${effectiveSearchQuery} ${currentDateString()}`;
+              const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
+              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${effectiveSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
               try {
-                const searchResult = await webSearch(datedQuery, settings);
+                const searchResult = await webSearch(datedQuery, settings, searchOpts);
                 if (searchResult) {
-                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
                 } else {
-                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
+                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned no results`);
                 }
               } catch (searchErr) {
                 console.warn(`[SmartAction] Step ${stepIndex}: search failed:`, searchErr.message);
-                enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
+                enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
               }
             }
 
@@ -2931,14 +2943,18 @@ export default function AIChatbot() {
             }
 
             // Inject router-level search facts (same grounding as create_slide)
-            editContext += buildSearchFactsBlock();
+            editContext += buildSearchFactsBlock(step);
 
             const editSearchQuery = deriveSearchQuery(step);
             if (editSearchQuery && settings.searchEnabled) {
-              const datedQuery = `${editSearchQuery} ${currentDateString()}`;
-              console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${datedQuery}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
+              const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
+              const datedQuery = knownFacts
+                ? `${editSearchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
+                : `${editSearchQuery} ${currentDateString()}`;
+              const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
+              console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${editSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
               try {
-                const searchResult = await webSearch(datedQuery, settings);
+                const searchResult = await webSearch(datedQuery, settings, searchOpts);
                 if (searchResult) {
                   editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] edit_slide step ${stepIndex}: search returned ${searchResult.length} chars`);
@@ -3148,6 +3164,7 @@ export default function AIChatbot() {
         // Helper: flush a batch of create_slide steps using bulk API
         const flushCreateBatch = async (batch) => {
           if (batch.length === 0) return;
+          if (abortControllerRef.current?.signal.aborted) return;
 
           // Separate image vs fixed-layout (cover, divider) vs templated vs freestyle
           const imageSlides = batch.filter(b => (b.step.templateId === 'image-full' || b.step.templateId === 'image-content') && settings.imageModel);
@@ -3186,15 +3203,17 @@ export default function AIChatbot() {
 
           // Generate freestyle slides in parallel, retry failures sequentially
           const freestyleResults = [];
-          if (freestyle.length > 0) {
+          if (freestyle.length > 0 && !abortControllerRef.current?.signal.aborted) {
             const parallelResults = await Promise.all(freestyle.map(async (b) => {
               try {
                 const freestyleBatchCtx = b.step.layoutGuidance
                   ? { layoutGuidance: b.step.layoutGuidance }
                   : null;
-                const newSlides = await generateSlides(b.enrichedPrompt, b.settings || executionSettings, 1, getFreshState().slides, null, null, freestyleBatchCtx);
+                const abortOpts = { signal: abortControllerRef.current?.signal };
+                const newSlides = await generateSlides(b.enrichedPrompt, b.settings || executionSettings, 1, getFreshState().slides, null, null, freestyleBatchCtx, abortOpts);
                 return { b, newSlides, ok: true };
               } catch (e) {
+                if (e.name === 'AbortError') return { b, newSlides: [], ok: false };
                 console.warn(`[SmartAction] Freestyle gen failed for step ${b.actualIndex}:`, e.message);
                 return { b, newSlides: [], ok: false };
               }
@@ -3208,14 +3227,16 @@ export default function AIChatbot() {
                 failed.push(r.b);
               }
             }
-            if (failed.length > 0) {
+            if (failed.length > 0 && !abortControllerRef.current?.signal.aborted) {
               console.log(`[SmartAction] Retrying ${failed.length} failed freestyle slides sequentially...`);
               for (const b of failed) {
+                if (abortControllerRef.current?.signal.aborted) break;
                 try {
                   const freestyleBatchCtx = b.step.layoutGuidance
                     ? { layoutGuidance: b.step.layoutGuidance }
                     : null;
-                  const newSlides = await generateSlides(b.enrichedPrompt, b.settings || executionSettings, 1, getFreshState().slides, null, null, freestyleBatchCtx);
+                  const retryOpts = { signal: abortControllerRef.current?.signal };
+                  const newSlides = await generateSlides(b.enrichedPrompt, b.settings || executionSettings, 1, getFreshState().slides, null, null, freestyleBatchCtx, retryOpts);
                   freestyleResults.push({ b, newSlides });
                 } catch (e) {
                   console.warn(`[SmartAction] Freestyle retry also failed for step ${b.actualIndex}:`, e.message);
@@ -3225,10 +3246,11 @@ export default function AIChatbot() {
             }
           }
 
-          // Generate image slides sequentially (one at a time — image APIs are heavy)
+          // Generate image slides sequentially (one at a time -- image APIs are heavy)
           const imageResults = [];
-          if (imageSlides.length > 0) {
+          if (imageSlides.length > 0 && !abortControllerRef.current?.signal.aborted) {
             for (const b of imageSlides) {
+              if (abortControllerRef.current?.signal.aborted) break;
               try {
                 const imageMode = b.step.templateId === 'image-full' ? 'full' : 'content';
                 const result = await generateImageSlide(b.enrichedPrompt, b.settings || executionSettings, imageMode, {
@@ -3293,7 +3315,7 @@ export default function AIChatbot() {
               if (settings.fastModel) {
                 try {
                   const contextBlock = searchRawContext ? `\nWeb search results:\n${searchRawContext.substring(0, 3000)}\n` : '';
-                  const fixPrompt = `You are a presentation cover-page editor.${contextBlock}\nThe router generated this cover slide title: "${coverTitle}"\nAnd subtitle: "${coverSubtitle}"\n\nToday's date is ${currentDateString()}.\n\nDo two things:\n1. Check if the title/subtitle contain any WRONG dates or factual errors. If so, correct them.\n2. Generate a short 2-3 word CATEGORY label that describes the topic (e.g. GEOPOLITICAL ANALYSIS, MARKET OVERVIEW, DIGITAL STRATEGY, SITUATION BRIEFING, INDUSTRY OUTLOOK). This appears as a small tag above the title.\n\nRespond in EXACTLY this JSON format (no markdown):\n{"title":"corrected title","subtitle":"corrected subtitle","category":"SHORT CATEGORY LABEL"}`;
+                  const fixPrompt = `You are a presentation cover-page editor.${contextBlock}\nThe router generated this cover slide title: "${coverTitle}"\nAnd subtitle: "${coverSubtitle}"\n\nToday's date is ${currentDateString()}.\n\nDo three things:\n1. Check if the title/subtitle contain any WRONG dates or factual errors. If so, correct them.\n2. Ensure the title is a short noun-phrase deck title (3-8 words, no verbs, no full sentences). If it reads like a body slide headline (e.g. "Lebanon's war has reopened a flashpoint"), rewrite it as a proper cover title (e.g. "Israel-Hezbollah Conflict: Renewed Escalation").\n3. Generate a short 2-3 word CATEGORY label that describes the topic (e.g. GEOPOLITICAL ANALYSIS, MARKET OVERVIEW, DIGITAL STRATEGY, SITUATION BRIEFING, INDUSTRY OUTLOOK). This appears as a small tag above the title.\n\nRespond in EXACTLY this JSON format (no markdown):\n{"title":"corrected title","subtitle":"corrected subtitle","category":"SHORT CATEGORY LABEL"}`;
                   const fastSettings = { ...settings, model: settings.fastModel, maxTokens: 250, temperature: 0.2 };
                   const fixResult = await callWithModelFallback(fastSettings, 'You fix factual errors in slide titles and generate category labels. Return only JSON.', fixPrompt, { role: 'text' });
                   const fixJson = fixResult?.match(/\{[\s\S]*\}/)?.[0];
@@ -3480,23 +3502,27 @@ export default function AIChatbot() {
 
             let batchStepSettings = executionSettings;
             // Inject router-level search facts into every slide's prompt for grounding
-            let enrichedPrompt = stepPromptLocal + buildSearchFactsBlock();
+            let enrichedPrompt = stepPromptLocal + buildSearchFactsBlock(step);
             const effectiveBatchQuery = deriveSearchQuery(step);
             const shouldRunBatchSearch = effectiveBatchQuery && settings.searchEnabled;
             if (shouldRunBatchSearch) {
-              const datedQuery = `${effectiveBatchQuery} ${currentDateString()}`;
-              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${datedQuery}"${!step.searchQuery ? ' (auto-derived)' : ''}`);
+              const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
+              const datedQuery = knownFacts
+                ? `${effectiveBatchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
+                : `${effectiveBatchQuery} ${currentDateString()}`;
+              const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
+              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${effectiveBatchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
               try {
-                const searchResult = await webSearch(datedQuery, settings);
+                const searchResult = await webSearch(datedQuery, settings, searchOpts);
                 if (searchResult) {
-                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
                 } else {
-                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
+                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
                 }
               } catch (searchErr) {
                 console.warn(`[SmartAction] Step ${actualIndex}: search failed:`, searchErr.message);
-                enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
+                enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
               }
             }
 
@@ -3603,7 +3629,7 @@ export default function AIChatbot() {
         }
 
         // Flush any remaining create batch
-        if (createBatch.length > 0) {
+        if (createBatch.length > 0 && !abortControllerRef.current?.signal.aborted) {
           console.log(`[SmartAction] Flushing final batch of ${createBatch.length} create steps`);
           await flushCreateBatch(createBatch);
         }
@@ -3631,6 +3657,8 @@ export default function AIChatbot() {
                 index: idx,
                 title: s.title || 'Untitled',
                 template: s.templateId || s.layoutType || s.type || 'custom',
+                sectionLabel: s.sectionLabel || null,
+                subSectionLabel: s.subSectionLabel || null,
                 pendingComments: pendingComments.length > 0 ? pendingComments.map(c => c.text) : undefined,
               };
             });
@@ -3750,6 +3778,8 @@ Original request: ${userPrompt}`;
             index: idx,
             title: s.title || 'Untitled',
             template: s.templateId || s.layoutType || s.type || 'custom',
+            sectionLabel: s.sectionLabel || null,
+            subSectionLabel: s.subSectionLabel || null,
             pendingComments: pendingComments.length > 0 ? pendingComments.map(c => c.text) : undefined,
           };
         });
@@ -3870,18 +3900,17 @@ Original request: ${userPrompt}`;
 
   // Cancel/Stop SmartActionCard execution
   const cancelSmartAction = () => {
-    // Abort any in-progress execution
+    // Abort any in-progress execution -- keep the ref so cooperative checks still see aborted=true
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();
-      abortControllerRef.current = null;
       console.log('[SmartAction] Execution stopped by user');
     }
     setPendingSmartAction(null);
     setExecutionStatus(null);
     setIsLoading(false);
     setProgress(null);
-    setAgentModeProgress(null); // Clear agent widget on cancel
-    actions.setHighlightedSlides([]); // Clear context highlighting
+    setAgentModeProgress(null);
+    actions.setHighlightedSlides([]);
   };
 
   // Auto-execute when agent mode sets autoExecute flag
@@ -6426,7 +6455,7 @@ Original request: ${userPrompt}`;
                     type="button"
                     className={`panel-search-toggle-btn ${state.settings.searchEnabled ? 'active' : ''}`}
                     onClick={() => actions.updateSettings({ searchEnabled: !state.settings.searchEnabled })}
-                    title={state.settings.searchEnabled ? 'Web search enabled (click to disable)' : 'Web search disabled (click to enable)'}
+                    title={state.settings.searchEnabled ? 'Per-slide web search enabled — click to disable (router always uses search for planning)' : 'Per-slide web search disabled — click to enable (router always uses search for planning)'}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <circle cx="11" cy="11" r="8" />

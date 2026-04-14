@@ -302,7 +302,7 @@ CRITICAL — INLINE STYLE RULES:
 ## SLIDE STRUCTURE (every slide MUST follow this exact wrapper — no exceptions)
 <div class="slide">
   <h1 class="title">One clear "so what" insight — 8-12 words, full sentence</h1>
-  <h2 class="subtitle">Short Label (2-4 words, noun phrase, no verbs)</h2>
+  <h2 class="subtitle">Short Label (2-6 words, noun phrase, no verbs)</h2>
   <div class="frame">
     <!-- ONE layout component here — pick from examples below -->
   </div>

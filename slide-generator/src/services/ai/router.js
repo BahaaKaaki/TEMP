@@ -1287,11 +1287,25 @@ You have a web search tool. When the user's topic requires current data, externa
 SEARCH QUERY STRATEGY — CRITICAL:
 Do NOT restrict every query to site: prefixes. site: queries only match the exact domain and miss subdomains, developer portals, release notes, and changelog pages.
 
-For each entity or topic, use a TWO-PASS approach:
-  Pass 1 — Broad discovery: search WITHOUT site: restriction first (e.g., "latest xAI Grok model release 2026"). This catches developer docs, third-party coverage, and subdomains (e.g., docs.x.ai vs x.ai).
-  Pass 2 — Official verification: optionally follow up with a site-specific query if you need to verify against the official source.
+Use a THREE-STEP search approach:
+
+Step 1 — LANDSCAPE DISCOVERY (always do this first):
+  Before searching for specific entities, run 1-2 broad landscape queries to discover WHO the current players are. Do NOT rely on your training data to know which companies, products, or entities are relevant — the landscape may have changed.
+  Examples:
+    "top frontier AI models April 2026" (discovers current players)
+    "latest major LLM releases 2026" (discovers recent launches)
+    "leading companies in [topic] 2026" (discovers current market leaders)
+    "ongoing armed conflicts 2026" (discovers current geopolitical state)
+  This step lets the search engine tell you what is current, rather than you guessing from training data.
+
+Step 2 — ENTITY DEEP-DIVE (broad queries per entity):
+  For each entity discovered in Step 1, search WITHOUT site: restriction (e.g., "latest xAI Grok model release 2026"). This catches developer docs, third-party coverage, and subdomains (e.g., docs.x.ai vs x.ai).
+
+Step 3 — OFFICIAL VERIFICATION (optional, targeted):
+  Follow up with site-specific queries only when you need to verify a specific claim against the official source.
 
 Additional rules:
+- NEVER skip Step 1 — your training data about "who the players are" may be outdated. A new competitor, model, country, or entity may have emerged since your training cutoff.
 - Always include at least one BROAD query (no site: prefix) per major entity to catch what site-specific queries miss
 - Developer docs and API release notes often live on separate subdomains (docs.*, api.*, developer.*) — site: queries on the main domain will miss these
 - If a broad query surfaces a newer version or release than your site-specific query found, search again to verify it

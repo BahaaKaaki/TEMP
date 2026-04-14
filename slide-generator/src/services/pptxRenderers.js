@@ -46,6 +46,12 @@ export function setFooterBranding(branding) {
 
 export function addFooter(slide, slideNum, totalSlides) {
   if (!slide || !slideNum) return;
+  if (_footerBranding) {
+    slide.addText(_footerBranding, {
+      x: 0.48, y: 7.05, w: 4.0, h: 0.25,
+      fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.meta, align: 'left',
+    });
+  }
   slide.addText(String(slideNum), {
     x: 11.5, y: 7.05, w: 1.3, h: 0.25,
     fontFace: 'Arial', fontSize: 10, color: COLORS.meta, align: 'right',

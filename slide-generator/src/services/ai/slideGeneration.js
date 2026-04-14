@@ -1,7 +1,6 @@
 import { SLIDE_TEMPLATES } from '../../utils/slideTemplates';
 import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
-import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
 import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
 import { CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, getWorkLevelInstructions } from './constants.js';
@@ -18,7 +17,7 @@ const _HARDCODED_COLOR_RE = /#[0-9a-f]{3,8}\b|rgb\(|rgba\(|hsl\(/gi;
 const _ALLOWED_INLINE_LAYOUT = /\b(position|top|left|right|bottom|width|height|display|float|flex|grid|transform)\s*:/i;
 const _DESIGN_TOKEN_RE = /var\(--/;
 
-const _BASE_CLASSES = new Set(['slide', 'title', 'subtitle', 'frame', 'footer', 'cover-slide', 'section-divider-slide', 'thank-you-slide', 'master-standard', 'master-blank', 'master-titleOnly', 'master-cover']);
+const _BASE_CLASSES = new Set(['slide', 'title', 'subtitle', 'frame', 'footer', 'cover-slide', 'section-divider-slide', 'thank-you-slide', 'master-standard', 'master-default', 'master-blank', 'master-titleOnly', 'master-cover', 'master-emptyPage']);
 
 export function validateFreestyleHTML(html, customCSS) {
   const issues = [];

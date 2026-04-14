@@ -10,21 +10,20 @@ export const SLIDE_MASTERS = {
     hasTitle: true,
     hasSubtitle: true,
     hasFooter: true,
-    // Layout positions (in CSS units)
     layout: {
-      titleTop: '30px',
-      titleLeft: '35px',
-      titleWidth: '890px',
-      subtitleTop: '101px',
-      subtitleLeft: '35px',
-      subtitleWidth: '890px',
-      frameTop: '137px',
-      frameLeft: '35px',
-      frameWidth: '890px',
-      frameHeight: '353px',
+      titleTop: '24px',
+      titleLeft: '28px',
+      titleWidth: '904px',
+      subtitleTop: '95px',
+      subtitleLeft: '28px',
+      subtitleWidth: '904px',
+      frameTop: '127px',
+      frameLeft: '28px',
+      frameWidth: '904px',
+      frameHeight: '366px',
       footerBottom: '14px',
-      footerLeft: '35px',
-      footerWidth: '890px',
+      footerLeft: '28px',
+      footerWidth: '904px',
     },
     // Default styling
     styles: {
@@ -50,13 +49,13 @@ export const SLIDE_MASTERS = {
     hasSubtitle: false,
     hasFooter: true,
     layout: {
-      frameTop: '35px',
-      frameLeft: '35px',
-      frameWidth: '890px',
-      frameHeight: '455px', // Larger frame since no title/subtitle
+      frameTop: '28px',
+      frameLeft: '28px',
+      frameWidth: '904px',
+      frameHeight: '468px',
       footerBottom: '14px',
-      footerLeft: '35px',
-      footerWidth: '890px',
+      footerLeft: '28px',
+      footerWidth: '904px',
     },
     styles: {
       background: '#ffffff',
@@ -75,16 +74,16 @@ export const SLIDE_MASTERS = {
     hasSubtitle: false,
     hasFooter: true,
     layout: {
-      titleTop: '30px',
-      titleLeft: '35px',
-      titleWidth: '890px',
-      frameTop: '90px',
-      frameLeft: '35px',
-      frameWidth: '890px',
-      frameHeight: '400px',
+      titleTop: '24px',
+      titleLeft: '28px',
+      titleWidth: '904px',
+      frameTop: '72px',
+      frameLeft: '28px',
+      frameWidth: '904px',
+      frameHeight: '424px',
       footerBottom: '14px',
-      footerLeft: '35px',
-      footerWidth: '890px',
+      footerLeft: '28px',
+      footerWidth: '904px',
     },
     styles: {
       background: '#ffffff',
@@ -102,13 +101,13 @@ export const SLIDE_MASTERS = {
     id: 'cover',
     name: 'Cover/Title Slide',
     description: 'Centered layout for presentation covers and section dividers',
-    hasTitle: false, // Uses custom cover elements instead
+    hasTitle: false,
     hasSubtitle: false,
-    hasFooter: false, // Covers typically don't have page numbers
+    hasFooter: false,
     layout: {
       frameTop: '140px',
-      frameLeft: '35px',
-      frameWidth: '890px',
+      frameLeft: '28px',
+      frameWidth: '904px',
       frameHeight: 'auto',
     },
     styles: {
@@ -163,10 +162,10 @@ export function getMasterCSSVariables(master, customOverrides = {}) {
     --master-footer-font: ${styles.footerFont || 'Arial, sans-serif'};
     --master-footer-size: ${styles.footerSize || '10px'};
     --master-footer-color: ${styles.footerColor || '#4A4F57'};
-    --master-frame-top: ${layout.frameTop || '137px'};
-    --master-frame-left: ${layout.frameLeft || '35px'};
-    --master-frame-width: ${layout.frameWidth || '890px'};
-    --master-frame-height: ${layout.frameHeight || '353px'};
+    --master-frame-top: ${layout.frameTop || '127px'};
+    --master-frame-left: ${layout.frameLeft || '28px'};
+    --master-frame-width: ${layout.frameWidth || '904px'};
+    --master-frame-height: ${layout.frameHeight || '366px'};
   `.trim();
 }
 

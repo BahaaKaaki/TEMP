@@ -866,12 +866,14 @@ AGENT MODE — WHAT YOU MUST NOT DO:
 - Do NOT change the order of slides
 - Do NOT invent new sectionTracker names — copy from [TRACKER] tags verbatim
 - Do NOT add subSectionTracker unless [SUB_TRACKER] is present on that slide
-
-SECTION DIVIDERS:
-- Only include sectionDivider slides when a section has 5 or more body slides.
-- Small sections (fewer than 5 slides) do NOT need a divider — the sectionTracker label is enough.
-- Exception: if the user explicitly asks for section separators/dividers, include them regardless of section size.
-
+` +
+/* SECTION DIVIDERS (agent mode) — commented out
+'SECTION DIVIDERS:\n' +
+'- Only include sectionDivider slides when a section has 5 or more body slides.\n' +
+'- Small sections (fewer than 5 slides) do NOT need a divider — the sectionTracker label is enough.\n' +
+'- Exception: if the user explicitly asks for section separators/dividers, include them regardless of section size.\n' +
+*/
+`
 Do NOT try to write detailed instructions — the system injects the full curated content automatically.
 Keep step instructions minimal: just the Key Message + Data Points if present.
 
@@ -1111,14 +1113,17 @@ DECK STRUCTURE & STORYTELLING (think like a senior consulting partner):
 - PYRAMIDAL STRUCTURE: Lead with the answer/governing thought. The structure after the cover depends on the REQUEST — do NOT default to a proposal format. Match the deck structure to what the user actually asked for.
 - FOR LARGE DECKS (7+ slides or when SECTION TRACKERS are provided): Cover → [optional Executive Summary (ONE slide, 2-5 key themes, template: executiveSummary)] → Body Slides → Wrap-up. IMPORTANT: If the prompt already contains an executive summary, table of contents, deck overview, section preview, or any tracking/overview slide, do NOT add another — just pick the right template for the existing one. When the prompt says the slide list is complete, add ONLY the cover and pick templates — no new slides of any kind. In AGENT MODE, NEVER add an executive summary — the agent's slide list is final.
 - FOR SMALL DECKS (≤6 slides or when NO section trackers are provided): Cover → Content Slides → Closing. No executive summary — go straight to content.
-- SECTION DIVIDERS (templateId "sectionDivider"):
-  - Only add a sectionDivider slide when a section contains 5 or more body slides. Smaller sections do NOT need a divider — the sectionTracker label is sufficient.
-  - Place each sectionDivider IMMEDIATELY BEFORE the first body slide of its section (after the previous section's last slide).
-  - There must be exactly ONE sectionDivider per qualifying section — never duplicate, never omit for qualifying sections.
-  - The sectionDivider instruction should contain the section name matching the sectionTracker label (e.g. "2. Financials").
-  - Do NOT add sectionDividers for the first section if it directly follows an executive summary (the exec summary already introduces it).
-  - Exception: if the user explicitly asks for section separators/dividers, include them for all sections regardless of size.
-- PARENT-CHILD GROUPING: When there are N key points (e.g., 3 pillars, 4 strategies), create a summary/overview slide FIRST that names all N, then one detail slide per point. The overview slide is the "parent" and the detail slides are its "children".
+` +
+/* SECTION DIVIDERS (deck structure) — commented out
+'- SECTION DIVIDERS (templateId "sectionDivider"):\n' +
+'  - Only add a sectionDivider slide when a section contains 5 or more body slides. Smaller sections do NOT need a divider — the sectionTracker label is sufficient.\n' +
+'  - Place each sectionDivider IMMEDIATELY BEFORE the first body slide of its section (after the previous section\'s last slide).\n' +
+'  - There must be exactly ONE sectionDivider per qualifying section — never duplicate, never omit for qualifying sections.\n' +
+'  - The sectionDivider instruction should contain the section name matching the sectionTracker label (e.g. "2. Financials").\n' +
+'  - Do NOT add sectionDividers for the first section if it directly follows an executive summary (the exec summary already introduces it).\n' +
+'  - Exception: if the user explicitly asks for section separators/dividers, include them for all sections regardless of size.\n' +
+*/
+`- PARENT-CHILD GROUPING: When there are N key points (e.g., 3 pillars, 4 strategies), create a summary/overview slide FIRST that names all N, then one detail slide per point. The overview slide is the "parent" and the detail slides are its "children".
   Example: "3 Growth Pillars" overview slide → Pillar 1 detail → Pillar 2 detail → Pillar 3 detail
 - ONE MESSAGE PER SLIDE: Never crowd a slide with multiple themes. Each slide makes exactly one point. If content is too dense, split into multiple slides.
 - FLOW: Every slide must logically connect to the next. No orphan slides. The reader should feel a seamless narrative arc tailored to the topic.

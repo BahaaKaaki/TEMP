@@ -5,7 +5,7 @@ import { transformElementToWidget, hasAnyApiKey } from '../services/aiService';
 import { exportSingleSlideToPPTX, testPPTXCodeGeneration } from '../services/pptxService';
 import { exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
-import { getVibeCSS, getVibePromptContext, VIBE_AWARE_CSS } from '../utils/vibes';
+import { themeToCSS } from '../utils/themeUtils';
 import CommentPanel from './CommentPanel';
 
 const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -134,11 +134,9 @@ export default function SlidePreview({ onSwitchToCode }) {
         nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
         version: 1,
       });
-      // Include vibe in settings for PPTX export styling
-      const settingsWithVibe = { ...state.settings, vibe: state.vibe };
-      // Pass custom templates so single slide export can find pptxRendererCode
       const allTemplates = state.customTemplates || [];
-      await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, settingsWithVibe, null, allTemplates);
+      const pptxSettings = { ...state.settings, theme: state.theme, customTemplates: allTemplates };
+      await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, pptxSettings);
     } catch (err) {
       console.error('Failed to download PPTX:', err);
     } finally {
@@ -157,7 +155,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
         version: 1,
       });
-      await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename);
+      await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename, null, state.theme);
     } catch (err) {
       console.error('Failed to download PDF:', err);
     } finally {
@@ -171,9 +169,8 @@ export default function SlidePreview({ onSwitchToCode }) {
     setPptxTestResult(null);
     try {
       const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
-      // Include vibe in settings for PPTX code generation
-      const settingsWithVibe = { ...state.settings, vibe: state.vibe };
-      const result = await testPPTXCodeGeneration(activeSlide, slideIndex + 1, state.slides.length, settingsWithVibe);
+      const pptxTestSettings = { ...state.settings, theme: state.theme };
+      const result = await testPPTXCodeGeneration(activeSlide, slideIndex + 1, state.slides.length, pptxTestSettings);
       setPptxTestResult(result);
       setShowPPTXTest(true);
     } catch (err) {
@@ -298,9 +295,6 @@ export default function SlidePreview({ onSwitchToCode }) {
     const target = contextMenu.targetElement;
     const widgetHtml = widget.html;
 
-    // Get the vibe hint for GPT
-    const vibeHint = getVibePromptContext(state.vibe);
-
     if (contextMenu.insertMode === 'append') {
       // Append widget to the slide (no GPT transformation for append)
       target.insertAdjacentHTML('beforeend', widgetHtml);
@@ -318,7 +312,7 @@ export default function SlidePreview({ onSwitchToCode }) {
               originalContent,
               widgetHtml,
               state.settings,
-              vibeHint
+              ''
             );
             target.outerHTML = transformedHtml;
           } catch (err) {
@@ -347,7 +341,7 @@ export default function SlidePreview({ onSwitchToCode }) {
     }, 50);
 
     handleCloseContextMenu();
-  }, [contextMenu.targetElement, contextMenu.insertMode, activeSlide, actions, handleCloseContextMenu, state.settings, state.vibe]);
+  }, [contextMenu.targetElement, contextMenu.insertMode, activeSlide, actions, handleCloseContextMenu, state.settings]);
 
   // Close context menu when clicking outside
   useEffect(() => {
@@ -398,38 +392,6 @@ export default function SlidePreview({ onSwitchToCode }) {
     return '';
   }, [activeSlide?.customCSS, activeSlide?.id]);
 
-  // Inject data-vibe and data-dark-mode attributes into slide HTML for CSS styling
-  const injectVibeAttribute = useCallback((html, vibe, darkMode) => {
-    // Remove existing data-vibe and data-dark-mode first (handle both quote types)
-    let cleanHtml = html.replace(/\s*data-vibe=["'][^"']*["']/g, '');
-    cleanHtml = cleanHtml.replace(/\s*data-dark-mode=["'][^"']*["']/g, '');
-
-    // Build attributes string
-    let attrs = '';
-    if (vibe && vibe !== 'default') {
-      attrs += ` data-vibe="${vibe}"`;
-    }
-    if (darkMode) {
-      attrs += ` data-dark-mode="true"`;
-    }
-
-    if (!attrs) return cleanHtml;
-
-    // Handle both double and single quotes in class attribute
-    let result = cleanHtml.replace(
-      /class="slide([^"]*)"/,
-      `class="slide$1"${attrs}`
-    );
-    // If no replacement was made (single quotes), try single quotes
-    if (result === cleanHtml) {
-      result = cleanHtml.replace(
-        /class='slide([^']*)'/,
-        `class='slide$1'${attrs}`
-      );
-    }
-    return result;
-  }, []);
-
   // Set up the slide HTML when activeSlide changes
   useEffect(() => {
     if (slideRef.current && activeSlide) {
@@ -442,8 +404,6 @@ export default function SlidePreview({ onSwitchToCode }) {
       if ((html.includes('section-divider-slide') || html.includes('separator-slide')) && !html.includes('master-blank')) {
         html = html.replace(/class="slide([^"]*)"/, 'class="slide master-blank$1"');
       }
-      // Inject vibe attribute for CSS styling
-      html = injectVibeAttribute(html, state.vibe, state.darkMode);
       // Strip footer from cover/thank-you slides to avoid duplicate branding
       if (html.includes('cover-slide') || html.includes('cover-branding')) {
         html = html.replace(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/gi, '');
@@ -483,38 +443,26 @@ export default function SlidePreview({ onSwitchToCode }) {
         makeEditable(slideRef.current);
       }
     }
-  }, [activeSlide?.id, activeSlide?.html, isEditMode, state.vibe, state.darkMode, state.slides, injectVibeAttribute]);
+  }, [activeSlide?.id, activeSlide?.html, isEditMode, state.darkMode, state.slides]);
 
-  // Update data-vibe and data-dark-mode attributes when vibe/darkMode changes
-  // This runs as a safety measure after innerHTML injection to ensure attributes are set
+  // Update dark-mode and section-tracker attributes on the slide DOM element
   useEffect(() => {
     if (slideRef.current) {
-      // Use requestAnimationFrame to ensure DOM is updated after innerHTML change
       requestAnimationFrame(() => {
         const slideEl = slideRef.current?.querySelector('.slide');
         if (slideEl) {
-          // Handle vibe attribute
-          if (state.vibe === 'default' || !state.vibe) {
-            slideEl.removeAttribute('data-vibe');
-          } else {
-            slideEl.setAttribute('data-vibe', state.vibe);
-          }
-          // Handle dark mode attribute
           if (state.darkMode) {
             slideEl.setAttribute('data-dark-mode', 'true');
           } else {
             slideEl.removeAttribute('data-dark-mode');
           }
-          // Handle section tracker attribute
           if (activeSlide?.sectionLabel) {
             slideEl.setAttribute('data-section', activeSlide.sectionLabel);
           } else {
             slideEl.removeAttribute('data-section');
           }
-          // Handle sub-section tracker attribute
           if (activeSlide?.subSectionLabel) {
             slideEl.setAttribute('data-subsection', activeSlide.subSectionLabel);
-            // Set tracker offset CSS variable so sub-tracker sits next to main tracker
             if (activeSlide.sectionLabel) {
               const offset = Math.round(activeSlide.sectionLabel.length * 5.7 + 28);
               slideEl.style.setProperty('--tracker-offset', `${offset}px`);
@@ -526,7 +474,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         }
       });
     }
-  }, [state.vibe, state.darkMode, activeSlide?.sectionLabel, activeSlide?.subSectionLabel]);
+  }, [state.darkMode, activeSlide?.sectionLabel, activeSlide?.subSectionLabel]);
 
   // Make all text elements editable
   const makeEditable = (container) => {
@@ -837,9 +785,6 @@ export default function SlidePreview({ onSwitchToCode }) {
         // Clean up contenteditable artifacts
         newHtml = cleanupEditableHtml(newHtml);
 
-        // Strip data-vibe attribute before saving (vibe is applied at render time)
-        newHtml = newHtml.replace(/\s*data-vibe="[^"]*"/g, '');
-
         // Ensure the slide wrapper is preserved
         if (!/class=["']slide[\s"']/i.test(newHtml)) {
           newHtml = `<div class="slide">${newHtml}</div>`;
@@ -923,7 +868,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         </button>
 
         {/* Inject CSS */}
-        <style>{getBaseCSS() + '\n' + combinedCSS + '\n' + getEditModeCSS(isEditMode) + '\n' + getVisualEditModeCSS(isVisualEditMode) + '\n' + VIBE_AWARE_CSS + '\n:root { ' + getVibeCSS(state.vibe) + ' }'}</style>
+        <style>{getBaseCSS() + '\n' + themeToCSS(state.theme) + '\n' + combinedCSS + '\n' + getEditModeCSS(isEditMode) + '\n' + getVisualEditModeCSS(isVisualEditMode)}</style>
 
         {/* Zoomable slide container */}
         <div
@@ -1366,7 +1311,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         <FullscreenModal
           slides={state.slides}
           currentSlideId={activeSlide?.id}
-          vibe={state.vibe}
+          theme={state.theme}
           combinedCSS={combinedCSS}
           onClose={() => setIsFullscreen(false)}
           onNavigate={(slideId) => actions.setActiveSlide(slideId)}
@@ -1500,15 +1445,6 @@ export function getBaseCSS() {
 `;
 }
 
-// Inject data-vibe attribute into slide HTML
-function injectVibeToHtml(html, vibe) {
-  if (!vibe || vibe === 'default' || !html) return html;
-  const cleanHtml = html.replace(/\s*data-vibe="[^"]*"/g, '');
-  return cleanHtml.replace(
-    /class="slide([^"]*)"(?!\s*data-vibe)/,
-    `class="slide$1" data-vibe="${vibe}"`
-  );
-}
 
 // Inject data-section attribute for section tracker tab
 function injectSectionToHtml(html, sectionLabel) {
@@ -1547,14 +1483,14 @@ function injectPageNumber(html, pageNumber, totalSlides) {
 }
 
 // Fullscreen Modal Component with proper scaling and navigation
-function FullscreenModal({ slides, currentSlideId, vibe, combinedCSS, onClose, onNavigate }) {
+function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, onNavigate }) {
   const [scale, setScale] = useState(1);
   const [currentIndex, setCurrentIndex] = useState(() =>
     slides.findIndex(s => s.id === currentSlideId)
   );
 
   const currentSlide = slides[currentIndex];
-  let slideHtml = injectVibeToHtml(currentSlide?.html, vibe);
+  let slideHtml = currentSlide?.html || '';
   // Strip footer from cover slides to avoid duplicate branding
   if (slideHtml && (slideHtml.includes('cover-slide') || slideHtml.includes('cover-branding'))) {
     slideHtml = slideHtml.replace(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/gi, '');
@@ -1671,7 +1607,7 @@ function FullscreenModal({ slides, currentSlideId, vibe, combinedCSS, onClose, o
       }}
     >
       {/* Inject CSS */}
-      <style>{getBaseCSS() + '\n' + combinedCSS + '\n' + VIBE_AWARE_CSS + '\n:root { ' + getVibeCSS(vibe) + ' }'}</style>
+      <style>{getBaseCSS() + '\n' + themeToCSS(theme) + '\n' + combinedCSS}</style>
 
       {/* Scaled slide wrapper */}
       <div

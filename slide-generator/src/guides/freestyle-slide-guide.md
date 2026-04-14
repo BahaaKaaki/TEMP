@@ -81,6 +81,20 @@ Return **only** a `<style>` block followed by the slide HTML. Do not add explana
 9. **No bare selectors.** Do not use unscoped element selectors like `h3`, `p`, `span`, `div`. Every selector must be scoped under a custom class within `.slide .frame`.
 10. **No global definitions.** Do not define or modify `:root`, `body`, `.slide`, `.title`, `.subtitle`, `.frame`, `.footer`, or any unscoped element selector.
 
+## Masters
+
+The outer `.slide` element can carry a master class. Use only these:
+
+| Master | When to use |
+|--------|-------------|
+| *(none)* / `master-standard` | Default. Title + subtitle + frame + footer visible. |
+| `master-titleOnly` | No subtitle needed. |
+| `master-blank` | No title or subtitle -- frame fills the slide. |
+| `master-cover` | **Slide 1 only** -- the title/cover page. Hides title, subtitle, footer. Uses `.cover-category`, `.cover-title`, `.cover-branding`, `.cover-date`. |
+| `master-emptyPage` | Full 960x540 canvas, no chrome at all. |
+
+**Never use `master-cover` for executive summaries, agenda slides, or any slide after slide 1.** Those should use `master-standard` with the title and subtitle visible.
+
 ## Layout archetypes
 
 Pick the archetype that best fits the content, then adapt it. These are starting points, not rigid templates -- combine and modify freely.

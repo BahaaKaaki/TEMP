@@ -1,189 +1,94 @@
 import { debugLog, LogLevel } from '../../utils/debugLog';
-import FULL_SLIDE_CSS from '../../styles/slides.css?raw';
+import SHELL_CSS from '../../styles/slides.css?raw';
+import { DEFAULT_THEME } from '../../utils/themeUtils';
 
-// Extract relevant CSS rules for a given HTML string
-// Uses FULL_SLIDE_CSS imported from slides.css (2700+ lines, 229 classes)
-export function extractRelevantCSS(html) {
-  if (!html || !FULL_SLIDE_CSS) {
-    debugLog(LogLevel.WARN, 'extractRelevantCSS', 'Missing html or FULL_SLIDE_CSS', {
-      hasHtml: !!html,
-      hasCss: !!FULL_SLIDE_CSS,
-      cssLength: FULL_SLIDE_CSS?.length || 0
-    });
-    return '';
+/**
+ * Extract relevant CSS for an LLM editing context.
+ *
+ * With the minimal shell-only slides.css, the slide's own customCSS is now
+ * the primary source of layout rules. This function returns:
+ *   1. The slide's customCSS (where all layout/component styles live)
+ *   2. A small shell excerpt from slides.css (base .slide vars and rules)
+ *
+ * @param {string} html - The slide's HTML
+ * @param {string} [customCSS=''] - The slide's per-slide custom CSS
+ */
+export function extractRelevantCSS(html, customCSS = '') {
+  const parts = [];
+
+  if (customCSS && customCSS.trim()) {
+    parts.push('/* === Slide Custom CSS === */');
+    parts.push(customCSS.trim());
   }
 
-  // Base classes that are handled separately - don't include in matching
-  // These match too broadly since most CSS rules contain ".slide"
-  const baseClasses = new Set([
-    'slide', 'master-standard', 'master-blank', 'master-cover',
-    'master-titleOnly', 'master-emptyPage', 'master-content'
-  ]);
-
-  // Find all class names used in the HTML
-  const classMatches = html.match(/class="([^"]+)"/g) || [];
-  const usedClasses = new Set();
-
-  classMatches.forEach(match => {
-    const classes = match.replace('class="', '').replace('"', '').split(/\s+/);
-    classes.forEach(cls => {
-      const trimmed = cls.trim();
-      // Skip base classes - they're handled separately in isRelevantSelector
-      if (trimmed && !baseClasses.has(trimmed)) {
-        usedClasses.add(trimmed);
-      }
-    });
-  });
-
-  // Also find HTML elements used (for element-level CSS like h1, h2, p, li, etc.)
-  const elementMatches = html.match(/<(\w+)[\s>]/g) || [];
-  const usedElements = new Set();
-  elementMatches.forEach(match => {
-    const el = match.replace(/</, '').replace(/[\s>]/, '').toLowerCase();
-    if (el && !['div', 'span'].includes(el)) usedElements.add(el);
-  });
-
-  debugLog(LogLevel.DEBUG, 'extractRelevantCSS', `Found ${usedClasses.size} classes, ${usedElements.size} elements in HTML`, {
-    classes: Array.from(usedClasses).slice(0, 20),
-    elements: Array.from(usedElements)
-  });
-
-  // Note: Don't return early if usedClasses is empty - we still want base rules like :root and .slide
-
-  // Build regex patterns for the classes
-  const relevantRules = [];
-  const cssLines = FULL_SLIDE_CSS.split('\n');
-  let inRule = false;
-  let currentRule = '';
-  let braceCount = 0;
-
-  // Helper to check if a selector line matches our used classes/elements
-  const isRelevantSelector = (line) => {
-    // Always include :root (CSS variables)
-    if (line.includes(':root')) return true;
-
-    // Include base .slide rule (exact match for the container)
-    if (/^\.slide\s*\{/.test(line.trim())) return true;
-
-    // Include .slide * rules (global rules for slide children)
-    if (/^\.slide\s+\*/.test(line.trim())) return true;
-
-    // Check if selector matches any of our used classes
-    for (const cls of usedClasses) {
-      // Match .classname or .slide .classname or .slide.classname
-      if (line.includes(`.${cls}`) &&
-          (line.includes(`.${cls} `) || line.includes(`.${cls},`) ||
-           line.includes(`.${cls}{`) || line.includes(`.${cls}:`) ||
-           line.includes(`.${cls})`))) {
-        return true;
-      }
-      // Also check for exact class at end of selector
-      if (line.includes(`.${cls}`) && (
-          line.endsWith(`.${cls} {`) || line.endsWith(`.${cls}{`) ||
-          line.includes(`.${cls} `) || line.includes(`.${cls},`))) {
-        return true;
-      }
-    }
-
-    // Check for element selectors within .slide context
-    for (const el of usedElements) {
-      // Match .slide h1, .slide p, etc.
-      if (new RegExp(`\\.slide\\s+${el}[\\s,:{]`).test(line)) return true;
-      // Match .classname h1, etc. where classname is used
-      for (const cls of usedClasses) {
-        if (new RegExp(`\\.${cls}\\s+${el}[\\s,:{]`).test(line)) return true;
-      }
-    }
-
-    return false;
-  };
-
-  for (const line of cssLines) {
-    if (!inRule) {
-      if (isRelevantSelector(line) && line.includes('{')) {
-        inRule = true;
-        currentRule = line;
-        braceCount = (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
-        if (braceCount <= 0) {
-          relevantRules.push(currentRule);
-          inRule = false;
-          currentRule = '';
-        }
-      }
-    } else {
-      currentRule += '\n' + line;
-      braceCount += (line.match(/{/g) || []).length - (line.match(/}/g) || []).length;
-      if (braceCount <= 0) {
-        relevantRules.push(currentRule);
-        inRule = false;
-        currentRule = '';
-      }
-    }
+  if (SHELL_CSS) {
+    parts.push('/* === Shell CSS (base variables and structure) === */');
+    parts.push(SHELL_CSS.trim());
   }
 
-  // Deduplicate rules (same selector might appear multiple times)
-  const uniqueRules = [];
-  const seenSelectors = new Set();
-
-  for (const rule of relevantRules) {
-    // Extract selector (everything before first {)
-    const selectorMatch = rule.match(/^([^{]+)\{/);
-    if (selectorMatch) {
-      const selector = selectorMatch[1].trim();
-      if (!seenSelectors.has(selector)) {
-        seenSelectors.add(selector);
-        uniqueRules.push(rule);
-      }
-    } else {
-      uniqueRules.push(rule);
-    }
-  }
-
-  const result = uniqueRules.join('\n\n');
-  debugLog(LogLevel.DEBUG, 'extractRelevantCSS', `Extracted ${uniqueRules.length} unique CSS rules (${result.length} chars) from ${relevantRules.length} total`, {
-    sampleClasses: Array.from(usedClasses).filter(c => c.includes('swot')),
-    hasSWOT: result.includes('swot')
+  const result = parts.join('\n\n');
+  debugLog(LogLevel.DEBUG, 'extractRelevantCSS', 'Built CSS context for LLM edit', {
+    customCSSLength: customCSS?.length || 0,
+    shellCSSLength: SHELL_CSS?.length || 0,
+    totalLength: result.length,
   });
 
   return result;
 }
 
-// Parse CSS custom property definitions from the full slides.css
-function parseCSSVariables(vibe = 'default', darkMode = false) {
-  if (!FULL_SLIDE_CSS) return {};
+// Parse CSS custom property definitions from the shell CSS
+function parseShellVariables() {
+  if (!SHELL_CSS) return {};
   const vars = {};
 
-  const vibePattern = darkMode
-    ? /\[data-dark-mode="true"\]\s*\{([^}]+)\}/g
-    : /\.slide\s*\{([^}]+)\}/;
-
-  const vibeBlock = vibe && vibe !== 'default'
-    ? new RegExp(`\\[data-vibe="${vibe}"\\]\\s*\\{([^}]+)\\}`, 'g')
-    : null;
-
-  const extractVars = (block) => {
+  const baseMatch = SHELL_CSS.match(/\.slide\s*\{([^}]+)\}/);
+  if (baseMatch) {
     const re = /--([\w-]+)\s*:\s*([^;]+);/g;
     let m;
-    while ((m = re.exec(block)) !== null) {
+    while ((m = re.exec(baseMatch[1])) !== null) {
       vars[`--${m[1]}`] = m[2].trim();
-    }
-  };
-
-  const baseMatch = FULL_SLIDE_CSS.match(vibePattern);
-  if (baseMatch) extractVars(baseMatch[1] || baseMatch[0]);
-
-  if (vibeBlock) {
-    let vm;
-    while ((vm = vibeBlock.exec(FULL_SLIDE_CSS)) !== null) {
-      extractVars(vm[1]);
     }
   }
 
-  if (darkMode) {
-    const darkPattern = /\[data-dark-mode="true"\]\s*\{([^}]+)\}/g;
-    let dm;
-    while ((dm = darkPattern.exec(FULL_SLIDE_CSS)) !== null) {
-      extractVars(dm[1]);
+  return vars;
+}
+
+const THEME_VAR_MAP = {
+  accent: '--accent', accentHover: '--accent-hover', accentSoft: '--accent-soft',
+  onAccent: '--on-accent', heading: '--heading', body: '--body', muted: '--muted',
+  page: '--page', surface: '--surface', surfaceAlt: '--surface-alt', border: '--border',
+  success: '--success', successSoft: '--success-soft', warning: '--warning',
+  warningSoft: '--warning-soft', danger: '--danger', dangerSoft: '--danger-soft',
+};
+
+const LEGACY_ALIAS_MAP = {
+  heading: '--main', body: '--secondary', muted: '--meta',
+  accent: '--maroon', accentHover: '--red', accentSoft: '--rose',
+  surface: '--zone1', surfaceAlt: '--zone2',
+};
+
+/**
+ * Build a complete variable map: shell defaults overridden by theme values,
+ * plus legacy aliases so PPTX export resolves old token names.
+ */
+function buildVariableMap(theme) {
+  const vars = parseShellVariables();
+
+  const t = theme || DEFAULT_THEME;
+  if (t.colors) {
+    for (const [key, token] of Object.entries(THEME_VAR_MAP)) {
+      if (t.colors[key]) vars[token] = t.colors[key];
+    }
+    for (const [key, alias] of Object.entries(LEGACY_ALIAS_MAP)) {
+      if (t.colors[key]) vars[alias] = t.colors[key];
+    }
+  }
+
+  // Resolve any var() references in shell defaults (e.g. --main: var(--heading))
+  for (const [name, value] of Object.entries(vars)) {
+    const ref = value.match(/^var\(--([\w-]+)\)$/);
+    if (ref && vars[`--${ref[1]}`]) {
+      vars[name] = vars[`--${ref[1]}`];
     }
   }
 
@@ -192,11 +97,12 @@ function parseCSSVariables(vibe = 'default', darkMode = false) {
 
 /**
  * Resolve CSS custom properties (var(--token)) to actual hex values.
- * Used by PPTX export to give the LLM concrete color values.
+ * Merges shell CSS defaults with theme overrides so PPTX export gets
+ * concrete color values matching the active theme.
  */
-export function resolveCustomProperties(cssText, vibe = 'default', darkMode = false) {
+export function resolveCustomProperties(cssText, theme) {
   if (!cssText) return cssText;
-  const vars = parseCSSVariables(vibe, darkMode);
+  const vars = buildVariableMap(theme);
   return cssText.replace(/var\(--([\w-]+)(?:\s*,\s*([^)]+))?\)/g, (match, name, fallback) => {
     const resolved = vars[`--${name}`];
     if (resolved) {

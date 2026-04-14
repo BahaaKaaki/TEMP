@@ -9,7 +9,7 @@ import { validateSlideLayout, formatValidationForAgent } from '../services/layou
 import { generateGPTContext, inspectSlide, agenticFixLoop, formatInspection } from '../services/layoutCorrectionService';
 import { parseMultipleDocuments, getAcceptString, isFileSupported } from '../services/documentParser';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
-import { VIBES, getVibePromptContext } from '../utils/vibes';
+import { VIBES } from '../utils/vibes';
 import { debugLog, LogLevel } from '../utils/debugLog';
 import TemplatePicker from './TemplatePicker';
 import ExecutionPlan from './ExecutionPlan';
@@ -686,9 +686,8 @@ export default function AIChatbot() {
           capturedSlideId: freshState.activeSlideId,
           capturedSlideIdx: currentSlideIdx,
           capturedSlide: currentSlide ? { id: currentSlide.id, title: currentSlide.title, type: currentSlide.type } : null,
-          vibeHint: getVibePromptContext(selectedVibe || freshState.vibe),
           fullKnowledgeContext,
-          fromAgent: true, // Agent mode — content is fully baked, safe to parallelize
+          fromAgent: true, // Agent mode -- content is fully baked, safe to parallelize
         };
 
         // Update widget: carry forward all prior steps, add slide execution steps
@@ -1091,7 +1090,6 @@ export default function AIChatbot() {
     const slideSettings = {
       ...currentState.settings,
       model: genModel,
-      vibe: currentState.vibe || state.vibe,
     };
 
     const searchConfigured = currentState.settings.searchEnabled
@@ -1145,7 +1143,7 @@ export default function AIChatbot() {
           html: transformedHtml,
           title: extractTitleFromHTML(transformedHtml) || slide.title,
           templateId: triage.templateId,
-          updateData: { html: transformedHtml, type: triage.templateId, templateId: triage.templateId, customCSS: '', pptxRendererCode: null },
+          updateData: { html: transformedHtml, type: triage.templateId, templateId: triage.templateId, customCSS: SLIDE_TEMPLATES[triage.templateId]?.css || '', pptxRendererCode: null },
         };
       }
       console.log('[DirectEdit] Template switch returned unchanged HTML, falling through to edit');
@@ -2178,10 +2176,9 @@ export default function AIChatbot() {
           capturedSlideId,
           capturedSlideIdx,
           capturedSlide,
-          vibeHint: getVibePromptContext(selectedVibe || freshState.vibe),
           // Full knowledge context for analyze_content step (only passed to that step)
           fullKnowledgeContext,
-          fromAgent: shouldRunAgent, // Agent mode — content is fully baked, safe to parallelize
+          fromAgent: shouldRunAgent, // Agent mode -- content is fully baked, safe to parallelize
         };
 
         // When agent mode ran, auto-execute — the agent already planned, no need for user review
@@ -2300,7 +2297,7 @@ export default function AIChatbot() {
   const executeFromSmartAction = async (modifiedRouteResult) => {
     if (!pendingSmartAction) return;
 
-    const { userPrompt, getFreshState, settings, capturedSlideId, capturedSlideIdx, vibeHint, fullKnowledgeContext, fromAgent } = pendingSmartAction;
+    const { userPrompt, getFreshState, settings, capturedSlideId, capturedSlideIdx, fullKnowledgeContext, fromAgent } = pendingSmartAction;
 
     const routeResult = modifiedRouteResult;
 
@@ -2480,7 +2477,7 @@ export default function AIChatbot() {
         return null;
       };
 
-      const buildContextForStep = (step, stepPromptWithVibe, baseState) => {
+      const buildContextForStep = (step, stepPromptFinal, baseState) => {
         let contextIndices = step.contextSlides?.length > 0
           ? step.contextSlides
           : (routeResult.contextNeeded?.slideIndices?.length > 0
@@ -2509,7 +2506,7 @@ export default function AIChatbot() {
           }
         }
 
-        let contextForAI = stepPromptWithVibe;
+        let contextForAI = stepPromptFinal;
 
         // Add context from existing slides (for reference, not primary content)
         if (contextIndices.length > 0) {
@@ -2599,8 +2596,6 @@ export default function AIChatbot() {
           );
           stepPrompt += '\n\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
         }
-        const stepPromptWithVibe = vibeHint ? `${stepPrompt}\n\n[Design Style: ${vibeHint}]` : stepPrompt;
-
         console.log(`[SmartAction] Step ${stepIndex} FINAL PROMPT (${stepPrompt.length} chars):`, stepPrompt);
         console.log(`[SmartAction] Step ${stepIndex} structured fields:`, {
           hasFacts: Array.isArray(step.facts) && step.facts.length,
@@ -2763,7 +2758,7 @@ export default function AIChatbot() {
 
             let stepSettings = executionSettings;
             // Inject router-level search facts into every slide's prompt for grounding
-            let enrichedStepPrompt = stepPromptWithVibe + buildSearchFactsBlock();
+            let enrichedStepPrompt = stepPrompt + buildSearchFactsBlock();
             const effectiveSearchQuery = deriveSearchQuery(step);
             const shouldRunStepSearch = effectiveSearchQuery && settings.searchEnabled;
             if (shouldRunStepSearch) {
@@ -2772,15 +2767,15 @@ export default function AIChatbot() {
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
                 } else {
-                  enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
+                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned no results`);
                 }
               } catch (searchErr) {
                 console.warn(`[SmartAction] Step ${stepIndex}: search failed:`, searchErr.message);
-                enrichedStepPrompt = `${stepPromptWithVibe}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
+                enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
               }
             }
 
@@ -2791,7 +2786,7 @@ export default function AIChatbot() {
                 const imageMode = templateId === 'image-full' ? 'full' : 'content';
                 const imageResult = await generateImageSlide(enrichedStepPrompt, stepSettings, imageMode, {
                   layoutGuidance: step.layoutGuidance,
-                  vibe: useImageMode ? imageVibe : state.vibe,
+                  vibe: imageVibe,
                   footerBranding: settings.footerBranding || 'Strategy&',
                   slideNumber: freshState.slides.length + 1,
                   totalSlides: freshState.slides.length + totalSteps,
@@ -2881,7 +2876,7 @@ export default function AIChatbot() {
 
               // Record AI I/O for freestyle
               if (newSlides.length > 0) {
-                recordAiIO(`create_slide (freestyle${step.layoutGuidance ? `:${step.layoutGuidance}` : ''})`, stepPromptWithVibe, newSlides.map(s => s.html.slice(0, 500)).join('\n---\n'));
+                recordAiIO(`create_slide (freestyle${step.layoutGuidance ? `:${step.layoutGuidance}` : ''})`, stepPrompt, newSlides.map(s => s.html.slice(0, 500)).join('\n---\n'));
               }
             }
 
@@ -2923,15 +2918,15 @@ export default function AIChatbot() {
             });
 
             // Build context including contextFromStep if present
-            let editContext = stepPromptWithVibe;
+            let editContext = stepPrompt;
             if (step.contextFromStep !== null && step.contextFromStep !== undefined && stepOutputs[step.contextFromStep]) {
               const prevOutput = stepOutputs[step.contextFromStep];
               const prevStep = planSteps[step.contextFromStep];
 
               if (prevStep?.action === 'analyze_content') {
-                editContext = `${stepPromptWithVibe}\n\n=== CONTENT ANALYSIS (Use this to guide the edit) ===\n${prevOutput.analysis || prevOutput.html}\n=== END ANALYSIS ===`;
+                editContext = `${stepPrompt}\n\n=== CONTENT ANALYSIS (Use this to guide the edit) ===\n${prevOutput.analysis || prevOutput.html}\n=== END ANALYSIS ===`;
               } else {
-                editContext = `${stepPromptWithVibe}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevOutput.html}]`;
+                editContext = `${stepPrompt}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevOutput.html}]`;
               }
             }
 
@@ -2994,7 +2989,7 @@ export default function AIChatbot() {
               try {
                 const imageResult = await generateImageSlide(editContext, executionSettings, imageMode, {
                   layoutGuidance: step.layoutGuidance || step.instruction,
-                  vibe: useImageMode ? imageVibe : state.vibe,
+                  vibe: imageVibe,
                   footerBranding: settings.footerBranding || 'Strategy&',
                   slideNumber: slideIdx + 1,
                   totalSlides: freshState.slides.length,
@@ -3238,7 +3233,7 @@ export default function AIChatbot() {
                 const imageMode = b.step.templateId === 'image-full' ? 'full' : 'content';
                 const result = await generateImageSlide(b.enrichedPrompt, b.settings || executionSettings, imageMode, {
                   layoutGuidance: b.step.layoutGuidance,
-                  vibe: useImageMode ? imageVibe : state.vibe,
+                  vibe: imageVibe,
                   footerBranding: settings.footerBranding || 'Strategy&',
                   slideNumber: getFreshState().slides.length + 1,
                 });
@@ -3453,8 +3448,6 @@ export default function AIChatbot() {
               );
               stepPromptLocal += '\n\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
             }
-            const stepPromptWithVibeLocal = vibeHint ? `${stepPromptLocal}\n\n[Design Style: ${vibeHint}]` : stepPromptLocal;
-
             console.log(`[SmartAction] Batch step ${actualIndex} FINAL PROMPT (${stepPromptLocal.length} chars):`, stepPromptLocal);
             console.log(`[SmartAction] Batch step ${actualIndex} structured fields:`, {
               hasFacts: Array.isArray(step.facts) && step.facts.length,
@@ -3487,7 +3480,7 @@ export default function AIChatbot() {
 
             let batchStepSettings = executionSettings;
             // Inject router-level search facts into every slide's prompt for grounding
-            let enrichedPrompt = stepPromptWithVibeLocal + buildSearchFactsBlock();
+            let enrichedPrompt = stepPromptLocal + buildSearchFactsBlock();
             const effectiveBatchQuery = deriveSearchQuery(step);
             const shouldRunBatchSearch = effectiveBatchQuery && settings.searchEnabled;
             if (shouldRunBatchSearch) {
@@ -3496,14 +3489,14 @@ export default function AIChatbot() {
               try {
                 const searchResult = await webSearch(datedQuery, settings);
                 if (searchResult) {
-                  enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock()}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
                 } else {
-                  enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
+                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock()}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
                 }
               } catch (searchErr) {
                 console.warn(`[SmartAction] Step ${actualIndex}: search failed:`, searchErr.message);
-                enrichedPrompt = `${stepPromptWithVibeLocal}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
+                enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock()}\n\n[Note: web search failed. Use key facts above and your best knowledge.]`;
               }
             }
 
@@ -4385,7 +4378,7 @@ Original request: ${userPrompt}`;
                   try {
                     const imageResult = await generateImageSlide(fullPrompt, createSlideState.settings, imageMode, {
                       layoutGuidance: step.params?.layoutGuidance,
-                      vibe: useImageMode ? imageVibe : state.vibe,
+                      vibe: imageVibe,
                       footerBranding: createSlideState.settings.footerBranding || 'Strategy&',
                       slideNumber: createSlideState.slides.length + 1,
                     });
@@ -4647,7 +4640,7 @@ Original request: ${userPrompt}`;
                     const imageMode = templateId === 'image-full' ? 'full' : 'content';
                     const imageResult = await generateImageSlide(fullPrompt, insertState.settings, imageMode, {
                       layoutGuidance: step.params?.layoutGuidance,
-                      vibe: useImageMode ? imageVibe : state.vibe,
+                      vibe: imageVibe,
                       footerBranding: insertState.settings.footerBranding || 'Strategy&',
                       slideNumber: (typeof position === 'number' && position >= 0) ? position + 1 : insertState.slides.length + 1,
                     });
@@ -5154,7 +5147,6 @@ Original request: ${userPrompt}`;
       const improveSettings = {
         ...state.settings,
         model: genModel,
-        vibe: state.vibe,
       };
       const result = await improveSlideWithSearch(freshSlide, actionPrompt, improveSettings, { skipSearch: true });
       const improvedHtml = result?.html || result;
@@ -5169,7 +5161,7 @@ Original request: ${userPrompt}`;
       setBusySlideIds(prev => { const next = new Set(prev); next.delete(slideId); return next; });
       setActiveQuickAction('');
     }
-  }, [activeSlide, busySlideIds, state.settings, state.vibe, actions]);
+  }, [activeSlide, busySlideIds, state.settings, actions]);
 
   const handleReimagineSlide = useCallback(async () => {
     if (!activeSlide) return;
@@ -5182,7 +5174,7 @@ Original request: ${userPrompt}`;
       const genModel = state.settings.speedMode === 'premium'
         ? state.settings.model
         : (state.settings.fastModel || state.settings.model);
-      const reimagineSettings = { ...state.settings, model: genModel, temperature: 0.85, vibe: state.vibe };
+      const reimagineSettings = { ...state.settings, model: genModel, temperature: 0.85 };
       const currentState = stateRef.current;
       const freshSlide = currentState.slides.find(s => s.id === slideId) || activeSlide;
       const slideIdx = currentState.slides.findIndex(s => s.id === slideId);
@@ -5242,7 +5234,7 @@ Original request: ${userPrompt}`;
       setBusySlideIds(prev => { const next = new Set(prev); next.delete(slideId); return next; });
       setActiveQuickAction('');
     }
-  }, [activeSlide, busySlideIds, state.settings, state.vibe, actions]);
+  }, [activeSlide, busySlideIds, state.settings, actions]);
 
   if (!isOpen) return null;
 
@@ -5485,7 +5477,7 @@ Original request: ${userPrompt}`;
                               deckContext, null
                             );
                             const newTitle = extractTitleFromHTML(transformedHtml) || freshSlide.title;
-                            actions.updateSlide(sid, { html: transformedHtml, type: templateId, templateId, title: newTitle, customCSS: '', pptxRendererCode: null });
+                            actions.updateSlide(sid, { html: transformedHtml, type: templateId, templateId, title: newTitle, customCSS: SLIDE_TEMPLATES[templateId]?.css || '', pptxRendererCode: null });
                             addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${templateId}</strong></div>`, { isHTML: true });
                           } catch (err) {
                             addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Template switch failed: ${err.message}</div>`, { isHTML: true });

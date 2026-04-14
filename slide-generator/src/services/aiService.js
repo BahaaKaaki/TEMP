@@ -2,13 +2,14 @@
 // All implementation lives in ./ai/*.js modules.
 
 // ── Raw asset imports (re-exported for consumers) ────────────────────────────
-import FULL_SLIDE_CSS from '../styles/slides.css?raw';
-export { FULL_SLIDE_CSS };
+import SHELL_CSS from '../styles/slides.css?raw';
+export { SHELL_CSS };
+export { SHELL_CSS as FULL_SLIDE_CSS };
 
-if (FULL_SLIDE_CSS) {
-  console.log(`[aiService] FULL_SLIDE_CSS loaded: ${FULL_SLIDE_CSS.length} characters`);
+if (SHELL_CSS) {
+  console.log(`[aiService] SHELL_CSS loaded: ${SHELL_CSS.length} characters`);
 } else {
-  console.error('[aiService] WARNING: FULL_SLIDE_CSS failed to load!');
+  console.error('[aiService] WARNING: SHELL_CSS failed to load!');
 }
 
 // ── Re-exports from templateEmbeddings (pass-through) ────────────────────────

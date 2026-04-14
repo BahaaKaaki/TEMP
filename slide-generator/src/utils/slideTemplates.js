@@ -4,6 +4,17 @@
 
 // Import empty slide templates from masters
 import { getEmptySlideTemplates, generateEmptySlideHTML } from './slideMasters';
+import TEMPLATE_STYLES from './templateStyles';
+
+// Attach pre-extracted component CSS to each template at import time
+function attachTemplateCSS(templates) {
+  for (const [id, tmpl] of Object.entries(templates)) {
+    if (TEMPLATE_STYLES[id]) {
+      tmpl.css = TEMPLATE_STYLES[id];
+    }
+  }
+  return templates;
+}
 
 export const SLIDE_TEMPLATES = {
   blank: {
@@ -8253,6 +8264,9 @@ export const SLIDE_TEMPLATES = {
 </div>`,
   },
 };
+
+// Attach pre-extracted component CSS from slides-legacy.css
+attachTemplateCSS(SLIDE_TEMPLATES);
 
 /**
  * TEMPLATE FLEX RULES

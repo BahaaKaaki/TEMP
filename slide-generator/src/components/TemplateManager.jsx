@@ -4,7 +4,6 @@ import { SLIDE_TEMPLATES, TEMPLATE_CATEGORIES, getTemplatesByCategory, findMatch
 import { SLIDE_MASTERS, getAllSlideMasters } from '../utils/slideMasters';
 import { generateTemplate, generatePptxRendererCode, fillTemplateWithAI, extractRelevantCSS, hasAnyApiKey } from '../services/aiService';
 import { validateTemplate, quickValidate, VALIDATION_STATUS, VALIDATION_STEPS } from '../services/templateValidation';
-import { VIBE_AWARE_CSS } from '../utils/vibes';
 import ValidationModal from './ValidationModal';
 
 export default function TemplateManager({ onClose }) {
@@ -86,14 +85,11 @@ export default function TemplateManager({ onClose }) {
   };
 
   const handleUseTemplate = (template) => {
-    // Extract relevant CSS for this template's HTML
-    const relevantCSS = extractRelevantCSS(template.html);
-
     actions.addSlide({
       title: template.title,
       type: template.type || template.id,
       html: template.html,
-      customCSS: relevantCSS,
+      customCSS: template.css || extractRelevantCSS(template.html),
       templateId: template.id,
     });
     onClose();
@@ -197,7 +193,6 @@ export default function TemplateManager({ onClose }) {
               template={previewTemplate}
               onClose={() => setPreviewTemplate(null)}
               onUse={() => handleUseTemplate(previewTemplate)}
-              vibe={state.vibe}
             />
           ) : (
             <div className="template-grid-container">
@@ -214,7 +209,6 @@ export default function TemplateManager({ onClose }) {
                         onDelete={() => handleDeleteTemplate(template)}
                         onUse={() => handleUseTemplate(template)}
                         onReset={template.isModified ? () => handleResetTemplate(template) : null}
-                        vibe={state.vibe}
                       />
                     ))}
                   </div>
@@ -243,12 +237,12 @@ export default function TemplateManager({ onClose }) {
 }
 
 // Template Card Component
-function TemplateCard({ template, onPreview, onEdit, onDelete, onUse, onReset, vibe = 'bold' }) {
+function TemplateCard({ template, onPreview, onEdit, onDelete, onUse, onReset }) {
   return (
     <div className="template-card">
       <div className="template-card-preview" onClick={onPreview}>
         <div className="template-thumbnail">
-          <TemplateThumbnail html={template.html} vibe={vibe} />
+          <TemplateThumbnail html={template.html} />
         </div>
         {!template.isBuiltIn && (
           <span className="template-badge">Custom</span>
@@ -302,9 +296,9 @@ function TemplateCard({ template, onPreview, onEdit, onDelete, onUse, onReset, v
 }
 
 // Template Thumbnail
-function TemplateThumbnail({ html, vibe = 'bold' }) {
+function TemplateThumbnail({ html }) {
   return (
-    <div className="template-thumb-wrapper" data-vibe={vibe}>
+    <div className="template-thumb-wrapper">
       <div
         className="template-thumb-content"
         dangerouslySetInnerHTML={{ __html: html }}
@@ -314,7 +308,7 @@ function TemplateThumbnail({ html, vibe = 'bold' }) {
 }
 
 // Template Preview
-function TemplatePreview({ template, onClose, onUse, vibe = 'bold' }) {
+function TemplatePreview({ template, onClose, onUse }) {
   return (
     <div className="template-preview-panel">
       <div className="template-preview-header">
@@ -329,8 +323,8 @@ function TemplatePreview({ template, onClose, onUse, vibe = 'bold' }) {
           Use Template
         </button>
       </div>
-      <div className="template-preview-content" data-vibe={vibe}>
-        <style>{getPreviewStyles() + '\n' + VIBE_AWARE_CSS}</style>
+      <div className="template-preview-content">
+        <style>{getPreviewStyles()}{template.css ? '\n' + template.css : ''}</style>
         <div className="template-preview-slide">
           <div dangerouslySetInnerHTML={{ __html: template.html }} />
         </div>
@@ -581,8 +575,8 @@ function CreateTemplateForm({ activeSlide, onSave, onSaveAndEdit, onCancel }) {
         </div>
 
         <div className="template-create-preview-content">
-          <div className="template-create-preview-left" data-vibe={state.vibe}>
-            <style>{getPreviewStyles() + '\n' + VIBE_AWARE_CSS}</style>
+          <div className="template-create-preview-left">
+            <style>{getPreviewStyles()}</style>
             <div className="template-preview-slide">
               <div dangerouslySetInnerHTML={{ __html: formData.html }} />
             </div>
@@ -1053,7 +1047,7 @@ function CreateTemplateForm({ activeSlide, onSave, onSaveAndEdit, onCancel }) {
                         position: 'relative',
                         overflow: 'hidden',
                         borderBottom: '1px solid var(--border)',
-                      }} data-vibe={state.vibe}>
+                      }}>
                         <div style={{
                           transform: 'scale(0.085)',
                           transformOrigin: 'top left',
@@ -1133,8 +1127,8 @@ function CreateTemplateForm({ activeSlide, onSave, onSaveAndEdit, onCancel }) {
                     position: 'relative',
                     overflow: 'hidden',
                     borderBottom: '1px solid var(--border)',
-                  }} data-vibe={state.vibe}>
-                    <style>{getPreviewStyles() + '\n' + VIBE_AWARE_CSS}</style>
+                  }}>
+                    <style>{getPreviewStyles()}{selectedTemplate.css ? '\n' + selectedTemplate.css : ''}</style>
                     <div style={{
                       transform: 'scale(0.19)',
                       transformOrigin: 'top left',
@@ -1228,8 +1222,8 @@ function CreateTemplateForm({ activeSlide, onSave, onSaveAndEdit, onCancel }) {
             <span className="form-hint">Choose the base layout for your template.</span>
           </div>
 
-          <div className="current-slide-preview" data-vibe={state.vibe}>
-            <style>{getPreviewStyles() + '\n' + VIBE_AWARE_CSS}</style>
+          <div className="current-slide-preview">
+            <style>{getPreviewStyles()}</style>
             <div className="current-slide-preview-mini">
               <div dangerouslySetInnerHTML={{ __html: activeSlide.html }} />
             </div>
@@ -1382,8 +1376,8 @@ function EditTemplateForm({ template, onSave, onCancel }) {
     <div className="template-edit-layout">
       <div className="template-edit-preview">
         <h4>Preview</h4>
-        <div className="template-edit-preview-container" data-vibe={state.vibe}>
-          <style>{getPreviewStyles() + '\n' + VIBE_AWARE_CSS}</style>
+        <div className="template-edit-preview-container">
+          <style>{getPreviewStyles()}</style>
           <div className="template-preview-slide template-preview-scaled">
             <div dangerouslySetInnerHTML={{ __html: formData.html }} />
           </div>

@@ -20,7 +20,6 @@
 import { generateSlides, improveSlide, generateStoryline, agentChat, fillTemplateWithAI, fillTemplatesBulkWithAI, aiRouteRequest, extractTitleFromHTML, researchWithSearch, reEvaluateTemplateForData, generateImageSlide, extractImageDataUri, detectSlideLayout } from './aiService';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { ragRetrieve, formatRAGContext } from './knowledgeBaseRAG';
-import { getVibePromptContext } from '../utils/vibes';
 
 /**
  * Search with built-in model search first, fallback to dedicated endpoint.
@@ -402,14 +401,7 @@ Return JSON:
 
         // Keep the enriched instruction (with research data but without vibe) separate.
         // This is the original structured content that should be passed as-is to sub-agents.
-        // The router only uses the full prompt (with vibe) for template selection.
         const enrichedInstruction = fullInstruction;
-
-        // Append vibe/design style hint for the router call
-        const vibeHint = getVibePromptContext(state.vibe);
-        if (vibeHint) {
-          fullInstruction = `${fullInstruction}\n\n[Design Style: ${vibeHint}]`;
-        }
 
         onProgress?.({ phase: 'routing', message: `Planning slide: ${instruction.slice(0, 50)}...` });
 
@@ -487,10 +479,7 @@ Return JSON:
 
             onProgress?.({ phase: 'generating', message: `Creating slide${templateId ? ` (${templateId})` : ''}${step.searchQuery ? ' + searching' : ''}...` });
 
-            // Build context from slides if needed — include vibe hint
-            let generationInstruction = vibeHint
-              ? `${stepInstruction}\n\n[Design Style: ${vibeHint}]`
-              : stepInstruction;
+            let generationInstruction = stepInstruction;
 
             // Add search hint to prompt so model knows what to look up
             if (step.searchQuery) {
@@ -525,7 +514,7 @@ Return JSON:
                 const effectiveLayoutGuidance = layoutGuidance || step?.layoutGuidance || null;
                 const imageResult = await generateImageSlide(generationInstruction, settings, imageMode, {
                   layoutGuidance: effectiveLayoutGuidance,
-                  vibe: state.imageVibe || state.vibe,
+                  vibe: state.imageVibe,
                   footerBranding: settings.footerBranding || 'Strategy&',
                   slideNumber: state.slides.length + 1,
                 });
@@ -674,9 +663,6 @@ Return JSON:
 
         onProgress?.({ phase: 'generating', message: `Creating ${slides.length} slides...` });
 
-        // Get vibe hint once for all slides
-        const vibeHint = getVibePromptContext(state.vibe);
-
         // Build shared context for the router
         const slideSummaries = state.slides.map((s, idx) => ({
           index: idx,
@@ -742,11 +728,6 @@ Return JSON:
             // The router only uses the full prompt (with vibe) for template selection.
             const enrichedInstruction = fullInstruction;
 
-            // Append vibe hint for the router call
-            if (vibeHint) {
-              fullInstruction = `${fullInstruction}\n\n[Design Style: ${vibeHint}]`;
-            }
-
             // Try the AI router for template selection; fall back to direct generation if router fails
             let routeResult = null;
             try {
@@ -791,9 +772,7 @@ Return JSON:
                 };
               }
 
-              let genInstruction = vibeHint
-                ? `${stepInstruction}\n\n[Design Style: ${vibeHint}]`
-                : stepInstruction;
+              let genInstruction = stepInstruction;
               if (step.searchQuery) {
                 genInstruction = `${genInstruction}\n\n[SEARCH THE WEB for: "${step.searchQuery}" — use real data, numbers, and facts from your search results. Be executive, not wordy.]`;
               }
@@ -813,7 +792,7 @@ Return JSON:
                   const effectiveLayoutGuidance = spec.layoutGuidance || step?.layoutGuidance || null;
                   const imageResult = await generateImageSlide(genInstruction, settings, imageMode, {
                     layoutGuidance: effectiveLayoutGuidance,
-                    vibe: state.imageVibe || state.vibe,
+                    vibe: state.imageVibe,
                     footerBranding: settings.footerBranding || 'Strategy&',
                     slideNumber: state.slides.length + i + 1,
                   });
@@ -879,10 +858,8 @@ Return JSON:
                 }
               }
             } else {
-              // Router returned no plan or was unavailable — direct generation
-              let genInstruction = vibeHint
-                ? `${fullInstruction}\n\n[Design Style: ${vibeHint}]`
-                : fullInstruction;
+              // Router returned no plan or was unavailable -- direct generation
+              let genInstruction = fullInstruction;
               // Inject layout diversity hint from batch history
               if (batchUsedLayouts.length > 0) {
                 genInstruction = `${genInstruction}\n\n[LAYOUT DIVERSITY: This batch already used: ${batchUsedLayouts.join(', ')}. Pick a DIFFERENT layout for visual variety.]`;
@@ -989,7 +966,6 @@ Return JSON:
         }
 
         const batchSize = settings.parallelSlideGeneration || 3;
-        const vibeHint = getVibePromptContext(state.vibe);
 
         onProgress?.({ phase: 'routing', message: `Planning ${slideSpecs.length} slides with router...` });
 
@@ -1002,7 +978,7 @@ Return JSON:
         // The router just needs to pick templates and add a cover. No auto-creation of exec overview.
         const totalSlideCount = slideSpecs.length;
         const hasExecOverview = slideSpecs.some(s => s._isExecOverview);
-        const combinedPrompt = `PRESENTATION CONTENT (from consulting team research):\nTODAY: ${todayString()}\n${title ? `Title: ${title}\n` : ''}SLIDES: ${totalSlideCount} slides below. Produce ALL ${totalSlideCount} — do NOT drop or merge any. Add a cover slide before slide 1.\nCRITICAL: The slide list is COMPLETE. Your ONLY job is to add a cover and pick the best template for each existing slide. Do NOT add ANY extra slides — no executive summary, no table of contents, no deck overview, no section preview, no tracking page, nothing. If any of these already exist in the slides below, just pick the right template for them.\nORDER IS FIXED: Create slides in EXACTLY this order. Do NOT reorder or skip sections.\n\n${slideDescriptions}${vibeHint ? `\n\n[Design Style: ${vibeHint}]` : ''}`;
+        const combinedPrompt = `PRESENTATION CONTENT (from consulting team research):\nTODAY: ${todayString()}\n${title ? `Title: ${title}\n` : ''}SLIDES: ${totalSlideCount} slides below. Produce ALL ${totalSlideCount} — do NOT drop or merge any. Add a cover slide before slide 1.\nCRITICAL: The slide list is COMPLETE. Your ONLY job is to add a cover and pick the best template for each existing slide. Do NOT add ANY extra slides — no executive summary, no table of contents, no deck overview, no section preview, no tracking page, nothing. If any of these already exist in the slides below, just pick the right template for them.\nORDER IS FIXED: Create slides in EXACTLY this order. Do NOT reorder or skip sections.\n\n${slideDescriptions}`;
 
         // Build context for router — pass empty deck so the router creates a FULL deck
         // (with cover slide, proper ordering, trackers, etc.)
@@ -1110,8 +1086,7 @@ Return JSON:
           // Resolve effective layout guidance: user-provided > router's
           const layoutGuidance = specLayoutGuidance || step.layoutGuidance || null;
 
-          if (vibeHint) stepInstruction = `${stepInstruction}\n\n[Design Style: ${vibeHint}]`;
-          // If step needs search, inject search tool into settings — the generation call will search inline
+          // If step needs search, inject search tool into settings -- the generation call will search inline
           let stepSettings = settings;
           if (step.searchQuery) {
             stepSettings = {
@@ -1237,7 +1212,7 @@ Return JSON:
                   // p.layoutGuidance already resolved: user-provided > router's (from prepareStepInstruction)
                   const imageResult = await generateImageSlide(p.instruction, settings, imageMode, {
                     layoutGuidance: p.layoutGuidance || null,
-                    vibe: state.imageVibe || state.vibe,
+                    vibe: state.imageVibe,
                     footerBranding: settings.footerBranding || 'Strategy&',
                     slideNumber: state.slides.length + p.stepIdx + 1,
                   });
@@ -1441,7 +1416,7 @@ Return JSON:
             const existingImage = extractImageDataUri(slide.html);
             const imageResult = await generateImageSlide(instruction, settings, imageMode, {
               layoutGuidance: instruction,
-              vibe: state.imageVibe || state.vibe,
+              vibe: state.imageVibe,
               footerBranding: settings.footerBranding || 'Strategy&',
               slideNumber: slideIndex + 1,
               totalSlides: state.slides.length,

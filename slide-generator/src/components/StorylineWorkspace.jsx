@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useSlides } from '../context/SlideContext';
 import { chatWithContext, generateStoryline, generateSlides, selectTemplateWithAI, populateSlides, generateSkeletonSlides, syncStorylineFromSlidesAI, syncSlidesFromStorylineAI } from '../services/aiService';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
-import { getVibePromptContext } from '../utils/vibes';
 
 // Point type configuration - colors and labels for visual indicators
 const POINT_TYPE_CONFIG = {
@@ -772,12 +771,8 @@ Provide JSON response:
         // If 'freestyle', templateId remains null and AI creates without template
       }
 
-      // Get vibe context for AI
-      const vibeHint = getVibePromptContext(state.vibe);
-      const promptWithVibe = vibeHint ? `${prompt}\n\n[Design Style: ${vibeHint}]` : prompt;
-
       // Generate slide with template if available
-      const slides = await generateSlides(promptWithVibe, state.settings, 1, state.slides, templateId, selectedTemplate);
+      const slides = await generateSlides(prompt, state.settings, 1, state.slides, templateId, selectedTemplate);
 
       if (slides.length > 0) {
         actions.addSlide({

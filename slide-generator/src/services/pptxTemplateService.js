@@ -69,13 +69,16 @@ function openDB() {
   });
 }
 
-export async function saveTemplateToStorage(arrayBuffer, fileName) {
+export async function saveTemplateToStorage(arrayBuffer, fileName, chrome = null) {
   const db = await openDB();
+  const record = { data: arrayBuffer, fileName, savedAt: Date.now() };
+  if (chrome) record.chrome = chrome;
   await new Promise((resolve, reject) => {
     const tx = db.transaction(DB_STORE, 'readwrite');
-    tx.objectStore(DB_STORE).put({ data: arrayBuffer, fileName, savedAt: Date.now() }, DB_KEY);
+    tx.objectStore(DB_STORE).put(record, DB_KEY);
     tx.oncomplete = () => {
-      console.log('[PPTX Template] Saved template to IndexedDB:', fileName, arrayBuffer.byteLength, 'bytes');
+      console.log('[PPTX Template] Saved template to IndexedDB:', fileName, arrayBuffer.byteLength, 'bytes',
+        chrome ? '(with chrome)' : '');
       resolve();
     };
     tx.onerror = () => reject(tx.error);
@@ -88,40 +91,49 @@ export async function saveTemplateToStorage(arrayBuffer, fileName) {
 }
 
 export async function loadTemplateFromStorage() {
+  let serverData = null;
   try {
     const serverTemplate = await loadTemplateFromServer();
     if (serverTemplate) {
-      console.log(
-        '[PPTX Template] Loaded template from server:',
-        serverTemplate.fileName,
-        serverTemplate.data?.byteLength,
-        'bytes'
-      );
-      return {
+      serverData = {
         data: serverTemplate.data,
         fileName: serverTemplate.fileName,
         savedAt: Date.now(),
       };
+      console.log('[PPTX Template] Loaded from server:', serverData.fileName, serverData.data?.byteLength, 'bytes');
     }
   } catch (e) {
     console.warn('[PPTX Template] Server template unavailable, trying local:', e.message);
   }
 
-  const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(DB_STORE, 'readonly');
-    const req = tx.objectStore(DB_STORE).get(DB_KEY);
-    req.onsuccess = () => {
-      const result = req.result || null;
-      if (result) {
-        console.log('[PPTX Template] Loaded template from IndexedDB:', result.fileName, result.data?.byteLength, 'bytes');
-      } else {
-        console.log('[PPTX Template] No template found in IndexedDB');
-      }
-      resolve(result);
-    };
-    req.onerror = () => reject(req.error);
-  });
+  let localRecord = null;
+  try {
+    const db = await openDB();
+    localRecord = await new Promise((resolve, reject) => {
+      const tx = db.transaction(DB_STORE, 'readonly');
+      const req = tx.objectStore(DB_STORE).get(DB_KEY);
+      req.onsuccess = () => resolve(req.result || null);
+      req.onerror = () => reject(req.error);
+    });
+  } catch (e) {
+    console.warn('[PPTX Template] IndexedDB read failed:', e.message);
+  }
+
+  if (serverData) {
+    if (localRecord?.chrome) {
+      serverData.chrome = localRecord.chrome;
+      console.log('[PPTX Template] Merged chrome metadata from IndexedDB');
+    }
+    return serverData;
+  }
+
+  if (localRecord) {
+    console.log('[PPTX Template] Loaded from IndexedDB:', localRecord.fileName, localRecord.data?.byteLength, 'bytes');
+    return localRecord;
+  }
+
+  console.log('[PPTX Template] No template found');
+  return null;
 }
 
 export async function clearTemplateFromStorage() {
@@ -135,6 +147,97 @@ export async function clearTemplateFromStorage() {
     };
     tx.onerror = () => reject(tx.error);
   });
+}
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+
+const WHITE_BG = '<p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>';
+
+/**
+ * Inject a solid white background into slide XML so master/layout backgrounds
+ * do not bleed through generated content.
+ */
+function injectSlideBackground(slideXml) {
+  if (/<p:bg\b/.test(slideXml)) return slideXml;
+  return slideXml.replace(/(<p:cSld[^>]*>)/, `$1${WHITE_BG}`);
+}
+
+/**
+ * Add showMasterSp="0" to the <p:sld> root element so decorative shapes
+ * from the slide master (diamonds, text boxes, invisible EMFs) are hidden.
+ * The logo and footer are injected directly into the slide's spTree,
+ * so they are unaffected by this attribute.
+ */
+function hideMasterShapes(slideXml) {
+  if (/showMasterSp/.test(slideXml)) return slideXml;
+  return slideXml.replace(/<p:sld(\s)/, '<p:sld showMasterSp="0"$1');
+}
+
+const EMU_PER_INCH = 914400;
+
+/**
+ * Inject a `<p:pic>` shape for the logo into slide XML before `</p:spTree>`.
+ */
+function injectLogoPic(slideXml, logo, rId) {
+  if (!logo || !/<\/p:spTree>/.test(slideXml)) return slideXml;
+  const x = Math.round(logo.x * EMU_PER_INCH);
+  const y = Math.round(logo.y * EMU_PER_INCH);
+  const cx = Math.round(logo.w * EMU_PER_INCH);
+  const cy = Math.round(logo.h * EMU_PER_INCH);
+
+  const pic = `<p:pic><p:nvPicPr><p:cNvPr id="9990" name="TemplateLogo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
+
+  return slideXml.replace('</p:spTree>', pic + '</p:spTree>');
+}
+
+/**
+ * OOXML layout type attribute -> internal type.
+ */
+const LAYOUT_TYPE_MAP = {
+  title: 'title', ctrTitle: 'title',
+  obj: 'content', tx: 'content',
+  twoObj: 'twoContent', secHead: 'sectionHeader',
+  blank: 'blank', titleOnly: 'titleOnly',
+};
+
+/**
+ * Scan template layouts and pick the best one for AI-generated content.
+ * Preference: blank > titleOnly > content (layout 2) > first available.
+ */
+async function pickBestLayout(tplZip) {
+  const layoutFiles = Object.keys(tplZip.files)
+    .filter(f => /^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(f))
+    .sort((a, b) => parseInt(a.match(/(\d+)/g).pop()) - parseInt(b.match(/(\d+)/g).pop()));
+
+  const candidates = { blank: null, titleOnly: null, content: null };
+
+  for (const path of layoutFiles) {
+    const idx = parseInt(path.match(/slideLayout(\d+)/)[1]);
+    const xml = await tplZip.files[path].async('string');
+
+    let type = null;
+    const typeMatch = xml.match(/<p:sldLayout[^>]*type="([^"]+)"/);
+    if (typeMatch) type = LAYOUT_TYPE_MAP[typeMatch[1]] || null;
+
+    if (!type) {
+      const nameMatch = xml.match(/<p:cSld\s+name="([^"]+)"/);
+      if (nameMatch) {
+        const n = nameMatch[1].toLowerCase();
+        if (n.includes('blank')) type = 'blank';
+        else if (n.includes('title only')) type = 'titleOnly';
+        else if (n.includes('content') || n.includes('title and')) type = 'content';
+      }
+    }
+
+    if (type === 'blank' && !candidates.blank) candidates.blank = idx;
+    else if (type === 'titleOnly' && !candidates.titleOnly) candidates.titleOnly = idx;
+    else if (type === 'content' && !candidates.content) candidates.content = idx;
+  }
+
+  const pick = candidates.blank || candidates.titleOnly || candidates.content || 1;
+  console.log('[PPTX Template] Layout candidates: blank=%s titleOnly=%s content=%s -> using %d',
+    candidates.blank, candidates.titleOnly, candidates.content, pick);
+  return pick;
 }
 
 // ── Core: apply template to generated PPTX ─────────────────────────────────
@@ -153,7 +256,7 @@ export async function clearTemplateFromStorage() {
  *   6. Update [Content_Types].xml to list our slides
  *   7. Return merged ZIP
  */
-export async function applyTemplateToGenerated(generatedBuf, templateBuf) {
+export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome = null) {
   console.log('[PPTX Template] Starting merge. Generated:', generatedBuf.byteLength, 'bytes, Template:', templateBuf.byteLength, 'bytes');
 
   const tplZip = await JSZip.loadAsync(templateBuf);
@@ -180,31 +283,40 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf) {
   console.log('[PPTX Template] Generated slide count:', slideCount);
 
   // ── Step 3: Determine target slide layout from template ─────────────────
-  // Look at the template's slide master rels to find available layouts.
-  // Prefer layout #2 ("Title and Content") if it exists, otherwise use the first.
-  const tplMasterRelsPath = 'ppt/slideMasters/_rels/slideMaster1.xml.rels';
-  let targetLayoutNum = 1; // safe fallback
-  if (tplZip.files[tplMasterRelsPath]) {
-    const masterRelsXml = await tplZip.files[tplMasterRelsPath].async('string');
-    const layoutMatches = [...masterRelsXml.matchAll(/Id="(rId\d+)"[^>]*Target="[^"]*slideLayout(\d+)\.xml"/g)];
-    if (layoutMatches.length > 0) {
-      const layoutNums = layoutMatches.map(m => parseInt(m[2]));
-      console.log('[PPTX Template] Available layouts:', layoutNums.join(', '));
-      // Prefer layout 2 ("Title and Content"), else first available
-      targetLayoutNum = layoutNums.includes(2) ? 2 : layoutNums[0];
-    }
-  }
+  const targetLayoutNum = await pickBestLayout(tplZip);
   console.log('[PPTX Template] Using slideLayout' + targetLayoutNum);
 
-  // ── Step 4: Copy generated slides into template ─────────────────────────
+  // ── Step 4a: Write logo media file if chrome provides one ───────────────
+  const LOGO_RID = 'rId900';
+  const LOGO_MEDIA = 'ppt/media/logo_chrome.png';
+  let hasLogo = false;
+
+  if (chrome?.logo?.image) {
+    try {
+      const dataUri = chrome.logo.image;
+      const base64 = dataUri.split(',')[1];
+      if (base64) {
+        const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        tplZip.file(LOGO_MEDIA, binary);
+        hasLogo = true;
+        console.log('[PPTX Template] Wrote logo media file (%d bytes)', binary.length);
+      }
+    } catch (e) {
+      console.warn('[PPTX Template] Logo media write failed:', e.message);
+    }
+  }
+
+  // ── Step 4b: Copy generated slides into template ───────────────────────
   for (let i = 0; i < slideCount; i++) {
     const slideNum = i + 1;
     const genSlidePath = `ppt/slides/slide${slideNum}.xml`;
     const genSlideRelsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
 
-    // Copy slide XML
     if (genZip.files[genSlidePath]) {
-      const slideXml = await genZip.files[genSlidePath].async('string');
+      let slideXml = await genZip.files[genSlidePath].async('string');
+      slideXml = hideMasterShapes(slideXml);
+      slideXml = injectSlideBackground(slideXml);
+      if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
       tplZip.file(genSlidePath, slideXml);
     }
 
@@ -212,23 +324,29 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf) {
     // strip notesSlide refs (they'd be dangling), keep other rels (images, charts)
     if (genZip.files[genSlideRelsPath]) {
       let genRelsXml = await genZip.files[genSlideRelsPath].async('string');
-      // Replace layout reference
       genRelsXml = genRelsXml.replace(
         /Target="[^"]*slideLayout\d+\.xml"/,
         `Target="../slideLayouts/slideLayout${targetLayoutNum}.xml"`
       );
-      // Remove notesSlide references to avoid dangling rels
       genRelsXml = genRelsXml.replace(
         /<Relationship[^>]*Type="[^"]*notesSlide"[^>]*\/>/g,
         ''
       );
+      if (hasLogo) {
+        genRelsXml = genRelsXml.replace(
+          '</Relationships>',
+          `<Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo_chrome.png"/></Relationships>`
+        );
+      }
       tplZip.file(genSlideRelsPath, genRelsXml);
     } else {
-      // Create minimal rels pointing to template layout
-      const slideRel = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+      let slideRel = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${targetLayoutNum}.xml"/>
-</Relationships>`;
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${targetLayoutNum}.xml"/>`;
+      if (hasLogo) {
+        slideRel += `\n  <Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo_chrome.png"/>`;
+      }
+      slideRel += '\n</Relationships>';
       tplZip.file(genSlideRelsPath, slideRel);
     }
   }

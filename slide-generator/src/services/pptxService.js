@@ -18,16 +18,39 @@ import {
 import { applyTemplateToGenerated, loadTemplateFromStorage, downloadArrayBuffer } from './pptxTemplateService';
 import { extractRelevantCSS } from './aiService';
 import { resolveCustomProperties } from './ai/cssExtraction';
-import FULL_SLIDE_CSS from '../styles/slides.css?raw';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
-import { getPptxVibeStyle, getPptxVibeHint, getPptxVibeColors } from '../utils/vibes';
+import { DEFAULT_THEME } from '../utils/themeUtils';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
 const FORCED_PPTX_MODEL = 'pwc:vertex_ai.anthropic.claude-opus-4-6';
 const DEFAULT_PPTX_MODEL = 'gpt-4o';
+
+/**
+ * Convert a theme object into the PPTX color palette snippet and hint.
+ * Strips '#' from hex values since PptxGenJS uses bare hex strings.
+ */
+function themeToPptxPalette(theme) {
+  const t = theme || DEFAULT_THEME;
+  const c = t.colors || DEFAULT_THEME.colors;
+  const strip = (hex) => (hex || '').replace('#', '');
+
+  const colorCode = `const c = {main:'${strip(c.heading)}',secondary:'${strip(c.body)}',accent:'${strip(c.accent)}',accentHover:'${strip(c.accentHover)}',accentSoft:'${strip(c.accentSoft)}',onAccent:'${strip(c.onAccent)}',muted:'${strip(c.muted)}',page:'${strip(c.page)}',surface:'${strip(c.surface)}',surfaceAlt:'${strip(c.surfaceAlt)}',border:'${strip(c.border)}',success:'${strip(c.success)}',danger:'${strip(c.danger)}',warning:'${strip(c.warning)}'};`;
+
+  const hint = `THEME: ${t.name || 'Custom'} - Use accent (${c.accent}) for emphasis, heading (${c.heading}) for titles, body (${c.body}) for text.`;
+
+  const resolvedVars = `--heading = ${c.heading}, --body = ${c.body}, --muted = ${c.muted}
+--accent = ${c.accent}, --accent-hover = ${c.accentHover}, --accent-soft = ${c.accentSoft}, --on-accent = ${c.onAccent}
+--page = ${c.page}, --surface = ${c.surface}, --surface-alt = ${c.surfaceAlt}, --border = ${c.border}
+--success = ${c.success}, --danger = ${c.danger}, --warning = ${c.warning}`;
+
+  return { colorCode, hint, resolvedVars, colors: {
+    main: c.heading, secondary: c.body, accent: c.accent,
+    cardBg: c.surface, border: c.border,
+  }};
+}
 
 // ── Gold-standard translation examples (kept from old code) ─────────────────
 
@@ -117,7 +140,7 @@ STANDARD FONTS:
 - Body text: Arial 12-14pt, color secondary
 - Card titles: Arial 16pt bold, color main
 
-STANDARD POSITIONS:
+DEFAULT POSITIONS (may be overridden by template positions in the user prompt):
 - Title: x:0.48, y:0.42, w:12.36
 - Subtitle: x:0.48, y:1.40, w:12.36
 - Content area starts at y:1.90
@@ -347,31 +370,34 @@ function extractInlineStyle(html) {
   return match ? match[1].trim() : '';
 }
 
-function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
-  const vibe = settings?.vibe || 'bold';
-  const vibeStyle = getPptxVibeStyle(vibe);
-  const vibeHint = getPptxVibeHint(vibe);
-  const vibeColorCode = getPptxVibeColors(vibe);
+function buildPositionBlock(tplPositions) {
+  if (!tplPositions || Object.keys(tplPositions).length === 0) return null;
+  const t = tplPositions.title;
+  const b = tplPositions.body;
+  const f = tplPositions.footer || tplPositions.slideNum;
+  const lines = ['(from uploaded client template)'];
+  if (t) lines.push(`  Title:    x:${t.x}  y:${t.y}  w:${t.w}  h:${t.h}`);
+  if (tplPositions.subtitle) {
+    const s = tplPositions.subtitle;
+    lines.push(`  Subtitle: x:${s.x}  y:${s.y}  w:${s.w}  h:${s.h}`);
+  }
+  if (b) lines.push(`  Frame:    x:${b.x}  y:${b.y}  w:${b.w}  h:${b.h}`);
+  if (f) lines.push(`  Footer:   y:${f.y}`);
+  return lines.join('\n');
+}
 
-  const rawBaseCSS = extractRelevantCSS(slide.html);
-  const resolvedBaseCSS = resolveCustomProperties(rawBaseCSS, vibe, false);
+function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
+  const palette = themeToPptxPalette(settings?.theme);
+
+  const rawBaseCSS = extractRelevantCSS(slide.html, slide.customCSS || '');
+  const resolvedBaseCSS = resolveCustomProperties(rawBaseCSS, settings?.theme);
 
   const inlineCSS = extractInlineStyle(slide.html || '');
-  const customCSS = slide.customCSS || '';
-  const rawSlideCSS = [inlineCSS, customCSS].filter(Boolean).join('\n');
-  const resolvedSlideCSS = rawSlideCSS ? resolveCustomProperties(rawSlideCSS, vibe, false) : '';
+  const resolvedInlineCSS = inlineCSS ? resolveCustomProperties(inlineCSS, settings?.theme) : '';
 
-  const allCSS = [resolvedBaseCSS, resolvedSlideCSS].filter(Boolean).join('\n\n');
+  const allCSS = [resolvedBaseCSS, resolvedInlineCSS].filter(Boolean).join('\n\n');
 
-  console.log(`[PPTX Prompt] Slide ${slideNum} CSS sources:`, {
-    baseCSS: resolvedBaseCSS.length,
-    inlineStyle: inlineCSS.length,
-    customCSS: customCSS.length,
-    resolvedSlideCSS: resolvedSlideCSS.length,
-    totalCSS: allCSS.length,
-    hasCustomCSS: !!slide.customCSS,
-    sampleCustom: customCSS.substring(0, 200),
-  });
+  console.log(`[PPTX Prompt] Slide %d CSS: base=%d inline=%d total=%d`, slideNum, resolvedBaseCSS.length, inlineCSS.length, allCSS.length);
 
   const decision = decideTemplateUsage(slide, settings?.customTemplates || []);
   let exampleCode = COMPLETE_TRANSLATION_EXAMPLE.code;
@@ -385,42 +411,38 @@ function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback)
     .replace(/<footer[\s\S]*?<\/footer>/gi, '')
     .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"');
 
+  const tplPos = buildPositionBlock(settings?.templatePositions);
+
   let prompt = `TASK: Convert this HTML slide to a PptxGenJS function.
 
 ========== RESOLVED CSS VARIABLE VALUES ==========
---heading = #111111, --body = #222222, --muted = #4A4F57
---accent = #8E1E1E, --accent-hover = #A32020, --accent-soft = #F8E3E3, --on-accent = #FFFFFF
---page = #FFFFFF, --surface = #F7F9FB, --surface-alt = #EEF2F6, --border = #E6E9EE
---maroon = #8E1E1E, --red = #A32020, --rose = #F8E3E3
---main = #111111, --secondary = #222222, --meta = #4A4F57, --coal = #4A4F57
---success = #059669, --danger = #DC2626, --warning = #D97706
+${palette.resolvedVars}
 
-========== DIMENSION MAPPING (HTML px → PptxGenJS inches) ==========
-HTML slide: 960px × 540px  |  PPTX slide: 13.333in × 7.5in
-Conversion: inches = px × 13.333 / 960  (≈ 0.01389 in/px)
+========== DIMENSION MAPPING (HTML px -> PptxGenJS inches) ==========
+HTML slide: 960px x 540px  |  PPTX slide: 13.333in x 7.5in
+Conversion: inches = px * 13.333 / 960  (approx 0.01389 in/px)
 
-Key positions (px → inches):
-  Title:    left:28px top:24px  w:904px        → x:0.39  y:0.33  w:12.56
-  Subtitle: left:28px top:95px  w:904px        → x:0.39  y:1.32  w:12.56
-  Frame:    left:28px top:127px w:904px h:366px → x:0.39  y:1.76  w:12.56 h:5.08
-  Footer:   bottom of slide                    → y:7.05
+Key positions ${tplPos || `(px -> inches):
+  Title:    left:28px top:24px  w:904px        -> x:0.39  y:0.33  w:12.56
+  Subtitle: left:28px top:95px  w:904px        -> x:0.39  y:1.32  w:12.56
+  Frame:    left:28px top:127px w:904px h:366px -> x:0.39  y:1.76  w:12.56 h:5.08
+  Footer:   bottom of slide                    -> y:7.05`}
 
 When CSS specifies pixel values for position or size, convert them:
-  px=28  → 0.39in    px=127 → 1.76in    px=904 → 12.56in
-  px=366 → 5.08in    px=960 → 13.333in  px=540 → 7.5in
+  px=28  -> 0.39in    px=127 -> 1.76in    px=904 -> 12.56in
+  px=366 -> 5.08in    px=960 -> 13.333in  px=540 -> 7.5in
 
-All content inside .frame maps to the PPTX region x:0.39 y:1.76 w:12.56 h:5.08.
-Position elements WITHIN that region — e.g. an element at frame-relative (10px, 20px)
-becomes x:(0.39 + 10×0.01389) = 0.53, y:(1.76 + 20×0.01389) = 2.04.
+All content inside .frame maps to the PPTX region starting at the Frame position above.
+Position elements WITHIN that region relatively.
 
 ========== COLOR PALETTE ==========
-${vibeColorCode}
-${vibeHint}
-- Primary text: ${vibeStyle.colors.main}
-- Secondary text: ${vibeStyle.colors.secondary}
-- Accent: ${vibeStyle.colors.accent}
-- Card backgrounds: ${vibeStyle.colors.cardBg}
-- Borders: ${vibeStyle.colors.border}
+${palette.colorCode}
+${palette.hint}
+- Primary text: ${palette.colors.main}
+- Secondary text: ${palette.colors.secondary}
+- Accent: ${palette.colors.accent}
+- Card backgrounds: ${palette.colors.cardBg}
+- Borders: ${palette.colors.border}
 
 ========== REFERENCE EXAMPLE ==========
 ${exampleCode}
@@ -435,13 +457,13 @@ ${cleanHtml}
 ${allCSS || '/* No specific CSS */'}
 >>> END CSS <<<
 
-MANDATORY — EXACT COLOR FIDELITY:
+MANDATORY -- EXACT COLOR FIDELITY:
 You MUST reproduce the EXACT colors from BOTH the CSS rules AND inline styles.
-The CSS RULES section above is the RESOLVED stylesheet for this slide — treat it as ground truth.
-1. Check the CSS RULES for each class (e.g. .card-num { color: #8E1E1E }) → use that exact hex
+The CSS RULES section above is the RESOLVED stylesheet for this slide -- treat it as ground truth.
+1. Check the CSS RULES for each class (e.g. .card-num { color: #8E1E1E }) -> use that exact hex
 2. If an element also has an inline style="color: #ABC123", the inline style overrides CSS
-3. Remove the # prefix for PptxGenJS: #8E1E1E → color:'8E1E1E'
-4. For background-color in CSS or inline → fill:{color:'HEX'}
+3. Remove the # prefix for PptxGenJS: #8E1E1E -> color:'8E1E1E'
+4. For background-color in CSS or inline -> fill:{color:'HEX'}
 5. Do NOT invent your own colors. Do NOT use gray/light colors for elements that are red/maroon in the CSS.
 6. The reference example is just a STRUCTURAL guide. Always use the ACTUAL colors from THIS slide's CSS/HTML.
 
@@ -449,7 +471,7 @@ OUTPUT FORMAT (return ONLY this, no markdown):
 [
   function(pptx, slideNum, totalSlides) {
     const slide = pptx.addSlide();
-    ${vibeColorCode}
+    ${palette.colorCode}
     // ... your code ...
     addFooter(slide, slideNum, totalSlides);
   }
@@ -458,7 +480,7 @@ OUTPUT FORMAT (return ONLY this, no markdown):
 CRITICAL:
 - Use ACTUAL text from the HTML. Never use placeholder text.
 - Use ACTUAL colors from the CSS RULES. Never substitute your own colors.
-- The CSS RULES are the TRUTH. If CSS says .card-num { color: #8E1E1E }, use color:'8E1E1E' — not gray, not light, not anything else.`;
+- The CSS RULES are the TRUTH. If CSS says .card-num { color: #8E1E1E }, use color:'8E1E1E' -- not gray, not light, not anything else.`;
 
   if (errorFeedback) {
     prompt += `
@@ -664,6 +686,12 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
+  let templateData = null;
+  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
+  if (templateData?.chrome?.positions && settings) {
+    settings = { ...settings, templatePositions: templateData.chrome.positions };
+  }
+
   const totalSlides = slides.length;
   setFooterBranding(settings?.footerBranding || 'Strategy&');
 
@@ -782,13 +810,10 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
 
   if (onProgress) onProgress({ phase: 'finalizing', processed: totalSlides, total: totalSlides, message: 'Creating PowerPoint file...' });
 
-  let templateData = null;
-  try { templateData = await loadTemplateFromStorage(); } catch (e) { console.warn('[PPTX] Template load error:', e); }
-
   if (templateData?.data) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
-      const merged = await applyTemplateToGenerated(buf, templateData.data);
+      const merged = await applyTemplateToGenerated(buf, templateData.data, templateData.chrome || null);
       downloadArrayBuffer(merged, filename);
     } catch (e) {
       console.error('[PPTX] Template merge failed:', e);
@@ -816,6 +841,13 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   pptx.title = filename.replace('.pptx', '');
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
+
+  let templateData = null;
+  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
+  if (templateData?.chrome?.positions && settings) {
+    settings = { ...settings, templatePositions: templateData.chrome.positions };
+  }
+
   setFooterBranding(settings?.footerBranding || 'Strategy&');
 
   const useAI = settings && hasAnyCredentials(settings);
@@ -848,13 +880,10 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 
   if (onProgress) onProgress({ phase: 'finalizing', message: 'Creating PowerPoint file...' });
 
-    let templateData = null;
-  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
-
   if (templateData?.data) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
-      const merged = await applyTemplateToGenerated(buf, templateData.data);
+      const merged = await applyTemplateToGenerated(buf, templateData.data, templateData.chrome || null);
       downloadArrayBuffer(merged, filename);
     } catch (e) { await pptx.writeFile({ fileName: filename }); }
     } else {

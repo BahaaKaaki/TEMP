@@ -44,8 +44,9 @@ export function setFooterBranding(branding) {
   _footerBranding = branding || 'Strategy&';
 }
 
-export function addFooter(slide, slideNum, totalSlides) {
+export function addFooter(slide, slideNum, totalSlides, slideType) {
   if (!slide || !slideNum) return;
+  if (slideType === 'cover') return;
   if (_footerBranding) {
     slide.addText(_footerBranding, {
       x: 0.48, y: 7.05, w: 4.0, h: 0.25,

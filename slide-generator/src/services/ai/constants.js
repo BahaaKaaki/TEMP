@@ -740,10 +740,11 @@ MODE A — TWEAK (default): Small changes — fix text, adjust spacing, change a
 - Preserve the existing layout structure and custom CSS classes.
 - Only modify the specific elements the user mentions.
 
-MODE B — REDESIGN: User wants a fundamentally different layout — "make this a grid", "completely redo", "convert to timeline".
+MODE B — REDESIGN: User wants a fundamentally different layout — "reimagine", "make this a grid", "completely redo", "convert to timeline".
 - You have FULL creative freedom to change the HTML structure.
 - PRESERVE ALL CONTENT — every data point, title, subtitle, and text must survive.
-- Write new custom CSS in the <style> block to support your new layout.
+- You may use the pre-styled classes below OR create custom classes — but every custom class MUST have a matching CSS rule in your <style> block.
+- Write the HTML FIRST to commit to class names, then write the <style> block for those exact classes.
 
 MODE C — CONTENT CHANGE: User specifies new content — "title should be X", "add a point about Y".
 - Apply the content change. Preserve the layout structure.
@@ -754,9 +755,28 @@ ${CSS_STYLE_GUIDE}
 CSS RULES:
 1. Scope custom CSS under .slide .frame — never restyle .slide, .title, .subtitle, .frame, or .footer
 2. Use var(--token) for ALL colors — never hardcode hex values
-3. Reuse existing class names from the slide's <style> when tweaking; invent new ones for redesigns
-4. Use flexbox and CSS grid freely; size relative to the 904 x 366 frame
-5. Every class in the HTML must have a matching rule in <style>
+3. Reuse existing class names from the slide's <style> when tweaking
+4. For redesigns: use the APPROVED CSS CLASSES below — they have pre-built styling. Only add <style> for minor tweaks.
+5. Use flexbox and CSS grid freely; size relative to the 904 x 366 frame
+
+APPROVED CSS CLASSES (pre-styled — use these, do NOT invent new class names):
+Layout: card-row, two-col (col-left + col-right), split-layout (split-left + split-right), grid-2x2 (grid-cell), grid-3x2 (grid-3x2-item), process-flow (process-step + process-arrow), timeline-container (timeline-row), comparison-table
+Content: card, card-header-row, card-icon-circle, card-num, impact-box, kpi-block (kpi-value + kpi-label), detail-item, stat-highlight (stat-main + stat-number + stat-label), key-points (key-point + key-point-number + key-point-content)
+Lists: exec-bullet-list, styled-list, insight-list, check-list
+Other: visual-placeholder, split-callout
+
+LAYOUT SELECTION for redesigns — pick ONE based on content:
+- 2-3 key items/pillars → card-row
+- 4 items → grid-2x2
+- 5-6 items → grid-3x2
+- 3-6 bullet points → exec-bullet-list
+- Metrics + context → two-col (KPIs left, details right)
+- Sequential steps → process-flow or timeline-container
+- One big number → stat-highlight
+- Two sides to compare → split-layout
+- Bar data → bar-chart-h
+
+If a class is NOT listed above, do NOT use it — it has no CSS and will render as raw unstyled text.
 
 HEADING QUALITY:
 - SECTION TITLES (h3, h4): insight-driven 4-7 word phrases, never generic labels. Write conclusions the reader can grasp without body text.
@@ -778,9 +798,18 @@ DESIGN PRINCIPLES:
 - VERTICAL LOGIC: header must match content count exactly
 
 OUTPUT FORMAT:
-Return a <style> block first, then the modified HTML. No explanations or markdown.
+Return the HTML FIRST, then a <style> block at the end. No explanations or markdown.
+Write the HTML first to lock in your class names, then write CSS rules for those exact classes.
+Every custom class in the HTML MUST have a matching rule in <style>. Pre-styled classes (card-row, grid-2x2, etc.) do not need CSS rules.
 
+<div class="slide">
+  <h1 class="title">Insight headline</h1>
+  <h2 class="subtitle">Label</h2>
+  <div class="frame">
+    <!-- your layout here -->
+  </div>
+  <footer class="footer"><span>[Company]</span><span class="source"></span><span>1</span></footer>
+</div>
 <style>
-.slide .frame .my-class { /* layout */ }
-</style>
-<div class="slide">...</div>`;
+.slide .frame .your-class { /* must match a class used in the HTML above */ }
+</style>`;

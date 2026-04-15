@@ -346,15 +346,16 @@ NOTE: You requested additional context ("${contextRequest.reason}") but that inf
     // Extract single slide (AI may return multiple versions - take the last one)
     content = extractSingleSlide(content) || '';
 
-    // Extract customCSS from <style> blocks if present
-    let extractedCustomCSS = customCSS || ''; // Start with existing customCSS
+    // Extract customCSS from <style> blocks if present.
+    // When the AI returns a <style> block, it REPLACES the existing customCSS
+    // (the AI already has the old CSS in its context and can keep rules it needs).
+    // This prevents stale CSS from old layouts accumulating across redesigns.
+    let extractedCustomCSS = customCSS || '';
     const styleMatch = content.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
     if (styleMatch) {
       const newCSS = styleMatch.map(s => s.replace(/<\/?style[^>]*>/gi, '').trim()).join('\n\n');
       if (newCSS) {
-        extractedCustomCSS = extractedCustomCSS
-          ? `${extractedCustomCSS}\n\n/* AI-generated styles */\n${newCSS}`
-          : newCSS;
+        extractedCustomCSS = newCSS;
       }
       // Remove style blocks from content
       content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').trim();

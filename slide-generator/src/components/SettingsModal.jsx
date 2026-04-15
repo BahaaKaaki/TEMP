@@ -1351,25 +1351,17 @@ export default function SettingsModal({ onClose }) {
 
         {expandedAdvanced.pptx ? (
           <div style={{ marginBottom: 16 }}>
-            {/* PPTX Base Template */}
+            {/* PPTX Base Template (read-only) */}
+            {pptxTemplateName && (
             <div style={{ marginBottom: 16 }}>
               <label style={labelSmall}>Base Template</label>
-              <div style={{ ...hint, marginBottom: 8 }}>Upload a <code>.pptx</code> template to use its slide master, theme, and fonts.</div>
-              {pptxTemplateName ? (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--zone1)', borderRadius: 6, border: '1px solid var(--border)' }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
-                    <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active</div>
-                  </div>
-                  <button className="btn btn-ghost btn-sm" onClick={handleTemplateClear} style={{ color: '#dc3545' }}>Remove</button>
-                  <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', margin: 0 }}>Replace<input type="file" accept=".pptx" onChange={handleTemplateUpload} style={{ display: 'none' }} /></label>
+              <div style={{ ...hint, marginBottom: 8 }}>PowerPoint template used for slide masters, theme, and fonts.</div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--zone1)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
+                  <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active</div>
                 </div>
-              ) : (
-                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '16px 20px', border: '2px dashed var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--meta)', fontSize: 13 }}>
-                  {pptxTemplateLoading ? 'Saving...' : 'Click to upload .pptx template'}
-                  <input type="file" accept=".pptx" onChange={handleTemplateUpload} style={{ display: 'none' }} disabled={pptxTemplateLoading} />
-                </label>
-              )}
+              </div>
 
               {/* Branding preview after extraction */}
               {extractedBranding && (
@@ -1395,6 +1387,7 @@ export default function SettingsModal({ onClose }) {
                 </div>
               )}
             </div>
+            )}
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
               <button className="btn btn-ghost btn-sm" onClick={() => { if (window.confirm('Reset PPTX settings?')) setSettings({ ...settings, pptxModel: '', pptxSystemPrompt: '', pptxCodeExample: '', pptxBatchSize: 10, pptxParallelBatches: 3, pptxGenerateOnCreate: false }); }}>Reset to Defaults</button>
@@ -1679,49 +1672,6 @@ export default function SettingsModal({ onClose }) {
   // ─── Simplified settings for non-debug users ──────────────────────────────
   const renderSimplifiedSettings = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
-      {/* PPTX Template */}
-      <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
-        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Template</div>
-        <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>Upload a PowerPoint template to apply its slide masters, theme colors, and fonts.</div>
-        {pptxTemplateName ? (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--page, #fff)', borderRadius: 6, border: '1px solid var(--border)' }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
-              <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active</div>
-            </div>
-            <button className="btn btn-ghost btn-sm" onClick={handleTemplateClear} style={{ color: '#dc3545' }}>Remove</button>
-            <label className="btn btn-ghost btn-sm" style={{ cursor: 'pointer', margin: 0 }}>Replace<input type="file" accept=".pptx" onChange={handleTemplateUpload} style={{ display: 'none' }} /></label>
-          </div>
-        ) : (
-          <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '20px', border: '2px dashed var(--border)', borderRadius: 8, cursor: 'pointer', color: 'var(--meta)', fontSize: 13 }}>
-            {pptxTemplateLoading ? 'Saving...' : 'Click to upload .pptx template'}
-            <input type="file" accept=".pptx" onChange={handleTemplateUpload} style={{ display: 'none' }} disabled={pptxTemplateLoading} />
-          </label>
-        )}
-        {extractedBranding && (
-          <div style={{ marginTop: 12, padding: 14, background: 'var(--page, #fff)', borderRadius: 8, border: '1px solid var(--border)' }}>
-            <div style={{ fontWeight: 600, fontSize: 13, marginBottom: 8 }}>Detected Brand Theme</div>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-              {Object.entries(extractedBranding.theme.colors).slice(0, 12).map(([key, val]) => (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 10 }}>
-                  <div style={{ width: 16, height: 16, borderRadius: 3, background: val, border: '1px solid var(--border)' }} />
-                  <span style={{ color: 'var(--meta)' }}>{key}</span>
-                </div>
-              ))}
-            </div>
-            {extractedBranding.theme.fonts && (
-              <div style={{ fontSize: 11, color: 'var(--meta)', marginBottom: 8 }}>
-                Fonts: {extractedBranding.theme.fonts.title} / {extractedBranding.theme.fonts.body}
-              </div>
-            )}
-            <div style={{ display: 'flex', gap: 8 }}>
-              <button className="btn btn-primary btn-sm" onClick={applyExtractedTheme}>Apply Theme</button>
-              <button className="btn btn-ghost btn-sm" onClick={() => setExtractedBranding(null)}>Dismiss</button>
-            </div>
-          </div>
-        )}
-      </div>
-
       {/* User Preferences */}
       <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Preferences</div>
@@ -1786,6 +1736,20 @@ export default function SettingsModal({ onClose }) {
           ))}
         </div>
       </div>
+
+      {/* Template (read-only) */}
+      {pptxTemplateName && (
+        <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+          <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Template</div>
+          <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>PowerPoint template used for slide masters, theme colors, and fonts.</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--page, #fff)', borderRadius: 6, border: '1px solid var(--border)' }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
+              <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active</div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 

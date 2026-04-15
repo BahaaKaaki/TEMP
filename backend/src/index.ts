@@ -3,9 +3,36 @@ import { env } from './config/env';
 import { logger } from './config/logger';
 import { checkDatabaseHealth, closeDatabasePool } from './config/database';
 import { initRedis, closeRedis } from './config/redis';
+import fs from 'fs';
+import path from 'path';
+
+// One-time cleanup: remove any user-uploaded PPTX master template that
+// was accidentally uploaded (e.g., the 36MB Playbook-bod.pptx).
+// The default template in assets/ is always the fallback.
+function cleanupUploadedTemplate() {
+  const uploadsDir = path.join(process.cwd(), 'uploads');
+  const pptxPath = path.join(uploadsDir, 'pptx-master.pptx');
+  const metaPath = path.join(uploadsDir, 'pptx-master.meta.json');
+  try {
+    if (fs.existsSync(pptxPath)) {
+      const stats = fs.statSync(pptxPath);
+      // Remove if >1MB (the correct template is ~32KB)
+      if (stats.size > 1_000_000) {
+        fs.unlinkSync(pptxPath);
+        if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
+        logger.info(`Removed oversized uploaded template (${(stats.size / 1024 / 1024).toFixed(1)}MB)`);
+      }
+    }
+  } catch (e) {
+    // ignore — uploads dir may not exist
+  }
+}
 
 async function main() {
   try {
+    // Clean up any oversized uploaded templates
+    cleanupUploadedTemplate();
+
     // Initialize Redis (optional)
     await initRedis();
 

@@ -1269,6 +1269,16 @@ Your web search during planning gives YOU rich context for building the plan. Th
   (b) OPTIONAL: Raw, detailed per-step search results — triggered ONLY when you set searchQuery + searchGoal
 Because each step sees only its own facts[] (not your full search context), include ALL relevant facts for each step. Set searchQuery + searchGoal on slides that need MORE detail than your facts[] provide.
 
+7. SAME-FORMAT FREESTYLE SLIDES:
+When the router judges that multiple NEW slides should repeat the same visual format, it MUST treat them as a dependent slide family, not fully parallel slides.
+For freestyle slides:
+- Create the FIRST slide in the family before the others
+- Set each later slide's "contextFromStep" to that FIRST slide's exact step index
+- In each later slide's "instruction", explicitly write: "Match the format/structure of the referenced slide from step N"
+- Do not use vague phrases like "same as above"
+- Do not rely on layoutGuidance alone when exact format reuse is needed
+Apply this whenever slides are repetitive by nature, such as one-slide-per-pillar, one-slide-per-country, one-slide-per-workstream, one-slide-per-initiative, or repeated case-study/detail pages.
+ 
 SLIDE POSITIONING:
 - POSITION values: "start", "end", {"after_slide": N}, "after_previous"
 - Title/Cover slides MUST use position: "start"
@@ -1553,9 +1563,10 @@ Return ONLY valid JSON with these fields:
 SCOPES:
 - "qa": The user is asking a question or making conversation, NOT requesting slide changes.
   Examples: "what does slide 3 say?", "thanks", "hello", "how many slides do I have?"
-- "direct": A single-slide action on the active slide — edit, improve, fill, populate, or template switch. No multi-step planning needed.
+- "direct": A single-slide action on the active slide — edit, improve, fill, populate, or template switch. No multi-step planning needed. The request must ONLY involve the active slide with NO references to other slides.
   Examples: "make this more concise", "add a third column", "switch to comparison template", "fix the title", "fill this slide with X", "populate this with Y", "add content about Z"
   IMPORTANT: If an active slide exists (even if empty), and the user wants to fill, populate, or add content to THAT slide, use "direct" — NOT "plan".
+  EXCEPT: If the request references other slides (e.g., "format like slide 2", "use content from slide 3", "match the previous slide"), use "plan" instead — the direct path only has context of the active slide.
 - "plan": Multi-slide creation, deck restructuring, complex operations, or any request that needs the full router.
   Examples: "create 6 slides about AI", "restructure the deck", "add 3 more slides on risks", "delete slides 2-4"
   Only use "plan" when the user wants MULTIPLE new slides or cross-slide operations.
@@ -1579,7 +1590,7 @@ Additional rules:
 - Creating new decks, adding multiple slides → scope "plan"
 - Requests mentioning current data, latest, recent → needsSearch true
 - Use 0-based indices: Slide 1 = index 0, Slide 3 = index 2
-- CROSS-SLIDE: "make slide X like slide Y" targeting a DIFFERENT slide → scope "plan"
+- CROSS-SLIDE: Any request that references, targets, or compares OTHER slides (not just the active one) → scope "plan". Examples: "make slide X like slide Y", "format this like slide 2", "use the content from slide 3", "apply this format to all slides", "edit slides 2-4", "make the other slides match", "do this to the rest of the deck", "update all content slides", "copy the layout from the first slide"
 - EMPTY DECK (0 slides) + creation request → scope "plan"
 - If no active slide and request is not a question → scope "plan"
 

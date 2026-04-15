@@ -285,12 +285,7 @@ ${cssContext}${positionContext}${metadataContext}${contextNote}${neighborContext
 
 ${TITLE_HEADER_RULES}
 
-=== OUTPUT RULES ===
-1. EXECUTE THE USER'S INSTRUCTION as your primary goal
-2. Preserve CSS class names for consistent styling
-3. If content count doesn't match template (e.g., 5 items for 3-card layout), ADAPT the layout
-4. Footer branding: use "${settings.footerBranding || 'Strategy&'}" in footer left span
-5. Return ONLY the modified HTML`;
+Footer branding: use "${settings.footerBranding || 'Strategy&'}" in footer left span.`;
 
   debugLog(LogLevel.INFO, 'improveSlide', `Starting edit: "${instruction.substring(0, 100)}..."`, {
     slideTitle: title,

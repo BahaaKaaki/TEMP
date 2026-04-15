@@ -1272,12 +1272,15 @@ Because each step sees only its own facts[] (not your full search context), incl
 7. SAME-FORMAT FREESTYLE SLIDES:
 When the router judges that multiple NEW slides should repeat the same visual format, it MUST treat them as a dependent slide family, not fully parallel slides.
 For freestyle slides:
-- Create the FIRST slide in the family before the others
+- Create the FIRST slide in the family in its OWN group (e.g., groups: [[0], [1], [2,3,4], [5]])
 - Set each later slide's "contextFromStep" to that FIRST slide's exact step index
-- In each later slide's "instruction", explicitly write: "Match the format/structure of the referenced slide from step N"
+- Put the dependent slides in a LATER group — they MUST NOT be in the same group as the slide they reference. This is critical: contextFromStep only works if the referenced step has already finished generating.
+- In each later slide's "instruction", explicitly write: "Match the exact format/structure of the referenced slide from step N"
 - Do not use vague phrases like "same as above"
 - Do not rely on layoutGuidance alone when exact format reuse is needed
 Apply this whenever slides are repetitive by nature, such as one-slide-per-pillar, one-slide-per-country, one-slide-per-workstream, one-slide-per-initiative, or repeated case-study/detail pages.
+Example grouping for a 5-slide deck where slides 1-4 should match:
+  groups: [[0], [1], [2,3,4]]  — step 0 is cover, step 1 is the format leader, steps 2-4 reference step 1
  
 SLIDE POSITIONING:
 - POSITION values: "start", "end", {"after_slide": N}, "after_previous"

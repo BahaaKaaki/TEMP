@@ -3,6 +3,7 @@ import { useSlides } from '../context/SlideContext';
 import { SLIDE_TEMPLATES, getTemplatesByCategory, getEmptySlideTemplates } from '../utils/slideTemplates';
 import { generateEmptySlideHTML } from '../utils/slideMasters';
 import { extractRelevantCSS } from '../services/aiService';
+import { unscopeCSS } from '../utils/cssScoping';
 import SlideValidationModal from './SlideValidationModal';
 import TemplatePicker from './TemplatePicker';
 
@@ -344,7 +345,7 @@ export default function SlideList() {
       title: `${slide.title} (copy)`,
       type: slide.type,
       html: slide.html,
-      customCSS: slide.customCSS,
+      customCSS: unscopeCSS(slide.customCSS),
     });
   };
 

@@ -1486,6 +1486,10 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, 
 
   const currentSlide = slides[currentIndex];
   let slideHtml = currentSlide?.html || '';
+  // Inject data-slide-id so scoped CSS selectors match
+  if (currentSlide?.id && slideHtml && !slideHtml.includes('data-slide-id')) {
+    slideHtml = slideHtml.replace(/class="slide([^"]*)"/, `class="slide$1" data-slide-id="${currentSlide.id}"`);
+  }
   // Strip footer from cover slides to avoid duplicate branding
   if (slideHtml && (slideHtml.includes('cover-slide') || slideHtml.includes('cover-branding'))) {
     slideHtml = slideHtml.replace(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/gi, '');

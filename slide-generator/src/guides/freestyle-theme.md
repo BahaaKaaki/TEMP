@@ -31,22 +31,27 @@ Token values are set by the active theme and adapt automatically to any brand.
 
 | Purpose | Token | Default |
 |---------|-------|---------|
-| Titles (h1) | `var(--font-title)` | Georgia, serif |
-| Section headings | `var(--font-heading)` | Arial, sans-serif |
-| Body & labels | `var(--font-body)` | Arial, sans-serif |
+| Titles (h1 only) | `var(--font-title)` | Georgia, serif |
+| Everything else | `var(--font-body)` | Arial, sans-serif |
+
+**Font rule**: Use Arial (`var(--font-body)`) for ALL text — headings, labels, body, captions, badges.
+Georgia (`var(--font-title)`) is ONLY for `h1.title`. Do not use Georgia for h3, h4, cards, KPIs, labels, or any other element. When in doubt, use Arial.
 
 ### Font sizing guide
 
-- h1.title: 28px, `var(--font-title)`, weight 400
-- h2.subtitle: 18px bold, `var(--font-heading)`, `var(--accent)`
-- h3/h4 section heads: 14px bold, `var(--font-heading)`
-- Body text: 12px, `var(--font-body)`
-- Small labels (avoid, default to body text, use only when needed): 10px, `var(--font-body)`, `var(--muted)`
-- Footer: 10px, `var(--font-body)`, `var(--muted)`
+- h1.title: 28px, `var(--font-title)` (Georgia — ONLY place Georgia is used), weight 400
+- h2.subtitle: 18px bold, `var(--font-body)` (Arial), `var(--accent)`
+- h3/h4 section heads: 14px bold, `var(--font-body)` (Arial)
+- Body text: 12px, `var(--font-body)` (Arial)
+- KPI numbers/stats: 28-36px bold, `var(--font-body)` (Arial), `var(--accent)`
+- Small labels: 10px, `var(--font-body)` (Arial), `var(--muted)`
+- Footer: 10px, `var(--font-body)` (Arial), `var(--muted)`
 
 ## Contrast (CRITICAL)
 
-**MANDATORY**: Any element with `var(--accent)`, `var(--accent-hover)`, `var(--success)`, `var(--warning)`, or `var(--danger)` as background MUST use `var(--on-accent)` (white) or another light color for ALL text inside it. Never place `var(--heading)`, `var(--body)`, or any dark color on a dark background. This is the most common visual defect -- check every filled header, banner, badge, and card cap.
+**MANDATORY**: Any element with `var(--accent)`, `var(--accent-hover)`, `var(--success)`, `var(--warning)`, or `var(--danger)` as background MUST use `var(--on-accent)` (white) or another light color for ALL text inside it — including ALL child elements (spans, strongs, headings, labels). Never place `var(--heading)`, `var(--body)`, or any dark color on a dark background. This is the #1 most common visual defect.
+
+**SELF-CHECK**: After writing each CSS rule that sets `background` or `background-color` to a dark token, verify that the `color` of EVERY text element inside that container (including nested children) is set to `var(--on-accent)` or white. If you write `background: var(--accent)` on a div, every `h3`, `h4`, `p`, `span`, `strong` inside it needs `color: var(--on-accent)`.
 
 The current palette: `var(--heading)` = near-black, `var(--body)` = dark gray, `var(--muted)` = medium gray, `var(--accent)` = dark maroon, `var(--accent-hover)` = dark red, `var(--accent-soft)` = light pink tint, `var(--on-accent)` = white, `var(--page)` = white, `var(--surface)` = light gray, `var(--surface-alt)` = slightly darker light gray, `var(--border)` = light divider.
 

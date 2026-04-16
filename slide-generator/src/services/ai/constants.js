@@ -28,6 +28,8 @@ STATUS TOKENS:
   var(--warning), var(--warning-soft)  - Caution
   var(--danger), var(--danger-soft)    - Negative/decline
 
+CONTRAST: When background is a dark token (--accent, --success, --danger), ALL text inside must use var(--on-accent) (white). Never put dark text on dark backgrounds.
+
 FONTS:
 - Titles: Georgia, serif - 28px, color: var(--heading)
 - Subtitles: Arial, sans-serif - 18px bold, color: var(--accent)

@@ -918,12 +918,13 @@ function slideReducer(state, action) {
         const html = slide.html || '';
         const type = slide.type || 'custom';
         const title = slide.title || 'Imported Slide';
+        const newId = uuidv4();
         return {
-          id: uuidv4(),
+          id: newId,
           title,
           type,
           html,
-          customCSS: slide.customCSS || '',
+          customCSS: scopeCSS(unscopeCSS(slide.customCSS || ''), newId),
           pptxExportCode: slide.pptxExportCode || '',
           summary: slide.summary || generateSlideSummary(html, type, title),
           createdAt: new Date().toISOString(),

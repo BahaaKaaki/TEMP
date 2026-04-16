@@ -50,5 +50,7 @@ export function scopeCSS(css, slideId) {
  */
 export function unscopeCSS(css) {
   if (!css) return '';
-  return css.replace(/\[data-slide-id="[^"]*"\]\s*/g, '');
+  // Remove the [data-slide-id="..."] but preserve the space after .slide
+  // .slide[data-slide-id="x"] .frame → .slide .frame
+  return css.replace(/\[data-slide-id="[^"]*"\]/g, '');
 }

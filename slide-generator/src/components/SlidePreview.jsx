@@ -774,6 +774,12 @@ export default function SlidePreview({ onSwitchToCode }) {
         // Clean up contenteditable artifacts
         newHtml = cleanupEditableHtml(newHtml);
 
+        // Strip render-time attributes that shouldn't be persisted
+        newHtml = newHtml.replace(/\s*data-slide-id="[^"]*"/g, '');
+        newHtml = newHtml.replace(/\s*data-section="[^"]*"/g, '');
+        newHtml = newHtml.replace(/\s*data-subsection="[^"]*"/g, '');
+        newHtml = newHtml.replace(/\s*style="--tracker-offset:\s*\d+px"/g, '');
+
         // Ensure the slide wrapper is preserved
         if (!/class=["']slide[\s"']/i.test(newHtml)) {
           newHtml = `<div class="slide">${newHtml}</div>`;

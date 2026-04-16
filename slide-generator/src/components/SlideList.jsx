@@ -341,10 +341,12 @@ export default function SlideList() {
 
   const handleDuplicate = (e, slide) => {
     if (e) e.stopPropagation();
+    // Strip render-time attributes from HTML before copying
+    const cleanHtml = (slide.html || '').replace(/\s*data-slide-id="[^"]*"/g, '');
     actions.addSlide({
       title: `${slide.title} (copy)`,
       type: slide.type,
-      html: slide.html,
+      html: cleanHtml,
       customCSS: unscopeCSS(slide.customCSS),
     });
   };

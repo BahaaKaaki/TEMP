@@ -50,12 +50,16 @@ if (env.NODE_ENV !== 'test') {
 // Rate limiting
 app.use('/api/', standardLimiter);
 
+// Build ID — set at deploy time, used by frontend to detect new deployments
+const BUILD_ID = process.env.BUILD_ID || new Date().toISOString();
+
 // Health check (no auth required)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     timestamp: new Date().toISOString(),
     version: process.env.npm_package_version || '1.0.0',
+    buildId: BUILD_ID,
   });
 });
 

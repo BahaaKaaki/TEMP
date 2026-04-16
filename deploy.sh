@@ -80,6 +80,14 @@ if [ "$SKIP_DEPLOY" = false ]; then
   az account set --subscription "$SUBSCRIPTION"
 
   echo "Deploying to Azure App Service: $APP_NAME..."
+  # Set BUILD_ID so frontend auto-reloads on new deployments
+  BUILD_ID="$(date -u +%Y%m%dT%H%M%SZ)-$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown')"
+  az webapp config appsettings set \
+    --resource-group "$RESOURCE_GROUP" \
+    --name "$APP_NAME" \
+    --settings BUILD_ID="$BUILD_ID" \
+    --output none 2>/dev/null || true
+
   az webapp deploy \
     --resource-group "$RESOURCE_GROUP" \
     --name "$APP_NAME" \

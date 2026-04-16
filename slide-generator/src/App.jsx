@@ -15,8 +15,31 @@ import 'frontend-comps/styles.css';
 import './styles/app.css';
 import './styles/slides.css';
 
+// Auto-reload on new deployment — polls /health for buildId changes
+function useAutoReload() {
+  useEffect(() => {
+    let knownBuildId = null;
+    const check = async () => {
+      try {
+        const res = await fetch('/health');
+        const data = await res.json();
+        if (!knownBuildId) {
+          knownBuildId = data.buildId;
+        } else if (data.buildId !== knownBuildId) {
+          console.log('[AutoReload] New deployment detected, reloading...');
+          window.location.reload();
+        }
+      } catch { /* ignore network errors */ }
+    };
+    check();
+    const interval = setInterval(check, 60_000); // check every 60s
+    return () => clearInterval(interval);
+  }, []);
+}
+
 function EditorContent() {
   useKeyboardShortcuts();
+  useAutoReload();
   const { isPanelOpen, togglePanel } = useSlides();
 
   return (

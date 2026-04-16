@@ -75,6 +75,14 @@ app.use('/api/ai', aiProxyRoutes);
 
 // In production, serve the built React frontend as static files
 const frontendPath = path.join(__dirname, '../public');
+
+// Prevent browser from caching index.html so returning users always get the latest build.
+// JS/CSS assets have content hashes in filenames and are safely long-cached by default.
+app.get(['/', '/index.html'], (_req, res, next) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  next();
+});
+
 app.use(express.static(frontendPath));
 app.get('*', (_req, res, next) => {
   const indexPath = path.join(frontendPath, 'index.html');

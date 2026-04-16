@@ -122,6 +122,9 @@ const COVER_TRANSLATION_EXAMPLE = {
   slide.addShape('rect', {x:0, y:0, w:13.333, h:7.5, fill:{color:'FFFFFF'}});
   slide.addText('DIGITAL TRANSFORMATION', {x: 0.48, y: 1.94, w: 12.36, h: 0.5, fontFace: 'Arial', fontSize: 18, color: 'A32020', bold: true, charSpacing: 1.5});
   slide.addText('Enterprise AI Strategy Framework for Sustainable Growth', {x: 0.48, y: 2.64, w: 9.7, h: 2.0, fontFace: 'Georgia', fontSize: 42, color: '111111', valign: 'top', lineSpacingMultiple: 1.15});
+  // Cover: render branding + date directly, no addFooter
+  slide.addText('Strategy&', {x: 0.48, y: 6.50, w: 4.0, h: 0.3, fontFace: 'Arial', fontSize: 16, bold: true, color: '4A4F57'});
+  slide.addText('December 2025', {x: 9.5, y: 6.50, w: 3.3, h: 0.3, fontFace: 'Arial', fontSize: 13, color: '4A4F57', align: 'right'});
 }`
 };
 
@@ -167,7 +170,7 @@ BAR CHARTS: Render bar-chart-exhibit as native PptxGenJS shapes (filled rectangl
 AUTO-CHARTS: If you see <div class="auto-chart" data-chart='JSON'>, extract chart data and use slide.addChart().
 If unsure how to use addChart, render bars as rectangles instead — that always works.
 
-FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide.
+FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
 
 OUTPUT: Return ONLY a JavaScript array of functions, no markdown.`;
 
@@ -629,7 +632,11 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides) {
     const title = getText(doc, '.cover-title') || getText(doc, '.title') || 'Presentation';
     if (cat) pptxSlide.addText(cat.toUpperCase(), { x: 0.48, y: 1.94, w: 12.36, h: 0.5, fontFace: 'Arial', fontSize: 18, color: COLORS.red, bold: true });
     pptxSlide.addText(title, { x: 0.48, y: 2.64, w: 9.7, h: 2.0, fontFace: 'Georgia', fontSize: 42, color: COLORS.main, valign: 'top' });
-    addFooter(pptxSlide, slideNum, totalSlides);
+    // Cover branding and date — no footer row
+    const branding = getText(doc, '.cover-branding');
+    const date = getText(doc, '.cover-date');
+    if (branding) pptxSlide.addText(branding, { x: 0.48, y: 6.50, w: 4.0, h: 0.3, fontFace: 'Arial', fontSize: 16, bold: true, color: COLORS.meta });
+    if (date) pptxSlide.addText(date, { x: 9.5, y: 6.50, w: 3.3, h: 0.3, fontFace: 'Arial', fontSize: 13, color: COLORS.meta, align: 'right' });
     return;
   }
   if (isDivider) {

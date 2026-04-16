@@ -5,6 +5,7 @@ import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
 import { CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
+import { unscopeCSS } from '../../utils/cssScoping.js';
 import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext } from './slideContext.js';
 import { extractSingleSlide, flattenNestedFrames, extractTitleFromHTML, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
@@ -248,7 +249,8 @@ export async function improveSlide(slideHtmlOrInfo, instruction, settings, deckC
     : '';
 
   // Build CSS context: the slide's customCSS (primary) + shell CSS (reference)
-  const relevantCSS = extractRelevantCSS(html, customCSS);
+  // Unscope so the AI sees clean selectors without [data-slide-id="..."]
+  const relevantCSS = extractRelevantCSS(html, unscopeCSS(customCSS));
   let cssContext = '';
   if (relevantCSS) {
     cssContext = `

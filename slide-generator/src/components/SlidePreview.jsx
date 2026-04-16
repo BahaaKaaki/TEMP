@@ -376,21 +376,10 @@ export default function SlidePreview({ onSwitchToCode }) {
     return () => wrapper.removeEventListener('wheel', handleWheel);
   }, [handleZoomIn, handleZoomOut]);
 
-  // Only include slide-specific CSS - slides.css is imported globally
-  // Don't include state.sharedCSS as it duplicates the global import
-  // Scoped with [data-slide-id] to prevent flicker when switching slides:
-  // the CSS and innerHTML update in different render phases, so scoping
-  // ensures the new CSS doesn't affect the old slide during the transition.
+  // Slide-specific CSS — already scoped with [data-slide-id] at storage time
   const combinedCSS = useMemo(() => {
-    if (activeSlide?.customCSS && activeSlide?.id) {
-      const scoped = activeSlide.customCSS.replace(
-        /\.slide\s/g,
-        `.slide[data-slide-id="${activeSlide.id}"] `
-      );
-      return '/* Slide-specific CSS */\n' + scoped;
-    }
-    return '';
-  }, [activeSlide?.customCSS, activeSlide?.id]);
+    return activeSlide?.customCSS || '';
+  }, [activeSlide?.customCSS]);
 
   // Set up the slide HTML when activeSlide changes
   useEffect(() => {
@@ -1607,7 +1596,7 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, 
       }}
     >
       {/* Inject CSS */}
-      <style>{getBaseCSS() + '\n' + themeToCSS(theme) + '\n' + combinedCSS}</style>
+      <style>{getBaseCSS() + '\n' + themeToCSS(theme) + '\n' + (currentSlide?.customCSS || '')}</style>
 
       {/* Scaled slide wrapper */}
       <div

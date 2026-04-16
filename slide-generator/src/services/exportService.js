@@ -147,11 +147,17 @@ export function generateExportHTML(slides, sharedCSS, title = 'Presentation', th
       const slideNumber = index + 1;
       const typeLabel = getTypeLabel(slide.type);
 
+      // Inject data-slide-id so scoped CSS selectors match
+      let slideHtml = slide.html || '';
+      if (slide.id && !slideHtml.includes('data-slide-id')) {
+        slideHtml = slideHtml.replace(/class="slide([^"]*)"/, `class="slide$1" data-slide-id="${slide.id}"`);
+      }
+
       return `
   <!-- Slide ${slideNumber}: ${slide.title || 'Untitled'} -->
   <div class="slide-section">
     <div class="slide-label">${typeLabel} - Slide ${slideNumber}</div>
-    ${slide.html}
+    ${slideHtml}
   </div>`;
     })
     .join('\n');

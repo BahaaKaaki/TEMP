@@ -2,6 +2,7 @@ import { createContext, useContext, useReducer, useEffect, useRef, useCallback, 
 import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
 import { DEFAULT_THEME } from '../utils/themeUtils';
+import { scopeCSS, unscopeCSS } from '../utils/cssScoping';
 // Import full CSS as raw string so it's available in state for AI and exports
 import SLIDES_CSS from '../styles/slides.css?raw';
 const SlideContext = createContext(null);
@@ -510,7 +511,7 @@ function slideReducer(state, action) {
         type,
         html,
         layoutType, // Layout type for agent context (cards, bullets, timeline, kpi, grid, etc.)
-        customCSS: action.payload.customCSS || '',
+        customCSS: scopeCSS(action.payload.customCSS || '', slideId),
         pptxExportCode: action.payload.pptxExportCode || '',
         pptxRendererCode: action.payload.pptxRendererCode || null, // JavaScript code for PPTX export
         summary: action.payload.summary || generateSlideSummary(html, type, title),
@@ -590,7 +591,7 @@ function slideReducer(state, action) {
         title,
         type,
         html,
-        customCSS: slideData.customCSS || '',
+        customCSS: scopeCSS(slideData.customCSS || '', slideId),
         pptxExportCode: slideData.pptxExportCode || '',
         pptxRendererCode: slideData.pptxRendererCode || null, // JavaScript code for PPTX export
         summary: slideData.summary || generateSlideSummary(html, type, title),
@@ -686,9 +687,14 @@ function slideReducer(state, action) {
             ? null
             : (updates.pptxRendererCode !== undefined ? updates.pptxRendererCode : slide.pptxRendererCode);
 
+          // Scope customCSS if it's being updated and not already scoped
+          const scopedUpdates = updates.customCSS !== undefined && updates.customCSS && !updates.customCSS.includes('data-slide-id')
+            ? { ...updates, customCSS: scopeCSS(updates.customCSS, slide.id) }
+            : updates;
+
           return {
             ...slide,
-            ...updates,
+            ...scopedUpdates,
             pptxRendererCode,
             layoutType: newLayoutType,
             summary: needsSummaryUpdate

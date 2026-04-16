@@ -2417,7 +2417,7 @@ export default function AIChatbot() {
                   summary: slideData.summary,
                 });
                 lastInsertedIndex = replaceIdx;
-                stepOutputs[stepIndex] = { html: slideData.html, slideIndex: replaceIdx, title: slideData.title };
+                stepOutputs[stepIndex] = { html: slideData.html, customCSS: slideData.customCSS, slideIndex: replaceIdx, title: slideData.title };
                 editedSlides.push({ index: replaceIdx + 1, title: slideData.title });
                 continue;
               }
@@ -2439,6 +2439,7 @@ export default function AIChatbot() {
             }
             stepOutputs[stepIndex] = {
               html: slideData.html,
+              customCSS: slideData.customCSS,
               slideIndex: lastInsertedIndex,
               title: slideData.title,
             };
@@ -2537,8 +2538,14 @@ export default function AIChatbot() {
             // Use analysis as content guide (not slide HTML)
             contextForAI = `${contextForAI}\n\n=== CONTENT ANALYSIS (Use this to guide slide creation) ===\n${prevOutput.analysis || prevOutput.html}\n=== END ANALYSIS ===`;
           } else {
-            // Regular slide context
-            contextForAI = `${contextForAI}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevOutput.html}]`;
+            // Regular slide context — include HTML and CSS so the AI can match the visual format
+            let prevContext = prevOutput.html;
+            if (prevOutput.customCSS) {
+              // Unscope CSS so AI sees clean selectors
+              const cleanCSS = prevOutput.customCSS.replace(/\[data-slide-id="[^"]*"\]\s*/g, '');
+              prevContext = `<style>\n${cleanCSS}\n</style>\n${prevOutput.html}`;
+            }
+            contextForAI = `${contextForAI}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]`;
           }
         }
 

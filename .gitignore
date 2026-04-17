@@ -72,3 +72,7 @@ _bmad-output/
 
 # Standalone PPTX test harness
 pptx-test/
+
+# Claude / MCP config (local-only)
+CLAUDE.md
+.mcp.json

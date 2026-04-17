@@ -692,9 +692,9 @@ ${previewParts.join('\n\n')}`;
                 <div className="header-dropdown" style={{ minWidth: 290, padding: 6, right: 0 }}>
                   {[
                     { name: 'Edwin Assistant', desc: 'Knowledge-base reasoning & guidance', url: 'https://chatgpt.com/g/g-6996dddb1c508191bb78286dda737adc-edwin-assistant',
-                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg> },
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><path d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 1 1 7.072 0l-.548.547A3.374 3.374 0 0 0 14 18.469V19a2 2 0 1 1-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/></svg> },
                     { name: 'Edwin Why Strategy', desc: 'Crafting Why Strategy& narratives', url: 'https://chatgpt.com/g/g-68cd507ec9cc81918cfaa9de7f52e4bf-edwin-why-strategy',
-                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="12" r="10"/><path d="M12 17h.01"/></svg> },
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" fill="#8E1E1E" opacity="0.15" stroke="#8E1E1E"/></svg> },
                     { name: 'Edwin Qual Creator', desc: 'Fast qualification creation', url: 'https://chatgpt.com/g/g-68cc41d407d48191970c5cfb3c41d02d-edwin-qual-creator',
                       svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
                     { name: 'Edwin Slide Builder', desc: 'Strategy& branded slides', url: 'https://chatgpt.com/g/g-6936882b659c8191aaf8ead55132f4ca-edwin-slide-builder',
@@ -702,7 +702,7 @@ ${previewParts.join('\n\n')}`;
                     { name: 'Edwin CV Creator', desc: 'Tailored CVs and team pages', url: 'https://chatgpt.com/g/g-6973437234b08191bda4f456c7804573-edwin-cv-creator',
                       svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
                     { name: 'Edwin Icon Creator', desc: 'Custom presentation icons', url: 'https://chatgpt.com/g/g-6973445942b48191ad0fc8a37839638b-edwin-icon-creator',
-                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><circle cx="13.5" cy="6.5" r="2.5"/><path d="M17.5 17.5L22 22"/><circle cx="17.5" cy="17.5" r="4.5"/><path d="M2 21l6-6"/><circle cx="8" cy="15" r="3"/></svg> },
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.21 1.21 0 0 0 1.72 0L21.64 5.36a1.21 1.21 0 0 0 0-1.72z"/><path d="m14 7 3 3"/><path d="M5 6v4"/><path d="M19 14v4"/><path d="M10 2v2"/><path d="M7 8H3"/><path d="M21 16h-4"/><path d="M11 3H9"/></svg> },
                   ].map(gpt => (
                     <a
                       key={gpt.name}

@@ -6485,7 +6485,7 @@ Original request: ${userPrompt}`;
                       <line x1="21" y1="21" x2="16.65" y2="16.65" />
                     </svg>
                   </button>
-                  <button type="submit" className="chatbot-send-btn" disabled={inputDisabled || !prompt.trim()}>
+                  <button type="submit" className="chatbot-send-btn" disabled={inputDisabled || isUploadingFiles || !prompt.trim()}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <line x1="22" y1="2" x2="11" y2="13" />
                       <polygon points="22 2 15 22 11 13 2 9 22 2" />

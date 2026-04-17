@@ -28,6 +28,7 @@ export default function Header() {
   const [showTemplateManager, setShowTemplateManager] = useState(false);
   // const [showWidgetBrowser, setShowWidgetBrowser] = useState(false); // UI declutter: widgets hidden
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showGptMenu, setShowGptMenu] = useState(false);
   const [isDownloadingSlide, setIsDownloadingSlide] = useState(false);
   const [showVersionMenu, setShowVersionMenu] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
@@ -526,7 +527,7 @@ ${previewParts.join('\n\n')}`;
         </div>
 
         <div className="header-actions">
-          {/* FILE ACTIONS */}
+          {/* NEW DECK */}
           <div className="header-action-group">
             <button
               className="header-action-btn"
@@ -541,18 +542,10 @@ ${previewParts.join('\n\n')}`;
               </svg>
               <span className="header-btn-label">New</span>
             </button>
+          </div>
 
-            {/* UI declutter: Import hidden
-            <button className="header-action-btn" onClick={handleImport} title="Import JSON">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              <span className="header-btn-label">Import</span>
-            </button>
-            */}
-
+          {/* EXPORT */}
+          <div className="header-action-group">
             <div style={{ position: 'relative' }}>
               <button
                 className="header-action-btn header-action-btn-primary"
@@ -672,6 +665,62 @@ ${previewParts.join('\n\n')}`;
                 </div>
                 );
               })()}
+            </div>
+          </div>
+
+          {/* EDWIN ON CHATGPT */}
+          <div className="header-action-group">
+            <div style={{ position: 'relative' }}>
+              <button
+                className="header-action-btn"
+                onClick={() => setShowGptMenu(!showGptMenu)}
+                title="Edwin on ChatGPT"
+                style={{ gap: 5 }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                </svg>
+                <span className="header-btn-label">ChatGPT</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+
+              {showGptMenu && (
+                <div className="header-dropdown" style={{ minWidth: 280, padding: 6, right: 0 }}>
+                  {[
+                    { name: 'Edwin Assistant', desc: 'Knowledge-base reasoning & guidance', url: 'https://chatgpt.com/g/g-6996dddb1c508191bb78286dda737adc-edwin-assistant', icon: '🧠' },
+                    { name: 'Edwin Why Strategy', desc: 'Crafting Why Strategy& narratives', url: 'https://chatgpt.com/g/g-68cd507ec9cc81918cfaa9de7f52e4bf-edwin-why-strategy', icon: '💡' },
+                    { name: 'Edwin Qual Creator', desc: 'Fast qualification creation', url: 'https://chatgpt.com/g/g-68cc41d407d48191970c5cfb3c41d02d-edwin-qual-creator', icon: '📋' },
+                    { name: 'Edwin Slide Builder', desc: 'Strategy& branded slides', url: 'https://chatgpt.com/g/g-6936882b659c8191aaf8ead55132f4ca-edwin-slide-builder', icon: '📊' },
+                    { name: 'Edwin CV Creator', desc: 'Tailored CVs and team pages', url: 'https://chatgpt.com/g/g-6973437234b08191bda4f456c7804573-edwin-cv-creator', icon: '👤' },
+                    { name: 'Edwin Icon Creator', desc: 'Custom presentation icons', url: 'https://chatgpt.com/g/g-6973445942b48191ad0fc8a37839638b-edwin-icon-creator', icon: '🎨' },
+                  ].map(gpt => (
+                    <a
+                      key={gpt.name}
+                      href={gpt.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="export-dropdown-card"
+                      style={{ textDecoration: 'none', color: 'inherit' }}
+                      onClick={() => setShowGptMenu(false)}
+                    >
+                      <span className="export-dropdown-icon" style={{ background: '#f3f3f3', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {gpt.icon}
+                      </span>
+                      <span className="export-dropdown-text">
+                        <span className="export-dropdown-label">{gpt.name}</span>
+                        <span className="export-dropdown-hint">{gpt.desc}</span>
+                      </span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#999" strokeWidth="2" style={{ flexShrink: 0, marginLeft: 'auto' }}>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1181,6 +1230,19 @@ ${previewParts.join('\n\n')}`;
         />
       )}
 
+      {showGptMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 50,
+          }}
+          onClick={() => setShowGptMenu(false)}
+        />
+      )}
 
       {/* Export Progress Overlay */}
       {exportProgress && (

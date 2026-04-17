@@ -14,7 +14,7 @@ export const _apiState = { lastRequestParams: null };
  * Call router with images - multimodal API call
  * Analyzes images with the user's query context
  */
-export async function callRouterWithImages(settings, systemPrompt, contextInfo, images) {
+export async function callRouterWithImages(settings, systemPrompt, contextInfo, images, opts = {}) {
   const creds = getCredentials(settings);
   const { maxTokens = 4096 } = settings;
 
@@ -122,7 +122,6 @@ When the image shows a slide/presentation to recreate:
       method: 'POST',
       headers: buildGeminiHeaders(creds),
       body: JSON.stringify(requestBody),
-      ...(opts.signal ? { signal: opts.signal } : {}),
     });
 
     if (!response.ok) {

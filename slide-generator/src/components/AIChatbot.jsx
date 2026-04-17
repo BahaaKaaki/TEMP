@@ -7,7 +7,7 @@ import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
 import { generateGPTContext, inspectSlide, agenticFixLoop, formatInspection } from '../services/layoutCorrectionService';
-import { parseMultipleDocuments, getAcceptString, isFileSupported } from '../services/documentParser';
+import { parseMultipleDocuments, getAcceptString, isFileSupported, analyzeImageWithAI } from '../services/documentParser';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { VIBES } from '../utils/vibes';
 import { debugLog, LogLevel } from '../utils/debugLog';
@@ -888,40 +888,55 @@ export default function AIChatbot() {
     setIsUploadingFiles(true);
 
     try {
-      // Convert images to base64 WITHOUT analyzing - analyze later with user query
+      // Same flow as file upload: read base64, eagerly analyze with AI, populate content
       const processedImages = await Promise.all(imageItems.map(async ({ file, type }) => {
         const ext = type.split('/')[1] || 'png';
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
         const fileName = `pasted-image-${timestamp}.${ext}`;
 
-        // Read as base64
-        const base64 = await new Promise((resolve, reject) => {
+        // Read as data URL then extract raw base64 (matching upload format)
+        const dataUrl = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result);
           reader.onerror = reject;
           reader.readAsDataURL(file);
         });
 
+        const rawBase64 = dataUrl.split(',')[1];
+
+        // Eagerly analyze — same path as file upload
+        let content = null;
+        try {
+          content = await analyzeImageWithAI(rawBase64, type, state.settings);
+          console.log('[AIChatbot] Pasted image analyzed:', fileName, content?.length, 'chars');
+        } catch (err) {
+          console.warn('[AIChatbot] Image analysis failed, storing without content:', err.message);
+        }
+
         return {
           fileName,
           type: 'image',
-          imageData: base64, // Store raw base64 - will analyze with query
-          content: null, // No pre-analysis - will be filled when user sends query
-          needsAnalysis: true, // Flag to indicate this needs vision analysis
+          imageData: rawBase64,
+          content,
+          metadata: { fileName, fileSize: file.size, mimeType: type },
         };
       }));
 
-      // Track in session (not in knowledge base yet - will add after analysis)
       setUploadedFiles(prev => [...prev, ...processedImages]);
 
-      addMessage('assistant', `📎 Image${processedImages.length > 1 ? 's' : ''} ready. What would you like me to do with ${processedImages.length > 1 ? 'them' : 'it'}?`);
+      const analyzed = processedImages.filter(f => f.content);
+      if (analyzed.length > 0) {
+        addMessage('assistant', `Image${analyzed.length > 1 ? 's' : ''} analyzed and ready. What would you like me to do with ${analyzed.length > 1 ? 'them' : 'it'}?`);
+      } else {
+        addMessage('assistant', `Image${processedImages.length > 1 ? 's' : ''} attached but analysis failed. You can still ask about ${processedImages.length > 1 ? 'them' : 'it'}.`);
+      }
     } catch (error) {
       console.error('[AIChatbot] Paste error:', error);
-      addMessage('assistant', `❌ Error processing pasted image: ${error.message}`);
+      addMessage('assistant', `Error processing pasted image: ${error.message}`);
     } finally {
       setIsUploadingFiles(false);
     }
-  }, []);
+  }, [state.settings]);
 
   // Build knowledge context for AI prompts (RAG-style)
   // ALWAYS includes uploaded files, optionally includes KB if toggle is on
@@ -2758,6 +2773,7 @@ export default function AIChatbot() {
           }
 
           case 'create_slide':
+          case 'create_slides_batch':
           case 'create_from_template': {
             const templateId = step.templateId;
             // "freestyle" is not a real template — treat it as null so we hit the freestyle path

@@ -817,7 +817,7 @@ function fileToBase64(file) {
 /**
  * Analyze image using AI vision model
  */
-async function analyzeImageWithAI(base64, mimeType, settings) {
+export async function analyzeImageWithAI(base64, mimeType, settings) {
   // Find a vision-capable model
   const modelRef = settings.model || 'openai:gpt-4o';
   const [providerId, modelName] = modelRef.includes(':') ? modelRef.split(':') : ['openai', modelRef];

@@ -28,6 +28,7 @@ export default function Header() {
   const [showTemplateManager, setShowTemplateManager] = useState(false);
   // const [showWidgetBrowser, setShowWidgetBrowser] = useState(false); // UI declutter: widgets hidden
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showGptMenu, setShowGptMenu] = useState(false);
   const [isDownloadingSlide, setIsDownloadingSlide] = useState(false);
   const [showVersionMenu, setShowVersionMenu] = useState(false);
   const [showAuditLog, setShowAuditLog] = useState(false);
@@ -526,7 +527,7 @@ ${previewParts.join('\n\n')}`;
         </div>
 
         <div className="header-actions">
-          {/* FILE ACTIONS */}
+          {/* NEW DECK */}
           <div className="header-action-group">
             <button
               className="header-action-btn"
@@ -541,18 +542,10 @@ ${previewParts.join('\n\n')}`;
               </svg>
               <span className="header-btn-label">New</span>
             </button>
+          </div>
 
-            {/* UI declutter: Import hidden
-            <button className="header-action-btn" onClick={handleImport} title="Import JSON">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                <polyline points="17 8 12 3 7 8" />
-                <line x1="12" y1="3" x2="12" y2="15" />
-              </svg>
-              <span className="header-btn-label">Import</span>
-            </button>
-            */}
-
+          {/* EXPORT */}
+          <div className="header-action-group">
             <div style={{ position: 'relative' }}>
               <button
                 className="header-action-btn header-action-btn-primary"
@@ -672,6 +665,70 @@ ${previewParts.join('\n\n')}`;
                 </div>
                 );
               })()}
+            </div>
+          </div>
+
+          {/* EDWIN ON CHATGPT */}
+          <div className="header-action-group" style={{ background: 'transparent', border: '1px solid #e0e0e0' }}>
+            <div style={{ position: 'relative' }}>
+              <button
+                className="header-action-btn"
+                onClick={() => setShowGptMenu(!showGptMenu)}
+                title="Edwin on ChatGPT"
+                style={{ gap: 5 }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                  <circle cx="12" cy="12" r="10" />
+                  <path d="M12 2a7.5 7.5 0 0 0-3 14.4V20l3-2 3 2v-3.6A7.5 7.5 0 0 0 12 2z" fill="none" />
+                  <path d="M9 10h.01M15 10h.01M9.5 15a3.5 3.5 0 0 0 5 0" />
+                </svg>
+                <span className="header-btn-label">Edwin GPTs</span>
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <path d="M6 9l6 6 6-6" />
+                </svg>
+              </button>
+
+              {showGptMenu && (
+                <div className="header-dropdown" style={{ minWidth: 290, padding: 6, right: 0 }}>
+                  {[
+                    { name: 'Edwin Assistant', desc: 'Knowledge-base reasoning & guidance', url: 'https://chatgpt.com/g/g-6996dddb1c508191bb78286dda737adc-edwin-assistant',
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg> },
+                    { name: 'Edwin Why Strategy', desc: 'Crafting Why Strategy& narratives', url: 'https://chatgpt.com/g/g-68cd507ec9cc81918cfaa9de7f52e4bf-edwin-why-strategy',
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><circle cx="12" cy="12" r="10"/><path d="M12 17h.01"/></svg> },
+                    { name: 'Edwin Qual Creator', desc: 'Fast qualification creation', url: 'https://chatgpt.com/g/g-68cc41d407d48191970c5cfb3c41d02d-edwin-qual-creator',
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
+                    { name: 'Edwin Slide Builder', desc: 'Strategy& branded slides', url: 'https://chatgpt.com/g/g-6936882b659c8191aaf8ead55132f4ca-edwin-slide-builder',
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg> },
+                    { name: 'Edwin CV Creator', desc: 'Tailored CVs and team pages', url: 'https://chatgpt.com/g/g-6973437234b08191bda4f456c7804573-edwin-cv-creator',
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                    { name: 'Edwin Icon Creator', desc: 'Custom presentation icons', url: 'https://chatgpt.com/g/g-6973445942b48191ad0fc8a37839638b-edwin-icon-creator',
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><circle cx="13.5" cy="6.5" r="2.5"/><path d="M17.5 17.5L22 22"/><circle cx="17.5" cy="17.5" r="4.5"/><path d="M2 21l6-6"/><circle cx="8" cy="15" r="3"/></svg> },
+                  ].map(gpt => (
+                    <a
+                      key={gpt.name}
+                      href={gpt.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="export-dropdown-card"
+                      style={{ textDecoration: 'none', color: 'inherit' }}
+                      onClick={() => setShowGptMenu(false)}
+                    >
+                      <span className="export-dropdown-icon" style={{ background: '#FDF2F2' }}>
+                        {gpt.svg}
+                      </span>
+                      <span className="export-dropdown-text">
+                        <span className="export-dropdown-label">{gpt.name}</span>
+                        <span className="export-dropdown-hint">{gpt.desc}</span>
+                      </span>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#bbb" strokeWidth="2" style={{ flexShrink: 0, marginLeft: 'auto' }}>
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+                        <polyline points="15 3 21 3 21 9" />
+                        <line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -1181,6 +1238,19 @@ ${previewParts.join('\n\n')}`;
         />
       )}
 
+      {showGptMenu && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 50,
+          }}
+          onClick={() => setShowGptMenu(false)}
+        />
+      )}
 
       {/* Export Progress Overlay */}
       {exportProgress && (

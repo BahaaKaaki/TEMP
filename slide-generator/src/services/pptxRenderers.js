@@ -39,23 +39,32 @@ export const LAYOUT = {
 // ── Footer branding ──────────────────────────────────────────────────────────
 
 let _footerBranding = 'Strategy&';
+let _tplPositions = null;
 
 export function setFooterBranding(branding) {
   _footerBranding = branding || 'Strategy&';
 }
 
+export function setTemplatePositions(positions) {
+  _tplPositions = positions || null;
+}
+
 export function addFooter(slide, slideNum, totalSlides, slideType) {
   if (!slide || !slideNum) return;
   if (slideType === 'cover') return;
-  if (_footerBranding) {
-    slide.addText(_footerBranding, {
-      x: 0.48, y: 7.05, w: 4.0, h: 0.25,
-      fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.meta, align: 'left',
-    });
-  }
+
+  const numPos = _tplPositions?.slideNum;
+  const numFont = numPos?.font || {};
   slide.addText(String(slideNum), {
-    x: 11.5, y: 7.05, w: 1.3, h: 0.25,
-    fontFace: 'Arial', fontSize: 10, color: COLORS.meta, align: 'right',
+    x: numPos?.x ?? 11.5,
+    y: numPos?.y ?? 7.05,
+    w: numPos?.w ?? 1.3,
+    h: numPos?.h ?? 0.25,
+    fontFace: numFont.fontFace || 'Arial',
+    fontSize: numFont.fontSize || 7.5,
+    bold: numFont.bold || false,
+    color: COLORS.meta,
+    align: 'right',
   });
 }
 
@@ -111,7 +120,19 @@ export function addSourceNote(slide, html) {
     });
   }
   if (texts.length === 0) return;
-  slide.addText(texts.join(' | '), { x: 2.5, y: 7.05, w: 8.5, h: 0.25, fontFace: 'Arial', fontSize: 8, italic: true, color: COLORS.meta, align: 'left' });
+  const ftrPos = _tplPositions?.footer;
+  const ftrFont = ftrPos?.font || {};
+  slide.addText(texts.join(' | '), {
+    x: ftrPos?.x ?? 2.5,
+    y: ftrPos?.y ?? 7.05,
+    w: ftrPos?.w ?? 8.5,
+    h: ftrPos?.h ?? 0.25,
+    fontFace: ftrFont.fontFace || 'Arial',
+    fontSize: ftrFont.fontSize || 7.5,
+    italic: ftrFont.italic ?? true,
+    color: COLORS.meta,
+    align: 'left',
+  });
 }
 
 // ── parseHTML ────────────────────────────────────────────────────────────────

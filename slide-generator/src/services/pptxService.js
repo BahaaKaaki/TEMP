@@ -14,6 +14,7 @@ import {
   addSourceNote,
   addSectionTracker,
   setFooterBranding,
+  setTemplatePositions,
 } from './pptxRenderers';
 import { applyTemplateToGenerated, loadTemplateFromStorage, downloadArrayBuffer } from './pptxTemplateService';
 import { extractRelevantCSS } from './aiService';
@@ -701,6 +702,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
 
   const totalSlides = slides.length;
   setFooterBranding(settings?.footerBranding || 'Strategy&');
+  setTemplatePositions(templateData?.chrome?.positions || null);
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = FORCED_PPTX_MODEL;
@@ -856,6 +858,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   }
 
   setFooterBranding(settings?.footerBranding || 'Strategy&');
+  setTemplatePositions(templateData?.chrome?.positions || null);
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = FORCED_PPTX_MODEL;

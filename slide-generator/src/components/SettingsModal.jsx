@@ -3,7 +3,7 @@ import { useSlides } from '../context/SlideContext';
 import { DEFAULT_SYSTEM_PROMPT, setApiMaxConcurrent } from '../services/aiService';
 import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, FREESTYLE_PRESETS } from '../services/ai/freestylePromptBuilder.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
-import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage } from '../services/pptxTemplateService';
+import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage, downloadArrayBuffer } from '../services/pptxTemplateService';
 import { extractBranding } from '../services/brandingExtractor';
 
 // ─── Utility helpers ────────────────────────────────────────────────────────
@@ -1361,6 +1361,16 @@ export default function SettingsModal({ onClose }) {
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
                   <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active</div>
                 </div>
+                <button
+                  onClick={async () => {
+                    const data = await loadTemplateFromStorage();
+                    if (data?.data) downloadArrayBuffer(data.data, data.fileName || 'template.pptx');
+                  }}
+                  title="Download template"
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--meta)', display: 'flex' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
               </div>
 
               {/* Branding preview after extraction */}
@@ -1747,6 +1757,16 @@ export default function SettingsModal({ onClose }) {
               <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
               <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active</div>
             </div>
+            <button
+              onClick={async () => {
+                const data = await loadTemplateFromStorage();
+                if (data?.data) downloadArrayBuffer(data.data, data.fileName || 'template.pptx');
+              }}
+              title="Download template"
+              style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--meta)', display: 'flex' }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            </button>
           </div>
         </div>
       )}

@@ -3,6 +3,7 @@
 // to a PptxGenJS-generated presentation via JSZip XML manipulation.
 
 import JSZip from 'jszip';
+import { extractBranding } from './brandingExtractor';
 
 /**
  * Store for the loaded template data.
@@ -119,21 +120,48 @@ export async function loadTemplateFromStorage() {
     console.warn('[PPTX Template] IndexedDB read failed:', e.message);
   }
 
-  if (serverData) {
-    if (localRecord?.chrome) {
-      serverData.chrome = localRecord.chrome;
-      console.log('[PPTX Template] Merged chrome metadata from IndexedDB');
+  const record = serverData || localRecord;
+  if (!record) {
+    console.log('[PPTX Template] No template found');
+    return null;
+  }
+
+  if (serverData && localRecord?.chrome) {
+    record.chrome = localRecord.chrome;
+    console.log('[PPTX Template] Merged chrome metadata from IndexedDB');
+  }
+
+  const needsReExtract = record.data && (
+    !record.chrome?.positions ||
+    !record.chrome.positions.slideNum?.font ||
+    !record.chrome.positions.footer?.font
+  );
+  if (needsReExtract) {
+    try {
+      console.log('[PPTX Template] Re-extracting branding for font metadata...');
+      const result = await extractBranding(record.data);
+      if (result?.chrome) {
+        record.chrome = result.chrome;
+        const db = await openDB();
+        await new Promise((resolve, reject) => {
+          const tx = db.transaction(DB_STORE, 'readwrite');
+          tx.objectStore(DB_STORE).put({ ...record, chrome: result.chrome }, DB_KEY);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+        });
+        console.log('[PPTX Template] Updated chrome with font metadata');
+      }
+    } catch (e) {
+      console.warn('[PPTX Template] Re-extraction failed:', e.message);
     }
-    return serverData;
   }
 
-  if (localRecord) {
-    console.log('[PPTX Template] Loaded from IndexedDB:', localRecord.fileName, localRecord.data?.byteLength, 'bytes');
-    return localRecord;
+  if (serverData) {
+    console.log('[PPTX Template] Loaded from server:', record.fileName, record.data?.byteLength, 'bytes');
+  } else {
+    console.log('[PPTX Template] Loaded from IndexedDB:', record.fileName, record.data?.byteLength, 'bytes');
   }
-
-  console.log('[PPTX Template] No template found');
-  return null;
+  return record;
 }
 
 export async function clearTemplateFromStorage() {
@@ -314,7 +342,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
     if (genZip.files[genSlidePath]) {
       let slideXml = await genZip.files[genSlidePath].async('string');
-      slideXml = hideMasterShapes(slideXml);
+      // slideXml = hideMasterShapes(slideXml);
       slideXml = injectSlideBackground(slideXml);
       if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
       tplZip.file(genSlidePath, slideXml);

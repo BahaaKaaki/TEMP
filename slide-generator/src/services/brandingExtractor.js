@@ -174,12 +174,29 @@ function extractShapePosition(shapeXml) {
   const offMatch = shapeXml.match(/<a:off\s+x="(\d+)"\s+y="(\d+)"/);
   const extMatch = shapeXml.match(/<a:ext\s+cx="(\d+)"\s+cy="(\d+)"/);
   if (!offMatch || !extMatch) return null;
-  return {
+  const pos = {
     x: emuToInch(offMatch[1]),
     y: emuToInch(offMatch[2]),
     w: emuToInch(extMatch[1]),
     h: emuToInch(extMatch[2]),
   };
+  const font = extractShapeFont(shapeXml);
+  if (font) pos.font = font;
+  return pos;
+}
+
+function extractShapeFont(shapeXml) {
+  const rPrMatch = shapeXml.match(/<a:rPr\b[^>]*\/?>|<a:defRPr\b[^>]*\/?>/);
+  if (!rPrMatch) return null;
+  const tag = rPrMatch[0];
+  const font = {};
+  const szMatch = tag.match(/\bsz="(\d+)"/);
+  if (szMatch) font.fontSize = parseInt(szMatch[1], 10) / 100;
+  if (/\bb="1"/.test(tag)) font.bold = true;
+  if (/\bi="1"/.test(tag)) font.italic = true;
+  const typefaceMatch = shapeXml.match(/<a:latin[^>]*typeface="([^"]+)"/);
+  if (typefaceMatch) font.fontFace = typefaceMatch[1];
+  return Object.keys(font).length > 0 ? font : null;
 }
 
 /**

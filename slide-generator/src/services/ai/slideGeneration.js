@@ -682,6 +682,8 @@ export function ensureSlideStructure(html) {
       footerHtml = footerHtml.replace('<footer', '<footer class="footer"');
     }
     innerContent = innerContent.replace(footerMatch[0], '');
+  } else {
+    footerHtml = '<footer class="footer"><span></span><span></span></footer>';
   }
 
   // Extract h1 for title (from anywhere in content, including inside frame)

@@ -9,7 +9,7 @@ import { ApiError } from '../../common/middleware/error.middleware';
 const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 const PPTX_MASTER_PATH = path.join(UPLOADS_DIR, 'pptx-master.pptx');
 const PPTX_META_PATH = path.join(UPLOADS_DIR, 'pptx-master.meta.json');
-const DEFAULT_PPTX_PATH = path.join(process.cwd(), 'assets', 'default-pptx-master.pptx');
+const DEFAULT_PPTX_PATH = path.join(process.cwd(), 'assets', 'S&_Template 1.pptx');
 
 type MulterRequest = Request & { file?: Express.Multer.File };
 
@@ -40,7 +40,7 @@ export function downloadPptxMaster(_req: Request, res: Response, next: NextFunct
       return;
     }
 
-    let displayName = hasUploaded ? 'pptx-master.pptx' : 'S&_Template 1.pptx';
+    let displayName = hasUploaded ? 'pptx-master.pptx' : path.basename(DEFAULT_PPTX_PATH);
     try {
       if (hasUploaded && fs.existsSync(PPTX_META_PATH)) {
         const raw = fs.readFileSync(PPTX_META_PATH, 'utf8');

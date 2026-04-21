@@ -131,7 +131,7 @@ const COVER_TRANSLATION_EXAMPLE = {
 
 // Re-exports for consumer modules
 export { COMPLETE_TRANSLATION_EXAMPLE, KPI_TRANSLATION_EXAMPLE, COVER_TRANSLATION_EXAMPLE };
-export { hasAnyCredentials };
+
 
 export const DEFAULT_PPTX_SYSTEM_PROMPT = `You convert HTML slides to PptxGenJS code by learning from input/output examples.
 

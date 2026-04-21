@@ -483,13 +483,10 @@ export default function AIChatbot() {
     addMessage('assistant', '⏹️ Operation stopped by user.');
   };
 
-  // Coerce any legacy 'auto' slide-style preference to 'freestyle' while the
-  // Auto mode is temporarily disabled. This keeps the router from seeing a
-  // mode the user can no longer toggle back on, and it's idempotent so the
-  // effect is safe to run on every settings change.
+  // Coerce any legacy slide-style preference to a valid value.
   useEffect(() => {
-    if (state.settings.slideStylePreference === 'auto') {
-      actions.updateSettings({ slideStylePreference: 'freestyle' });
+    if (state.settings.slideStylePreference && !['auto', 'freestyle', 'templates'].includes(state.settings.slideStylePreference)) {
+      actions.updateSettings({ slideStylePreference: 'auto' });
     }
   }, [state.settings.slideStylePreference, actions]);
 
@@ -2909,6 +2906,7 @@ export default function AIChatbot() {
                 html: filledHtml,
                 type: templateId,
                 templateId,
+                customCSS: template?.css || '',
                 summary: slideSummary,
                 ...(step.sectionTracker ? { sectionLabel: step.sectionTracker } : {}),
                 ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
@@ -3432,6 +3430,7 @@ export default function AIChatbot() {
                 html,
                 type: b.step.templateId,
                 templateId: b.step.templateId,
+                customCSS: b.template?.css || '',
                 summary: generateSlideSummary(html, b.step.templateId, slideTitle),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
@@ -6466,18 +6465,11 @@ Original request: ${userPrompt}`;
           {/* Bottom toggles: style + speed mode */}
           <div className="chatbot-input-actions">
             <div className="chatbot-action-group chatbot-mode-group">
-              {/* Auto / Freestyle pill slider.
-                  Auto mode is temporarily disabled while we iterate on the
-                  auto-template decision logic. The button stays visible (so
-                  the UI doesn't shift), but it's unclickable and the stored
-                  preference is coerced to 'freestyle' via the effect above. */}
               <div className="pill-toggle" role="group" aria-label="Slide style">
                 <button
                   type="button"
-                  className="pill-toggle-btn"
-                  disabled
-                  aria-disabled="true"
-                  title="Auto mode is temporarily disabled"
+                  className={`pill-toggle-btn${state.settings.slideStylePreference === 'auto' ? ' active' : ''}`}
+                  onClick={() => actions.updateSettings({ slideStylePreference: 'auto' })}
                 >
                   Auto
                 </button>

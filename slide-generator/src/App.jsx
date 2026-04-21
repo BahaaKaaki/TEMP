@@ -12,6 +12,7 @@ import LoginPage from './components/LoginPage';
 import AuthLoadingScreen from './components/AuthLoadingScreen';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { loadSkills } from './services/skillsService';
+import PptxLab from './components/PptxLab';
 import 'frontend-comps/styles.css';
 import './styles/app.css';
 import './styles/slides.css';
@@ -122,6 +123,14 @@ function AppContent() {
             element={
               <ProtectedRoute>
                 <EditorContent />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/pptx-lab"
+            element={
+              <ProtectedRoute>
+                <PptxLab />
               </ProtectedRoute>
             }
           />

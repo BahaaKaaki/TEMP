@@ -40,18 +40,18 @@ function applySkillInjection(body: any, path: 'chat' | 'responses'): void {
     return;
   }
 
+  const cleanedMarkdown = markdown.replace(
+    /## Inputs the skill needs[\s\S]*?(?=\n## |\n---|\n$|$)/,
+    '',
+  );
+
   const preamble = [
     `[ACTIVE CONSULTING SKILL: ${meta.name}]`,
     'Apply the playbook below literally when planning the deck. Use its section names, vocabulary, page patterns, and structural conventions verbatim. Do not substitute a generic strategy narrative, POV deck, or advocacy deck for the playbook\'s shape.',
-    '',
-    'Clarify BEFORE planning when inputs are missing. Check two things in order:',
-    '  1. Genre fit — does the user\'s prompt and existing deck actually describe the document this skill is for (see "When to use this skill" below)? If not, your FIRST clarifying question must confirm the document type (e.g. ask whether the user wants this playbook or a different shape), and offer the playbook\'s intended use as one option.',
-    '  2. Required inputs — if the prompt plus deck context does not cover every item in the playbook\'s "Inputs the skill needs — Required" list, return intent=clarify. Each missing required input must become its OWN question. Draw the question wording from that section\'s exact bullet phrasing. Do not replace them with generic deck-shaping questions about slide count, research depth, or "which entity to anchor on" unless the playbook itself asks for those.',
-    '',
-    'Only after every required input is covered (either in the prompt or via clarify answers) should you produce a plan.',
+    'If you are structuring an executive summary, use guidance from the playbook — typically 3-5 pillars, max 6 — unless the user explicitly asks otherwise.',
     '',
     '--- BEGIN PLAYBOOK ---',
-    markdown,
+    cleanedMarkdown,
     '--- END PLAYBOOK ---',
     '',
   ].join('\n');

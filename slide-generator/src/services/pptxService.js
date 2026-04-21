@@ -33,7 +33,7 @@ const DEFAULT_PPTX_MODEL = 'gpt-4o';
  * Convert a theme object into the PPTX color palette snippet and hint.
  * Strips '#' from hex values since PptxGenJS uses bare hex strings.
  */
-function themeToPptxPalette(theme) {
+export function themeToPptxPalette(theme) {
   const t = theme || DEFAULT_THEME;
   const c = t.colors || DEFAULT_THEME.colors;
   const strip = (hex) => (hex || '').replace('#', '');
@@ -226,7 +226,7 @@ function parsePptxModelRef(ref) {
   return { providerId: ref.slice(0, idx), modelName: ref.slice(idx + 1) };
 }
 
-function getCredentialsForModel(settings, modelRef) {
+export function getCredentialsForModel(settings, modelRef) {
   const providers = Array.isArray(settings.providers) ? settings.providers : [];
   const { providerId, modelName } = parsePptxModelRef(modelRef);
   const provider = providers.find(p => p.id === providerId);
@@ -329,7 +329,7 @@ function parsePptxResponseContent(data, credentials) {
   return data.choices?.[0]?.message?.content || '';
 }
 
-async function callAI(settings, credentials, systemPrompt, userPrompt) {
+export async function callAI(settings, credentials, systemPrompt, userPrompt) {
   if (credentials.type === 'gemini') return callGeminiAPI(settings, credentials, systemPrompt, userPrompt);
   if (credentials.type === 'claude') return callClaudeAPI(settings, credentials, systemPrompt, userPrompt);
 
@@ -347,7 +347,7 @@ async function callAI(settings, credentials, systemPrompt, userPrompt) {
 
 // ── Code parsing ─────────────────────────────────────────────────────────────
 
-function extractJSArray(raw) {
+export function extractJSArray(raw) {
   let content = raw.replace(/```javascript\n?/g, '').replace(/```js\n?/g, '').replace(/```\n?/g, '').trim();
   const arrayStart = content.indexOf('[');
   if (arrayStart === -1) throw new Error('Response does not contain a JavaScript array');
@@ -390,7 +390,7 @@ function buildPositionBlock(tplPositions) {
   return lines.join('\n');
 }
 
-function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
+export function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
   const palette = themeToPptxPalette(settings?.theme);
 
   const rawBaseCSS = extractRelevantCSS(slide.html, slide.customCSS || '');
@@ -507,7 +507,7 @@ FIX the error and return the corrected JavaScript array. Return ONLY the fixed c
 
 // ── Sandboxed validation ─────────────────────────────────────────────────────
 
-function validateGeneratedCode(codeString, slideHtml) {
+export function validateGeneratedCode(codeString, slideHtml) {
   const errors = [];
 
   // 1. Parse check

@@ -405,6 +405,7 @@ Core state shape:
   darkMode: false,
   storyline: [],                // Array of { id, title, description, slideId, order }
   storylineStatus: 'none',      // none | generated | approved | populated
+  availableSkills: [],          // Consulting-skill catalogue metadata from /api/skills (id, name, description, category, order) -- bodies stay server-side
   settings: {
     // User-controlled (persisted to localStorage)
     speedMode: 'premium',        // 'fast' | 'premium'
@@ -412,6 +413,7 @@ Core state shape:
     freestyleTheme: '',           // Override for Theme prompt section (empty = code default)
     freestyleVibe: '',            // Override for Vibe prompt section (empty = code default)
     freestyleWriting: '',         // Override for Writing Profile section (empty = code default)
+    selectedSkillId: null,        // Single active consulting-skill id (or null). Attached to router calls as _skillId; never applied to rendering/edits/transforms/validation. Manual-clear only.
     // Code-managed model assignments (always from initialState, never localStorage)
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
@@ -423,6 +425,8 @@ Core state shape:
 }
 ```
 
+The `settings` slice is versioned via `SETTINGS_VERSION` in `SlideContext.jsx`. When incompatible shape changes ship (e.g., multi-select skills -> single-select), the loader runs an in-place migration against any persisted state before committing it to the reducer.
+
 
 ---
 
@@ -433,9 +437,10 @@ Core state shape:
 | Route | Purpose |
 |-------|---------|
 | `GET /api/config` | Server-managed defaults from `EDWIN_*` env vars: models, search, generation, agent/batching (no auth) |
-| `POST /api/ai/chat` | Proxy to PwC `/chat/completions` |
-| `POST /api/ai/responses` | Proxy to PwC `/v1/responses` (search) |
+| `POST /api/ai/chat` | Proxy to PwC `/chat/completions`. If the request body contains `_skillId`, the controller prepends the matching consulting-skill markdown + clarify preamble to the system message and strips `_skillId` before forwarding. |
+| `POST /api/ai/responses` | Proxy to PwC `/v1/responses` (search). Same `_skillId` injection semantics as `/chat`. |
 | `GET /api/ai/models` | Proxy to PwC `/models` |
+| `GET /api/skills` | Consulting-skill catalogue metadata (id, name, description, category, order). Bodies stay server-side. |
 | `/api/v1/auth` | User auth (register, login, JWT) |
 | `/api/v1/organizations` | Organization CRUD |
 | `/api/v1/themes` | Theme CRUD |
@@ -443,6 +448,32 @@ Core state shape:
 | `POST /api/templates/pptx-master` | Upload PPTX master (multipart field `template`); saved as `uploads/pptx-master.pptx` |
 | `GET /api/templates/pptx-master` | Download stored PPTX master (404 if none) |
 | `GET /health` | Health check (no auth) |
+
+### Consulting Skills Module
+
+A lightweight, router-only playbook layer sits at `backend/src/modules/skills/`. It has three roles: load markdown, expose metadata, and serve as the single source of truth for ids and categories.
+
+- `backend/skills/*.md` -- markdown playbooks. Each file has YAML front matter (`name`, `description`) and a body with sections including "Inputs the skill needs".
+- `skills.service.ts`
+  - `CATEGORY_MAP` -- hard-coded dict of `{ [id]: { category, order } }`. Skills not in the map stay on disk but are not exposed through the API, keeping the UI curated.
+  - `ensureLoaded()` -- lazy loader (first `/api/skills` hit). Reads the directory, parses front matter, drops skills missing from `CATEGORY_MAP`, caches records in memory.
+  - `listSkillMetadata()` -- returns sorted metadata (no body), used by the frontend dropdown.
+  - `getSkillBody(id)` / `getSkillMetadata(id)` -- used by the AI proxy when injecting into the router system prompt.
+- `skills.controller.ts` -- `GET /api/skills` returns `{ skills: SkillMetadata[] }`.
+- `skills.routes.ts` -- mounts the controller at `/api/skills`.
+
+The injection happens in `backend/src/modules/ai-proxy/ai-proxy.controller.ts` via `applySkillInjection(body, path)`:
+
+1. Read `body._skillId` and always delete it from the body (even if unknown / invalid).
+2. Load the markdown + metadata. If missing, log a warning and forward without injection.
+3. Build a preamble: `[ACTIVE CONSULTING SKILL: <name>]` + "apply this playbook literally" + clarify rule + the full markdown body.
+4. Prepend the preamble to whichever system-prompt field applies:
+   - Anthropic: `body.system`
+   - Responses API: `body.instructions`
+   - Chat Completions: first `system` message in `body.messages` (or insert one)
+5. Log `[skills] injected skill=<id> path=<chat|responses> target=<field> bytes=<n>`.
+
+Only the router attaches `_skillId`, so slide rendering, edits, transforms, and validation pass through the proxy untouched.
 
 ### Middleware Chain
 
@@ -496,6 +527,8 @@ Two routers operate in tandem:
 2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
 
 The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level.
+
+**Consulting-skill injection.** When `settings.selectedSkillId` is set, `aiRouteRequest` copies it onto `routerSettings._skillId`. `apiClient.js` then attaches `_skillId` to the outgoing request body (`buildRequestBody` for text paths, `callRouterWithImages` for multimodal), but only when the call is routed through our PwC proxy (`authType === 'server'` or an `/api/ai/` endpoint). The backend's `applySkillInjection` prepends the skill's markdown + preamble to the system prompt and strips `_skillId` before forwarding. This keeps direct-provider calls unchanged and leaves slide rendering, edits, transforms, and validation paths untouched -- they never set `_skillId`. Clarifying questions stay on the same code path: when the skill's "Inputs the skill needs" section is not covered by the user's prompt, the router returns `intent=clarify` with missing-input questions.
 
 ### Web Search Architecture
 

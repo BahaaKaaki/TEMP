@@ -1,0 +1,154 @@
+import fs from 'fs';
+import path from 'path';
+import { logger } from '../../config/logger';
+
+export interface SkillMetadata {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  order: number;
+}
+
+interface SkillRecord extends SkillMetadata {
+  body: string;
+}
+
+const SKILLS_DIR = path.join(process.cwd(), 'skills');
+
+// Category and ordering driven by skill id. Only ids present here are exposed
+// via the HTTP API and can be injected by the AI proxy. Markdown files that
+// exist on disk but are not in this map stay on disk but are not surfaced to
+// users -- re-expose by adding an entry.
+const CATEGORY_MAP: Record<string, { category: string; order: number }> = {
+  proposal_development: { category: 'Skills Showcase', order: 10 },
+  stakeholder_engagement_plan: { category: 'Skills Showcase', order: 11 },
+
+  corporate_strategy_full_strategic_plan: { category: 'Skills Showcase', order: 20 },
+  organization_design_end_to_end: { category: 'Skills Showcase', order: 21 },
+  target_operating_model_design_and_activation_blueprint: { category: 'Skills Showcase', order: 22 },
+  change_management_and_communication_plan: { category: 'Skills Showcase', order: 23 },
+  strategic_business_case_and_feasibility_study: { category: 'Skills Showcase', order: 24 },
+  cost_transformation_diagnostic_and_value_capture_plan: { category: 'Skills Showcase', order: 25 },
+  business_case_narrative: { category: 'Skills Showcase', order: 26 },
+
+  sector_development_strategy_and_implementation_playbook: { category: 'Skills Showcase', order: 30 },
+  destination_development_strategy_and_business_plan: { category: 'Skills Showcase', order: 31 },
+  biotech_life_sciences_cluster_strategy_and_feasibility: { category: 'Skills Showcase', order: 32 },
+  telco_b2b_partnership_and_joint_go_to_market_strategy: { category: 'Skills Showcase', order: 33 },
+  local_content_industrial_localization_strategy: { category: 'Skills Showcase', order: 34 },
+
+  holding_company_subsidiary_governance_and_incorporation_plan: { category: 'Skills Showcase', order: 40 },
+  regulatory_legislative_reform_strategy_and_implementation_plan: { category: 'Skills Showcase', order: 41 },
+
+  kick_off_workplan_and_data_request_pack: { category: 'Skills Showcase', order: 50 },
+  weekly_steerco_pmo_status_deck: { category: 'Skills Showcase', order: 51 },
+};
+
+const skillCache = new Map<string, SkillRecord>();
+let loaded = false;
+
+function slugToTitle(slug: string): string {
+  return slug
+    .split('_')
+    .map(word => (word.length > 0 ? word[0].toUpperCase() + word.slice(1) : word))
+    .join(' ');
+}
+
+function extractTitle(markdown: string, fallback: string): string {
+  const firstLine = markdown.split('\n').find(line => line.trim().startsWith('# '));
+  if (firstLine) {
+    return firstLine.replace(/^#\s+/, '').trim();
+  }
+  return fallback;
+}
+
+function extractDescription(markdown: string): string {
+  const lines = markdown.split('\n');
+  const headingIdx = lines.findIndex(line => /^##\s+When to use this skill/i.test(line.trim()));
+  if (headingIdx === -1) {
+    const firstPara = markdown.split(/\n\s*\n/).find(block => block.trim() && !block.trim().startsWith('#'));
+    return firstPara ? collapseWhitespace(firstPara).slice(0, 260) : '';
+  }
+  const bodyLines: string[] = [];
+  for (let i = headingIdx + 1; i < lines.length; i += 1) {
+    const line = lines[i];
+    if (/^#{1,6}\s+/.test(line.trim())) break;
+    bodyLines.push(line);
+  }
+  const paragraph = bodyLines.join('\n').split(/\n\s*\n/).find(block => block.trim()) || '';
+  return collapseWhitespace(paragraph).slice(0, 260);
+}
+
+function collapseWhitespace(text: string): string {
+  return text.replace(/\s+/g, ' ').trim();
+}
+
+function buildRecord(filename: string): SkillRecord | null {
+  const id = filename.replace(/\.md$/i, '');
+  const meta = CATEGORY_MAP[id];
+  // Skills not in the map stay on disk but are not exposed.
+  if (!meta) return null;
+
+  const fullPath = path.join(SKILLS_DIR, filename);
+  let body: string;
+  try {
+    body = fs.readFileSync(fullPath, 'utf8');
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn(`Skills: failed to read ${filename}: ${msg}`);
+    return null;
+  }
+
+  const name = extractTitle(body, slugToTitle(id));
+  const description = extractDescription(body);
+
+  return {
+    id,
+    name,
+    description,
+    category: meta.category,
+    order: meta.order,
+    body,
+  };
+}
+
+function ensureLoaded(): void {
+  if (loaded) return;
+  loaded = true;
+  if (!fs.existsSync(SKILLS_DIR)) {
+    logger.warn(`Skills: directory not found at ${SKILLS_DIR}, skipping load`);
+    return;
+  }
+  const files = fs.readdirSync(SKILLS_DIR).filter(f => f.toLowerCase().endsWith('.md'));
+  for (const file of files) {
+    const record = buildRecord(file);
+    if (record) {
+      skillCache.set(record.id, record);
+    }
+  }
+  const exposed = skillCache.size;
+  const onDisk = files.length;
+  logger.info(`Skills: loaded ${exposed} of ${onDisk} file(s) from ${SKILLS_DIR} (others not in CATEGORY_MAP)`);
+}
+
+export function listSkillMetadata(): SkillMetadata[] {
+  ensureLoaded();
+  return Array.from(skillCache.values())
+    .map(({ body: _body, ...meta }) => meta)
+    .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+}
+
+export function getSkillBody(id: string): string | null {
+  ensureLoaded();
+  const record = skillCache.get(id);
+  return record ? record.body : null;
+}
+
+export function getSkillMetadata(id: string): SkillMetadata | null {
+  ensureLoaded();
+  const record = skillCache.get(id);
+  if (!record) return null;
+  const { body: _body, ...meta } = record;
+  return meta;
+}

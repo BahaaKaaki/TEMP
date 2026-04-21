@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
 import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, triageRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, agentTriageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
-import { PRIMARY_ACTIONS, MORE_ACTIONS, ARABIC_TRANSLATION_PROMPT } from '../constants/slideActions';
+import { PRIMARY_ACTIONS, MORE_ACTIONS } from '../constants/slideActions';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
 import { validateSlideLayout, formatValidationForAgent } from '../services/layoutValidation';
@@ -19,6 +19,8 @@ import AgentApprovalDialog from './AgentApprovalDialog';
 import SmartActionCard from './SmartActionCard';
 import FlowStudio from './FlowStudio';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
+import SkillsPicker from './SkillsPicker';
+import { loadSkills } from '../services/skillsService';
 
 // Detect vibe from user prompt for image-based mode
 // Returns a vibe ID or 'default' if no strong signal
@@ -327,6 +329,18 @@ export default function AIChatbot() {
   const [activeQuickAction, setActiveQuickAction] = useState('');
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [showSlideTemplatePicker, setShowSlideTemplatePicker] = useState(false);
+  const [showSkillsPopover, setShowSkillsPopover] = useState(false);
+  // Tracks whether a skills fetch is currently in flight so the button's
+  // lazy-retry doesn't fire parallel requests on rapid clicks. The "loading"
+  // flag is kept as a re-render trigger for the picker's placeholder.
+  const skillsFetchingRef = useRef(false);
+  const [skillsLoading, setSkillsLoading] = useState(false);
+  // Wrapper element hosting both the Skill button and its popover. Passed to
+  // SkillsPicker as anchorRef so clicks on the toggle button are NOT treated
+  // as outside-clicks (otherwise the document mousedown fires before the
+  // button's onClick, the popover closes, then the onClick re-opens it --
+  // so clicking the button again while open never actually closes).
+  const skillsWrapperRef = useRef(null);
   // Agent-only mode - simplified chatbot
   const mode = 'agent';
   const [editAllAutoMatch] = useState(false); // Auto-match templates in Edit All mode
@@ -468,6 +482,16 @@ export default function AIChatbot() {
     setPendingSmartAction(null);
     addMessage('assistant', '⏹️ Operation stopped by user.');
   };
+
+  // Coerce any legacy 'auto' slide-style preference to 'freestyle' while the
+  // Auto mode is temporarily disabled. This keeps the router from seeing a
+  // mode the user can no longer toggle back on, and it's idempotent so the
+  // effect is safe to run on every settings change.
+  useEffect(() => {
+    if (state.settings.slideStylePreference === 'auto') {
+      actions.updateSettings({ slideStylePreference: 'freestyle' });
+    }
+  }, [state.settings.slideStylePreference, actions]);
 
   // ─── Storyline Approval Handlers ───
   // These are exposed on window so the inline HTML buttons can call them
@@ -5290,6 +5314,83 @@ Original request: ${userPrompt}`;
 
   if (!isOpen) return null;
 
+  // Renders the consulting-skill dropdown button used in the top action bar.
+  // `variant` controls the label wording:
+  //   - 'inline' (default) -- compact "Skill" inside the 4-button grid
+  //   - 'solo'              -- "Add a consulting skill (optional)" for the
+  //                            no-slides / empty-slide picker where the row
+  //                            is full width and needs a self-explanatory
+  //                            label. The --solo visual (larger padding,
+  //                            left-aligned) comes from panel-action-bar--solo
+  //                            in CSS.
+  const renderSkillsActionButton = () => {
+    const selectedId = state.settings.selectedSkillId || null;
+    const selectedSkill = selectedId
+      ? (state.availableSkills || []).find(s => s.id === selectedId)
+      : null;
+    const hasSkill = Boolean(selectedSkill);
+    const label = hasSkill ? selectedSkill.name : 'Skill';
+    const handleToggle = () => {
+      const willOpen = !showSkillsPopover;
+      setShowSkillsPopover(willOpen);
+      setShowMoreActions(false);
+      setShowSlideTemplatePicker(false);
+      // Lazy-retry the catalogue fetch on open if the list is still empty.
+      // Covers both the cold-start race (user clicks before App's mount
+      // fetch resolves) and a silently-failed initial fetch.
+      if (willOpen
+        && (state.availableSkills || []).length === 0
+        && !skillsFetchingRef.current
+      ) {
+        skillsFetchingRef.current = true;
+        setSkillsLoading(true);
+        loadSkills()
+          .then((skills) => actions.setAvailableSkills(skills))
+          .finally(() => {
+            skillsFetchingRef.current = false;
+            setSkillsLoading(false);
+          });
+      }
+    };
+    return (
+      <div className="panel-skills-wrapper" ref={skillsWrapperRef}>
+        <button
+          type="button"
+          className={`panel-action-btn panel-action-btn--skills${hasSkill ? ' panel-action-btn--has-skill' : ''}`}
+          onClick={handleToggle}
+          title={selectedSkill
+            ? `Active consulting skill: ${selectedSkill.name}. Click to change or clear.`
+            : 'Pick a consulting skill to steer the planner'}
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill={hasSkill ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z" />
+          </svg>
+          <span className="panel-action-btn-label">{label}</span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d={showSkillsPopover ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+          </svg>
+        </button>
+        {showSkillsPopover && (
+          <SkillsPicker
+            skills={state.availableSkills || []}
+            value={selectedId}
+            onChange={(nextId) => actions.updateSettings({ selectedSkillId: nextId || null })}
+            onClose={() => setShowSkillsPopover(false)}
+            anchorRef={skillsWrapperRef}
+            loading={skillsLoading}
+          />
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="chatbot-container chatbot-docked">
       <div className="chatbot-header">
@@ -5361,7 +5462,13 @@ Original request: ${userPrompt}`;
       {/* Quick actions or template picker (when no active slide) */}
       {!activeSlide && state.slides.length === 0 && (
         <div className="panel-empty-slide-picker">
-          <div className="panel-empty-hint">Describe your presentation below, or pick a layout to start with a specific slide.</div>
+          <div className="panel-action-bar panel-action-bar--solo">
+            {renderSkillsActionButton()}
+          </div>
+          {/* Template picker hidden in the no-slides empty state to keep the
+              entry experience focused on the chat input. Kept in source so
+              it's a one-line restore when/if we bring it back. */}
+          {/*
           <TemplatePicker
             selectedTemplate={null}
             onSelect={(templateId) => {
@@ -5371,11 +5478,15 @@ Original request: ${userPrompt}`;
             compact={true}
             initiallyOpen={false}
           />
+          */}
         </div>
       )}
       {activeSlide && (
         isSlideEffectivelyEmpty(activeSlide) ? (
           <div className="panel-empty-slide-picker">
+            <div className="panel-action-bar panel-action-bar--solo">
+              {renderSkillsActionButton()}
+            </div>
             <div className="panel-empty-hint">Describe what this slide should contain, or pick a layout below.</div>
             <TemplatePicker
               selectedTemplate={activeSlide.templateId && !activeSlide.templateId.startsWith('empty-') ? activeSlide.templateId : null}
@@ -5430,18 +5541,10 @@ Original request: ${userPrompt}`;
                     Reimagine Slide
                   </button>
 
-                  {/* Translate to Arabic */}
-                  <button
-                    className="panel-action-btn"
-                    disabled={activeSlide && busySlideIds.has(activeSlide.id)}
-                    onClick={() => handleQuickAction(ARABIC_TRANSLATION_PROMPT, 'Translate to Arabic')}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <circle cx="12" cy="12" r="10" />
-                      <path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
-                    </svg>
-                    Translate to Arabic
-                  </button>
+                  {/* Consulting skill (single-select). Shown here so it's
+                      always one click away when planning a new deck or
+                      editing an existing one. */}
+                  {renderSkillsActionButton()}
 
                   {/* Template switcher */}
                   <button
@@ -6363,21 +6466,26 @@ Original request: ${userPrompt}`;
           {/* Bottom toggles: style + speed mode */}
           <div className="chatbot-input-actions">
             <div className="chatbot-action-group chatbot-mode-group">
-              {/* Auto / Freestyle pill slider */}
+              {/* Auto / Freestyle pill slider.
+                  Auto mode is temporarily disabled while we iterate on the
+                  auto-template decision logic. The button stays visible (so
+                  the UI doesn't shift), but it's unclickable and the stored
+                  preference is coerced to 'freestyle' via the effect above. */}
               <div className="pill-toggle" role="group" aria-label="Slide style">
                 <button
                   type="button"
-                  className={`pill-toggle-btn ${(state.settings.slideStylePreference || 'freestyle') === 'auto' ? 'active' : ''}`}
-                  onClick={() => actions.updateSettings({ slideStylePreference: 'auto' })}
-                  title="AI decides template vs freestyle"
+                  className="pill-toggle-btn"
+                  disabled
+                  aria-disabled="true"
+                  title="Auto mode is temporarily disabled"
                 >
                   Auto
                 </button>
                 <button
                   type="button"
-                  className={`pill-toggle-btn ${(state.settings.slideStylePreference || 'freestyle') === 'freestyle' ? 'active' : ''}`}
+                  className="pill-toggle-btn active"
                   onClick={() => actions.updateSettings({ slideStylePreference: 'freestyle' })}
-                  title="Force freestyle HTML slides"
+                  title="Freestyle HTML slides"
                 >
                   Freestyle
                 </button>

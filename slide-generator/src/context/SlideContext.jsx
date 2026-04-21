@@ -14,7 +14,7 @@ const DEFAULT_SHARED_CSS = SLIDES_CSS;
 // Model assignments are code-managed (always sourced from initialState, never
 // from localStorage) so model changes no longer require a version bump.
 // Reserve SETTINGS_VERSION for structural migrations only (new fields, format changes).
-const SETTINGS_VERSION = 12;
+const SETTINGS_VERSION = 13;
 
 // Initial state
 const initialState = {
@@ -38,6 +38,9 @@ const initialState = {
   skeletonMode: false, // Whether deck is in skeleton review mode
   // UI state for AI router context highlighting
   highlightedSlideIndices: [], // Array of slide indices to highlight as context
+  // Consulting skills catalogue fetched from /api/skills at boot.
+  // Metadata only (id, name, description, category, order); bodies stay server-side.
+  availableSkills: [],
   settings: {
     // Provider registry: PwC Shared Services routed through backend proxy
     providers: [
@@ -104,7 +107,10 @@ const initialState = {
     agentMinBudget: 4,
     agentMaxBudget: 5,
     agentRichResearch: true,
-    agentUseSkills: false,
+    // Consulting skill selected from the AI Assistant dropdown. `null` means
+    // no skill is active. When set, the router call (and only the router call)
+    // injects the corresponding markdown as its system prompt.
+    selectedSkillId: null,
     slideStylePreference: 'freestyle', // 'auto' | 'templates' | 'freestyle'
     // ── Work level (prompt-driven output scaling) ──
     // low = concise/minimal, medium = balanced, high = detailed, very_high = maximum depth
@@ -322,6 +328,27 @@ function loadState() {
         console.log('[SlideContext] Added freestyleVibe field (v11 -> v12)');
       }
 
+      // MIGRATION v12 -> v13: skills simplified to single-select.
+      //   - Legacy `selectedSkillIds: string[]` collapses to `selectedSkillId: string | null`.
+      //   - Legacy `agentUseSkills` toggle is removed (router always respects the selection).
+      if (parsed.settings) {
+        if (!('selectedSkillId' in parsed.settings)) {
+          const legacy = parsed.settings.selectedSkillIds;
+          if (Array.isArray(legacy) && legacy.length > 0 && typeof legacy[0] === 'string') {
+            parsed.settings.selectedSkillId = legacy[0];
+            console.log('[SlideContext] Migrated selectedSkillIds[0] -> selectedSkillId (v12 -> v13):', legacy[0]);
+          } else {
+            parsed.settings.selectedSkillId = null;
+          }
+        }
+        if ('selectedSkillIds' in parsed.settings) {
+          delete parsed.settings.selectedSkillIds;
+        }
+        if ('agentUseSkills' in parsed.settings) {
+          delete parsed.settings.agentUseSkills;
+        }
+      }
+
       // Model assignments are CODE-MANAGED: always sourced from initialState,
       // never read back from localStorage. Change a default in initialState ->
       // all users pick it up on next page load. No version bump needed.
@@ -438,6 +465,8 @@ const ACTIONS = {
   TOGGLE_DARK_MODE: 'TOGGLE_DARK_MODE',
   // UI state
   SET_HIGHLIGHTED_SLIDES: 'SET_HIGHLIGHTED_SLIDES',
+  // Consulting skills catalogue
+  SET_AVAILABLE_SKILLS: 'SET_AVAILABLE_SKILLS',
   // Title management
   REGENERATE_SLIDE_TITLES: 'REGENERATE_SLIDE_TITLES',
   // Undo/Redo
@@ -453,6 +482,7 @@ const NON_UNDOABLE_ACTIONS = new Set([
   ACTIONS.SET_ACTIVE_SLIDE,
   ACTIONS.SET_SELECTED_SLIDES,
   ACTIONS.SET_HIGHLIGHTED_SLIDES,
+  ACTIONS.SET_AVAILABLE_SKILLS,
   ACTIONS.UPDATE_SETTINGS,
   ACTIONS.UNDO,
   ACTIONS.REDO,
@@ -1404,6 +1434,14 @@ function slideReducer(state, action) {
       };
     }
 
+    case ACTIONS.SET_AVAILABLE_SKILLS: {
+      const list = Array.isArray(action.payload?.skills) ? action.payload.skills : [];
+      return {
+        ...state,
+        availableSkills: list,
+      };
+    }
+
     case ACTIONS.REGENERATE_SLIDE_TITLES: {
       // Regenerate titles for all slides from their HTML content
       // Useful for fixing slides with instruction-based titles
@@ -1648,7 +1686,12 @@ export function SlideProvider({ children }) {
 
     saveTimerRef.current = setTimeout(() => {
       const saveState = (stateToSave) => {
-        const { selectedSlideIds, ...persistState } = stateToSave;
+        // Strip transient/server-owned fields:
+        //   - selectedSlideIds: UI selection, not meaningful after reload
+        //   - availableSkills:  server catalogue, always refetched at boot
+        //                       from /api/skills; persisting it would shadow
+        //                       catalogue updates until a full reload.
+        const { selectedSlideIds, availableSkills, ...persistState } = stateToSave;
         const stateJson = JSON.stringify(persistState);
         localStorage.setItem('slideGeneratorState', stateJson);
         return stateJson.length;
@@ -1689,11 +1732,15 @@ export function SlideProvider({ children }) {
     }
   }, [state.settings?.apiMaxConcurrent]);
 
-  // Also save on page unload to ensure no data loss
+  // Also save on page unload to ensure no data loss. Mirrors the debounced
+  // saver above: strip selectedSlideIds (UI selection) and availableSkills
+  // (server catalogue, always refetched at boot) so stale empty values from
+  // an unresolved initial fetch don't shadow the fresh catalogue on reload.
   useEffect(() => {
     const handleBeforeUnload = () => {
       try {
-        localStorage.setItem('slideGeneratorState', JSON.stringify(state));
+        const { selectedSlideIds, availableSkills, ...persistState } = state;
+        localStorage.setItem('slideGeneratorState', JSON.stringify(persistState));
       } catch (e) {
         console.error('[SlideContext] Failed to save on unload:', e);
       }
@@ -1912,6 +1959,11 @@ export function SlideProvider({ children }) {
     // UI state - highlight slides as context for AI router
     setHighlightedSlides: (indices) =>
       dispatch({ type: ACTIONS.SET_HIGHLIGHTED_SLIDES, payload: { indices } }),
+
+    // Consulting skills catalogue (metadata only). Populated once at boot
+    // from /api/skills and consumed by the skill dropdown in AIChatbot.
+    setAvailableSkills: (skills) =>
+      dispatch({ type: ACTIONS.SET_AVAILABLE_SKILLS, payload: { skills } }),
 
     // Regenerate all slide titles from HTML content (fixes instruction-based titles)
     regenerateSlideTitles: () =>

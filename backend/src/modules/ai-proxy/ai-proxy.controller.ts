@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { env } from '../../config/env';
 import { logger } from '../../config/logger';
+import { getSkillBody, getSkillMetadata } from '../skills/skills.service';
 
 const PWC_BASE = env.PWC_API_BASE_URL;
 
@@ -12,6 +13,93 @@ function getPwcHeaders(): Record<string, string> {
 }
 
 /**
+ * If the request body carries `_skillId`, resolve it to server-side skill
+ * markdown and prepend a short preamble + the full skill body to whichever
+ * system-prompt field the request shape uses:
+ *   - Chat Completions (OpenAI): messages[] entry with role="system"
+ *   - Anthropic Messages:        body.system (top-level string)
+ *   - Responses API:             body.instructions (top-level string)
+ * The `_skillId` field is always stripped before forwarding upstream, so the
+ * model never sees our private marker.
+ *
+ * Unknown ids or disk read failures are logged and skipped (no crash, no
+ * response change). Mutates `body` in place for simplicity.
+ */
+function applySkillInjection(body: any, path: 'chat' | 'responses'): void {
+  if (!body || typeof body !== 'object') return;
+
+  const skillId = typeof body._skillId === 'string' ? body._skillId.trim() : '';
+  // Always strip the private marker before forwarding, even if unresolved.
+  delete body._skillId;
+  if (!skillId) return;
+
+  const meta = getSkillMetadata(skillId);
+  const markdown = getSkillBody(skillId);
+  if (!meta || !markdown) {
+    logger.warn('[skills] requested skillId=%s not found; forwarding without injection', skillId);
+    return;
+  }
+
+  const preamble = [
+    `[ACTIVE CONSULTING SKILL: ${meta.name}]`,
+    'Apply the playbook below literally when planning the deck. Use its section names, vocabulary, page patterns, and structural conventions verbatim. Do not substitute a generic strategy narrative, POV deck, or advocacy deck for the playbook\'s shape.',
+    '',
+    'Clarify BEFORE planning when inputs are missing. Check two things in order:',
+    '  1. Genre fit — does the user\'s prompt and existing deck actually describe the document this skill is for (see "When to use this skill" below)? If not, your FIRST clarifying question must confirm the document type (e.g. ask whether the user wants this playbook or a different shape), and offer the playbook\'s intended use as one option.',
+    '  2. Required inputs — if the prompt plus deck context does not cover every item in the playbook\'s "Inputs the skill needs — Required" list, return intent=clarify. Each missing required input must become its OWN question. Draw the question wording from that section\'s exact bullet phrasing. Do not replace them with generic deck-shaping questions about slide count, research depth, or "which entity to anchor on" unless the playbook itself asks for those.',
+    '',
+    'Only after every required input is covered (either in the prompt or via clarify answers) should you produce a plan.',
+    '',
+    '--- BEGIN PLAYBOOK ---',
+    markdown,
+    '--- END PLAYBOOK ---',
+    '',
+  ].join('\n');
+
+  let target: string | null = null;
+
+  if (typeof body.system === 'string') {
+    body.system = preamble + body.system;
+    target = 'system';
+  } else if (typeof body.instructions === 'string') {
+    body.instructions = preamble + body.instructions;
+    target = 'instructions';
+  } else if (Array.isArray(body.messages)) {
+    const sysIdx = body.messages.findIndex((m: any) => m && m.role === 'system');
+    if (sysIdx >= 0) {
+      const msg = body.messages[sysIdx];
+      if (typeof msg.content === 'string') {
+        msg.content = preamble + msg.content;
+      } else if (Array.isArray(msg.content)) {
+        msg.content = [{ type: 'text', text: preamble }, ...msg.content];
+      } else {
+        msg.content = preamble;
+      }
+      target = 'messages[system]';
+    } else {
+      body.messages = [{ role: 'system', content: preamble }, ...body.messages];
+      target = 'messages[synthesized]';
+    }
+  }
+
+  if (target) {
+    logger.info(
+      '[skills] injected skill=%s path=%s target=%s bytes=%d',
+      skillId,
+      path,
+      target,
+      preamble.length,
+    );
+  } else {
+    logger.warn(
+      '[skills] could not find a system-prompt field to inject skill=%s path=%s (shape unknown)',
+      skillId,
+      path,
+    );
+  }
+}
+
+/**
  * POST /api/ai/chat
  * Proxies to PwC Shared Services /chat/completions
  */
@@ -20,6 +108,8 @@ export async function proxyChat(req: Request, res: Response): Promise<void> {
     res.status(500).json({ error: 'PWC_API_KEY is not configured on the server' });
     return;
   }
+
+  applySkillInjection(req.body, 'chat');
 
   const targetUrl = `${PWC_BASE}/chat/completions`;
 
@@ -59,6 +149,8 @@ export async function proxyResponses(req: Request, res: Response): Promise<void>
     res.status(500).json({ error: 'PWC_API_KEY is not configured on the server' });
     return;
   }
+
+  applySkillInjection(req.body, 'responses');
 
   const targetUrl = `${PWC_BASE}/v1/responses`;
 

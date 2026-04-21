@@ -3,7 +3,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { selectBestTemplate, randomizeFamilyVariant, estimateItemCount } from '../templateEmbeddings';
 import { parseModelRef, findProvider, getCredentials } from './models.js';
-import { callWithModelFallback, callRouterWithImages } from './apiClient.js';
+import { callWithModelFallback, callRouterWithImages, attachSkillIdToBody } from './apiClient.js';
 
 // ============================================
 // RULE-BASED ROUTER (No API call needed)
@@ -1803,6 +1803,18 @@ export async function aiRouteRequest(userPrompt, context, settings) {
     reasoningEffort: effectiveReasoningEffort,
   };
 
+  // Router-only consulting-skill injection. We attach `_skillId` to the request
+  // body so the backend AI proxy can prepend the skill's markdown + clarify rule
+  // as the router's system prompt. Other call paths (slide render, edits,
+  // transforms, validation) never set `_skillId`, so they are not affected.
+  const selectedSkillId = typeof settings?.selectedSkillId === 'string' && settings.selectedSkillId.trim()
+    ? settings.selectedSkillId.trim()
+    : null;
+  if (selectedSkillId) {
+    routerSettings._skillId = selectedSkillId;
+    console.log('[skills] router attaching skillId=%s model=%s', selectedSkillId, routerModelRef);
+  }
+
   // Detect whether the router model supports inline web search via the Responses API.
   // GPT/o-series models support web_search_preview natively; Gemini/Claude do not.
   const isGPTRouter = routerModelName.includes('gpt-') || routerModelName.includes('o3') || routerModelName.includes('o4-');
@@ -2029,6 +2041,7 @@ USER REQUEST: "${routerPrompt}"`;
       const responsesEndpoint = (settings.searchEndpoint || '').startsWith('/api/')
         ? settings.searchEndpoint
         : '/api/ai/responses';
+      const isServerProxy = (settings.searchApiKey === 'server-managed') || responsesEndpoint.startsWith('/api/');
       const responsesBody = {
         model: routerModelName,
         instructions: getRouterSystemPrompt(),
@@ -2048,8 +2061,22 @@ USER REQUEST: "${routerPrompt}"`;
         responsesBody.reasoning = { effort: effectiveReasoningEffort };
       }
 
+      // The inline Responses-API path bypasses buildRequestBody, so we have to
+      // wire `_skillId` onto the body ourselves. `_skillId` was placed on
+      // `routerSettings` (not `settings`) by aiRouteRequest above, so we pass
+      // that one. The helper is a no-op unless the call is going through our
+      // PwC proxy.
+      attachSkillIdToBody(responsesBody, routerSettings, {
+        authType: isServerProxy ? 'server' : 'user',
+        apiEndpoint: responsesEndpoint,
+      });
+      if (responsesBody._skillId) {
+        console.log('[skills] router Responses API body carries skillId=%s endpoint=%s', responsesBody._skillId, responsesEndpoint);
+      } else if (routerSettings._skillId) {
+        console.warn('[skills] router selected skillId=%s but body did not receive _skillId (endpoint=%s) — check attachSkillIdToBody gate', routerSettings._skillId, responsesEndpoint);
+      }
+
       const responsesHeaders = { 'Content-Type': 'application/json' };
-      const isServerProxy = (settings.searchApiKey === 'server-managed') || responsesEndpoint.startsWith('/api/');
       if (!isServerProxy) {
         responsesHeaders[settings.searchAuthHeader === 'bearer' ? 'Authorization' : 'api-key'] =
           settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;

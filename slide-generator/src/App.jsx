@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useIsAuthenticated, useMsal } from '@azure/msal-react';
 import { InteractionStatus } from '@azure/msal-browser';
@@ -11,6 +11,7 @@ import AIChatbot from './components/AIChatbot';
 import LoginPage from './components/LoginPage';
 import AuthLoadingScreen from './components/AuthLoadingScreen';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { loadSkills } from './services/skillsService';
 import 'frontend-comps/styles.css';
 import './styles/app.css';
 import './styles/slides.css';
@@ -40,7 +41,26 @@ function useAutoReload() {
 function EditorContent() {
   useKeyboardShortcuts();
   useAutoReload();
-  const { isPanelOpen, togglePanel } = useSlides();
+  const { isPanelOpen, togglePanel, actions } = useSlides();
+
+  // Hydrate the consulting skills catalogue once when the editor mounts.
+  // Bodies stay on the server; only metadata (id, name, category, order)
+  // lands here and powers the skill dropdown in the AI Assistant panel.
+  //
+  // `actions` is re-created on every SlideProvider render, so we keep it in a
+  // ref and fire the fetch with empty deps to guarantee a single request per
+  // session instead of a render-loop hammering the backend.
+  const actionsRef = useRef(actions);
+  actionsRef.current = actions;
+  useEffect(() => {
+    let cancelled = false;
+    loadSkills().then((skills) => {
+      if (cancelled) return;
+      actionsRef.current.setAvailableSkills(skills);
+      console.log('[App] Skills catalogue loaded: %d skill(s)', skills.length);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="app-container">

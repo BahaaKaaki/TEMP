@@ -4461,7 +4461,7 @@ body {
   line-height: 1.4;
 }
 
-.pill-toggle-btn:hover {
+.pill-toggle-btn:hover:not(:disabled) {
   color: var(--text-primary, #334155);
 }
 
@@ -4469,6 +4469,11 @@ body {
   background: white;
   color: var(--accent, #8E1E1E);
   box-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
+
+.pill-toggle-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 /* ===== SEARCH TOGGLE BUTTON (loupe icon in toolbar) ===== */
@@ -12454,3 +12459,207 @@ body {
     padding: 20px;
   }
 }
+
+/* ==========================================================================
+   Consulting Skills picker (single-select dropdown in AIChatbot action bar)
+   ========================================================================== */
+
+/* Wrapper is positioned relative so the popover anchors to the button, and
+   stretches to fill whatever slot it lives in (grid cell, flex row, solo
+   bar) so the Skill button matches the width of its siblings. */
+.panel-skills-wrapper {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  width: 100%;
+}
+
+.panel-skills-wrapper > .panel-action-btn--skills {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Label truncates with ellipsis when the button is narrow. No hard cap --
+   available width comes from the parent grid/flex track. */
+.panel-action-btn--skills .panel-action-btn-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* Selected state: soft pink border + accent text + filled star. Same visual
+   weight as Quick Fixes primary so Skill doesn't outshout its neighbours. */
+.panel-action-btn--skills.panel-action-btn--has-skill {
+  color: var(--accent, #8E1E1E);
+  border-color: #e8c4c4;
+}
+
+.panel-action-btn--skills.panel-action-btn--has-skill:hover:not(:disabled) {
+  border-color: var(--accent, #8E1E1E);
+  background: #fdf2f2;
+  color: var(--accent, #8E1E1E);
+}
+
+/* Solo bar (no-slides / empty-slide picker): one-column grid so the single
+   Skill button keeps the exact same size and styling it has when shown
+   alongside the other top-bar actions. Only the layout track changes. */
+.panel-action-bar--solo {
+  grid-template-columns: 1fr;
+  margin-bottom: 8px;
+}
+
+.skills-picker-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 320px;
+  max-width: 380px;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14), 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+  z-index: 200;
+  animation: panel-dropdown-in 0.15s ease;
+}
+
+.skills-picker-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 4px 8px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.skills-picker-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+}
+
+.skills-picker-hint {
+  font-size: 10px;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.4;
+}
+
+.skills-picker-empty {
+  padding: 10px;
+  font-size: 11px;
+  color: var(--text-secondary, #64748b);
+  text-align: center;
+}
+
+.skills-picker-group {
+  margin-bottom: 8px;
+}
+
+.skills-picker-group:last-child {
+  margin-bottom: 0;
+}
+
+.skills-picker-group-label {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--accent, #8e1e1e);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 4px 4px 4px;
+}
+
+.skills-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.skills-picker-list--none {
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.skills-picker-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-primary, #0f172a);
+  font-size: 12px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.skills-picker-item:hover {
+  background: rgba(15, 23, 42, 0.04);
+}
+
+.skills-picker-item--selected {
+  background: rgba(142, 30, 30, 0.08);
+  color: var(--accent, #8e1e1e);
+}
+
+.skills-picker-item--selected:hover {
+  background: rgba(142, 30, 30, 0.12);
+}
+
+.skills-picker-item--none .skills-picker-item-name {
+  color: var(--text-secondary, #64748b);
+  font-style: italic;
+}
+
+.skills-picker-item--none.skills-picker-item--selected .skills-picker-item-name {
+  color: var(--accent, #8e1e1e);
+  font-style: normal;
+}
+
+.skills-picker-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.skills-picker-item-name {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skills-picker-item-desc {
+  font-size: 10.5px;
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--text-secondary, #64748b);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: normal;
+}
+
+.skills-picker-item--selected .skills-picker-item-desc {
+  color: rgba(142, 30, 30, 0.75);
+}
+
+.skills-picker-item-check {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+

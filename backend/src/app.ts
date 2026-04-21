@@ -15,6 +15,7 @@ import organizationsRoutes from './modules/organizations/organizations.routes';
 import themesRoutes from './modules/themes/themes.routes';
 import templatesRoutes, { pptxMasterTemplatesRouter } from './modules/templates/templates.routes';
 import aiProxyRoutes from './modules/ai-proxy/ai-proxy.routes';
+import skillsRoutes from './modules/skills/skills.routes';
 
 const app = express();
 
@@ -72,6 +73,10 @@ app.use('/api/v1/templates', templatesRoutes);
 
 // AI proxy (no auth required -- frontend calls this to reach PwC Shared Services)
 app.use('/api/ai', aiProxyRoutes);
+
+// Consulting skills registry (metadata only; bodies stay server-side and are
+// injected by the AI proxy when a router call includes `_skillId`).
+app.use('/api/skills', skillsRoutes);
 
 // In production, serve the built React frontend as static files
 const frontendPath = path.join(__dirname, '../public');

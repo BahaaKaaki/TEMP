@@ -27,6 +27,31 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Auto-fetch available models from PwC Shared Services `/models` endpoint with grouped vendor display
 - Deck-aware template switching with pillar preservation and optional user guidance
+- Consulting Skills -- single-select playbook dropdown in the AI Assistant panel that steers the planner with a specific deliverable template (proposal, strategic plan, business case, etc.)
+
+## Consulting Skills
+
+Consulting Skills are markdown playbooks that steer the planner toward a specific deliverable shape (proposal, strategic plan, business case, org design, etc.). They are injected only into the **router** system prompt -- not into slide rendering, edits, transforms, or validation.
+
+### How it works
+
+1. Skill markdown files live in `backend/skills/*.md`. Each file has YAML front matter (`name`, `description`) plus body sections including "Inputs the skill needs".
+2. `backend/src/modules/skills/skills.service.ts` loads the catalogue lazily on first `/api/skills` request and exposes only the skills listed in its `CATEGORY_MAP`. Bodies stay server-side -- the API returns metadata only (`id`, `name`, `description`, `category`, `order`).
+3. The frontend fetches the catalogue once via `slide-generator/src/services/skillsService.js` and stores it as `state.availableSkills` in `SlideContext`.
+4. The user picks **one** skill from the dropdown in the AI Assistant panel (top action bar). Selection is stored as `settings.selectedSkillId: string | null` and persists across sessions.
+5. On each router call (`aiRouteRequest` in `slide-generator/src/services/ai/router.js`), the selected skill id is attached to the request body as `_skillId`. The backend AI proxy (`backend/src/modules/ai-proxy/ai-proxy.controller.ts`) reads `_skillId`, prepends the skill's markdown plus a short preamble (with a "clarify if inputs are missing" rule) to the system prompt, strips the `_skillId` field, and forwards to the upstream model.
+6. When a skill is active and the user's prompt does not cover the skill's "Inputs the skill needs" section, the router returns `intent=clarify` with the missing inputs as questions -- using the existing clarify flow, no new code paths.
+7. Selection is **manual-clear only**. Clicking the active skill in the dropdown clears it. Generating a deck does not auto-clear -- the skill stays until the user switches it off.
+
+### Where the boundary lives
+
+| Layer | Sees skill markdown? |
+|---|---|
+| Router (planning) | Yes |
+| Slide rendering, edits, transforms, validation | No |
+| Frontend | No -- only metadata (id, name, description, category, order) |
+
+The metadata-only contract keeps skill text off the wire for non-planning calls, out of localStorage, and out of browser DevTools.
 
 ## Prerequisites
 
@@ -92,9 +117,10 @@ No environment variables needed. The frontend talks to the backend proxy.
 
 | Endpoint | Proxies To | Purpose |
 |---|---|---|
-| `POST /api/ai/chat` | PwC `/chat/completions` | Main AI completions |
-| `POST /api/ai/responses` | PwC `/v1/responses` | Search / Responses API |
+| `POST /api/ai/chat` | PwC `/chat/completions` | Main AI completions (injects consulting-skill markdown if `_skillId` is present) |
+| `POST /api/ai/responses` | PwC `/v1/responses` | Search / Responses API (same `_skillId` injection) |
 | `GET /api/ai/models` | PwC `/models` | List available models |
+| `GET /api/skills` | (local) | Consulting-skill catalogue metadata -- id, name, description, category, order (bodies stay server-side) |
 
 ## Model Configuration
 

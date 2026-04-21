@@ -141,11 +141,15 @@ export default function SlideList() {
         e.preventDefault();
         if (selectedSlides.size > 1) {
           if (window.confirm(`Delete ${selectedSlides.size} selected slides?`)) {
+            clearTimeout(hoverTimeoutRef.current);
+            setHoveredSlide(null);
             [...selectedSlides].forEach(id => actions.deleteSlide(id));
             setSelectedSlides(new Set());
           }
         } else if (activeSlide) {
           if (window.confirm('Delete this slide?')) {
+            clearTimeout(hoverTimeoutRef.current);
+            setHoveredSlide(null);
             actions.deleteSlide(activeSlide.id);
           }
         }
@@ -335,6 +339,11 @@ export default function SlideList() {
   const handleDelete = (e, id) => {
     e.stopPropagation();
     if (window.confirm('Delete this slide?')) {
+      // Cancel any pending hover-preview timer and clear the visible preview
+      // before the slide disappears -- otherwise the popover keeps showing
+      // stale content for a slide that no longer exists.
+      clearTimeout(hoverTimeoutRef.current);
+      setHoveredSlide(null);
       actions.deleteSlide(id);
     }
   };
@@ -504,6 +513,8 @@ export default function SlideList() {
                 className="multi-select-delete-btn"
                 onClick={() => {
                   if (window.confirm(`Delete ${selectedSlides.size} selected slides?`)) {
+                    clearTimeout(hoverTimeoutRef.current);
+                    setHoveredSlide(null);
                     [...selectedSlides].forEach(id => actions.deleteSlide(id));
                     setSelectedSlides(new Set());
                   }
@@ -637,8 +648,10 @@ export default function SlideList() {
         </div>
       )}
 
-      {/* Hover preview popover */}
-      {hoveredSlide && !isCollapsed && (
+      {/* Hover preview popover. The extra `slides.some(...)` guard covers the
+          race where a slide is deleted while still hovered -- without it the
+          popover would briefly render against stale slide data. */}
+      {hoveredSlide && !isCollapsed && state.slides.some(s => s.id === hoveredSlide.id) && (
         <div
           className="slide-hover-preview"
           style={{

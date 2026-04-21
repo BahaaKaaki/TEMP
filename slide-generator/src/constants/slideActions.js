@@ -60,6 +60,12 @@ export const MORE_ACTIONS = [
     ],
   },
   {
+    category: 'Language',
+    actions: [
+      { id: 'translate_to_arabic', label: 'Translate to Arabic', prompt: ARABIC_TRANSLATION_PROMPT },
+    ],
+  },
+  {
     category: 'Content',
     actions: [
       { id: 'enrich_slide', label: 'Enrich', prompt: 'Add useful clarity, precision, or supporting detail where needed without making it too dense.' },

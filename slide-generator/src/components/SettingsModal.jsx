@@ -1209,7 +1209,6 @@ export default function SettingsModal({ onClose }) {
             { key: 'agentRichResearch', label: 'Rich Research Mode', desc: 'Full thematic research text to compiler (richer but more tokens)', defaultVal: false },
             { key: 'showAgentSteps', label: 'Show Agent Steps', desc: 'Step-by-step progress during agent runs', defaultVal: true },
             { key: 'showApprovalDebugInfo', label: 'Debug Info in Approval', desc: 'Context and raw data in plan approval screen', defaultVal: false },
-            { key: 'agentUseSkills', label: 'Use Registered Skills', desc: 'Inject skill definitions into agent prompts', defaultVal: false },
           ].map(opt => (
             <label key={opt.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, fontSize: 12, cursor: 'pointer' }}>
               <input type="checkbox" checked={settings[opt.key] ?? opt.defaultVal} onChange={(e) => setSettings({ ...settings, [opt.key]: e.target.checked })} style={{ width: 'auto', marginTop: 2 }} />

@@ -10,6 +10,29 @@ import {
 // Shared mutable state for the last API request params (used by audit logging)
 export const _apiState = { lastRequestParams: null };
 
+// Attach an optional router-only consulting-skill marker to an outgoing request
+// body. The backend AI proxy reads `_skillId`, prepends the matching skill's
+// markdown + clarify rule to the system prompt, and strips the field before
+// forwarding to the upstream model.
+//
+// Guard: only attach when the request is actually going through our PwC proxy
+// (identified by `authType === 'server'` or an `/api/ai/` endpoint). Direct
+// provider calls (OpenAI, Anthropic, Gemini) would reject `_skillId` as an
+// unknown field and have no way to process it anyway.
+export function attachSkillIdToBody(body, settings, creds) {
+  if (!body || typeof body !== 'object') return body;
+  const rawId = settings?._skillId;
+  const skillId = typeof rawId === 'string' && rawId.trim() ? rawId.trim() : null;
+  if (!skillId) return body;
+
+  const endpoint = creds?.apiEndpoint || '';
+  const goesThroughProxy = creds?.authType === 'server' || endpoint.startsWith('/api/ai/');
+  if (!goesThroughProxy) return body;
+
+  body._skillId = skillId;
+  return body;
+}
+
 /**
  * Call router with images - multimodal API call
  * Analyzes images with the user's query context
@@ -118,6 +141,8 @@ When the image shows a slide/presentation to recreate:
       requestBody.generationConfig.thinkingConfig = { thinkingBudget };
     }
 
+    attachSkillIdToBody(requestBody, settings, creds);
+
     const response = await fetch(endpoint, {
       method: 'POST',
       headers: buildGeminiHeaders(creds),
@@ -152,6 +177,8 @@ When the image shows a slide/presentation to recreate:
       max_tokens: maxTokens,
       temperature: settings.temperature || 0.1,
     };
+
+    attachSkillIdToBody(requestBody, settings, creds);
 
     const response = await fetch(creds.apiEndpoint, {
       method: 'POST',
@@ -584,6 +611,8 @@ export function buildRequestBody(settings, messages) {
       Object.assign(body, creds.customParams);
     }
 
+    attachSkillIdToBody(body, settings, creds);
+
     console.log('[buildRequestBody] Responses API →', {
       model: body.model,
       max_output_tokens: body.max_output_tokens,
@@ -594,6 +623,7 @@ export function buildRequestBody(settings, messages) {
       inputType: typeof body.input === 'string' ? 'string' : `array[${body.input?.length}]`,
       inputLen: typeof body.input === 'string' ? body.input.length : body.input?.reduce((s, m) => s + (m.content?.length || 0), 0),
       tools: body.tools?.length || 0,
+      skillId: body._skillId || 'none',
     });
     return body;
   }
@@ -624,6 +654,8 @@ export function buildRequestBody(settings, messages) {
       Object.assign(body, creds.customParams);
     }
 
+    attachSkillIdToBody(body, settings, creds);
+
     console.log('[buildRequestBody] Anthropic Messages API →', {
       model: body.model,
       max_tokens: body.max_tokens,
@@ -631,6 +663,7 @@ export function buildRequestBody(settings, messages) {
       system_len: body.system?.length || 0,
       messageCount: body.messages?.length,
       totalInputChars: body.messages?.reduce((s, m) => s + (typeof m.content === 'string' ? m.content.length : 0), 0),
+      skillId: body._skillId || 'none',
     });
     return body;
   }
@@ -659,6 +692,8 @@ export function buildRequestBody(settings, messages) {
     Object.assign(body, creds.customParams);
   }
 
+  attachSkillIdToBody(body, settings, creds);
+
   console.log('[buildRequestBody] Chat Completions →', {
     model: body.model,
     max_tokens: body.max_tokens,
@@ -667,6 +702,7 @@ export function buildRequestBody(settings, messages) {
     messageCount: body.messages?.length,
     totalInputChars: body.messages?.reduce((s, m) => s + (m.content?.length || 0), 0),
     tools: body.tools?.length || 0,
+    skillId: body._skillId || 'none',
   });
   return body;
 }

@@ -54,6 +54,10 @@ if [ "$SKIP_BUILD" = false ]; then
   cp -r "$ROOT/backend/dist" "$DEPLOY_TEMP/dist"
   cp -r "$ROOT/backend/public" "$DEPLOY_TEMP/public"
   [ -d "$ROOT/backend/assets" ] && cp -r "$ROOT/backend/assets" "$DEPLOY_TEMP/assets" || true
+  # Consulting skill playbooks are read from disk at runtime
+  # (process.cwd()/skills in skills.service.ts), so they must ship with the
+  # deployment bundle. Without this copy, the catalogue returns 0 skills.
+  [ -d "$ROOT/backend/skills" ] && cp -r "$ROOT/backend/skills" "$DEPLOY_TEMP/skills" || true
   cp "$ROOT/backend/package.json" "$DEPLOY_TEMP/package.json"
   cp "$ROOT/backend/package-lock.json" "$DEPLOY_TEMP/package-lock.json" 2>/dev/null || true
 

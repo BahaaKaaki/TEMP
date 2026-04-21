@@ -22,6 +22,7 @@ import { resolveCustomProperties } from './ai/cssExtraction';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
+import { measureSlideLayout } from './pptxDomMeasure';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -150,12 +151,14 @@ DEFAULT POSITIONS (may be overridden by template positions in the user prompt):
 - Footer: y:7.05
 
 YOUR TASK:
-1. Study the INPUT→OUTPUT examples provided
-2. Extract ALL text from the NEW HTML given to you
-3. Create PptxGenJS code following the exact pattern from examples
-4. Use the same colors, fonts, and positions
+1. Read the ELEMENT POSITIONS section — it has exact pixel positions measured from the rendered slide DOM
+2. Convert to PptxGenJS inches: px * 13.333 / 960 (e.g., x=28 → 0.39in, x=348 → 4.83in)
+3. Use these positions directly for every addText/addShape call — do NOT guess or recompute from CSS
+4. Extract ALL text from the HTML — never use placeholder text
+5. Get colors from the CSS rules and palette — never guess
+6. If ELEMENT POSITIONS is absent, study the examples and compute positions from CSS
 
-CRITICAL: Never use placeholder text. Extract the ACTUAL text from the HTML.
+CRITICAL: The ELEMENT POSITIONS are ground truth. A .num element at x=348 w=30 means w=0.42in — do not shrink it.
 
 EXACT COLOR FIDELITY: The CSS RULES provided with each slide are the RESOLVED colors.
 You MUST use the exact hex colors from the CSS rules for each element. If .card-num says color:#8E1E1E,
@@ -393,7 +396,7 @@ function buildPositionBlock(tplPositions) {
   return lines.join('\n');
 }
 
-export function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
+export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
   const palette = themeToPptxPalette(settings?.theme);
 
   const rawBaseCSS = extractRelevantCSS(slide.html, slide.customCSS || '');
@@ -405,6 +408,14 @@ export function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFe
   const allCSS = [resolvedBaseCSS, resolvedInlineCSS].filter(Boolean).join('\n\n');
 
   console.log(`[PPTX Prompt] Slide %d CSS: base=%d inline=%d total=%d`, slideNum, resolvedBaseCSS.length, inlineCSS.length, allCSS.length);
+
+  let layoutMap = '';
+  try {
+    layoutMap = await measureSlideLayout(slide.html, slide.customCSS);
+    if (layoutMap) console.log(`[PPTX Prompt] Slide %d DOM positions: %d chars`, slideNum, layoutMap.length);
+  } catch (e) {
+    console.warn(`[PPTX Prompt] Slide %d DOM measurement failed:`, slideNum, e.message);
+  }
 
   const decision = decideTemplateUsage(slide, settings?.customTemplates || []);
   let exampleCode = COMPLETE_TRANSLATION_EXAMPLE.code;
@@ -460,7 +471,12 @@ ${exampleCode}
 ${cleanHtml}
 >>> END HTML <<<
 
->>> CSS RULES (base + slide-specific, with var() tokens already resolved) <<<
+${layoutMap ? `========== ELEMENT POSITIONS (ground truth from rendered DOM) ==========
+${layoutMap}
+Convert to inches: px * 13.333 / 960. Use these EXACT positions. Do NOT recompute from CSS.
+==========
+
+` : ''}>>> CSS RULES (base + slide-specific, with var() tokens already resolved) <<<
 ${allCSS || '/* No specific CSS */'}
 >>> END CSS <<<
 
@@ -587,7 +603,7 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
     if (isRetry) console.log(`[PPTX] Retry ${attempt}/${MAX_RETRIES} for slide ${slideNum}. Error: ${lastErrors[0]?.message}`);
 
     try {
-      const userPrompt = buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback);
+      const userPrompt = await buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback);
       const raw = await callAI(settings, credentials, systemPrompt, userPrompt);
       const codeString = extractJSArray(raw);
       lastCode = codeString;

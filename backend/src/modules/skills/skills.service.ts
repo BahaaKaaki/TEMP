@@ -28,7 +28,6 @@ const CATEGORY_MAP: Record<string, { category: string; order: number }> = {
   organization_design_end_to_end: { category: 'Skills Showcase', order: 21 },
   target_operating_model_design_and_activation_blueprint: { category: 'Skills Showcase', order: 22 },
   change_management_and_communication_plan: { category: 'Skills Showcase', order: 23 },
-  strategic_business_case_and_feasibility_study: { category: 'Skills Showcase', order: 24 },
   cost_transformation_diagnostic_and_value_capture_plan: { category: 'Skills Showcase', order: 25 },
   business_case_narrative: { category: 'Skills Showcase', order: 26 },
 

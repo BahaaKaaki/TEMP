@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
+import { preGeneratePptxCode, hasAnyCredentials } from '../services/pptxService';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { scopeCSS, unscopeCSS } from '../utils/cssScoping';
 // Import full CSS as raw string so it's available in state for AI and exports
@@ -716,6 +717,9 @@ function slideReducer(state, action) {
           const pptxRendererCode = updates.html && !('pptxRendererCode' in updates)
             ? null
             : (updates.pptxRendererCode !== undefined ? updates.pptxRendererCode : slide.pptxRendererCode);
+          const pptxCode = updates.html && !('pptxCode' in updates)
+            ? null
+            : (updates.pptxCode !== undefined ? updates.pptxCode : slide.pptxCode);
 
           // Scope customCSS if it's being updated and not already scoped
           const scopedUpdates = updates.customCSS !== undefined && updates.customCSS && !updates.customCSS.includes('data-slide-id')
@@ -726,6 +730,7 @@ function slideReducer(state, action) {
             ...slide,
             ...scopedUpdates,
             pptxRendererCode,
+            pptxCode,
             layoutType: newLayoutType,
             summary: needsSummaryUpdate
               ? generateSlideSummary(newHtml, newType, newTitle)
@@ -1731,6 +1736,28 @@ export function SlideProvider({ children }) {
       setApiMaxConcurrent(state.settings.apiMaxConcurrent);
     }
   }, [state.settings?.apiMaxConcurrent]);
+
+  // Background PPTX code pre-generation: when a slide has HTML but no cached
+  // pptxCode, fire LLM generation in the background so export is instant.
+  const pptxPreGenRef = useRef(new Set());
+  useEffect(() => {
+    if (!hasAnyCredentials(state.settings)) return;
+    const slides = state.slides || [];
+    const totalSlides = slides.length;
+    if (totalSlides === 0) return;
+
+    for (let i = 0; i < totalSlides; i++) {
+      const slide = slides[i];
+      if (!slide.html || slide.pptxCode || pptxPreGenRef.current.has(slide.id)) continue;
+      pptxPreGenRef.current.add(slide.id);
+
+      preGeneratePptxCode(slide, i + 1, totalSlides, state.settings).then(code => {
+        if (code) {
+          dispatch({ type: ACTIONS.UPDATE_SLIDE, payload: { id: slide.id, updates: { pptxCode: code } } });
+        }
+      }).catch(() => {});
+    }
+  }, [state.slides, state.settings]);
 
   // Also save on page unload to ensure no data loss. Mirrors the debounced
   // saver above: strip selectedSlideIds (UI selection) and availableSkills

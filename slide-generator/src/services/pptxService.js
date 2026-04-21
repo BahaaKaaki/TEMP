@@ -267,7 +267,7 @@ export function getCredentialsForModel(settings, modelRef) {
   };
 }
 
-function hasAnyCredentials(settings) {
+export function hasAnyCredentials(settings) {
   if (!settings) return false;
   const providers = Array.isArray(settings.providers) ? settings.providers : [];
   return !!(settings.apiKey || providers.some(p => !!p.apiKey));
@@ -728,6 +728,24 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
     const generateOne = async (i) => {
       const slide = slides[i];
       const slideNum = i + 1;
+
+      // Use pre-generated PPTX code if available and valid
+      if (slide.pptxCode) {
+        try {
+          const validation = validateGeneratedCode(slide.pptxCode, slide.html);
+          if (validation.valid && validation.slideFunctions) {
+            console.log(`[PPTX] Slide ${slideNum}: using pre-generated code`);
+            aiResults[i] = { success: true, slideFunctions: validation.slideFunctions, code: slide.pptxCode, cached: true };
+            completed++;
+            if (onProgress) onProgress({ phase: 'rendering', processed: completed, total: totalSlides, message: `Slide ${completed}/${totalSlides} (pre-generated)` });
+            return;
+          }
+          console.log(`[PPTX] Slide ${slideNum}: pre-generated code invalid, regenerating`);
+        } catch (e) {
+          console.log(`[PPTX] Slide ${slideNum}: pre-generated code error, regenerating`);
+        }
+      }
+
       try {
         const result = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
         aiResults[i] = result;
@@ -768,11 +786,14 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         try {
           result.slideFunctions[0](pptx, slideNum, totalSlides);
           rendered = true;
+          if (!result.cached && result.code) slide.pptxCode = result.code;
           const lastSlide = pptx.slides?.[pptx.slides.length - 1];
           if (lastSlide) addSourceNote(lastSlide, slide.html);
-          if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
+          if (result.cached) console.log(`[PPTX] Slide ${slideNum}: rendered from cache`);
+          else if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
         } catch (execErr) {
           console.error(`[PPTX] Execution failed for slide ${slideNum}:`, execErr.message);
+          slide.pptxCode = null;
         }
       }
 
@@ -908,6 +929,29 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 }
 
 // ── Test function (SlidePreview compatibility) ───────────────────────────────
+
+/**
+ * Pre-generate PPTX code for a slide in the background.
+ * Call after slide creation — the result is stored on the slide object
+ * and used by exportToPPTX to skip the LLM call.
+ *
+ * @returns {string|null} The generated PptxGenJS code, or null on failure
+ */
+export async function preGeneratePptxCode(slide, slideNum, totalSlides, settings) {
+  if (!settings || !hasAnyCredentials(settings)) return null;
+  const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
+  const credentials = getCredentialsForModel(settings, modelRef);
+  try {
+    const result = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
+    if (result.success && result.code) {
+      console.log(`[PPTX Pre-gen] Slide ${slideNum}: code generated (${result.code.length} chars, ${result.attempts} attempt(s))`);
+      return result.code;
+    }
+  } catch (err) {
+    console.warn(`[PPTX Pre-gen] Slide ${slideNum} failed:`, err.message);
+  }
+  return null;
+}
 
 export async function testPPTXCodeGeneration(slide, slideNumber, totalSlides, settings) {
   if (!settings || !hasAnyCredentials(settings)) throw new Error('API key required.');

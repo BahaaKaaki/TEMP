@@ -364,6 +364,7 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt, opts = {}
 
   const endpoint = buildGeminiEndpoint(creds);
   const modelName = creds.rawModel || creds.model;
+  const geminiJsonSchema = settings._responseJsonSchema || null;
 
   const body = {
     system_instruction: {
@@ -383,6 +384,15 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt, opts = {}
       topP: 0.95,
     }
   };
+
+  // Structured outputs for Gemini: generationConfig.responseMimeType +
+  // responseSchema. Gemini accepts an OpenAPI-flavored subset of JSON Schema,
+  // so we strip the `anyOf` ops union and rely on the runtime validator to
+  // catch per-op shape errors.
+  if (geminiJsonSchema) {
+    body.generationConfig.responseMimeType = 'application/json';
+    body.generationConfig.responseSchema = stripJsonSchemaForGemini(geminiJsonSchema.schema);
+  }
 
   // Add thinkingConfig for Gemini thinking models
   // Resolve reasoning effort: explicit setting → default 'low' for thinking models
@@ -561,6 +571,11 @@ export function buildRequestBody(settings, messages) {
   const creds = getCredentials(settings);
   const model = creds.model; // Already has azure. prefix if applicable
 
+  // Optional structured output contract. When set, `_responseJsonSchema` must
+  // be `{ name, strict, schema }` shaped exactly like OpenAI's json_schema
+  // response format. Gemini handles this in its own request builder.
+  const jsonSchema = settings._responseJsonSchema || null;
+
   // GPT-5.x on OpenAI uses the Responses API format
   if (creds.useResponsesAPI) {
     // Convert messages array to Responses API input format
@@ -595,8 +610,20 @@ export function buildRequestBody(settings, messages) {
     // Max output tokens (ensure integer for proxy compat)
     if (maxTokens) body.max_output_tokens = parseInt(maxTokens, 10) || maxTokens;
 
-    // Text verbosity
-    if (verbosity) body.text = { verbosity };
+    // Text verbosity + structured outputs. Responses API expects the format
+    // under `body.text.format` with `type: "json_schema"`.
+    if (verbosity) body.text = { ...(body.text || {}), verbosity };
+    if (jsonSchema) {
+      body.text = {
+        ...(body.text || {}),
+        format: {
+          type: 'json_schema',
+          name: jsonSchema.name,
+          strict: jsonSchema.strict !== false,
+          schema: jsonSchema.schema,
+        },
+      };
+    }
 
     // Extra tools (e.g., web_search_preview for router with search enabled)
     if (settings._extraTools?.length > 0) {
@@ -619,6 +646,7 @@ export function buildRequestBody(settings, messages) {
       reasoning: body.reasoning,
       temperature: body.temperature,
       verbosity: body.text?.verbosity,
+      format: body.text?.format?.type || 'text',
       instructionsLen: body.instructions?.length || 0,
       inputType: typeof body.input === 'string' ? 'string' : `array[${body.input?.length}]`,
       inputLen: typeof body.input === 'string' ? body.input.length : body.input?.reduce((s, m) => s + (m.content?.length || 0), 0),
@@ -650,6 +678,30 @@ export function buildRequestBody(settings, messages) {
     const noTemp = /claude-opus-4-7|claude-sonnet-4-6/i.test(model);
     if (!noTemp && temperature !== undefined && temperature !== null) body.temperature = temperature;
 
+    // Anthropic structured output via forced tool use. The PwC backend proxies
+    // through litellm, which normalizes everything to OpenAI tool-call spec
+    // (even for Claude on Bedrock). Sending Anthropic's native
+    // { name, input_schema } + { type: 'tool', name } shape is rejected with
+    // "Please ensure tool_choice follows the OpenAI spec". Litellm translates
+    // OpenAI-style tools to Claude tool_use under the hood, then normalizes
+    // the response back to choices[0].message.tool_calls[].function.arguments.
+    const anthropicJsonSchema = settings._responseJsonSchema || null;
+    if (anthropicJsonSchema && anthropicJsonSchema.schema) {
+      const toolName = anthropicJsonSchema.name || 'emit_structured_output';
+      body.tools = [
+        {
+          type: 'function',
+          function: {
+            name: toolName,
+            description:
+              'Emit the requested structured output. You MUST call this tool exactly once with arguments matching the provided JSON schema.',
+            parameters: anthropicJsonSchema.schema,
+          },
+        },
+      ];
+      body.tool_choice = { type: 'function', function: { name: toolName } };
+    }
+
     // Merge custom params from provider config (e.g., budget_tokens for extended thinking)
     if (creds.customParams && typeof creds.customParams === 'object') {
       Object.assign(body, creds.customParams);
@@ -664,6 +716,7 @@ export function buildRequestBody(settings, messages) {
       system_len: body.system?.length || 0,
       messageCount: body.messages?.length,
       totalInputChars: body.messages?.reduce((s, m) => s + (typeof m.content === 'string' ? m.content.length : 0), 0),
+      structured: body.tools?.[0]?.name || 'none',
       skillId: body._skillId || 'none',
     });
     return body;
@@ -688,6 +741,18 @@ export function buildRequestBody(settings, messages) {
     body.tools = settings._extraTools;
   }
 
+  // Chat Completions JSON-schema structured outputs.
+  if (jsonSchema) {
+    body.response_format = {
+      type: 'json_schema',
+      json_schema: {
+        name: jsonSchema.name,
+        strict: jsonSchema.strict !== false,
+        schema: jsonSchema.schema,
+      },
+    };
+  }
+
   // Merge custom params from provider config
   if (creds.customParams && typeof creds.customParams === 'object') {
     Object.assign(body, creds.customParams);
@@ -703,9 +768,26 @@ export function buildRequestBody(settings, messages) {
     messageCount: body.messages?.length,
     totalInputChars: body.messages?.reduce((s, m) => s + (m.content?.length || 0), 0),
     tools: body.tools?.length || 0,
+    response_format: body.response_format?.type || 'text',
     skillId: body._skillId || 'none',
   });
   return body;
+}
+
+// Gemini accepts an OpenAPI-flavored subset of JSON Schema. Strip fields that
+// Gemini rejects (`additionalProperties`, `$schema`, `$ref`) while leaving the
+// supported constructs (`type`, `enum`, `properties`, `items`, `anyOf`,
+// `required`, `description`, `minItems`, `maxItems`, `format`, `nullable`)
+// in place. Leaves a deep clone; never mutates the input.
+export function stripJsonSchemaForGemini(node) {
+  if (Array.isArray(node)) return node.map(stripJsonSchemaForGemini);
+  if (node === null || typeof node !== 'object') return node;
+  const out = {};
+  for (const [k, v] of Object.entries(node)) {
+    if (k === 'additionalProperties' || k === '$schema' || k === '$ref') continue;
+    out[k] = stripJsonSchemaForGemini(v);
+  }
+  return out;
 }
 
 // Parse API response — normalizes Responses API, Anthropic Messages, and Chat Completions formats
@@ -726,12 +808,31 @@ export function parseAPIResponseContent(data, creds) {
     if (data.output_text) return data.output_text;
     return '';
   }
-  // Anthropic Messages API: { content: [{ type: "text", text: "..." }] }
-  if (creds?.isAnthropicProvider && data.content && Array.isArray(data.content)) {
-    return data.content
-      .filter(c => c.type === 'text')
-      .map(c => c.text)
-      .join('\n') || '';
+  // Anthropic on litellm. The proxy normalizes responses to OpenAI Chat
+  // Completions shape when a forced function tool is used: the structured
+  // output lands in choices[0].message.tool_calls[0].function.arguments as a
+  // JSON-string. Native Anthropic responses (content array of text/tool_use
+  // blocks) also show up when litellm passes through unchanged — we support
+  // both so this code works across proxy versions.
+  if (creds?.isAnthropicProvider) {
+    const toolCallArgs = data?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments;
+    if (typeof toolCallArgs === 'string' && toolCallArgs.length > 0) {
+      return toolCallArgs;
+    }
+    if (toolCallArgs && typeof toolCallArgs === 'object') {
+      try { return JSON.stringify(toolCallArgs); } catch { /* fall through */ }
+    }
+    if (Array.isArray(data.content)) {
+      const toolUse = data.content.find((c) => c.type === 'tool_use' && c.input);
+      if (toolUse) {
+        try { return JSON.stringify(toolUse.input); } catch { /* fall through */ }
+      }
+      const text = data.content.filter((c) => c.type === 'text').map((c) => c.text).join('\n');
+      if (text) return text;
+    }
+    const openAiContent = data?.choices?.[0]?.message?.content;
+    if (typeof openAiContent === 'string') return openAiContent;
+    return '';
   }
   // Chat Completions format
   return data.choices?.[0]?.message?.content || '';

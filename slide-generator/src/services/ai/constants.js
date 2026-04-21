@@ -44,6 +44,21 @@ SLIDE SKELETON (handled by base CSS -- do NOT restyle):
 - div.frame: top 127px, left 28px, 904 x 366 px content canvas
 - footer.footer: bottom of slide
 
+=== PPTX EXPORT COMPATIBILITY (critical) ===
+
+Slides are exported to editable PowerPoint. These patterns either degrade or force rasterization -- avoid them so the exported deck matches the browser preview and stays editable.
+
+- Write text in its final case. If a label should read uppercase, write it uppercase in the HTML. Do NOT use text-transform: uppercase/lowercase/capitalize.
+- No transform: rotate(...) on text. For vertical labels, prefer short labels (so rotation is unnecessary) or writing-mode: vertical-rl/vertical-lr.
+- No letter-spacing for wide tracking effects -- it is dropped in PPTX.
+- SVG styling must be inline as attributes on the SVG element (fill, stroke, stroke-width). Do NOT style SVG children from a <style> block -- those rules are lost at export and paths render black.
+- No <sup> / <sub> -- write lambda^4, m^2, CO2 inline.
+- No <a href> hyperlinks inside slide content -- put citations in the footer as plain text.
+- No box-shadow, text-shadow, or filter effects. Use borders and solid accent colors for emphasis.
+- Prefer solid backgrounds over gradients. If a gradient is necessary, keep it to a simple two-stop linear gradient.
+- Keep titles short enough to fit one line. Multi-line h1.title is not preserved by the exporter.
+- Prefer plain HTML divs for charts/diagrams (bars, arrows, timelines) -- complex inline SVG rasterizes.
+
 === END DESIGN TOKEN REFERENCE ===`;
 
 // ── Work Level prompt builder ─────────────────────────────────────────────────

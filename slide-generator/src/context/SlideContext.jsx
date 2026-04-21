@@ -184,6 +184,13 @@ const initialState = {
     freestyleTheme: '',
     freestyleVibe: '',
     freestyleWriting: '',
+    // Paired PPTX co-generation: when true, the LLM returns HTML + a
+    // schema-validated pptxOps[] in one call, and the paired-llm export
+    // engine consumes those ops for fully native editable PPTX. On any
+    // validation or provider incompatibility it silently falls back to
+    // the legacy HTML-only generation + llm-dom-to-pptx export, so
+    // flipping this default has no regression risk.
+    pairedPptxMode: true,
     // User preferences -- persistent free-text guidance injected into all LLM prompts
     userPreferences: '',
     // Branding

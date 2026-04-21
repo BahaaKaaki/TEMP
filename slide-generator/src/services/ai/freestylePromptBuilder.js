@@ -2,8 +2,9 @@ import DEFAULT_SHELL from '../../guides/freestyle-shell.md?raw';
 import DEFAULT_THEME from '../../guides/freestyle-theme.md?raw';
 import DEFAULT_VIBE from '../../guides/freestyle-vibe.md?raw';
 import DEFAULT_WRITING from '../../guides/freestyle-writing.md?raw';
+import PAIRED_PPTX_EMIT_GUIDE from '../../guides/freestyle-pptx-emit.md?raw';
 
-export { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING };
+export { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, PAIRED_PPTX_EMIT_GUIDE };
 
 export const FREESTYLE_PRESETS = {
   default: {
@@ -119,15 +120,25 @@ export function buildFreestyleSystemPrompt(settings = {}) {
   const vibe = vibeCustom ? settings.freestyleVibe : (preset?.vibe || DEFAULT_VIBE);
   const writing = writingCustom ? settings.freestyleWriting : (preset?.writing || DEFAULT_WRITING);
 
-  const assembled = [shell, theme, vibe, writing].join('\n\n---\n\n');
+  // Only inject the paired guide when we are ACTUALLY on the paired path.
+  // generateSlidesPaired sets settings._responseJsonSchema to force structured
+  // output; when that flag is absent the caller is on the legacy HTML path
+  // (either by provider incompatibility, custom template, or fallback), and
+  // the LLM must not be told to return JSON or it will break the HTML parser.
+  const pairedActive = !!settings._responseJsonSchema && !!settings.pairedPptxMode;
+  const sections = [shell, theme, vibe, writing];
+  if (pairedActive) sections.push(PAIRED_PPTX_EMIT_GUIDE);
+
+  const assembled = sections.join('\n\n---\n\n');
 
   console.groupCollapsed(
-    '[FreestylePrompt] Assembled system prompt (%d chars) — Shell:%s Theme:%s Vibe:%s Writing:%s',
+    '[FreestylePrompt] Assembled system prompt (%d chars) — Shell:%s Theme:%s Vibe:%s Writing:%s Paired:%s',
     assembled.length,
     shellCustom ? 'CUSTOM' : 'default',
     themeCustom ? 'CUSTOM' : 'default',
     vibeCustom ? 'CUSTOM' : 'default',
-    writingCustom ? 'CUSTOM' : 'default'
+    writingCustom ? 'CUSTOM' : 'default',
+    pairedActive ? 'ON' : (settings.pairedPptxMode ? 'requested (no json_schema → off)' : 'off')
   );
   console.groupCollapsed('Shell (%d chars)', shell.length);
   console.log(shell);
@@ -141,6 +152,11 @@ export function buildFreestyleSystemPrompt(settings = {}) {
   console.groupCollapsed('Writing (%d chars)', writing.length);
   console.log(writing);
   console.groupEnd();
+  if (pairedActive) {
+    console.groupCollapsed('PairedPPTX emit guide (%d chars)', PAIRED_PPTX_EMIT_GUIDE.length);
+    console.log(PAIRED_PPTX_EMIT_GUIDE);
+    console.groupEnd();
+  }
   console.groupEnd();
 
   return assembled;

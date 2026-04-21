@@ -2,7 +2,8 @@ import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useSlides } from '../context/SlideContext';
 import { transformElementToWidget, hasAnyApiKey } from '../services/aiService';
-import { exportSingleSlideToPPTX, testPPTXCodeGeneration } from '../services/pptxService';
+import { testPPTXCodeGeneration } from '../services/pptxService';
+import { exportToPPTX as exportNativePPTX } from '../services/pptxExport';
 import { exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
 import { themeToCSS } from '../utils/themeUtils';
@@ -130,13 +131,19 @@ export default function SlidePreview({ onSwitchToCode }) {
     try {
       const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
       const filename = generateFileName(`${state.deckName}_Slide${slideIndex + 1}`, 'pptx', {
-        useNomenclature: state.settings.useNomenclature ?? true,
-        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
+        useNomenclature: state.settings?.useNomenclature ?? true,
+        nomenclaturePattern: state.settings?.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
         version: 1,
       });
-      const allTemplates = state.customTemplates || [];
-      const pptxSettings = { ...state.settings, theme: state.theme, customTemplates: allTemplates };
-      await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, pptxSettings);
+      await exportNativePPTX(
+        [activeSlide],
+        filename,
+        {
+          theme: state.theme,
+          sharedCSS: state.sharedCSS || '',
+          darkMode: Boolean(state.darkMode),
+        },
+      );
     } catch (err) {
       console.error('Failed to download PPTX:', err);
     } finally {

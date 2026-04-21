@@ -20,7 +20,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
 - Monaco-based slide editor (HTML/CSS)
-- PowerPoint (.pptx) export via PptxGenJS with template-aware merging (logo injection, master shape isolation, smart layout selection, template position awareness)
+- PowerPoint (.pptx) export with two native engines (no LLM required): `llm-dom-to-pptx` (default, full visual fidelity - rasterizes gradients/SVG while keeping text editable) and `html-to-pptx` (fully native, loses gradients/SVG). The default engine preserves `text-transform`, `letter-spacing`, `<sup>` / `<sub>`, `<a href>`, external-CSS-styled SVG, and CSS rotation (90/270 via `vert`, arbitrary angles via `rotate`). Legacy LLM-based PPTX pipeline retained as fallback. LLM generation guides include "Export compatibility" rules so slides are PPTX-friendly from the first token. See `docs/pptx-bakeoff-results.md`.
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
 - Web search via PwC Responses API

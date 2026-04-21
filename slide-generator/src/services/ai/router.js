@@ -1766,7 +1766,7 @@ export async function aiRouteRequest(userPrompt, context, settings) {
 
   // Get router model - use big model if requested, otherwise unified routerModel
   const defaultRouterModel = 'pwc:openai.gpt-5.4';
-  const bigModel = settings.model || 'pwc:bedrock.anthropic.claude-opus-4-6';
+  const bigModel = settings.model || 'pwc:bedrock.anthropic.claude-opus-4-7';
 
   // Unified router: single model for all routing (chatRouterModel kept for backward compat)
   const effectiveRouterModel = useBigModel ? bigModel

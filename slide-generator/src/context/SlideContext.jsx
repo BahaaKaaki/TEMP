@@ -50,7 +50,7 @@ const initialState = {
         apiUrl: '/api/ai/chat',
         apiKey: 'server-managed',
         models: [
-          'bedrock.anthropic.claude-opus-4-6',
+          'bedrock.anthropic.claude-opus-4-7',
           'bedrock.anthropic.claude-sonnet-4-6',
           'openai.gpt-5.4',
           'openai.gpt-5.4-mini',
@@ -58,7 +58,7 @@ const initialState = {
           'openai.gpt-5.4-pro',
           'vertex_ai.gemini-3.1-pro-preview',
           'vertex_ai.gemini-3-pro-image-preview',
-          'vertex_ai.anthropic.claude-opus-4-6',
+          'vertex_ai.anthropic.claude-opus-4-7',
           'azure.gpt-4.1',
         ],
         azurePrefix: false,
@@ -71,7 +71,7 @@ const initialState = {
     // ── Unified chat: speed mode ──
     speedMode: 'premium',        // 'fast' | 'premium' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:bedrock.anthropic.claude-opus-4-6',         // "Thinking" generation
+    model: 'pwc:bedrock.anthropic.claude-opus-4-7',         // "Thinking" generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',             // Tier 1 quick classifier (always fast)
     // Router / planner
@@ -91,7 +91,7 @@ const initialState = {
     reasoningEffort: 'low',
     verbosity: '',
     // PPTX Export settings
-    pptxModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
+    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7',
     pptxSystemPrompt: '',
     pptxCodeExample: '',
     pptxBatchSize: 10, // Number of slides to process per API call

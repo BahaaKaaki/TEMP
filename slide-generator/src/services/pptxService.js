@@ -22,12 +22,12 @@ import { resolveCustomProperties } from './ai/cssExtraction';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
+import { buildLayoutBrief } from './pptxLayoutBrief';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
-const FORCED_PPTX_MODEL = 'pwc:vertex_ai.anthropic.claude-opus-4-6';
-const DEFAULT_PPTX_MODEL = 'gpt-4o';
+const DEFAULT_PPTX_MODEL = 'pwc:bedrock.anthropic.claude-opus-4-7';
 
 /**
  * Convert a theme object into the PPTX color palette snippet and hint.
@@ -291,8 +291,10 @@ async function callGeminiAPI(settings, credentials, systemPrompt, userPrompt) {
 
 async function callClaudeAPI(settings, credentials, systemPrompt, userPrompt) {
   const apiEndpoint = credentials.apiEndpoint || 'https://api.anthropic.com/v1/messages';
-  const body = { model: credentials.model || credentials.rawModel, max_tokens: settings.maxTokens || 8192, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] };
-  if (settings.temperature !== undefined) body.temperature = settings.temperature;
+  const mdl = credentials.model || credentials.rawModel;
+  const body = { model: mdl, max_tokens: settings.maxTokens || 8192, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] };
+  const noTemp = /claude-opus-4-7|claude-sonnet-4-6/i.test(mdl);
+  if (!noTemp && settings.temperature !== undefined) body.temperature = settings.temperature;
   const response = await fetch(apiEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': credentials.apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify(body) });
   if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error?.message || `Claude API error: ${response.status}`); }
   const data = await response.json();
@@ -303,6 +305,7 @@ function buildPptxRequestBody(credentials, settings, messages) {
   const model = credentials.model;
   const { temperature, maxTokens, reasoningEffort } = settings;
   const verbosity = settings.verbosity || null;
+  const noTemp = /claude-opus-4-7|claude-sonnet-4-6/i.test(model);
   if (credentials.useResponsesAPI) {
     let instructions = '';
     const inputItems = [];
@@ -310,14 +313,15 @@ function buildPptxRequestBody(credentials, settings, messages) {
     const input = inputItems.length === 1 && inputItems[0].role === 'user' ? inputItems[0].content : inputItems;
     const body = { model, input };
     if (instructions) body.instructions = instructions;
-    if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') body.reasoning = { effort: reasoningEffort }; else body.temperature = temperature || 0.2;
+    if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') body.reasoning = { effort: reasoningEffort }; else if (!noTemp) body.temperature = temperature || 0.2;
     body.max_output_tokens = maxTokens || 8000;
     if (verbosity) body.text = { verbosity };
     return body;
   }
   const body = { model, messages };
   if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') body.reasoning_effort = reasoningEffort;
-  else { body.temperature = temperature || 0.2; body.max_tokens = maxTokens || 8000; }
+  else if (!noTemp) { body.temperature = temperature || 0.2; }
+  body.max_tokens = maxTokens || 8000;
   return body;
 }
 
@@ -457,7 +461,7 @@ ${exampleCode}
 ${cleanHtml}
 >>> END HTML <<<
 
->>> CSS RULES (base + slide-specific, with var() tokens already resolved) <<<
+${(() => { const brief = buildLayoutBrief(cleanHtml, allCSS); return brief ? `========== ${brief}\n\n` : ''; })()}>>> CSS RULES (base + slide-specific, with var() tokens already resolved) <<<
 ${allCSS || '/* No specific CSS */'}
 >>> END CSS <<<
 
@@ -705,11 +709,11 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   setTemplatePositions(templateData?.chrome?.positions || null);
 
   const useAI = settings && hasAnyCredentials(settings);
-  const modelRef = FORCED_PPTX_MODEL;
+  const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = useAI ? getCredentialsForModel(settings, modelRef) : null;
 
   if (!useAI) console.warn('[PPTX] No API credentials — using fallback for all slides.');
-  else console.log(`[PPTX] Using forced model: ${FORCED_PPTX_MODEL}`);
+  else console.log(`[PPTX] Using model: ${modelRef}`);
 
   const concurrency = Math.max(1, Math.min(10, settings?.pptxParallelBatches || 5));
   const useParallel = useAI && concurrency > 1 && totalSlides > 1;
@@ -861,7 +865,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   setTemplatePositions(templateData?.chrome?.positions || null);
 
   const useAI = settings && hasAnyCredentials(settings);
-  const modelRef = FORCED_PPTX_MODEL;
+  const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = useAI ? getCredentialsForModel(settings, modelRef) : null;
 
   if (onProgress) onProgress({ phase: 'rendering', message: 'Generating slide...' });
@@ -907,7 +911,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 
 export async function testPPTXCodeGeneration(slide, slideNumber, totalSlides, settings) {
   if (!settings || !hasAnyCredentials(settings)) throw new Error('API key required.');
-  const modelRef = FORCED_PPTX_MODEL;
+  const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = getCredentialsForModel(settings, modelRef);
   const result = await generateSlideWithRetry(slide, slideNumber, totalSlides, settings, credentials);
   return { code: result.code || '(fallback used)', validation: { valid: result.success, error: result.errors?.[0]?.message || null } };

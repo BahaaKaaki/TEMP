@@ -171,6 +171,15 @@ BAR CHARTS: Render bar-chart-exhibit as native PptxGenJS shapes (filled rectangl
 AUTO-CHARTS: If you see <div class="auto-chart" data-chart='JSON'>, extract chart data and use slide.addChart().
 If unsure how to use addChart, render bars as rectangles instead — that always works.
 
+═══ CRITICAL LAYOUT RULES ═══
+
+TEXT WIDTH: Never create a text box narrower than its content. For 2-digit numbers like "01", minimum w: 0.5in. For short labels like "PARTICLES", measure roughly: characters × 0.08in at 10pt. Text that wraps vertically (e.g., "0" on one line and "1" on the next) is the #1 export defect — always over-estimate width.
+
+LAYOUT FIDELITY: Reproduce the HTML layout structure EXACTLY. If HTML has a 2-column layout (left panel + right grid), do NOT restructure into 3 columns. Count the columns/rows in the CSS grid-template-columns and flex containers and match them precisely.
+
+DIAGONAL LINES: Never use negative h or w — causes PPTX corruption. Use flipV:true for upward lines.
+PSEUDO-ELEMENTS: CSS ::before/::after → reconstruct as explicit addShape() calls.
+
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
 
 OUTPUT: Return ONLY a JavaScript array of functions, no markdown.`;
@@ -554,7 +563,23 @@ export function validateGeneratedCode(codeString, slideHtml) {
     }
   }
 
-  // 5. Title check
+  // 5. Narrow text box detection (catches "01" → "0\n1" wrapping defect)
+  if (testPptx.slides?.length > 0) {
+    const slide = testPptx.slides[testPptx.slides.length - 1];
+    const objects = slide._slideObjects || slide.data || [];
+    for (const obj of objects) {
+      if (obj.text && obj.options) {
+        const text = typeof obj.text === 'string' ? obj.text : (Array.isArray(obj.text) ? obj.text.map(t => t.text || t).join('') : '');
+        const w = obj.options.w || 0;
+        const fontSize = obj.options.fontSize || 12;
+        if (text.length >= 2 && text.length <= 6 && w < 0.4) {
+          errors.push({ type: 'NarrowTextWarning', message: `Text "${text}" in box w=${w}in is too narrow — will wrap vertically. Minimum w for ${text.length} chars at ${fontSize}pt: ~${(text.length * 0.09).toFixed(2)}in`, details: 'Increase the width of this text box so the text fits on one line.' });
+        }
+      }
+    }
+  }
+
+  // 6. Title check
   if (slideHtml) {
     const parser = new DOMParser();
     const doc = parser.parseFromString(slideHtml, 'text/html');

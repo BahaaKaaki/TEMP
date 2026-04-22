@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
+import { preGeneratePptxCode, hasAnyCredentials } from '../services/pptxService';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { scopeCSS, unscopeCSS } from '../utils/cssScoping';
 // Import full CSS as raw string so it's available in state for AI and exports
@@ -50,7 +51,7 @@ const initialState = {
         apiUrl: '/api/ai/chat',
         apiKey: 'server-managed',
         models: [
-          'bedrock.anthropic.claude-opus-4-6',
+          'bedrock.anthropic.claude-opus-4-7',
           'bedrock.anthropic.claude-sonnet-4-6',
           'openai.gpt-5.4',
           'openai.gpt-5.4-mini',
@@ -58,7 +59,7 @@ const initialState = {
           'openai.gpt-5.4-pro',
           'vertex_ai.gemini-3.1-pro-preview',
           'vertex_ai.gemini-3-pro-image-preview',
-          'vertex_ai.anthropic.claude-opus-4-6',
+          'vertex_ai.anthropic.claude-opus-4-7',
           'azure.gpt-4.1',
         ],
         azurePrefix: false,
@@ -71,7 +72,7 @@ const initialState = {
     // ── Unified chat: speed mode ──
     speedMode: 'premium',        // 'fast' | 'premium' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:bedrock.anthropic.claude-opus-4-6',         // "Thinking" generation
+    model: 'pwc:bedrock.anthropic.claude-opus-4-7',         // "Thinking" generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',             // Tier 1 quick classifier (always fast)
     // Router / planner
@@ -91,7 +92,7 @@ const initialState = {
     reasoningEffort: 'low',
     verbosity: '',
     // PPTX Export settings
-    pptxModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
+    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7',
     pptxSystemPrompt: '',
     pptxCodeExample: '',
     pptxBatchSize: 10, // Number of slides to process per API call
@@ -716,6 +717,9 @@ function slideReducer(state, action) {
           const pptxRendererCode = updates.html && !('pptxRendererCode' in updates)
             ? null
             : (updates.pptxRendererCode !== undefined ? updates.pptxRendererCode : slide.pptxRendererCode);
+          const pptxCode = updates.html && !('pptxCode' in updates)
+            ? null
+            : (updates.pptxCode !== undefined ? updates.pptxCode : slide.pptxCode);
 
           // Scope customCSS if it's being updated and not already scoped
           const scopedUpdates = updates.customCSS !== undefined && updates.customCSS && !updates.customCSS.includes('data-slide-id')
@@ -726,6 +730,7 @@ function slideReducer(state, action) {
             ...slide,
             ...scopedUpdates,
             pptxRendererCode,
+            pptxCode,
             layoutType: newLayoutType,
             summary: needsSummaryUpdate
               ? generateSlideSummary(newHtml, newType, newTitle)
@@ -1630,7 +1635,12 @@ export function SlideProvider({ children }) {
   const [state, dispatch] = useReducer(slideReducer, null, loadState);
 
   const [isPanelOpen, setIsPanelOpen] = useState(() => {
-    try { return localStorage.getItem('aiPanelOpen') === 'true'; } catch { return false; }
+    try {
+      const saved = localStorage.getItem('aiPanelOpen');
+      return saved == null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
   });
   const togglePanel = useCallback(() => {
     setIsPanelOpen(prev => {
@@ -1731,6 +1741,28 @@ export function SlideProvider({ children }) {
       setApiMaxConcurrent(state.settings.apiMaxConcurrent);
     }
   }, [state.settings?.apiMaxConcurrent]);
+
+  // Background PPTX code pre-generation: when a slide has HTML but no cached
+  // pptxCode, fire LLM generation in the background so export is instant.
+  const pptxPreGenRef = useRef(new Set());
+  useEffect(() => {
+    if (!hasAnyCredentials(state.settings)) return;
+    const slides = state.slides || [];
+    const totalSlides = slides.length;
+    if (totalSlides === 0) return;
+
+    for (let i = 0; i < totalSlides; i++) {
+      const slide = slides[i];
+      if (!slide.html || slide.pptxCode || pptxPreGenRef.current.has(slide.id)) continue;
+      pptxPreGenRef.current.add(slide.id);
+
+      preGeneratePptxCode(slide, i + 1, totalSlides, state.settings).then(code => {
+        if (code) {
+          dispatch({ type: ACTIONS.UPDATE_SLIDE, payload: { id: slide.id, updates: { pptxCode: code } } });
+        }
+      }).catch(() => {});
+    }
+  }, [state.slides, state.settings]);
 
   // Also save on page unload to ensure no data loss. Mirrors the debounced
   // saver above: strip selectedSlideIds (UI selection) and availableSkills

@@ -22,12 +22,12 @@ import { resolveCustomProperties } from './ai/cssExtraction';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
+import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
-const FORCED_PPTX_MODEL = 'pwc:vertex_ai.anthropic.claude-opus-4-6';
-const DEFAULT_PPTX_MODEL = 'gpt-4o';
+const DEFAULT_PPTX_MODEL = 'pwc:bedrock.anthropic.claude-opus-4-7';
 
 /**
  * Convert a theme object into the PPTX color palette snippet and hint.
@@ -131,7 +131,7 @@ const COVER_TRANSLATION_EXAMPLE = {
 
 // Re-exports for consumer modules
 export { COMPLETE_TRANSLATION_EXAMPLE, KPI_TRANSLATION_EXAMPLE, COVER_TRANSLATION_EXAMPLE };
-export { hasAnyCredentials };
+
 
 export const DEFAULT_PPTX_SYSTEM_PROMPT = `You convert HTML slides to PptxGenJS code by learning from input/output examples.
 
@@ -151,12 +151,11 @@ DEFAULT POSITIONS (may be overridden by template positions in the user prompt):
 - Footer: y:7.05
 
 YOUR TASK:
-1. Study the INPUT→OUTPUT examples provided
-2. Extract ALL text from the NEW HTML given to you
-3. Create PptxGenJS code following the exact pattern from examples
-4. Use the same colors, fonts, and positions
-
-CRITICAL: Never use placeholder text. Extract the ACTUAL text from the HTML.
+1. Extract ALL text from the HTML — never use placeholder text
+2. Compute positions from the CSS (position/left/top/width/height, grid/flex layout, padding, gaps)
+3. Convert px to PptxGenJS inches: px * 13.333 / 960 (e.g., x=28 → 0.39in, w=904 → 12.56in)
+4. Use the REFERENCE EXAMPLE as a structural guide only — override its colors/sizes with the ones from THIS slide's CSS
+5. Pull fonts and colors from the CSS rules and resolved palette — never guess
 
 EXACT COLOR FIDELITY: The CSS RULES provided with each slide are the RESOLVED colors.
 You MUST use the exact hex colors from the CSS rules for each element. If .card-num says color:#8E1E1E,
@@ -172,6 +171,19 @@ AUTO-CHARTS: If you see <div class="auto-chart" data-chart='JSON'>, extract char
 If unsure how to use addChart, render bars as rectangles instead — that always works.
 
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
+
+HOW TO CONSUME ELEMENT HINTS:
+If the user prompt contains an ELEMENT HINTS block, each entry is semantic export guidance attached to a risky element in the HTML. Use the HTML and CSS for layout, but obey the hint when rendering that specific element in PptxGenJS.
+
+Interpret hints as follows:
+- chip / badge: compact label or pill. Keep the visual treatment tight and single-line.
+- nowrap: never wrap the text, stack letters, or split words across lines.
+- exact-text: preserve the visible text exactly. Do not abbreviate, trim, or rewrite it.
+- step-number: keep the number as one prominent line, not multiple lines.
+- tight-box: minimise text margin / inset. Prefer margin:0, wrap:false, and valign:'middle' when that matches the CSS. Use fit:'shrink' only as a last resort to preserve one-line text.
+- align=... / valign=...: prefer that alignment for the hinted element.
+
+If an element has no hint, render it normally from the CSS and HTML.
 
 OUTPUT: Return ONLY a JavaScript array of functions, no markdown.`;
 
@@ -267,7 +279,7 @@ export function getCredentialsForModel(settings, modelRef) {
   };
 }
 
-function hasAnyCredentials(settings) {
+export function hasAnyCredentials(settings) {
   if (!settings) return false;
   const providers = Array.isArray(settings.providers) ? settings.providers : [];
   return !!(settings.apiKey || providers.some(p => !!p.apiKey));
@@ -291,8 +303,10 @@ async function callGeminiAPI(settings, credentials, systemPrompt, userPrompt) {
 
 async function callClaudeAPI(settings, credentials, systemPrompt, userPrompt) {
   const apiEndpoint = credentials.apiEndpoint || 'https://api.anthropic.com/v1/messages';
-  const body = { model: credentials.model || credentials.rawModel, max_tokens: settings.maxTokens || 8192, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] };
-  if (settings.temperature !== undefined) body.temperature = settings.temperature;
+  const mdl = credentials.model || credentials.rawModel;
+  const body = { model: mdl, max_tokens: settings.maxTokens || 8192, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] };
+  const noTemp = /claude-opus-4-7|claude-sonnet-4-6/i.test(mdl);
+  if (!noTemp && settings.temperature !== undefined) body.temperature = settings.temperature;
   const response = await fetch(apiEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': credentials.apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify(body) });
   if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error?.message || `Claude API error: ${response.status}`); }
   const data = await response.json();
@@ -303,6 +317,7 @@ function buildPptxRequestBody(credentials, settings, messages) {
   const model = credentials.model;
   const { temperature, maxTokens, reasoningEffort } = settings;
   const verbosity = settings.verbosity || null;
+  const noTemp = /claude-opus-4-7|claude-sonnet-4-6/i.test(model);
   if (credentials.useResponsesAPI) {
     let instructions = '';
     const inputItems = [];
@@ -310,14 +325,15 @@ function buildPptxRequestBody(credentials, settings, messages) {
     const input = inputItems.length === 1 && inputItems[0].role === 'user' ? inputItems[0].content : inputItems;
     const body = { model, input };
     if (instructions) body.instructions = instructions;
-    if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') body.reasoning = { effort: reasoningEffort }; else body.temperature = temperature || 0.2;
+    if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') body.reasoning = { effort: reasoningEffort }; else if (!noTemp) body.temperature = temperature || 0.2;
     body.max_output_tokens = maxTokens || 8000;
     if (verbosity) body.text = { verbosity };
     return body;
   }
   const body = { model, messages };
   if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') body.reasoning_effort = reasoningEffort;
-  else { body.temperature = temperature || 0.2; body.max_tokens = maxTokens || 8000; }
+  else if (!noTemp) { body.temperature = temperature || 0.2; }
+  body.max_tokens = maxTokens || 8000;
   return body;
 }
 
@@ -390,7 +406,7 @@ function buildPositionBlock(tplPositions) {
   return lines.join('\n');
 }
 
-export function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
+export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
   const palette = themeToPptxPalette(settings?.theme);
 
   const rawBaseCSS = extractRelevantCSS(slide.html, slide.customCSS || '');
@@ -410,10 +426,16 @@ export function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFe
   else if (html.includes('kpi-block') || html.includes('two-col')) exampleCode = KPI_TRANSLATION_EXAMPLE.code;
   if (decision.useTemplate && decision.pptxRendererCode) exampleCode = decision.pptxRendererCode;
 
-  const cleanHtml = html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-    .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"');
+  const hints = parsePptxHints(html);
+  const hintsBlock = formatHintsForPrompt(hints);
+  console.log('[PPTX Prompt] Slide %d hints: %d', slideNum, hints.length);
+
+  const cleanHtml = stripPptxHintComments(
+    html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"')
+  );
 
   const tplPos = buildPositionBlock(settings?.templatePositions);
 
@@ -452,7 +474,7 @@ ${palette.hint}
 ${exampleCode}
 
 ========== SLIDE ${slideNum} OF ${totalSlides} ==========
-
+${hintsBlock ? `\n${hintsBlock}\n` : ''}
 >>> HTML (extract ALL text EXACTLY) <<<
 ${cleanHtml}
 >>> END HTML <<<
@@ -584,7 +606,7 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
     if (isRetry) console.log(`[PPTX] Retry ${attempt}/${MAX_RETRIES} for slide ${slideNum}. Error: ${lastErrors[0]?.message}`);
 
     try {
-      const userPrompt = buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback);
+      const userPrompt = await buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback);
       const raw = await callAI(settings, credentials, systemPrompt, userPrompt);
       const codeString = extractJSArray(raw);
       lastCode = codeString;
@@ -705,11 +727,11 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   setTemplatePositions(templateData?.chrome?.positions || null);
 
   const useAI = settings && hasAnyCredentials(settings);
-  const modelRef = FORCED_PPTX_MODEL;
+  const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = useAI ? getCredentialsForModel(settings, modelRef) : null;
 
   if (!useAI) console.warn('[PPTX] No API credentials — using fallback for all slides.');
-  else console.log(`[PPTX] Using forced model: ${FORCED_PPTX_MODEL}`);
+  else console.log(`[PPTX] Using model: ${modelRef}`);
 
   const concurrency = Math.max(1, Math.min(10, settings?.pptxParallelBatches || 5));
   const useParallel = useAI && concurrency > 1 && totalSlides > 1;
@@ -724,6 +746,24 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
     const generateOne = async (i) => {
       const slide = slides[i];
       const slideNum = i + 1;
+
+      // Use pre-generated PPTX code if available and valid
+      if (slide.pptxCode) {
+        try {
+          const validation = validateGeneratedCode(slide.pptxCode, slide.html);
+          if (validation.valid && validation.slideFunctions) {
+            console.log(`[PPTX] Slide ${slideNum}: using pre-generated code`);
+            aiResults[i] = { success: true, slideFunctions: validation.slideFunctions, code: slide.pptxCode, cached: true };
+            completed++;
+            if (onProgress) onProgress({ phase: 'rendering', processed: completed, total: totalSlides, message: `Slide ${completed}/${totalSlides} (pre-generated)` });
+            return;
+          }
+          console.log(`[PPTX] Slide ${slideNum}: pre-generated code invalid, regenerating`);
+        } catch (e) {
+          console.log(`[PPTX] Slide ${slideNum}: pre-generated code error, regenerating`);
+        }
+      }
+
       try {
         const result = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
         aiResults[i] = result;
@@ -764,11 +804,14 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         try {
           result.slideFunctions[0](pptx, slideNum, totalSlides);
           rendered = true;
+          if (!result.cached && result.code) slide.pptxCode = result.code;
           const lastSlide = pptx.slides?.[pptx.slides.length - 1];
           if (lastSlide) addSourceNote(lastSlide, slide.html);
-          if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
+          if (result.cached) console.log(`[PPTX] Slide ${slideNum}: rendered from cache`);
+          else if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
         } catch (execErr) {
           console.error(`[PPTX] Execution failed for slide ${slideNum}:`, execErr.message);
+          slide.pptxCode = null;
         }
       }
 
@@ -861,7 +904,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   setTemplatePositions(templateData?.chrome?.positions || null);
 
   const useAI = settings && hasAnyCredentials(settings);
-  const modelRef = FORCED_PPTX_MODEL;
+  const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = useAI ? getCredentialsForModel(settings, modelRef) : null;
 
   if (onProgress) onProgress({ phase: 'rendering', message: 'Generating slide...' });
@@ -905,9 +948,32 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 
 // ── Test function (SlidePreview compatibility) ───────────────────────────────
 
+/**
+ * Pre-generate PPTX code for a slide in the background.
+ * Call after slide creation — the result is stored on the slide object
+ * and used by exportToPPTX to skip the LLM call.
+ *
+ * @returns {string|null} The generated PptxGenJS code, or null on failure
+ */
+export async function preGeneratePptxCode(slide, slideNum, totalSlides, settings) {
+  if (!settings || !hasAnyCredentials(settings)) return null;
+  const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
+  const credentials = getCredentialsForModel(settings, modelRef);
+  try {
+    const result = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
+    if (result.success && result.code) {
+      console.log(`[PPTX Pre-gen] Slide ${slideNum}: code generated (${result.code.length} chars, ${result.attempts} attempt(s))`);
+      return result.code;
+    }
+  } catch (err) {
+    console.warn(`[PPTX Pre-gen] Slide ${slideNum} failed:`, err.message);
+  }
+  return null;
+}
+
 export async function testPPTXCodeGeneration(slide, slideNumber, totalSlides, settings) {
   if (!settings || !hasAnyCredentials(settings)) throw new Error('API key required.');
-  const modelRef = FORCED_PPTX_MODEL;
+  const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = getCredentialsForModel(settings, modelRef);
   const result = await generateSlideWithRetry(slide, slideNumber, totalSlides, settings, credentials);
   return { code: result.code || '(fallback used)', validation: { valid: result.success, error: result.errors?.[0]?.message || null } };

@@ -647,7 +647,8 @@ export function buildRequestBody(settings, messages) {
       max_tokens: parseInt(maxTokens, 10) || 4096,
     };
     if (system) body.system = system;
-    if (temperature !== undefined && temperature !== null) body.temperature = temperature;
+    const noTemp = /claude-opus-4-7|claude-sonnet-4-6/i.test(model);
+    if (!noTemp && temperature !== undefined && temperature !== null) body.temperature = temperature;
 
     // Merge custom params from provider config (e.g., budget_tokens for extended thinking)
     if (creds.customParams && typeof creds.customParams === 'object') {

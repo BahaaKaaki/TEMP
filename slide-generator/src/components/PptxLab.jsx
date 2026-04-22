@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import PptxGenJS from 'pptxgenjs';
 import { useSlides } from '../context/SlideContext';
 import {
@@ -24,9 +24,9 @@ const SAMPLES = [
 ];
 
 const MODELS = [
-  'pwc:vertex_ai.anthropic.claude-opus-4-6',
+  'pwc:bedrock.anthropic.claude-opus-4-7',
+  'pwc:vertex_ai.anthropic.claude-opus-4-7',
   'pwc:vertex_ai.gemini-3.1-pro-preview',
-  'pwc:vertex_ai.gemini-3.1-flash-lite-preview',
   'pwc:openai.gpt-5.4',
   'pwc:openai.gpt-5.4-mini',
 ];
@@ -176,15 +176,20 @@ export default function PptxLab() {
     );
   }, [freestyle]);
 
-  const buildPromptPreview = useCallback(() => {
-    const labSettings = { ...settings, customTemplates: freestyle ? [] : settings.customTemplates };
-    const slide = { html: htmlInput, customCSS: cssInput };
-    try {
-      const raw = buildSlidePrompt(slide, 1, 1, labSettings, null);
-      return patchFreestyle(raw);
-    } catch (e) {
-      return `[Error building prompt: ${e.message}]`;
-    }
+  const [promptPreviewText, setPromptPreviewText] = useState('');
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const labSettings = { ...settings, customTemplates: freestyle ? [] : settings.customTemplates };
+      const slide = { html: htmlInput, customCSS: cssInput };
+      try {
+        const raw = await buildSlidePrompt(slide, 1, 1, labSettings, null);
+        if (!cancelled) setPromptPreviewText(patchFreestyle(raw));
+      } catch (e) {
+        if (!cancelled) setPromptPreviewText(`[Error building prompt: ${e.message}]`);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [htmlInput, cssInput, settings, freestyle, patchFreestyle]);
 
   const handleRun = useCallback(async () => {
@@ -194,7 +199,7 @@ export default function PptxLab() {
 
     const overrideSettings = { ...settings, pptxSystemPrompt: systemPrompt, customTemplates: freestyle ? [] : settings.customTemplates };
     const slide = { html: htmlInput, customCSS: cssInput };
-    const rawPrompt = buildSlidePrompt(slide, 1, 1, overrideSettings, null);
+    const rawPrompt = await buildSlidePrompt(slide, 1, 1, overrideSettings, null);
     const userPrompt = patchFreestyle(rawPrompt);
 
     setResult(prev => ({ ...prev, userPrompt }));
@@ -256,7 +261,7 @@ export default function PptxLab() {
     }
   }, [result]);
 
-  const promptPreview = buildPromptPreview();
+  const promptPreview = promptPreviewText;
 
   const tabContent = {
     prompt: result.userPrompt || promptPreview || '(build prompt preview — select HTML and click Run)',

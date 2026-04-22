@@ -2,8 +2,9 @@ import DEFAULT_SHELL from '../../guides/freestyle-shell.md?raw';
 import DEFAULT_THEME from '../../guides/freestyle-theme.md?raw';
 import DEFAULT_VIBE from '../../guides/freestyle-vibe.md?raw';
 import DEFAULT_WRITING from '../../guides/freestyle-writing.md?raw';
+import DEFAULT_PPTX_HINTS from '../../guides/freestyle-pptx-hints.md?raw';
 
-export { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING };
+export { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, DEFAULT_PPTX_HINTS };
 
 export const FREESTYLE_PRESETS = {
   default: {
@@ -118,11 +119,12 @@ export function buildFreestyleSystemPrompt(settings = {}) {
   const theme = themeCustom ? settings.freestyleTheme : (preset?.theme || DEFAULT_THEME);
   const vibe = vibeCustom ? settings.freestyleVibe : (preset?.vibe || DEFAULT_VIBE);
   const writing = writingCustom ? settings.freestyleWriting : (preset?.writing || DEFAULT_WRITING);
+  const hints = DEFAULT_PPTX_HINTS;
 
-  const assembled = [shell, theme, vibe, writing].join('\n\n---\n\n');
+  const assembled = [shell, theme, vibe, writing, hints].join('\n\n---\n\n');
 
   console.groupCollapsed(
-    '[FreestylePrompt] Assembled system prompt (%d chars) — Shell:%s Theme:%s Vibe:%s Writing:%s',
+    '[FreestylePrompt] Assembled system prompt (%d chars) — Shell:%s Theme:%s Vibe:%s Writing:%s Hints:default',
     assembled.length,
     shellCustom ? 'CUSTOM' : 'default',
     themeCustom ? 'CUSTOM' : 'default',
@@ -141,7 +143,22 @@ export function buildFreestyleSystemPrompt(settings = {}) {
   console.groupCollapsed('Writing (%d chars)', writing.length);
   console.log(writing);
   console.groupEnd();
+  console.groupCollapsed('Hints (%d chars)', hints.length);
+  console.log(hints);
+  console.groupEnd();
   console.groupEnd();
 
   return assembled;
+}
+
+/**
+ * Append the PPTX export-guidance hint guide to an arbitrary system prompt.
+ * Used by HTML-producing prompt builders that do not go through the freestyle
+ * assembler (slide editing, transforms, storyline fills) so every generation
+ * path that produces slide HTML teaches the LLM to emit lightweight PPTX
+ * comments for export-risky elements.
+ */
+export function appendPptxHintsGuide(systemPrompt) {
+  if (!systemPrompt) return DEFAULT_PPTX_HINTS;
+  return `${systemPrompt}\n\n---\n\n${DEFAULT_PPTX_HINTS}`;
 }

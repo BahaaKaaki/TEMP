@@ -10,6 +10,7 @@ A React application for creating professional presentation slides using AI. Gene
 - **Optimized Storage**: Slides stored individually with shared CSS infrastructure
 - **Live Preview**: Real-time preview of your slides as you edit
 - **Split View**: Edit code and see preview side-by-side
+- **AI Assistant Open by Default**: The right-side AI panel is open on first load so users do not have to discover the floating action button
 - **Download All**: Export all slides as a single HTML file with embedded styles
 - **Import/Export**: Save and load slides as JSON for backup or sharing
 - **Drag & Drop**: Reorder slides easily
@@ -75,6 +76,7 @@ Supported endpoints:
 - **Preview Tab**: View the rendered slide
 - **Edit Code Tab**: Edit HTML directly with Monaco editor
 - **Split View**: See both preview and code side-by-side
+- **AI Assistant**: Opens by default for new users; after that, the open/closed state is remembered locally
 - **Custom CSS**: Add slide-specific styles
 - **Shared CSS**: Modify styles that apply to all slides
 

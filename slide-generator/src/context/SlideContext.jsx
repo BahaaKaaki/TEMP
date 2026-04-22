@@ -1635,7 +1635,12 @@ export function SlideProvider({ children }) {
   const [state, dispatch] = useReducer(slideReducer, null, loadState);
 
   const [isPanelOpen, setIsPanelOpen] = useState(() => {
-    try { return localStorage.getItem('aiPanelOpen') === 'true'; } catch { return false; }
+    try {
+      const saved = localStorage.getItem('aiPanelOpen');
+      return saved == null ? true : saved === 'true';
+    } catch {
+      return true;
+    }
   });
   const togglePanel = useCallback(() => {
     setIsPanelOpen(prev => {

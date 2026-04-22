@@ -150,14 +150,11 @@ DEFAULT POSITIONS (may be overridden by template positions in the user prompt):
 - Footer: y:7.05
 
 YOUR TASK:
-1. Read the ELEMENT POSITIONS section — it has exact pixel positions measured from the rendered slide DOM
-2. Convert to PptxGenJS inches: px * 13.333 / 960 (e.g., x=28 → 0.39in, x=348 → 4.83in)
-3. Use these positions directly for every addText/addShape call — do NOT guess or recompute from CSS
-4. Extract ALL text from the HTML — never use placeholder text
-5. Get colors from the CSS rules and palette — never guess
-6. If ELEMENT POSITIONS is absent, study the examples and compute positions from CSS
-
-CRITICAL: The ELEMENT POSITIONS are ground truth. A .num element at x=348 w=30 means w=0.42in — do not shrink it.
+1. Extract ALL text from the HTML — never use placeholder text
+2. Compute positions from the CSS (position/left/top/width/height, grid/flex layout, padding, gaps)
+3. Convert px to PptxGenJS inches: px * 13.333 / 960 (e.g., x=28 → 0.39in, w=904 → 12.56in)
+4. Use the REFERENCE EXAMPLE as a structural guide only — override its colors/sizes with the ones from THIS slide's CSS
+5. Pull fonts and colors from the CSS rules and resolved palette — never guess
 
 EXACT COLOR FIDELITY: The CSS RULES provided with each slide are the RESOLVED colors.
 You MUST use the exact hex colors from the CSS rules for each element. If .card-num says color:#8E1E1E,

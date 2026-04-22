@@ -150,26 +150,19 @@ DEFAULT POSITIONS (may be overridden by template positions in the user prompt):
 - Footer: y:7.05
 
 YOUR TASK:
-1. Extract ALL text from the HTML — never use placeholder text
-2. Compute positions from the CSS (position/left/top/width/height, grid/flex layout, padding, gaps)
-3. Convert px to PptxGenJS inches: px * 13.333 / 960 (e.g., x=28 → 0.39in, w=904 → 12.56in)
-4. Use the REFERENCE EXAMPLE as a structural guide only — override its colors/sizes with the ones from THIS slide's CSS
-5. Pull fonts and colors from the CSS rules and resolved palette — never guess
+1. Read the ELEMENT POSITIONS section — it has exact pixel positions measured from the rendered slide DOM
+2. Convert to PptxGenJS inches: px * 13.333 / 960 (e.g., x=28 → 0.39in, x=348 → 4.83in)
+3. Use these positions directly for every addText/addShape call — do NOT guess or recompute from CSS
+4. Extract ALL text from the HTML — never use placeholder text
+5. Get colors from the CSS rules and palette — never guess
+6. If ELEMENT POSITIONS is absent, study the examples and compute positions from CSS
 
-CRITICAL: Font size in PptxGenJS is in pt. Because our mapping is 960px → 13.333in (≈72dpi),
-1 px in CSS font-size ≈ 1 pt in PptxGenJS. If CSS says \`font-size: 32px\`, emit \`fontSize:32\`. Do not round down.
+CRITICAL: The ELEMENT POSITIONS are ground truth. A .num element at x=348 w=30 means w=0.42in — do not shrink it.
 
 EXACT COLOR FIDELITY: The CSS RULES provided with each slide are the RESOLVED colors.
 You MUST use the exact hex colors from the CSS rules for each element. If .card-num says color:#8E1E1E,
 use color:'8E1E1E'. NEVER substitute your own colors. The examples are structural guides only —
 always override example colors with the ACTUAL colors from the CSS/HTML of each slide.
-
-RGBA / SEMI-TRANSPARENT COLORS: NEVER flatten \`rgba()\` or \`hsla()\` to a darker/lighter solid — the blend will be wrong on any non-white background. Instead:
-  color = uppercase hex of (R, G, B)          e.g. rgba(255,255,255,0.25) → 'FFFFFF'
-  transparency = Math.round((1 - alpha) * 100)  → 0=opaque, 100=invisible
-  Apply as \`{ color:'FFFFFF', transparency:75 }\` on text, \`fill:{ color:'FFFFFF', transparency:75 }\` on shapes.
-
-TIGHT TEXT BOXES: PowerPoint reserves ~0.10in of inset on each side of every text frame. If you place text (numbers, chips, badges) in a box narrower than ~1.0in, PowerPoint may wrap it even when CSS fits it. Either oversize the box by ~0.20in OR pass \`fit:'shrink'\` so PowerPoint shrinks the text instead of wrapping.
 
 FOOTNOTES & SOURCES: If HTML contains source/footnote text, render as small text near slide bottom:
   slide.addText("Source: ...", {x:0.48, y:6.7, w:12.36, h:0.25, fontFace:'Arial', fontSize:8, color:'4A4F57'});

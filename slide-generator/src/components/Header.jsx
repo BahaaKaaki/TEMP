@@ -4,12 +4,14 @@ import { useSlides } from '../context/SlideContext';
 import { downloadAsHTML, downloadAsJSON, exportToPDF, exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { extractRelevantCSS } from '../services/aiService';
 import {
+  exportToPPTX,
+  exportSingleSlideToPPTX,
   detectSlideLayoutType,
+  hasAnyCredentials,
   COMPLETE_TRANSLATION_EXAMPLE,
   KPI_TRANSLATION_EXAMPLE,
   COVER_TRANSLATION_EXAMPLE
 } from '../services/pptxService';
-import { exportToPPTX as exportNativePPTX } from '../services/pptxExport';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from '../services/templateMatcher';
 import SettingsModal from './SettingsModal';
@@ -296,44 +298,70 @@ ${previewParts.join('\n\n')}`;
       return;
     }
 
+    // Check if AI credentials are available
+    const hasCredentials = hasAnyCredentials(state.settings);
+    console.log('[PPTX Export] Credentials check:', {
+      hasCredentials,
+      settings: state.settings ? 'present' : 'missing',
+      apiKey: state.settings?.apiKey ? 'set' : 'not set',
+      providers: state.settings?.providers ? Object.keys(state.settings.providers) : 'none',
+    });
+
+    if (!hasCredentials) {
+      const proceed = window.confirm(
+        'No API key configured.\n\n' +
+        'Without an API key, exports will use basic text extraction instead of full-fidelity AI generation.\n\n' +
+        'To enable AI-powered PPTX export:\n' +
+        '1. Go to Settings (gear icon)\n' +
+        '2. Add an OpenAI, Claude, or Gemini API key\n\n' +
+        'Continue with basic export?'
+      );
+      if (!proceed) {
+        return;
+      }
+    }
+
     setIsExporting(true);
     setShowExportMenu(false);
-    setExportProgress({ phase: 'starting', title: 'Exporting to PowerPoint', message: 'Rendering slides...' });
+    setExportProgress({ phase: 'starting', title: 'Exporting to PowerPoint', message: 'Preparing export...' });
 
     try {
+      // Pass settings for AI-powered generation if any API key is configured
+      // Include custom templates so their pptxRendererCode can be used as examples
+      // Include sharedCSS so AI can match exact styling
+      // Include vibe for vibe-specific PPTX styling
+      const exportSettings = hasCredentials ? {
+        ...state.settings,
+        customTemplates: state.customTemplates || [],
+        sharedCSS: state.sharedCSS || '',
+        theme: state.theme,
+      } : null;
+
+      console.log('[PPTX Export] Export settings:', exportSettings ? 'AI-enabled' : 'basic fallback');
+
+      // Use file naming nomenclature if enabled
       const filename = generateFileName(state.deckName, 'pptx', {
-        useNomenclature: state.settings?.useNomenclature ?? true,
-        nomenclaturePattern: state.settings?.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
+        useNomenclature: state.settings.useNomenclature ?? true,
+        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
         version: state.deckVersions.length + 1,
       });
 
-      await exportNativePPTX(
+      // Combine custom templates for PPTX export (they may have pptxRendererCode)
+      const allTemplates = state.customTemplates || [];
+
+      await exportToPPTX(
         slides,
         filename,
-        {
-          theme: state.theme,
-          sharedCSS: state.sharedCSS || '',
-          darkMode: Boolean(state.darkMode),
-        },
-        (progress) => setExportProgress({
-          phase: progress.phase,
-          title: 'Exporting to PowerPoint',
-          message: progress.phase === 'rendering'
-            ? 'Measuring slide geometry...'
-            : progress.phase === 'generating'
-              ? 'Building PowerPoint file...'
-              : progress.phase === 'complete'
-                ? 'Download complete!'
-                : 'Working...',
-          processed: progress.processed,
-          total: progress.total,
-        }),
+        exportSettings,
+        (progress) => setExportProgress(progress),
+        allTemplates
       );
 
       setExportProgress({ phase: 'complete', message: 'Download complete!' });
-      setTimeout(() => setExportProgress(null), 2000);
+      setTimeout(() => {
+        setExportProgress(null);
+      }, 2000);
     } catch (err) {
-      console.error('[PPTX Export] native export failed:', err);
       setExportProgress(null);
       alert('Failed to export PPTX: ' + err.message);
     } finally {
@@ -415,40 +443,20 @@ ${previewParts.join('\n\n')}`;
     if (!activeSlide) return;
     setIsDownloadingSlide(true);
     setShowExportMenu(false);
-    setExportProgress({ phase: 'starting', title: 'Exporting Slide to PPTX', message: 'Rendering slide...' });
+    setExportProgress({ phase: 'starting', title: 'Exporting Slide to PPTX', message: 'Generating PowerPoint for current slide...' });
     try {
       const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
       const filename = generateFileName(`${state.deckName}_Slide${slideIndex + 1}`, 'pptx', {
-        useNomenclature: state.settings?.useNomenclature ?? true,
-        nomenclaturePattern: state.settings?.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
+        useNomenclature: state.settings.useNomenclature ?? true,
+        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
         version: 1,
       });
-      await exportNativePPTX(
-        [activeSlide],
-        filename,
-        {
-          theme: state.theme,
-          sharedCSS: state.sharedCSS || '',
-          darkMode: Boolean(state.darkMode),
-        },
-        (progress) => setExportProgress({
-          phase: progress.phase,
-          title: 'Exporting Slide to PPTX',
-          message: progress.phase === 'rendering'
-            ? 'Measuring slide geometry...'
-            : progress.phase === 'generating'
-              ? 'Building PowerPoint file...'
-              : progress.phase === 'complete'
-                ? 'Download complete!'
-                : 'Working...',
-          processed: progress.processed,
-          total: progress.total,
-        }),
-      );
+      const allTemplates = state.customTemplates || [];
+      const singleSlideSettings = { ...state.settings, theme: state.theme, customTemplates: allTemplates };
+      await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, singleSlideSettings);
       setExportProgress({ phase: 'complete', message: 'Download complete!' });
       setTimeout(() => setExportProgress(null), 2000);
     } catch (err) {
-      console.error('[PPTX Export] native single-slide export failed:', err);
       setExportProgress(null);
       alert('Failed to download PPTX: ' + err.message);
     } finally {

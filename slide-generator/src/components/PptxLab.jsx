@@ -15,21 +15,6 @@ import {
   hasAnyCredentials,
 } from '../services/pptxService';
 import { addFooter, COLORS } from '../services/pptxRenderers';
-import {
-  exportToPPTX as exportNativePPTX,
-  PPTX_EXPORT_ENGINES,
-  DEFAULT_PPTX_ENGINE,
-} from '../services/pptxExport';
-
-const LEGACY_ENGINE_ID = 'legacy-llm';
-const ENGINE_OPTIONS = [
-  ...PPTX_EXPORT_ENGINES,
-  {
-    id: LEGACY_ENGINE_ID,
-    label: 'LLM-based (legacy, requires Run)',
-    description: 'Current production path. LLM generates pptxgenjs code from HTML. Kept as a control.',
-  },
-];
 
 const SAMPLES = [
   { id: 'card-row', label: 'Card Row (3 cards)', html: COMPLETE_TRANSLATION_EXAMPLE.html, refCode: COMPLETE_TRANSLATION_EXAMPLE.code },
@@ -124,9 +109,6 @@ export default function PptxLab() {
   const [activeTab, setActiveTab] = useState('prompt');
   const [freestyle, setFreestyle] = useState(true);
   const [running, setRunning] = useState(false);
-  const [engine, setEngine] = useState(DEFAULT_PPTX_ENGINE);
-  const [exporting, setExporting] = useState(false);
-  const [lastExportStatus, setLastExportStatus] = useState(null);
 
   const [result, setResult] = useState({
     userPrompt: '',
@@ -260,85 +242,24 @@ export default function PptxLab() {
     setRunning(false);
   }, [htmlInput, cssInput, model, systemPrompt, settings]);
 
-  const exportLegacyLlm = useCallback(async (fileName) => {
-    if (!result.extractedCode || !result.validation?.valid) {
-      throw new Error('No valid legacy code -- click Run first');
-    }
-    const pptx = new PptxGenJS();
-    pptx.defineLayout({ name: 'CUSTOM', width: 13.333, height: 7.5 });
-    pptx.layout = 'CUSTOM';
-    pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
-
-    const execContext = { addFooter, COLORS };
-    const wrapped = `const { addFooter, COLORS } = context; return ${result.extractedCode};`;
-    const fns = new Function('context', wrapped)(execContext);
-    fns[0](pptx, 1, 1);
-
-    await pptx.writeFile({ fileName });
-  }, [result]);
-
-  const labSlide = useCallback(() => ({
-    id: `lab-${sampleId || 'custom'}`,
-    html: htmlInput,
-    customCSS: cssInput,
-    title: SAMPLES.find((s) => s.id === sampleId)?.label || 'Lab Sample',
-  }), [sampleId, htmlInput, cssInput]);
-
-  const labSettings = useCallback(() => ({
-    theme: state.theme,
-    sharedCSS: state.sharedCSS || '',
-    darkMode: false,
-  }), [state.theme, state.sharedCSS]);
-
-  const handleExportSelected = useCallback(async () => {
-    setExporting(true);
-    setLastExportStatus(null);
-    const fileName = `pptx-lab-${sampleId || 'custom'}.${engine}.pptx`;
+  const handleDownload = useCallback(() => {
+    if (!result.extractedCode || !result.validation?.valid) return;
     try {
-      if (engine === LEGACY_ENGINE_ID) {
-        await exportLegacyLlm(fileName);
-      } else {
-        await exportNativePPTX([labSlide()], fileName, labSettings(), null, { engine });
-      }
-      setLastExportStatus({ ok: true, message: `Downloaded ${fileName}` });
-    } catch (err) {
-      setLastExportStatus({ ok: false, message: `${engine} failed: ${err.message}` });
-    } finally {
-      setExporting(false);
-    }
-  }, [engine, sampleId, exportLegacyLlm, labSlide, labSettings]);
+      const pptx = new PptxGenJS();
+      pptx.defineLayout({ name: 'CUSTOM', width: 13.333, height: 7.5 });
+      pptx.layout = 'CUSTOM';
+      pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
-  const handleBakeoff = useCallback(async () => {
-    setExporting(true);
-    setLastExportStatus(null);
-    const base = `pptx-lab-${sampleId || 'custom'}`;
-    const results = [];
-    for (const opt of ENGINE_OPTIONS) {
-      const fileName = `${base}.${opt.id}.pptx`;
-      try {
-        if (opt.id === LEGACY_ENGINE_ID) {
-          if (!result.validation?.valid) {
-            results.push({ id: opt.id, ok: false, skipped: true, message: 'no valid LLM code (Run first)' });
-            continue;
-          }
-          await exportLegacyLlm(fileName);
-        } else {
-          await exportNativePPTX([labSlide()], fileName, labSettings(), null, { engine: opt.id });
-        }
-        results.push({ id: opt.id, ok: true, file: fileName });
-      } catch (err) {
-        results.push({ id: opt.id, ok: false, message: err.message });
-      }
+      const execContext = { addFooter, COLORS };
+      const wrapped = `const { addFooter, COLORS } = context; return ${result.extractedCode};`;
+      const fns = new Function('context', wrapped)(execContext);
+      fns[0](pptx, 1, 1);
+
+      pptx.writeFile({ fileName: 'pptx-lab-test.pptx' });
+    } catch (e) {
+      alert(`Download failed: ${e.message}`);
     }
-    const okCount = results.filter((r) => r.ok).length;
-    setLastExportStatus({
-      ok: okCount > 0,
-      message: `${okCount}/${results.length} engines exported: ${results
-        .map((r) => `${r.id}${r.ok ? '' : r.skipped ? ' (skipped)' : ' (fail)'}`)
-        .join(', ')}`,
-    });
-    setExporting(false);
-  }, [sampleId, result, exportLegacyLlm, labSlide, labSettings]);
+  }, [result]);
 
   const promptPreview = promptPreviewText;
 
@@ -361,15 +282,7 @@ export default function PptxLab() {
           <select value={sampleId} onChange={e => handleSampleChange(e.target.value)} style={styles.select}>
             {SAMPLES.map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
           </select>
-          <select
-            value={engine}
-            onChange={e => setEngine(e.target.value)}
-            style={styles.select}
-            title={ENGINE_OPTIONS.find(o => o.id === engine)?.description || ''}
-          >
-            {ENGINE_OPTIONS.map(o => <option key={o.id} value={o.id}>{o.label}</option>)}
-          </select>
-          <select value={model} onChange={e => setModel(e.target.value)} style={styles.select} disabled={engine !== LEGACY_ENGINE_ID}>
+          <select value={model} onChange={e => setModel(e.target.value)} style={styles.select}>
             {MODELS.map(m => <option key={m} value={m}>{m.replace('pwc:', '')}</option>)}
           </select>
           <label style={styles.toggle}>
@@ -386,52 +299,11 @@ export default function PptxLab() {
               {result.validation.valid ? 'VALID' : 'FAILED'}
             </span>
           )}
-          {lastExportStatus && (
-            <span
-              style={{
-                ...styles.badge,
-                background: lastExportStatus.ok ? '#0e7490' : '#b45309',
-                maxWidth: 320,
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-                whiteSpace: 'nowrap',
-              }}
-              title={lastExportStatus.message}
-            >
-              {lastExportStatus.message}
-            </span>
-          )}
-          <button
-            onClick={handleRun}
-            disabled={running || !htmlInput.trim() || engine !== LEGACY_ENGINE_ID}
-            style={{ ...styles.btn, ...styles.btnPrimary, opacity: running || engine !== LEGACY_ENGINE_ID ? 0.6 : 1 }}
-            title={engine !== LEGACY_ENGINE_ID ? 'Run is only used by the legacy LLM engine' : 'Call the LLM to generate pptxgenjs code'}
-          >
+          <button onClick={handleRun} disabled={running || !htmlInput.trim()} style={{ ...styles.btn, ...styles.btnPrimary, opacity: running ? 0.6 : 1 }}>
             {running ? 'Running...' : 'Run'}
           </button>
-          <button
-            onClick={handleExportSelected}
-            disabled={
-              exporting ||
-              !htmlInput.trim() ||
-              (engine === LEGACY_ENGINE_ID && !result.validation?.valid)
-            }
-            style={{
-              ...styles.btn,
-              opacity:
-                exporting || !htmlInput.trim() || (engine === LEGACY_ENGINE_ID && !result.validation?.valid) ? 0.4 : 1,
-            }}
-            title={`Export using ${engine}`}
-          >
-            {exporting ? 'Exporting...' : 'Export'}
-          </button>
-          <button
-            onClick={handleBakeoff}
-            disabled={exporting || !htmlInput.trim()}
-            style={{ ...styles.btn, opacity: exporting || !htmlInput.trim() ? 0.4 : 1 }}
-            title="Export this slide with all three engines for side-by-side comparison"
-          >
-            Bake-off
+          <button onClick={handleDownload} disabled={!result.validation?.valid} style={{ ...styles.btn, opacity: result.validation?.valid ? 1 : 0.4 }}>
+            Download PPTX
           </button>
           <a href="/" style={{ ...styles.btn, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}>Back</a>
         </div>

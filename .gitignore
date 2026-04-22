@@ -72,8 +72,6 @@ _bmad-output/
 
 # Standalone PPTX test harness
 pptx-test/
-slide-generator/bakeoff-harness.html
-slide-generator/src/bakeoff-harness-entry.js
 
 # Claude / MCP config (local-only)
 CLAUDE.md

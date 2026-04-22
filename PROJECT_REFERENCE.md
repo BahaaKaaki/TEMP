@@ -141,7 +141,8 @@ slide-themes-main/
 │   │   │   ├── app.css                # Application shell styles
 │   │   │   └── simple.css             # Simple variant styles
 │   │   ├── guides/
-│   │   │   ├── freestyle-shell.md          # Shell: canvas dimensions, HTML skeleton, CSS scoping rules, PPTX export rules
+│   │   │   ├── freestyle-slide-guide.md    # Monolithic freestyle guide (legacy, kept for reference)
+│   │   │   ├── freestyle-shell.md          # Shell: canvas dimensions, HTML skeleton, CSS scoping rules
 │   │   │   ├── freestyle-theme.md          # Theme: design tokens, fonts, surface usage, status colors
 │   │   │   ├── freestyle-vibe.md           # Vibe: visual design principles, layout variety, color usage
 │   │   │   └── freestyle-writing.md        # Writing: content rules, layout archetypes, citations, process

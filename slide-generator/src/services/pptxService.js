@@ -169,7 +169,11 @@ RGBA / SEMI-TRANSPARENT COLORS: NEVER flatten \`rgba()\` or \`hsla()\` to a dark
   transparency = Math.round((1 - alpha) * 100)  → 0=opaque, 100=invisible
   Apply as \`{ color:'FFFFFF', transparency:75 }\` on text, \`fill:{ color:'FFFFFF', transparency:75 }\` on shapes.
 
-TIGHT TEXT BOXES: PowerPoint reserves ~0.10in of inset on each side of every text frame. If you place text (numbers, chips, badges) in a box narrower than ~1.0in, PowerPoint may wrap it even when CSS fits it. Either oversize the box by ~0.20in OR pass \`fit:'shrink'\` so PowerPoint shrinks the text instead of wrapping.
+TIGHT TEXT BOXES: PowerPoint reserves ~0.10in of inset on each side of every text frame. If you place text (numbers, chips, badges, step counters, KPI values) in a box narrower than ~1.0in, PowerPoint may wrap it even when CSS fits it. Either oversize the box by ~0.20in OR pass \`fit:'shrink'\` so PowerPoint shrinks the text instead of wrapping.
+
+GROUP-WIDTH RULE (same-class siblings): When several sibling elements share the same chip/badge/pill/number class (e.g. five \`.wavelength-chip\`, four \`.step-number\`, three \`.status-badge\`), pick ONE width that fits the LONGEST text in the group and apply it to every member. Never size a group to its shortest label — that's the "03 / ORANG·E / 00·1" wrap trap. Measure the longest string at its font size; a rough lower bound is \`longestChars * fontSize_pt * 0.6 / 72\` inches plus ~0.25in for padding.
+
+CHIP SAFETY NET: For every text-inside-shape that is a chip, badge, pill, step number, KPI value, or any small fixed-size label, ALWAYS pass \`fit:'shrink'\` on the \`addText\` call. This is belt-and-suspenders: if the group-width measurement is even slightly off, PowerPoint auto-fits the font to one line instead of wrapping. Example: \`slide.addText('001', { x, y, w, h, fontFace:'Georgia', fontSize:42, bold:true, color:'8E1E1E', valign:'middle', align:'center', fit:'shrink' });\`
 
 FOOTNOTES & SOURCES: If HTML contains source/footnote text, render as small text near slide bottom:
   slide.addText("Source: ...", {x:0.48, y:6.7, w:12.36, h:0.25, fontFace:'Arial', fontSize:8, color:'4A4F57'});

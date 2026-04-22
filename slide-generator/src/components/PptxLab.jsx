@@ -13,7 +13,6 @@ import {
   callAI,
   getCredentialsForModel,
   hasAnyCredentials,
-  installAutoShrinkAddText,
 } from '../services/pptxService';
 import { addFooter, COLORS } from '../services/pptxRenderers';
 
@@ -250,7 +249,6 @@ export default function PptxLab() {
       pptx.defineLayout({ name: 'CUSTOM', width: 13.333, height: 7.5 });
       pptx.layout = 'CUSTOM';
       pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
-      installAutoShrinkAddText(pptx);
 
       const execContext = { addFooter, COLORS };
       const wrapped = `const { addFooter, COLORS } = context; return ${result.extractedCode};`;

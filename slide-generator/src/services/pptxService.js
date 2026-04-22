@@ -28,43 +28,6 @@ import { DEFAULT_THEME } from '../utils/themeUtils';
 const MAX_RETRIES = 3; // 4 total attempts per slide
 const DEFAULT_PPTX_MODEL = 'pwc:bedrock.anthropic.claude-opus-4-7';
 
-// ── Runtime safety net: auto-shrink tight text boxes ─────────────────────────
-
-// Below this width (inches), PowerPoint's text-frame insets (~0.10in per side)
-// are large enough relative to the box that a single long word (ORANGE, YELLOW,
-// "WHY IT MATTERS") may wrap even when CSS fits. fit:'shrink' is a no-op when
-// the text already fits, so auto-injecting it on narrow boxes is safe.
-const AUTO_SHRINK_WIDTH_IN = 2.0;
-
-/**
- * Monkey-patch `pptx.addSlide` so every slide returned has a wrapped
- * `addText` that auto-injects `fit:'shrink'` on narrow boxes when the
- * caller did not specify one. Idempotent: re-applying has no effect.
- */
-export function installAutoShrinkAddText(pptx) {
-  if (!pptx || pptx.__autoShrinkInstalled) return pptx;
-  const originalAddSlide = pptx.addSlide.bind(pptx);
-  pptx.addSlide = (...args) => {
-    const slide = originalAddSlide(...args);
-    if (slide && !slide.__autoShrinkWrapped) {
-      const originalAddText = slide.addText.bind(slide);
-      slide.addText = (text, options) => {
-        if (options && typeof options === 'object' && !options.fit) {
-          const w = typeof options.w === 'number' ? options.w : null;
-          if (w !== null && w <= AUTO_SHRINK_WIDTH_IN) {
-            return originalAddText(text, { ...options, fit: 'shrink' });
-          }
-        }
-        return originalAddText(text, options);
-      };
-      slide.__autoShrinkWrapped = true;
-    }
-    return slide;
-  };
-  pptx.__autoShrinkInstalled = true;
-  return pptx;
-}
-
 /**
  * Convert a theme object into the PPTX color palette snippet and hint.
  * Strips '#' from hex values since PptxGenJS uses bare hex strings.
@@ -208,9 +171,9 @@ RGBA / SEMI-TRANSPARENT COLORS: NEVER flatten \`rgba()\` or \`hsla()\` to a dark
 
 TIGHT TEXT BOXES: PowerPoint reserves ~0.10in of inset on each side of every text frame. If you place text (numbers, chips, badges, step counters, KPI values) in a box narrower than ~1.0in, PowerPoint may wrap it even when CSS fits it. Either oversize the box by ~0.20in OR pass \`fit:'shrink'\` so PowerPoint shrinks the text instead of wrapping.
 
-GROUP-WIDTH RULE (same-class siblings): When several sibling elements share the same chip/badge/pill/number class, they MUST all be rendered with the same width — the width that fits the LONGEST label in the group. If the HINT GROUPS block is present above, use the pre-computed width it gives you verbatim (one number per group, in px and inches) and apply it to every member of that group. If no HINT GROUPS block is provided, do the calculation yourself: a rough lower bound is \`longestChars * fontSize_pt * 0.6 / 72\` inches plus ~0.25in for padding. Never size a group to its shortest label — that's the "ORANG·E / YELLO·W / 00·1" wrap trap.
+GROUP-WIDTH RULE (same-class siblings): When several sibling elements share the same chip/badge/pill/number class (e.g. five \`.wavelength-chip\`, four \`.step-number\`, three \`.status-badge\`), pick ONE width that fits the LONGEST text in the group and apply it to every member. Never size a group to its shortest label — that's the "03 / ORANG·E / 00·1" wrap trap. Measure the longest string at its font size; a rough lower bound is \`longestChars * fontSize_pt * 0.6 / 72\` inches plus ~0.25in for padding.
 
-CHIP SAFETY NET: For every text-inside-shape that is a chip, badge, pill, step number, KPI value, or any small fixed-size label, ALWAYS pass \`fit:'shrink'\` on the \`addText\` call. This is belt-and-suspenders: if the group-width measurement is even slightly off, PowerPoint auto-fits the font to one line instead of wrapping. The element hints may carry \`fit=shrink\` — when present, copy it straight into the call as \`fit:'shrink'\`. Example: \`slide.addText('001', { x, y, w, h, fontFace:'Georgia', fontSize:42, bold:true, color:'8E1E1E', valign:'middle', align:'center', fit:'shrink' });\`
+CHIP SAFETY NET: For every text-inside-shape that is a chip, badge, pill, step number, KPI value, or any small fixed-size label, ALWAYS pass \`fit:'shrink'\` on the \`addText\` call. This is belt-and-suspenders: if the group-width measurement is even slightly off, PowerPoint auto-fits the font to one line instead of wrapping. Example: \`slide.addText('001', { x, y, w, h, fontFace:'Georgia', fontSize:42, bold:true, color:'8E1E1E', valign:'middle', align:'center', fit:'shrink' });\`
 
 FOOTNOTES & SOURCES: If HTML contains source/footnote text, render as small text near slide bottom:
   slide.addText("Source: ...", {x:0.48, y:6.7, w:12.36, h:0.25, fontFace:'Arial', fontSize:8, color:'4A4F57'});
@@ -582,7 +545,6 @@ export function validateGeneratedCode(codeString, slideHtml) {
   testPptx.defineLayout({ name: 'CUSTOM', width: 13.333, height: 7.5 });
   testPptx.layout = 'CUSTOM';
   testPptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
-  installAutoShrinkAddText(testPptx);
 
   try {
     slideFunctions[0](testPptx, 1, 1);
@@ -747,7 +709,6 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   pptx.title = filename.replace('.pptx', '');
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
-  installAutoShrinkAddText(pptx);
 
   let templateData = null;
   try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
@@ -926,7 +887,6 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   pptx.title = filename.replace('.pptx', '');
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
-  installAutoShrinkAddText(pptx);
 
   let templateData = null;
   try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }

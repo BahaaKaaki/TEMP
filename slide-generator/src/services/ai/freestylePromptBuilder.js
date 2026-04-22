@@ -152,10 +152,11 @@ export function buildFreestyleSystemPrompt(settings = {}) {
 }
 
 /**
- * Append the PPTX absolute-position hint guide to an arbitrary system prompt.
+ * Append the PPTX export-guidance hint guide to an arbitrary system prompt.
  * Used by HTML-producing prompt builders that do not go through the freestyle
  * assembler (slide editing, transforms, storyline fills) so every generation
- * path that produces slide HTML teaches the LLM to emit hint comments.
+ * path that produces slide HTML teaches the LLM to emit lightweight PPTX
+ * comments for export-risky elements.
  */
 export function appendPptxHintsGuide(systemPrompt) {
   if (!systemPrompt) return DEFAULT_PPTX_HINTS;

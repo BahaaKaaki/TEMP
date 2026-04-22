@@ -7,7 +7,7 @@ import { CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT as BASE_EDIT_SYSTEM_PROMPT, DEFAULT
 import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
 
 // All edit flows in this module produce slide HTML, so every call uses the
-// edit prompt with the absolute-position hint guide appended.
+// edit prompt with the PPTX export-guidance hint guide appended.
 const EDIT_SYSTEM_PROMPT = appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT);
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
 import { unscopeCSS } from '../../utils/cssScoping.js';

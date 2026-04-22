@@ -173,15 +173,17 @@ If unsure how to use addChart, render bars as rectangles instead — that always
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
 
 HOW TO CONSUME ELEMENT HINTS:
-If the user prompt contains an ELEMENT HINTS block, each entry gives the ABSOLUTE geometry, font, and color of one element in the 960x540 canvas. These values are ground truth — they override any inference you would make from the CSS layout.
+If the user prompt contains an ELEMENT HINTS block, each entry is semantic export guidance attached to a risky element in the HTML. Use the HTML and CSS for layout, but obey the hint when rendering that specific element in PptxGenJS.
 
-For each hint:
-- Convert x/y/w/h from px to inches: inches = px * 13.333 / 960.
-- Use font exactly as given; px size maps 1:1 to pt.
-- Use color/bg exactly as given (hex, strip the leading '#' for PptxGenJS).
-- Pass align/valign/bold/italic/radius straight to the corresponding PptxGenJS option.
+Interpret hints as follows:
+- chip / badge: compact label or pill. Keep the visual treatment tight and single-line.
+- nowrap: never wrap the text, stack letters, or split words across lines.
+- exact-text: preserve the visible text exactly. Do not abbreviate, trim, or rewrite it.
+- step-number: keep the number as one prominent line, not multiple lines.
+- tight-box: minimise text margin / inset. Prefer margin:0, wrap:false, and valign:'middle' when that matches the CSS. Use fit:'shrink' only as a last resort to preserve one-line text.
+- align=... / valign=...: prefer that alignment for the hinted element.
 
-If an element appears in the stripped HTML but has no hint, fall back to inferring position from the CSS.
+If an element has no hint, render it normally from the CSS and HTML.
 
 OUTPUT: Return ONLY a JavaScript array of functions, no markdown.`;
 

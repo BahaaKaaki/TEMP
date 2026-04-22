@@ -15,6 +15,7 @@ A React application for creating professional presentation slides using AI. Gene
 - **Import/Export**: Save and load slides as JSON for backup or sharing
 - **Drag & Drop**: Reorder slides easily
 - **Local Storage**: Auto-saves your work in the browser
+- **PPTX Export Guidance Comments**: AI-generated HTML can include lightweight `<!-- pptx ... -->` comments on risky labels so PPTX export preserves one-line chips, badges, and step numbers more faithfully
 
 ## Getting Started
 
@@ -79,6 +80,31 @@ Supported endpoints:
 - **AI Assistant**: Opens by default for new users; after that, the open/closed state is remembered locally
 - **Custom CSS**: Add slide-specific styles
 - **Shared CSS**: Modify styles that apply to all slides
+
+### PPTX Export Hints
+
+Slides that are generated or edited by AI may include lightweight
+`<!-- pptx ... -->` comments in the HTML. These comments are invisible in the
+browser preview and are only used during PPTX export.
+
+The hints are intentionally sparse and focus on elements that PowerPoint tends
+to distort, such as:
+
+- chips / swatches / filled pill labels
+- badges / compact tags
+- tight one-line step numbers
+
+Typical hint comments look like:
+
+```html
+<!-- pptx chip nowrap exact-text center tight-box -->
+<div class="d-swatch">TURQUOISE</div>
+```
+
+The export pipeline reads these comments as guidance for PptxGenJS so the
+exporter keeps the text on one line, preserves exact label text, and avoids
+adding extra text inset where tight browser labels would otherwise drift in
+PowerPoint.
 
 ### Downloading
 

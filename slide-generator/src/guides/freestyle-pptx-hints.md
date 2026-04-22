@@ -1,101 +1,118 @@
-# PPTX Export Hints -- Absolute Position Comments
+# PPTX Export Hints -- Semantic Guidance Comments
 
-Slides are exported to PowerPoint downstream. To preserve geometry, typography, and colors in the native PPTX, embed short **HTML comment hints** immediately before every styled element. These comments are invisible in the browser preview; the exporter reads them as ground truth and drops them straight into PptxGenJS calls without having to re-derive anything from CSS.
+The HTML and CSS you generate will later be exported to native PowerPoint using
+PptxGenJS. The browser preview is still the source of truth for layout and
+styling. `<!-- pptx ... -->` comments are only lightweight guidance for
+elements that PowerPoint often renders poorly, especially short filled labels,
+badges, and tight one-line numbers.
 
-Think of a hint as the element's row in a spreadsheet: absolute pixel coordinates in the 960 x 540 canvas, exact font, exact hex color. No tokens, no relative offsets, no values that depend on the parent's layout. If the number is correct in your head when you write the hint, it will be correct in PowerPoint.
+Use these comments to tell the exporter what **must not break**. Do not turn
+them into a second layout system.
 
 ## When to emit a hint
 
-Emit a hint for **every** visible element that has its own CSS rule -- titles, subtitles, cards, chips, badges, KPI values, labels, numbers, dividers. Skip these:
+Emit a hint only for **risky `.frame` descendants** whose browser styling often
+drifts in PowerPoint:
 
-- `.slide`, `.frame`, `.footer` skeleton containers (their positions are fixed by the shell).
-- Elements that simply inherit a parent's styling and have no CSS rule of their own.
-- Non-visible elements (hidden, `display:none`).
+- chips / swatches / filled pills
+- badges / tags / status labels
+- tight one-line labels
+- prominent step numbers or compact numeric markers
 
-If you wrote a CSS rule for a class, that class needs a hint. A card without hints on its inner chip means the exporter has to guess the chip's geometry and color, and the guess is usually wrong.
+Do **not** emit hints for:
+
+- `.slide`, `.frame`, `.footer`
+- `h1.title` or `h2.subtitle`
+- large text blocks, cards, or containers that export fine from CSS alone
+- invisible elements
+
+Most slides should have **few** PPTX hints. If everything has a hint, you are
+overusing them.
 
 ## Format
 
-One comment per element, directly before its opening tag. Keys are space-separated `key=value` pairs. `bold` and `italic` are flags with no value.
+One comment per risky element, directly before its opening tag. Use short
+space-separated flags.
 
 ```html
-<!-- pptx x=28 y=140 w=430 h=220 font=Arial:14:700 color=#111111 bg=#F7F9FB align=left radius=8 -->
-<div class="card-left">...</div>
+<!-- pptx chip nowrap exact-text center tight-box -->
+<div class="d-swatch">TURQUOISE</div>
 ```
 
-| Key      | Value                       | Notes                                                                         |
-| -------- | --------------------------- | ----------------------------------------------------------------------------- |
-| `x`, `y` | integer px                  | Absolute top-left of the element in the 960 x 540 canvas. Not relative.       |
-| `w`, `h` | integer px                  | Element width and height as rendered.                                         |
-| `font`   | `Family:Size[:Weight]`      | Size is in px matching the CSS. Examples: `Georgia:28`, `Arial:14:700`.       |
-| `color`  | `#RRGGBB` hex               | Text color. Resolved from CSS (follow `var(--token)` to its value).           |
-| `bg`     | `#RRGGBB` hex               | Background color. Resolved from CSS.                                          |
-| `align`  | `left` / `center` / `right` | Horizontal text alignment.                                                    |
-| `valign` | `top` / `middle` / `bottom` | Vertical text alignment within the box.                                       |
-| `radius` | integer px                  | Border radius.                                                                |
-| `bold`   | flag                        | Present means bold.                                                           |
-| `italic` | flag                        | Present means italic.                                                         |
+Supported flags:
 
-All keys are optional. If you omit a key, the exporter falls back to inferring that attribute from the CSS for that element.
+| Flag | Meaning |
+| ---- | ------- |
+| `chip` | Short filled pill / swatch / compact label. |
+| `badge` | Small tag or status label. |
+| `nowrap` | Keep this text on one line in PowerPoint. Do not split words or stack letters. |
+| `exact-text` | Preserve the visible text exactly. Do not abbreviate, trim, or rewrite it for export. |
+| `step-number` | Compact numeric marker such as `1`, `2`, `01`, `001`. Keep it as a single prominent number. |
+| `tight-box` | The visual box is intentionally tight. Avoid extra text inset or padding in export. |
+| `center` | Center the text horizontally. |
+| `left` | Keep left alignment explicit when the label is small and alignment matters. |
+| `right` | Keep right alignment explicit when the label is small and alignment matters. |
+| `middle` | Vertically center the text in the exported box. |
+
+If a flag is not present, the exporter falls back to the HTML and CSS.
 
 ## Rules
 
-1. **Absolute coordinates only.** `x` and `y` are measured from the top-left of the 960 x 540 slide. For a card inside a grid with a 28px parent `padding` and a row with `gap:16`, you compute the absolute position -- the exporter will not do it for you.
-2. **Hex, always with `#`.** `color=#A32020`, not `color=A32020` and not `color=accent`. Follow `var(--token)` to its resolved hex value from the theme above.
-3. **Pixel values match CSS.** Font size `font-size:14px` in CSS means `font=...:14` in the hint. Size in pt is NOT used here; the exporter maps 1 px -> 1 pt during export.
-4. **One hint per element.** The comment MUST be the immediate previous sibling of the element it describes.
-5. **No other HTML comments.** Do not add `<!-- ... -->` notes or explanations anywhere in the slide markup -- only `<!-- pptx ... -->` hints.
-6. **Widths must fit the text.** If a chip says "ORANGE" at 14px bold, pick a `w` wide enough that "ORANGE" fits on one line in PowerPoint. PowerPoint reserves a small text inset; a chip rendered at `w=70` in the browser should typically get `w=80-90` in the hint.
+1. **Hints are sparse.** Only annotate elements that are likely to wrap,
+   clip, or visually drift in PowerPoint.
+2. **Comments are guidance, not geometry.** Do not put `x`, `y`, `w`, `h`,
+   fonts, or colors into the hint comment.
+3. **Keep comments attached to the exact element they describe.** The comment
+   must be the immediate previous sibling of that element.
+4. **Do not add other HTML comments.** Only `<!-- pptx ... -->` comments should
+   appear in generated slide markup.
+5. **Use `nowrap` aggressively for risky labels.** If a word like `TURQUOISE`
+   must stay on one line, mark it.
+6. **Use `exact-text` whenever line breaks or shortening would harm fidelity.**
+7. **Do not hint shell elements.** Title, subtitle, frame, and footer are
+   intentionally excluded because slide structure cleanup may move them.
 
 ## Editing an existing slide
 
-When modifying a slide that already contains hints:
+When editing a slide that already has PPTX hints:
 
-- **Preserve** the hint for any element you leave unchanged.
-- **Update** the hint when you change that element's geometry, font, color, background, alignment, or radius.
-- **Add** a new hint for every new element with custom styling.
-- **Remove** the hint for any element you delete.
-
-Every `<!-- pptx ... -->` in your output must still sit directly above a real element with the styling it claims.
+- preserve the hint if the risky element still serves the same role
+- update the flags if the export risk changes
+- add hints for newly introduced chips / badges / tight labels
+- remove the hint if the element is deleted or no longer needs special export care
 
 ## Example
 
 ```html
-<style>
-  .slide .frame .kpi-card {
-    position:absolute; left:0; top:0;
-    width:430px; height:220px;
-    background:var(--surface); border-radius:8px; padding:32px;
-  }
-  .slide .frame .kpi-card .kpi-value {
-    font-family:Georgia; font-size:42px; color:var(--accent);
-    font-weight:700; text-align:center;
-  }
-  .slide .frame .kpi-card .kpi-label {
-    font-family:Arial; font-size:13px; color:var(--muted);
-    text-align:center; margin-top:8px;
-  }
-</style>
 <div class="slide">
-  <!-- pptx x=28 y=24 w=904 h=50 font=Georgia:28 color=#111111 align=left -->
-  <h1 class="title">AI adoption grew 3.2x in year one</h1>
-
-  <!-- pptx x=28 y=95 w=904 h=22 font=Arial:18:700 color=#A32020 -->
-  <h2 class="subtitle">Performance metrics</h2>
+  <h1 class="title">Particles, depth, and sunlight can shift the ocean beyond blue</h1>
+  <h2 class="subtitle">Color variations</h2>
 
   <div class="frame">
-    <!-- pptx x=28 y=140 w=430 h=220 bg=#F7F9FB radius=8 -->
-    <div class="kpi-card">
-      <!-- pptx x=60 y=180 w=366 h=56 font=Georgia:42:700 color=#8E1E1E align=center -->
-      <div class="kpi-value">3.2x</div>
+    <div class="driver">
+      <!-- pptx chip nowrap exact-text center tight-box -->
+      <div class="d-swatch">TURQUOISE</div>
 
-      <!-- pptx x=60 y=244 w=366 h=20 font=Arial:13 color=#4A4F57 align=center -->
-      <div class="kpi-label">Return on AI investment</div>
+      <div class="d-title">Shallow + sandy bottom</div>
+      <div class="d-desc">Blue water combines with bright light reflected off a shallow sandy floor.</div>
+    </div>
+
+    <div class="step">
+      <!-- pptx step-number nowrap exact-text -->
+      <div class="s-num">1</div>
+
+      <div class="s-title">Water depth</div>
+      <div class="s-desc">Deep water deepens blue; shallow water lightens the tone.</div>
     </div>
   </div>
 
-  <footer class="footer"><span>Strategy&amp;</span><span>2</span></footer>
+  <footer class="footer"><span>Strategy&amp;</span><span>1 / 1</span></footer>
 </div>
 ```
 
-Note how the KPI value's hint has an absolute `x=60` (`28` slide padding + `32` card padding) and `y=180` (`140` card top + `40` top padding). Every number in every hint is an absolute pixel coordinate in the final rendered slide.
+In this example, only the risky export elements get hints:
+
+- `d-swatch` is a compact filled chip, so it gets `chip nowrap exact-text center tight-box`
+- `s-num` is a prominent one-line number, so it gets `step-number nowrap exact-text`
+
+The title, subtitle, cards, and body copy do not need comments.

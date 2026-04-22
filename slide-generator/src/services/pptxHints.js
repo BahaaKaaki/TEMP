@@ -1,14 +1,15 @@
 // PPTX Hint Comments -- parser, stripper, prompt formatter.
 //
-// The slide-generation LLM embeds absolute-position hints as HTML comments
-// immediately before the elements they describe, for example:
+// The slide-generation LLM can embed sparse semantic export hints as HTML
+// comments immediately before risky elements, for example:
 //
-//   <!-- pptx x=28 y=24 w=904 h=50 font=Georgia:28 color=#111111 align=left -->
-//   <h1 class="title">Ocean coloration</h1>
+//   <!-- pptx chip nowrap exact-text center tight-box -->
+//   <div class="d-swatch">TURQUOISE</div>
 //
-// These hints are ground truth at export time: absolute pixel coordinates in
-// the 960 x 540 canvas, hex colors, px font size. Every value is optional;
-// missing keys fall back to CSS-driven inference.
+// These hints are lightweight export guidance for elements that often drift in
+// PowerPoint (chips, badges, step numbers, tight one-line labels). The HTML and
+// CSS remain the primary source of layout and styling; these comments simply
+// tell the exporter what must not break.
 //
 // The module exposes three helpers consumed by pptxService.js:
 //
@@ -16,67 +17,39 @@
 //   stripPptxHintComments(html)   -> HTML with the pptx comments removed
 //   formatHintsForPrompt(hints)   -> Prompt-ready text block
 
-// Supported keys: x, y, w, h (px integers), font ("Family:Size[:Weight]"),
-// color ("#RRGGBB"), bg ("#RRGGBB"), align (left/center/right),
-// valign (top/middle/bottom), radius (px), bold (flag), italic (flag).
-
 const HINT_COMMENT_RE = /<!--\s*pptx\b([\s\S]*?)-->/g;
 const NEXT_OPEN_TAG_RE = /<([a-zA-Z][\w-]*)\b([^>]*)>/;
+const KNOWN_FLAGS = ['chip', 'badge', 'nowrap', 'exact-text', 'step-number', 'tight-box'];
+const H_ALIGN = ['left', 'center', 'right'];
+const V_ALIGN = ['top', 'middle', 'bottom'];
 
-function toInt(v) {
-  if (v == null) return null;
-  const n = parseInt(String(v).replace(/px$/i, ''), 10);
-  return Number.isFinite(n) ? n : null;
-}
-
-function parseFont(value) {
-  if (!value) return null;
-  const parts = String(value).split(':').map((s) => s.trim()).filter(Boolean);
-  if (parts.length === 0) return null;
-  const [family, size, weight] = parts;
-  const sizeNum = size ? parseFloat(size) : null;
-  return {
-    family: family || null,
-    size: Number.isFinite(sizeNum) ? sizeNum : null,
-    weight: weight || null,
-  };
-}
-
-function normaliseHex(value) {
-  if (!value) return null;
-  const raw = String(value).trim();
-  const withHash = raw.startsWith('#') ? raw : `#${raw}`;
-  return /^#[0-9a-fA-F]{3,8}$/.test(withHash) ? withHash.toUpperCase() : null;
-}
-
-function parseKeyValues(str) {
-  const pairs = {};
-  if (!str) return pairs;
+function parseTokens(str) {
+  const tokens = {};
+  if (!str) return tokens;
   const re = /(\w[\w-]*)\s*(?:=\s*(?:"([^"]*)"|'([^']*)'|([^\s]+)))?/g;
   let m;
   while ((m = re.exec(str)) !== null) {
     const key = m[1];
     const value = m[2] != null ? m[2] : m[3] != null ? m[3] : m[4];
-    if (value === undefined) pairs[key] = true;
-    else pairs[key] = value;
+    if (value === undefined) tokens[key] = true;
+    else tokens[key] = value;
   }
-  return pairs;
+  return tokens;
 }
 
-function buildHints(kv) {
+function buildHints(tokens) {
   const h = {};
-  const x = toInt(kv.x); if (x !== null) h.x = x;
-  const y = toInt(kv.y); if (y !== null) h.y = y;
-  const w = toInt(kv.w); if (w !== null) h.w = w;
-  const height = toInt(kv.h); if (height !== null) h.h = height;
-  const font = parseFont(kv.font); if (font) h.font = font;
-  const color = normaliseHex(kv.color); if (color) h.color = color;
-  const bg = normaliseHex(kv.bg); if (bg) h.bg = bg;
-  if (kv.align) h.align = String(kv.align).toLowerCase();
-  if (kv.valign) h.valign = String(kv.valign).toLowerCase();
-  const radius = toInt(kv.radius); if (radius !== null) h.radius = radius;
-  if (kv.bold === true || kv.bold === 'true') h.bold = true;
-  if (kv.italic === true || kv.italic === 'true') h.italic = true;
+  const flags = KNOWN_FLAGS.filter((flag) => tokens[flag] === true || tokens[flag] === 'true');
+  const alignFromKey = tokens.align ? String(tokens.align).toLowerCase() : '';
+  const valignFromKey = tokens.valign ? String(tokens.valign).toLowerCase() : '';
+  const alignFromFlag = H_ALIGN.find((flag) => tokens[flag] === true || tokens[flag] === 'true') || '';
+  const valignFromFlag = V_ALIGN.find((flag) => tokens[flag] === true || tokens[flag] === 'true') || '';
+  const align = H_ALIGN.includes(alignFromKey) ? alignFromKey : alignFromFlag;
+  const valign = V_ALIGN.includes(valignFromKey) ? valignFromKey : valignFromFlag;
+
+  if (flags.length > 0) h.flags = flags;
+  if (align) h.align = align;
+  if (valign) h.valign = valign;
   return h;
 }
 
@@ -98,8 +71,8 @@ function extractClassName(attrs) {
 
 /**
  * Parse every `<!-- pptx ... -->` comment from an HTML string, pairing each
- * with the element that follows it. Returns `[]` if no hints are present,
- * which means the exporter should fall back to CSS-only inference.
+ * with the element that follows it. Only semantic export flags are recognised.
+ * Legacy absolute-schema keys are ignored and therefore produce no hint entry.
  *
  * @param {string} html
  * @returns {Array<{index:number, tag:string, className:string, hints:object, raw:string}>}
@@ -113,8 +86,8 @@ export function parsePptxHints(html) {
     const commentEnd = m.index + m[0].length;
     const next = findNextOpenTag(html, commentEnd);
     if (!next) continue;
-    const kv = parseKeyValues(m[1]);
-    const hints = buildHints(kv);
+    const tokens = parseTokens(m[1]);
+    const hints = buildHints(tokens);
     if (Object.keys(hints).length === 0) continue;
     results.push({
       index: results.length,
@@ -147,23 +120,9 @@ function formatOneHint(entry) {
     ? `${tag}.${className.split(/\s+/).filter(Boolean).join('.')}`
     : tag;
   const parts = [];
-  if (k.x !== undefined) parts.push(`x=${k.x}px`);
-  if (k.y !== undefined) parts.push(`y=${k.y}px`);
-  if (k.w !== undefined) parts.push(`w=${k.w}px`);
-  if (k.h !== undefined) parts.push(`h=${k.h}px`);
-  if (k.font) {
-    const f = [k.font.family];
-    if (k.font.size != null) f.push(`${k.font.size}px`);
-    if (k.font.weight) f.push(`weight=${k.font.weight}`);
-    parts.push(`font=${f.filter(Boolean).join(' ')}`);
-  }
-  if (k.color) parts.push(`color=${k.color}`);
-  if (k.bg) parts.push(`bg=${k.bg}`);
+  if (Array.isArray(k.flags)) parts.push(...k.flags);
   if (k.align) parts.push(`align=${k.align}`);
   if (k.valign) parts.push(`valign=${k.valign}`);
-  if (k.radius !== undefined) parts.push(`radius=${k.radius}px`);
-  if (k.bold) parts.push('bold');
-  if (k.italic) parts.push('italic');
   return `[${entry.index + 1}] ${selector}\n    ${parts.join(', ')}`;
 }
 
@@ -178,14 +137,19 @@ function formatOneHint(entry) {
 export function formatHintsForPrompt(hints) {
   if (!Array.isArray(hints) || hints.length === 0) return '';
   const header = [
-    '========== ELEMENT HINTS (ground truth for geometry, font, color) ==========',
-    'Each entry below is an element from the source HTML with absolute-position values',
-    'placed there by the generator. Use them verbatim -- they override any inference',
-    'you would make from the CSS layout.',
+    '========== ELEMENT HINTS (export guidance for risky elements) ==========',
+    'Each entry below is a semantic export hint attached to a risky element in the',
+    'source HTML. These hints are guidance for how to preserve browser intent when',
+    'PowerPoint text boxes tend to drift. They are not measured geometry.',
     '',
-    'Coordinates are in px inside the 960 x 540 canvas. Convert to inches with:',
-    '  inches = px * 13.333 / 960',
-    'Font size in px maps 1:1 to pt. Colors are hex (drop the leading # for PptxGenJS).',
+    'Hint meanings:',
+    '  chip / badge  -> compact label or pill; keep it visually tight and single-line',
+    '  nowrap        -> never wrap or stack letters',
+    '  exact-text    -> preserve the visible text exactly',
+    '  step-number   -> keep the number as one prominent line',
+    '  tight-box     -> minimise text margin / inset; use shrink only as a last resort',
+    '  align=...     -> prefer this horizontal alignment if the label is small',
+    '  valign=...    -> prefer this vertical alignment if the label is small',
     '',
   ].join('\n');
   const body = hints.map(formatOneHint).join('\n');

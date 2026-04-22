@@ -22,7 +22,6 @@ import { resolveCustomProperties } from './ai/cssExtraction';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
-import { measureSlideLayout } from './pptxDomMeasure';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -409,14 +408,6 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
 
   console.log(`[PPTX Prompt] Slide %d CSS: base=%d inline=%d total=%d`, slideNum, resolvedBaseCSS.length, inlineCSS.length, allCSS.length);
 
-  let layoutMap = '';
-  try {
-    layoutMap = await measureSlideLayout(slide.html, slide.customCSS);
-    if (layoutMap) console.log(`[PPTX Prompt] Slide %d DOM positions: %d chars`, slideNum, layoutMap.length);
-  } catch (e) {
-    console.warn(`[PPTX Prompt] Slide %d DOM measurement failed:`, slideNum, e.message);
-  }
-
   const decision = decideTemplateUsage(slide, settings?.customTemplates || []);
   let exampleCode = COMPLETE_TRANSLATION_EXAMPLE.code;
   const html = slide.html || '';
@@ -471,12 +462,7 @@ ${exampleCode}
 ${cleanHtml}
 >>> END HTML <<<
 
-${layoutMap ? `========== ELEMENT POSITIONS (ground truth from rendered DOM) ==========
-${layoutMap}
-Convert to inches: px * 13.333 / 960. Use these EXACT positions. Do NOT recompute from CSS.
-==========
-
-` : ''}>>> CSS RULES (base + slide-specific, with var() tokens already resolved) <<<
+>>> CSS RULES (base + slide-specific, with var() tokens already resolved) <<<
 ${allCSS || '/* No specific CSS */'}
 >>> END CSS <<<
 

@@ -901,6 +901,8 @@ Provide JSON response:
           templateId: skeleton.templateId,
           storyPointId: skeleton.storyPointId,
           isSkeleton: true,
+          sectionLabel: skeleton.sectionLabel || null,
+          subSectionLabel: skeleton.subSectionLabel || null,
         });
       }
     } catch (err) {
@@ -929,11 +931,13 @@ Provide JSON response:
       // Update existing slides or add new ones
       for (const result of results) {
         if (result.existingSlideId) {
-          // Update existing slide with filled content
-          actions.updateSlide(result.existingSlideId, {
-            html: result.html,
-            isSkeleton: false,
-          });
+          // Update existing slide with filled content. Only overwrite the
+          // tracker labels when populate actually produced a value so we
+          // don't wipe labels that were set upstream (e.g. manual edit).
+          const updates = { html: result.html, isSkeleton: false };
+          if (result.sectionLabel != null) updates.sectionLabel = result.sectionLabel;
+          if (result.subSectionLabel != null) updates.subSectionLabel = result.subSectionLabel;
+          actions.updateSlide(result.existingSlideId, updates);
         } else {
           // Add new slide
           actions.addSlide({
@@ -943,6 +947,8 @@ Provide JSON response:
             templateId: result.templateId,
             storyPointId: result.storyPointId,
             isSkeleton: false,
+            sectionLabel: result.sectionLabel || null,
+            subSectionLabel: result.subSectionLabel || null,
           });
         }
       }

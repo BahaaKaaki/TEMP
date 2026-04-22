@@ -481,6 +481,10 @@ Return ONLY the JSON array with templateId, title, subtitle for each story point
         html,
         isSkeleton: true,
         skeletonApproved: false,
+        // Inherit section tracker labels straight from the storyline entry
+        // so skeleton slides carry the same deck section as their point.
+        sectionLabel: storyPoint?.sectionLabel || null,
+        subSectionLabel: storyPoint?.subSectionLabel || null,
       };
     });
   } catch (error) {
@@ -831,6 +835,12 @@ export async function populateSlides(storyline, existingSlides, availableTemplat
         templateId: template?.id || null,
         layoutType: resultLayoutType,
         isNew: !existingSlide,
+        // Preserve section-tracker labels through populate/skeleton paths.
+        // Prefer the existing slide's labels (if being refilled), otherwise
+        // inherit from the storyline entry (set by storyline generation /
+        // the approval panel). Null is valid when no section is defined.
+        sectionLabel: existingSlide?.sectionLabel || storyPoint.sectionLabel || null,
+        subSectionLabel: existingSlide?.subSectionLabel || storyPoint.subSectionLabel || null,
       });
     }
 

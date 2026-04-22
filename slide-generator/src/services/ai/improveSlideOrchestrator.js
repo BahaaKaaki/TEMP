@@ -55,6 +55,8 @@ export function buildEnrichedSlideInfo(slide, slides, storyline, options = {}) {
     comments: slide.comments || [],
     templateHtml: matchingTemplate?.html || null,
     templateName: matchingTemplate?.title || null,
+    sectionLabel: slide.sectionLabel || null,
+    subSectionLabel: slide.subSectionLabel || null,
     minimalContext,
   };
 }

@@ -736,6 +736,16 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   const concurrency = Math.max(1, Math.min(10, settings?.pptxParallelBatches || 5));
   const useParallel = useAI && concurrency > 1 && totalSlides > 1;
 
+  const failedExports = [];
+  const recordFailure = (slide, slideNum, message) => {
+    failedExports.push({
+      slideNumber: slideNum,
+      slideId: slide?.id || null,
+      title: slide?.title || `Slide ${slideNum}`,
+      message: message || 'Unknown error',
+    });
+  };
+
   if (useParallel) {
     console.log(`[PPTX] Parallel export: ${concurrency} concurrent LLM calls for ${totalSlides} slides`);
 
@@ -767,9 +777,13 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       try {
         const result = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
         aiResults[i] = result;
+        if (!result?.success) {
+          recordFailure(slide, slideNum, result?.error || 'AI generation failed');
+        }
       } catch (err) {
         console.error(`[PPTX] AI failed for slide ${slideNum}:`, err.message);
         aiResults[i] = { success: false, error: err.message };
+        recordFailure(slide, slideNum, err.message);
       }
       completed++;
       if (onProgress) onProgress({
@@ -812,6 +826,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         } catch (execErr) {
           console.error(`[PPTX] Execution failed for slide ${slideNum}:`, execErr.message);
           slide.pptxCode = null;
+          recordFailure(slide, slideNum, execErr.message);
         }
       }
 
@@ -843,9 +858,12 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
             const lastSlide = pptx.slides?.[pptx.slides.length - 1];
             if (lastSlide) addSourceNote(lastSlide, slide.html);
             if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
+          } else {
+            recordFailure(slide, slideNum, result?.error || 'AI generation failed');
         }
       } catch (err) {
           console.error(`[PPTX] AI failed for slide ${slideNum}:`, err.message);
+          recordFailure(slide, slideNum, err.message);
       }
     }
 
@@ -876,6 +894,8 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   }
 
   if (onProgress) onProgress({ phase: 'complete', processed: totalSlides, total: totalSlides, message: 'Download complete!' });
+
+  return { ok: failedExports.length === 0, failed: failedExports };
 }
 
 export async function exportToPPTXStatic(slides, filename = 'presentation.pptx') {
@@ -910,6 +930,15 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   if (onProgress) onProgress({ phase: 'rendering', message: 'Generating slide...' });
 
     let rendered = false;
+    const failedExports = [];
+    const recordFailure = (message) => {
+      failedExports.push({
+        slideNumber,
+        slideId: slide?.id || null,
+        title: slide?.title || `Slide ${slideNumber}`,
+        message: message || 'Unknown error',
+      });
+    };
   if (useAI) {
     try {
       const result = await generateSlideWithRetry(slide, slideNumber, totalSlides, settings, credentials);
@@ -918,9 +947,12 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
           rendered = true;
         const lastSlide = pptx.slides?.[pptx.slides.length - 1];
         if (lastSlide) addSourceNote(lastSlide, slide.html);
+      } else {
+        recordFailure(result?.error || 'AI generation failed');
       }
         } catch (err) {
       console.error('[PPTX Single] AI failed:', err.message);
+      recordFailure(err.message);
       }
     }
 
@@ -944,6 +976,8 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
     }
 
   if (onProgress) onProgress({ phase: 'complete', message: 'Download complete!' });
+
+  return { ok: failedExports.length === 0, failed: failedExports };
 }
 
 // ── Test function (SlidePreview compatibility) ───────────────────────────────

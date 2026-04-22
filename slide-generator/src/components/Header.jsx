@@ -20,6 +20,15 @@ import TemplateManager from './TemplateManager';
 import AuditLogViewer from './AuditLogViewer';
 import FeaturesLanding from './FeaturesLanding';
 import PptxTransformer from './PptxTransformer';
+import { friendlyChatError, FRIENDLY_ERROR_MESSAGE } from '../utils/errorNotify';
+
+// Lightweight chat bridge. AIChatbot exposes window.__edwinPostChatMessage
+// on mount; we call through it so export failures surface in the chat UI
+// instead of the old alert() dialogs.
+const postAssistantMessage = (content) => {
+  const post = window.__edwinPostChatMessage;
+  if (typeof post === 'function') post(content);
+};
 
 export default function Header() {
   const { instance } = useMsal();
@@ -349,7 +358,7 @@ ${previewParts.join('\n\n')}`;
       // Combine custom templates for PPTX export (they may have pptxRendererCode)
       const allTemplates = state.customTemplates || [];
 
-      await exportToPPTX(
+      const result = await exportToPPTX(
         slides,
         filename,
         exportSettings,
@@ -361,9 +370,17 @@ ${previewParts.join('\n\n')}`;
       setTimeout(() => {
         setExportProgress(null);
       }, 2000);
+
+      // exportToPPTX always produces a .pptx (failed slides get a plain
+      // fallback layout) but we still need to tell the user if anything
+      // went sideways. One friendly message per export, not per slide.
+      if (result && result.ok === false && Array.isArray(result.failed) && result.failed.length > 0) {
+        console.warn('[PPTX Export] Completed with failures:', result.failed);
+        postAssistantMessage(FRIENDLY_ERROR_MESSAGE);
+      }
     } catch (err) {
       setExportProgress(null);
-      alert('Failed to export PPTX: ' + err.message);
+      postAssistantMessage(friendlyChatError(err, { tag: 'pptx-export-all' }));
     } finally {
       setIsExporting(false);
     }
@@ -453,12 +470,17 @@ ${previewParts.join('\n\n')}`;
       });
       const allTemplates = state.customTemplates || [];
       const singleSlideSettings = { ...state.settings, theme: state.theme, customTemplates: allTemplates };
-      await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, singleSlideSettings);
+      const result = await exportSingleSlideToPPTX(activeSlide, slideIndex + 1, state.slides.length, filename, singleSlideSettings);
       setExportProgress({ phase: 'complete', message: 'Download complete!' });
       setTimeout(() => setExportProgress(null), 2000);
+
+      if (result && result.ok === false && Array.isArray(result.failed) && result.failed.length > 0) {
+        console.warn('[PPTX Export] Single-slide completed with failures:', result.failed);
+        postAssistantMessage(FRIENDLY_ERROR_MESSAGE);
+      }
     } catch (err) {
       setExportProgress(null);
-      alert('Failed to download PPTX: ' + err.message);
+      postAssistantMessage(friendlyChatError(err, { tag: 'pptx-export-slide' }));
     } finally {
       setIsDownloadingSlide(false);
     }

@@ -22,6 +22,7 @@ import { resolveCustomProperties } from './ai/cssExtraction';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
+import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -170,6 +171,17 @@ AUTO-CHARTS: If you see <div class="auto-chart" data-chart='JSON'>, extract char
 If unsure how to use addChart, render bars as rectangles instead — that always works.
 
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
+
+HOW TO CONSUME ELEMENT HINTS:
+If the user prompt contains an ELEMENT HINTS block, each entry gives the ABSOLUTE geometry, font, and color of one element in the 960x540 canvas. These values are ground truth — they override any inference you would make from the CSS layout.
+
+For each hint:
+- Convert x/y/w/h from px to inches: inches = px * 13.333 / 960.
+- Use font exactly as given; px size maps 1:1 to pt.
+- Use color/bg exactly as given (hex, strip the leading '#' for PptxGenJS).
+- Pass align/valign/bold/italic/radius straight to the corresponding PptxGenJS option.
+
+If an element appears in the stripped HTML but has no hint, fall back to inferring position from the CSS.
 
 OUTPUT: Return ONLY a JavaScript array of functions, no markdown.`;
 
@@ -412,10 +424,16 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
   else if (html.includes('kpi-block') || html.includes('two-col')) exampleCode = KPI_TRANSLATION_EXAMPLE.code;
   if (decision.useTemplate && decision.pptxRendererCode) exampleCode = decision.pptxRendererCode;
 
-  const cleanHtml = html
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-    .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"');
+  const hints = parsePptxHints(html);
+  const hintsBlock = formatHintsForPrompt(hints);
+  console.log('[PPTX Prompt] Slide %d hints: %d', slideNum, hints.length);
+
+  const cleanHtml = stripPptxHintComments(
+    html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/<footer[\s\S]*?<\/footer>/gi, '')
+      .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"')
+  );
 
   const tplPos = buildPositionBlock(settings?.templatePositions);
 
@@ -454,7 +472,7 @@ ${palette.hint}
 ${exampleCode}
 
 ========== SLIDE ${slideNum} OF ${totalSlides} ==========
-
+${hintsBlock ? `\n${hintsBlock}\n` : ''}
 >>> HTML (extract ALL text EXACTLY) <<<
 ${cleanHtml}
 >>> END HTML <<<

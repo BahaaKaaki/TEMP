@@ -3,7 +3,12 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
-import { CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
+import { CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT as BASE_EDIT_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
+import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
+
+// All edit flows in this module produce slide HTML, so every call uses the
+// edit prompt with the absolute-position hint guide appended.
+const EDIT_SYSTEM_PROMPT = appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT);
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
 import { unscopeCSS } from '../../utils/cssScoping.js';
 import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext } from './slideContext.js';

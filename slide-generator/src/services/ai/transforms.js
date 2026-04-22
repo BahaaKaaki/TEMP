@@ -1,6 +1,7 @@
 import { debugLog, LogLevel } from '../../utils/debugLog';
 import { getCredentials, buildProviderHeaders } from './models.js';
 import { callWithModelFallback, buildRequestBody, parseAPIResponseContent } from './apiClient.js';
+import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
 
 // Transform element content into a widget format using GPT
 // This takes the existing content of an element and transforms it into a specified widget type
@@ -45,7 +46,7 @@ Transform the original content into this widget format. Return only the filled H
       headers: buildProviderHeaders(creds),
       body: JSON.stringify(buildRequestBody(
         { ...settings, temperature: 0.7, maxTokens: 2000 },
-        [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }]
+        [{ role: 'system', content: appendPptxHintsGuide(systemPrompt) }, { role: 'user', content: userPrompt }]
       )),
     });
 
@@ -171,7 +172,7 @@ CRITICAL REMINDERS:
   try {
     let content;
 
-    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(settings, appendPptxHintsGuide(systemPrompt), userPrompt);
 
     // Clean up markdown blocks first
     content = content

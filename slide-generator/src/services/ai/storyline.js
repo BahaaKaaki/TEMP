@@ -7,6 +7,7 @@ import { TITLE_HEADER_RULES } from './constants.js';
 import { safeJSONParse } from './router.js';
 import { extractSlideContentForAI } from './slideContext.js';
 import { ensureSlideStructure } from './slideGeneration.js';
+import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
 
 // Generate a storyline from a prompt - returns array of story points with hierarchy
 export async function generateStoryline(prompt, settings, options = {}) {
@@ -649,7 +650,7 @@ Return ONLY the completed HTML.`;
     // Use higher token limit to avoid truncation on complex templates
     const contentSettings = { ...settings, maxTokens: Math.max(settings.maxTokens || 4096, 8192) };
 
-    content = await callWithModelFallback(contentSettings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(contentSettings, appendPptxHintsGuide(systemPrompt), userPrompt);
 
     // Clean up
     content = content
@@ -984,7 +985,7 @@ Output the filled slide HTML only.`;
     // Use higher token limit for slide content to avoid truncation on complex templates
     const contentSettings = { ...settings, maxTokens: Math.max(settings.maxTokens || 4096, 8192) };
 
-    content = await callWithModelFallback(contentSettings, systemPrompt, userPrompt);
+    content = await callWithModelFallback(contentSettings, appendPptxHintsGuide(systemPrompt), userPrompt);
 
     // Clean up AI response - remove markdown, explanatory text, placeholders
     content = content

@@ -12571,6 +12571,23 @@ body {
   padding: 4px 4px 4px;
 }
 
+.skills-picker-subgroup {
+  margin-top: 2px;
+}
+
+.skills-picker-subgroup:not(:first-of-type) {
+  margin-top: 6px;
+}
+
+.skills-picker-subgroup-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 2px 4px 2px 12px;
+}
+
 .skills-picker-list {
   list-style: none;
   margin: 0;

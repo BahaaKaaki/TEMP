@@ -7,6 +7,7 @@ export interface SkillMetadata {
   name: string;
   description: string;
   category: string;
+  subCategory?: string;
   order: number;
 }
 
@@ -20,91 +21,94 @@ const SKILLS_DIR = path.join(process.cwd(), 'skills');
 // via the HTTP API and can be injected by the AI proxy. Markdown files that
 // exist on disk but are not in this map stay on disk but are not surfaced to
 // users -- re-expose by adding an entry.
-const CATEGORY_MAP: Record<string, { category: string; order: number }> = {
-  proposal_development: { category: 'Skills Showcase', order: 10 },
-  stakeholder_engagement_plan: { category: 'Skills Showcase', order: 11 },
+//
+// Seven categories, with the Business Case & Value category split internally
+// into two sub-sections rendered as sub-headers inside a single group in the
+// picker. Other categories have no sub-sections.
+type SkillMapEntry = { category: string; subCategory?: string; order: number };
 
-  corporate_strategy_full_strategic_plan: { category: 'Skills Showcase', order: 20 },
-  organization_design_end_to_end: { category: 'Skills Showcase', order: 21 },
-  target_operating_model_design_and_activation_blueprint: { category: 'Skills Showcase', order: 22 },
-  change_management_and_communication_plan: { category: 'Skills Showcase', order: 23 },
-  cost_transformation_diagnostic_and_value_capture_plan: { category: 'Skills Showcase', order: 25 },
-  business_case_narrative: { category: 'Skills Showcase', order: 26 },
+const CATEGORY_MAP: Record<string, SkillMapEntry> = {
+  // 1. Strategy -- corporate/sector/digital/sustainability/policy strategy playbooks.
+  biotech_life_sciences_cluster_strategy_and_feasibility: { category: 'Strategy', order: 100 },
+  corporate_strategy: { category: 'Strategy', order: 101 },
+  corporate_strategy_full_strategic_plan: { category: 'Strategy', order: 102 },
+  destination_development_strategy_and_business_plan: { category: 'Strategy', order: 103 },
+  digital_technology_strategy: { category: 'Strategy', order: 104 },
+  growth_strategy: { category: 'Strategy', order: 105 },
+  investment_portfolio_strategy: { category: 'Strategy', order: 106 },
+  local_content_industrial_localization_strategy: { category: 'Strategy', order: 107 },
+  localization_local_content_strategy: { category: 'Strategy', order: 108 },
+  policy_and_regulatory_strategy: { category: 'Strategy', order: 109 },
+  regulatory_legislative_reform_strategy_and_implementation_plan: { category: 'Strategy', order: 110 },
+  sector_development_strategy_and_implementation_playbook: { category: 'Strategy', order: 111 },
+  sector_strategy: { category: 'Strategy', order: 112 },
+  sustainability_esg_strategy: { category: 'Strategy', order: 113 },
 
-  sector_development_strategy_and_implementation_playbook: { category: 'Skills Showcase', order: 30 },
-  destination_development_strategy_and_business_plan: { category: 'Skills Showcase', order: 31 },
-  biotech_life_sciences_cluster_strategy_and_feasibility: { category: 'Skills Showcase', order: 32 },
-  telco_b2b_partnership_and_joint_go_to_market_strategy: { category: 'Skills Showcase', order: 33 },
-  local_content_industrial_localization_strategy: { category: 'Skills Showcase', order: 34 },
+  // 2. Commercial & Customer -- market, customer, pricing, go-to-market.
+  commercial_due_diligence_market_attractiveness: { category: 'Commercial & Customer', order: 200 },
+  customer_commercial_strategy: { category: 'Commercial & Customer', order: 201 },
+  go_to_market_channel_strategy: { category: 'Commercial & Customer', order: 202 },
+  market_assessment: { category: 'Commercial & Customer', order: 203 },
+  opportunity_sizing_revenue_pool_analysis: { category: 'Commercial & Customer', order: 204 },
+  pricing_and_monetization_strategy: { category: 'Commercial & Customer', order: 205 },
+  telco_b2b_partnership_and_joint_go_to_market_strategy: { category: 'Commercial & Customer', order: 206 },
+  value_proposition_and_offering_design: { category: 'Commercial & Customer', order: 207 },
 
-  holding_company_subsidiary_governance_and_incorporation_plan: { category: 'Skills Showcase', order: 40 },
-  regulatory_legislative_reform_strategy_and_implementation_plan: { category: 'Skills Showcase', order: 41 },
+  // 3. Operating Model & Governance -- org design, TOM, governance, process, people.
+  functional_statements_and_org_detailing: { category: 'Operating Model & Governance', order: 300 },
+  governance_and_decision_rights: { category: 'Operating Model & Governance', order: 301 },
+  holding_company_subsidiary_governance_and_incorporation_plan: { category: 'Operating Model & Governance', order: 302 },
+  operating_model: { category: 'Operating Model & Governance', order: 303 },
+  organization_design: { category: 'Operating Model & Governance', order: 304 },
+  organization_design_end_to_end: { category: 'Operating Model & Governance', order: 305 },
+  performance_management: { category: 'Operating Model & Governance', order: 306 },
+  process_and_service_delivery_design: { category: 'Operating Model & Governance', order: 307 },
+  shared_services_centralization_model: { category: 'Operating Model & Governance', order: 308 },
+  target_operating_model_design_and_activation_blueprint: { category: 'Operating Model & Governance', order: 309 },
+  workforce_people_strategy: { category: 'Operating Model & Governance', order: 310 },
 
-  kick_off_workplan_and_data_request_pack: { category: 'Skills Showcase', order: 50 },
-  weekly_steerco_pmo_status_deck: { category: 'Skills Showcase', order: 51 },
+  // 4. Business Case & Value -- split into two sub-sections.
+  //    A. Strategic and Financial Decision Support
+  business_case_development: { category: 'Business Case & Value', subCategory: 'A. Strategic and Financial Decision Support', order: 400 },
+  business_case_narrative: { category: 'Business Case & Value', subCategory: 'A. Strategic and Financial Decision Support', order: 401 },
+  financial_case_scenario_and_sensitivity_framing: { category: 'Business Case & Value', subCategory: 'A. Strategic and Financial Decision Support', order: 402 },
+  options_evaluation_and_recommendation: { category: 'Business Case & Value', subCategory: 'A. Strategic and Financial Decision Support', order: 403 },
+  //    B. Value Creation and Performance
+  cost_optimization_efficiency: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 450 },
+  cost_transformation_diagnostic_and_value_capture_plan: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 451 },
+  procurement_supply_chain_strategy: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 452 },
+  risk_strategy_enterprise_risk: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 453 },
+  value_creation_initiative_portfolio_design: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 454 },
 
-  // Business Case & Value (from Edwin_Business_Case_Value_Risk_Pack)
-  business_case_development: { category: 'Business Case & Value', order: 100 },
-  cost_optimization_efficiency: { category: 'Business Case & Value', order: 101 },
-  financial_case_scenario_and_sensitivity_framing: { category: 'Business Case & Value', order: 102 },
-  options_evaluation_and_recommendation: { category: 'Business Case & Value', order: 103 },
-  procurement_supply_chain_strategy: { category: 'Business Case & Value', order: 104 },
-  risk_strategy_enterprise_risk: { category: 'Business Case & Value', order: 105 },
-  value_creation_initiative_portfolio_design: { category: 'Business Case & Value', order: 106 },
+  // 5. Transformation & Execution -- mobilization, PMO, change, benefits, readouts.
+  benefits_tracking_and_realization: { category: 'Transformation & Execution', order: 500 },
+  board_final_readout_pack: { category: 'Transformation & Execution', order: 501 },
+  change_management_and_adoption: { category: 'Transformation & Execution', order: 502 },
+  change_management_and_communication_plan: { category: 'Transformation & Execution', order: 503 },
+  governance_cadence_decision_forums: { category: 'Transformation & Execution', order: 504 },
+  implementation_activation_pmo: { category: 'Transformation & Execution', order: 505 },
+  kick_off_mobilization_pack: { category: 'Transformation & Execution', order: 506 },
+  kick_off_workplan_and_data_request_pack: { category: 'Transformation & Execution', order: 507 },
+  transformation_strategy: { category: 'Transformation & Execution', order: 508 },
+  weekly_steerco_pmo_status_deck: { category: 'Transformation & Execution', order: 509 },
 
-  // Operating Model & Governance (from Edwin_Operating_Model_Organization_Governance_Pack)
-  functional_statements_and_org_detailing: { category: 'Operating Model & Governance', order: 200 },
-  governance_and_decision_rights: { category: 'Operating Model & Governance', order: 201 },
-  operating_model: { category: 'Operating Model & Governance', order: 202 },
-  organization_design: { category: 'Operating Model & Governance', order: 203 },
-  performance_management: { category: 'Operating Model & Governance', order: 204 },
-  process_and_service_delivery_design: { category: 'Operating Model & Governance', order: 205 },
-  shared_services_centralization_model: { category: 'Operating Model & Governance', order: 206 },
-  workforce_people_strategy: { category: 'Operating Model & Governance', order: 207 },
+  // 6. Stakeholder & Workshop -- stakeholder, investor, consultation, workshop.
+  investor_partner_engagement: { category: 'Stakeholder & Workshop', order: 600 },
+  policy_public_consultation_model: { category: 'Stakeholder & Workshop', order: 601 },
+  stakeholder_communication_planning: { category: 'Stakeholder & Workshop', order: 602 },
+  stakeholder_engagement_plan: { category: 'Stakeholder & Workshop', order: 603 },
+  teaming_and_client_counterpart_model: { category: 'Stakeholder & Workshop', order: 604 },
+  workshop_design_and_facilitation: { category: 'Stakeholder & Workshop', order: 605 },
 
-  // Transformation & Execution (from Edwin_Transformation_and_Execution_Pack)
-  benefits_tracking_and_realization: { category: 'Transformation & Execution', order: 300 },
-  board_final_readout_pack: { category: 'Transformation & Execution', order: 301 },
-  change_management_and_adoption: { category: 'Transformation & Execution', order: 302 },
-  governance_cadence_decision_forums: { category: 'Transformation & Execution', order: 303 },
-  implementation_activation_pmo: { category: 'Transformation & Execution', order: 304 },
-  kick_off_mobilization_pack: { category: 'Transformation & Execution', order: 305 },
-  transformation_strategy: { category: 'Transformation & Execution', order: 306 },
-
-  // Stakeholder & Workshop (from Edwin_Stakeholder_Workshop_Engagement_Pack)
-  investor_partner_engagement: { category: 'Stakeholder & Workshop', order: 400 },
-  policy_public_consultation_model: { category: 'Stakeholder & Workshop', order: 401 },
-  stakeholder_communication_planning: { category: 'Stakeholder & Workshop', order: 402 },
-  teaming_and_client_counterpart_model: { category: 'Stakeholder & Workshop', order: 403 },
-  workshop_design_and_facilitation: { category: 'Stakeholder & Workshop', order: 404 },
-
-  // Commercial & Customer (from Edwin_Commercial_Market_Customer_Pack)
-  commercial_due_diligence_market_attractiveness: { category: 'Commercial & Customer', order: 500 },
-  customer_commercial_strategy: { category: 'Commercial & Customer', order: 501 },
-  go_to_market_channel_strategy: { category: 'Commercial & Customer', order: 502 },
-  market_assessment: { category: 'Commercial & Customer', order: 503 },
-  opportunity_sizing_revenue_pool_analysis: { category: 'Commercial & Customer', order: 504 },
-  pricing_and_monetization_strategy: { category: 'Commercial & Customer', order: 505 },
-  value_proposition_and_offering_design: { category: 'Commercial & Customer', order: 506 },
-
-  // Proposals & Craft (from Edwin_Proposals_Communication_Consulting_Craft_Pack)
-  baseline_as_is_diagnostic: { category: 'Proposals & Craft', order: 600 },
-  benchmarking_peer_comparison_gap_analysis: { category: 'Proposals & Craft', order: 601 },
-  executive_communication_top_down_storyline: { category: 'Proposals & Craft', order: 602 },
-  executive_summary_and_synthesis: { category: 'Proposals & Craft', order: 603 },
-  proposal_approach_and_workplan: { category: 'Proposals & Craft', order: 604 },
-  team_structure_and_qa_governance: { category: 'Proposals & Craft', order: 605 },
-  why_strategy_and: { category: 'Proposals & Craft', order: 606 },
-
-  // Strategy & Thematic (from Edwin_Strategy_Thematic_End_to_End_Pack)
-  corporate_strategy: { category: 'Strategy & Thematic', order: 700 },
-  digital_technology_strategy: { category: 'Strategy & Thematic', order: 701 },
-  growth_strategy: { category: 'Strategy & Thematic', order: 702 },
-  investment_portfolio_strategy: { category: 'Strategy & Thematic', order: 703 },
-  localization_local_content_strategy: { category: 'Strategy & Thematic', order: 704 },
-  policy_and_regulatory_strategy: { category: 'Strategy & Thematic', order: 705 },
-  sector_strategy: { category: 'Strategy & Thematic', order: 706 },
-  sustainability_esg_strategy: { category: 'Strategy & Thematic', order: 707 },
+  // 7. Proposal and Executive Communication -- proposals, diagnostic, exec storyline.
+  baseline_as_is_diagnostic: { category: 'Proposal and Executive Communication', order: 700 },
+  benchmarking_peer_comparison_gap_analysis: { category: 'Proposal and Executive Communication', order: 701 },
+  executive_communication_top_down_storyline: { category: 'Proposal and Executive Communication', order: 702 },
+  executive_summary_and_synthesis: { category: 'Proposal and Executive Communication', order: 703 },
+  proposal_approach_and_workplan: { category: 'Proposal and Executive Communication', order: 704 },
+  proposal_development: { category: 'Proposal and Executive Communication', order: 705 },
+  team_structure_and_qa_governance: { category: 'Proposal and Executive Communication', order: 706 },
+  why_strategy_and: { category: 'Proposal and Executive Communication', order: 707 },
 };
 
 const skillCache = new Map<string, SkillRecord>();
@@ -165,7 +169,7 @@ function buildRecord(filename: string): SkillRecord | null {
   const name = extractTitle(body, slugToTitle(id));
   const description = extractDescription(body);
 
-  return {
+  const record: SkillRecord = {
     id,
     name,
     description,
@@ -173,6 +177,8 @@ function buildRecord(filename: string): SkillRecord | null {
     order: meta.order,
     body,
   };
+  if (meta.subCategory) record.subCategory = meta.subCategory;
+  return record;
 }
 
 function ensureLoaded(): void {

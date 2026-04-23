@@ -35,6 +35,9 @@ npm-debug.log*
 screenshot-pw.mjs
 template-screenshots/
 scripts/
+# Track backend/scripts/ (one-off migration / importer helpers live here)
+!backend/scripts/
+!backend/scripts/**
 
 # Uploaded files
 uploads/

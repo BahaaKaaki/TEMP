@@ -27,7 +27,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Auto-fetch available models from PwC Shared Services `/models` endpoint with grouped vendor display
 - Deck-aware template switching with pillar preservation and optional user guidance
-- Consulting Skills -- single-select playbook dropdown in the AI Assistant panel that steers the planner with a specific deliverable template (proposal, strategic plan, business case, etc.)
+- Consulting Skills -- single-select playbook dropdown in the AI Assistant panel that steers the planner with a specific deliverable template (proposal, strategic plan, business case, etc.). Spans seven categories: Skills Showcase, Business Case & Value, Operating Model & Governance, Transformation & Execution, Stakeholder & Workshop, Commercial & Customer, Proposals & Craft, Strategy & Thematic.
 
 ## Consulting Skills
 
@@ -41,7 +41,11 @@ Consulting Skills are markdown playbooks that steer the planner toward a specifi
 4. The user picks **one** skill from the dropdown in the AI Assistant panel (top action bar). Selection is stored as `settings.selectedSkillId: string | null` and persists across sessions.
 5. On each router call (`aiRouteRequest` in `slide-generator/src/services/ai/router.js`), the selected skill id is attached to the request body as `_skillId`. The backend AI proxy (`backend/src/modules/ai-proxy/ai-proxy.controller.ts`) reads `_skillId`, prepends the skill's markdown plus a short preamble (with a "clarify if inputs are missing" rule) to the system prompt, strips the `_skillId` field, and forwards to the upstream model.
 6. When a skill is active and the user's prompt does not cover the skill's "Inputs the skill needs" section, the router returns `intent=clarify` with the missing inputs as questions -- using the existing clarify flow, no new code paths.
-7. Selection is **manual-clear only**. Clicking the active skill in the dropdown clears it. Generating a deck does not auto-clear -- the skill stays until the user switches it off.
+7. Selection is **one-shot**. After a successful generation (agent plan execution, storyline populate, or direct create) the selection resets automatically so the next request does not silently reuse the prior skill. Clicking the active skill in the dropdown clears it manually. Errors do **not** clear the selection, so a retry keeps the same skill.
+
+### Importing skill packs
+
+`backend/scripts/import-skill-packs.mjs` copies offline-produced `Edwin_*_Pack` directories from `~/Downloads` into `backend/skills/` with normalized slugs and the canonical `## When to use this skill` heading, then prints a `CATEGORY_MAP` snippet for paste-in to `skills.service.ts`. The importer skips slugs that already exist so hand-tuned skills are never overwritten; re-run it safely after dropping new packs into `~/Downloads`.
 
 ### Where the boundary lives
 

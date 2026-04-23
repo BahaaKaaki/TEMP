@@ -465,29 +465,68 @@ export default function SlidePreview({ onSwitchToCode }) {
     }
   }, [state.darkMode, activeSlide?.sectionLabel, activeSlide?.subSectionLabel]);
 
-  // Make all text elements editable
+  // Make all text-bearing leaf elements editable.
+  //
+  // Previous behavior used a whitelist of selectors (h1..h4, p, .title, li,
+  // span, etc.) which meant custom layouts or nested cells produced by the
+  // AI quietly dropped out of edit mode. The walker below flips the default:
+  // every text leaf is editable unless it is a non-text embed (img/svg/
+  // canvas/video/audio/iframe), a form control (button/input/...), or the
+  // auto-managed page footer (rendered content is owned by injectPageNumber).
+  //
+  // A "text leaf" is an element that has visible text content and whose
+  // element children are only inline formatting or non-text embeds, so the
+  // block that a user sees as a single editable cell maps to exactly one
+  // contenteditable container.
   const makeEditable = (container) => {
     if (!container) return;
 
-    // Elements that should be directly editable
-    const editableSelectors = [
-      '.title', '.subtitle', '.cover-title', '.cover-category',
-      '.cover-branding', '.cover-date', 'h1', 'h2', 'h3', 'h4', 'p',
-      '.kpi-value', '.kpi-label', '.impact-box', '.quote-text',
-      '.quote-author', '.card-num', '.card-icon-circle', '.timeline-marker',
-      'li', 'span'
-    ];
+    const EXCLUDED_TAGS = new Set([
+      'IMG', 'SVG', 'CANVAS', 'VIDEO', 'AUDIO', 'IFRAME',
+      'BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'OPTION',
+      'SCRIPT', 'STYLE', 'LINK', 'META', 'NOSCRIPT', 'HR', 'BR',
+    ]);
 
-    editableSelectors.forEach(selector => {
-      container.querySelectorAll(selector).forEach(el => {
-        // Don't make containers editable, only leaf text nodes
-        if (el.children.length === 0 || el.matches('.card-icon-circle, .timeline-marker, .kpi-value')) {
-          el.contentEditable = 'true';
-          // Use CSS class instead of inline styles to avoid saving them
-          el.classList.add('editable-element');
-        }
-      });
-    });
+    const INLINE_TAGS = new Set([
+      'A', 'ABBR', 'B', 'BDI', 'BDO', 'BR', 'CITE', 'CODE', 'DATA',
+      'DFN', 'EM', 'I', 'KBD', 'MARK', 'Q', 'S', 'SAMP', 'SMALL',
+      'SPAN', 'STRONG', 'SUB', 'SUP', 'TIME', 'U', 'VAR', 'WBR',
+    ]);
+
+    // Anything matching these selectors (or any ancestor matching them)
+    // is owned by the renderer / auto-managers and should not accept edits.
+    const EXCLUDED_SELECTOR = 'footer, .footer, .slide-footer, .page-number, [data-no-edit]';
+
+    const isExcludedTag = (el) => EXCLUDED_TAGS.has(el.tagName);
+    const isOwnedRegion = (el) => !!el.closest(EXCLUDED_SELECTOR);
+
+    // Walk the subtree depth-first, marking the outermost text-leaf block
+    // per branch so we don't create nested contenteditable regions.
+    const walk = (el) => {
+      if (!el || el.nodeType !== 1) return;
+      if (isExcludedTag(el)) return;
+      if (isOwnedRegion(el)) return;
+
+      const children = Array.from(el.children);
+      const allChildrenInlineOrEmbed = children.every((c) =>
+        INLINE_TAGS.has(c.tagName) || EXCLUDED_TAGS.has(c.tagName)
+      );
+
+      const hasVisibleText = (el.textContent || '').trim().length > 0;
+
+      if (hasVisibleText && allChildrenInlineOrEmbed) {
+        el.contentEditable = 'true';
+        el.classList.add('editable-element');
+        return; // Children are inline; parent covers them.
+      }
+
+      // Block container: descend into each child.
+      for (const child of children) walk(child);
+    };
+
+    // Start one level below the mount so we don't mark the entire slide
+    // container as editable when it happens to be the only text-bearing node.
+    for (const child of Array.from(container.children)) walk(child);
   };
 
   // Draggable element selectors for visual edit mode

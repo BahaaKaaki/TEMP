@@ -126,7 +126,7 @@ export async function improveSlide(slideHtmlOrInfo, instruction, settings, deckC
     ? { html: slideHtmlOrInfo }
     : slideHtmlOrInfo;
 
-  const { html, title, type, templateId, slideNumber, totalSlides, comments, templateHtml, templateName, customCSS, sharedCSS, minimalContext } = slideInfo;
+  const { html, title, type, templateId, slideNumber, totalSlides, comments, templateHtml, templateName, customCSS, sharedCSS, minimalContext, sectionLabel, subSectionLabel } = slideInfo;
 
   // MINIMAL CONTEXT MODE: If minimalContext is provided, use it directly
   // This significantly reduces token usage while keeping agent informed
@@ -192,6 +192,15 @@ export async function improveSlide(slideHtmlOrInfo, instruction, settings, deckC
   if (title || type) {
     metadataContext = `\nSLIDE INFO: "${title || 'Untitled'}"`;
     if (type) metadataContext += ` [${type}]`;
+  }
+  // Section tracker: tell the model which deck section this slide lives in
+  // so edits stay aligned with the section's framing and vocabulary.
+  if (sectionLabel || subSectionLabel) {
+    const sec = sectionLabel ? String(sectionLabel).trim() : '';
+    const sub = subSectionLabel ? String(subSectionLabel).trim() : '';
+    if (sec && sub) metadataContext += `\nSECTION: ${sec} / SUBSECTION: ${sub}`;
+    else if (sec) metadataContext += `\nSECTION: ${sec}`;
+    else if (sub) metadataContext += `\nSUBSECTION: ${sub}`;
   }
 
   // Build neighbor context if needed (only in legacy mode, skip if minimalContext provided)

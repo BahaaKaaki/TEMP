@@ -277,6 +277,14 @@ export function buildMinimalEditContext(slides, currentIndex, options = {}) {
   if (currentIndex === 0) positionContext += ' (First slide)';
   else if (currentIndex === total - 1) positionContext += ' (Last slide)';
 
+  // Section tracker: preserve the slide's section/subsection framing so the
+  // model keeps wording aligned with how the deck advertises this page.
+  const sec = current.sectionLabel ? String(current.sectionLabel).trim() : '';
+  const sub = current.subSectionLabel ? String(current.subSectionLabel).trim() : '';
+  if (sec && sub) positionContext += `\nSECTION: ${sec} / SUBSECTION: ${sub}`;
+  else if (sec) positionContext += `\nSECTION: ${sec}`;
+  else if (sub) positionContext += `\nSUBSECTION: ${sub}`;
+
   // Neighbor context with content summaries (not just types/titles)
   let neighborContext = '';
   if (includeNeighbors && total > 1) {

@@ -21,6 +21,7 @@ import FlowStudio from './FlowStudio';
 import KnowledgeBaseManager from './KnowledgeBaseManager';
 import SkillsPicker from './SkillsPicker';
 import { loadSkills } from '../services/skillsService';
+import { friendlyChatError } from '../utils/errorNotify';
 
 // Detect vibe from user prompt for image-based mode
 // Returns a vibe ID or 'default' if no strong signal
@@ -443,6 +444,17 @@ export default function AIChatbot() {
     }
   }, []);
 
+  // Clear the "No skill / pick skill" selection after a successful generation.
+  // One-shot behavior: the user picks a skill, generates once, and then the
+  // checkbox resets so the next ask does not silently reuse the prior skill.
+  // Only call on the success branches -- failures should keep the selection
+  // so the user can retry without re-picking.
+  const clearSkillAfterGeneration = useCallback(() => {
+    if (state.settings?.selectedSkillId) {
+      actions.updateSettings({ selectedSkillId: null });
+    }
+  }, [state.settings?.selectedSkillId, actions]);
+
   // NEW: Use the agentic execution hook
   const agenticExecution = useAgenticExecution({
     state,
@@ -493,6 +505,14 @@ export default function AIChatbot() {
   // ─── Storyline Approval Handlers ───
   // These are exposed on window so the inline HTML buttons can call them
   useEffect(() => {
+    // Lightweight bridge so non-chatbot components (e.g. Header.jsx PPTX
+    // export) can post assistant messages into the chat without threading
+    // callbacks through props.
+    window.__edwinPostChatMessage = (content, options = {}) => {
+      if (typeof content !== 'string' || !content.trim()) return;
+      addMessage('assistant', content, options);
+    };
+
     window.__approveStoryline = async () => {
       const resumeCtx = approvalResumeRef.current;
       if (!resumeCtx) return;
@@ -567,6 +587,7 @@ export default function AIChatbot() {
           });
           setAgentOutputExpanded(false);
           addMessage('assistant', agentResult.summary || 'Slides created successfully.');
+          clearSkillAfterGeneration();
           setIsLoading(false);
           setProgress(null);
           setAgentModeProgress(null);
@@ -667,12 +688,7 @@ export default function AIChatbot() {
         let routeResult;
         if (useAIRouter) {
           setProgress({ phase: 'Creating slides...', current: 0, total: 1 });
-          try {
-            routeResult = await aiRouteRequest(effectivePrompt, context, freshState.settings);
-          } catch (routerErr) {
-            console.warn('[StorylineApproval] AI router failed, falling back to rule-based:', routerErr.message);
-            routeResult = routeRequest(effectivePrompt, context);
-          }
+          routeResult = await aiRouteRequest(effectivePrompt, context, freshState.settings);
         } else {
           routeResult = routeRequest(effectivePrompt, context);
         }
@@ -739,8 +755,7 @@ export default function AIChatbot() {
         setPendingSmartAction({ ...smartActionPayload, autoExecute: true });
 
       } catch (err) {
-        console.error('[StorylineApproval] Error:', err);
-        addMessage('assistant', `Error: ${err.message}`);
+        addMessage('assistant', friendlyChatError(err, { tag: 'storyline-approval' }));
         setIsLoading(false);
         setProgress(null);
         setAgentModeProgress(null);
@@ -787,6 +802,7 @@ export default function AIChatbot() {
       delete window.__rejectStoryline;
       delete window.__toggleClarificationChip;
       delete window.__submitClarificationAnswers;
+      delete window.__edwinPostChatMessage;
     };
   }, [agenticExecution, state, activeFlow]);
 
@@ -1705,6 +1721,7 @@ export default function AIChatbot() {
           });
           setAgentOutputExpanded(false);
           addMessage('assistant', agentResult.summary || 'Slides created successfully.');
+          clearSkillAfterGeneration();
           setIsLoading(false);
           setProgress(null);
           setAgentModeProgress(null);
@@ -2061,12 +2078,7 @@ export default function AIChatbot() {
           const routerPrompt = triageResolved
             ? `[Classifier context: ${triage.instruction}]\n\n${effectivePrompt}`
             : effectivePrompt;
-          try {
-            routeResult = await aiRouteRequest(routerPrompt, context, freshState.settings);
-          } catch (routerErr) {
-            console.warn('[Router] AI router failed, falling back to rule-based:', routerErr.message);
-            routeResult = routeRequest(routerPrompt, context);
-          }
+          routeResult = await aiRouteRequest(routerPrompt, context, freshState.settings);
 
           // Record router AI I/O
           recordAiIO('router',
@@ -2322,7 +2334,7 @@ export default function AIChatbot() {
       }
     } catch (err) {
       if (err.name !== 'AbortError') {
-        addMessage('assistant', `❌ Error: ${err.message}`);
+        addMessage('assistant', friendlyChatError(err, { tag: 'handle-submit' }));
       }
     } finally {
       setIsLoading(false);
@@ -3847,13 +3859,7 @@ Original request: ${userPrompt}`;
         const continuationPrompt = `Continue: create ${remainingCount} more slides. Original request: ${userPrompt}`;
 
         try {
-          let nextRouteResult;
-          try {
-            nextRouteResult = await aiRouteRequest(continuationPrompt, context, freshState.settings);
-          } catch (contErr) {
-            console.warn('[SmartAction] Continuation AI router failed, falling back to rule-based:', contErr.message);
-            nextRouteResult = routeRequest(continuationPrompt, context);
-          }
+          const nextRouteResult = await aiRouteRequest(continuationPrompt, context, freshState.settings);
 
           // Recursively execute the next batch
           // Strip autoExecute to prevent the useEffect from double-firing
@@ -3868,8 +3874,8 @@ Original request: ${userPrompt}`;
           return; // Exit early, the recursive call handles cleanup
 
         } catch (contErr) {
-          console.error('[SmartAction] Continuation batch failed:', contErr);
-          setExecutionStatus({ type: 'error', message: `Batch continuation failed: ${contErr.message}` });
+          addMessage('assistant', friendlyChatError(contErr, { tag: 'smartaction-continuation' }));
+          setExecutionStatus({ type: 'error', message: 'Continuation failed' });
         }
       } else {
         setExecutionStatus({ type: 'success', message: summaryMessage });
@@ -3926,7 +3932,13 @@ Original request: ${userPrompt}`;
         actions.setHighlightedSlides([]);
       }, 1500);
 
+      // One successful plan execution consumes the current skill selection.
+      clearSkillAfterGeneration();
+
     } catch (err) {
+      if (err?.name !== 'AbortError') {
+        addMessage('assistant', friendlyChatError(err, { tag: 'execute-smart-action' }));
+      }
       // Mark failed step in agent progress
       setAgentModeProgress(prev => {
         if (!prev) return null;
@@ -3989,8 +4001,9 @@ Original request: ${userPrompt}`;
       try {
         routeResult = await aiRouteRequest(userPrompt, context, freshState.settings);
       } catch (routerErr) {
-        console.warn('[Router] AI router failed, falling back to rule-based:', routerErr.message);
-        routeResult = routeRequest(userPrompt, context);
+        addMessage('assistant', friendlyChatError(routerErr, { tag: 'confirm-router-call' }));
+        setProgress(null);
+        return;
       }
       setProgress(null);
     } else {
@@ -4131,6 +4144,8 @@ Original request: ${userPrompt}`;
                     storyPointId: skeleton.storyPointId,
                     isSkeleton: true,
                     skeletonApproved: false,
+                    sectionLabel: skeleton.sectionLabel || null,
+                    subSectionLabel: skeleton.subSectionLabel || null,
                   });
                 }
 
@@ -4174,12 +4189,19 @@ Original request: ${userPrompt}`;
                   // Update existing slides or add new ones
                   for (const result of results) {
                     if (result.existingSlideId) {
-                      // Update existing slide with filled content
-                      actions.updateSlide(result.existingSlideId, {
+                      // Update existing slide with filled content.
+                      // sectionLabel/subSectionLabel are carried by
+                      // populateSlides; only overwrite when the result has
+                      // a non-null value so we don't clobber tracker labels
+                      // set elsewhere (e.g. import flow).
+                      const updates = {
                         html: result.html,
                         isSkeleton: false,
                         layoutType: result.layoutType,
-                      });
+                      };
+                      if (result.sectionLabel != null) updates.sectionLabel = result.sectionLabel;
+                      if (result.subSectionLabel != null) updates.subSectionLabel = result.subSectionLabel;
+                      actions.updateSlide(result.existingSlideId, updates);
                     } else {
                       // Add new slide
                       actions.addSlide({
@@ -4190,6 +4212,8 @@ Original request: ${userPrompt}`;
                         storyPointId: result.storyPointId,
                         isSkeleton: false,
                         layoutType: result.layoutType,
+                        sectionLabel: result.sectionLabel || null,
+                        subSectionLabel: result.subSectionLabel || null,
                       });
                     }
                     populated++;
@@ -4197,6 +4221,7 @@ Original request: ${userPrompt}`;
 
                   actions.setSkeletonMode(false);
                   addMessage('assistant', `✅ Populated ${populated} slides with content.`);
+                  clearSkillAfterGeneration();
 
                   // Validate layouts after population
                   const postPopState = getFreshState();

@@ -523,6 +523,34 @@ function snapshotsAreDifferent(a, b) {
   return JSON.stringify(a.slides) !== JSON.stringify(b.slides);
 }
 
+// Pull the section-tracker labels out of a raw HTML string. Imported slides
+// carry the tracker via <a data-section="..." data-subsection="..."> anchors;
+// we honor the active tab first and fall back to the first anchor that has
+// either attribute so decks without the .active class still round-trip.
+// Returns { sectionLabel, subSectionLabel } with null where the attribute
+// is absent. Safe on SSR/non-browser environments: returns {nulls}.
+function extractSectionLabelsFromHTML(html) {
+  const empty = { sectionLabel: null, subSectionLabel: null };
+  if (!html || typeof html !== 'string') return empty;
+  if (typeof DOMParser === 'undefined') return empty;
+  try {
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    if (!doc) return empty;
+    const scope = doc.querySelector('[class*="section-tracker"], [data-section-tracker]') || doc;
+    const active = scope.querySelector('[data-section].active, [data-subsection].active');
+    const anchor = active || scope.querySelector('[data-section], [data-subsection]');
+    if (!anchor) return empty;
+    const section = anchor.getAttribute('data-section');
+    const subsection = anchor.getAttribute('data-subsection');
+    return {
+      sectionLabel: section ? section.trim() || null : null,
+      subSectionLabel: subsection ? subsection.trim() || null : null,
+    };
+  } catch {
+    return empty;
+  }
+}
+
 // Reducer
 function slideReducer(state, action) {
   switch (action.type) {
@@ -954,6 +982,16 @@ function slideReducer(state, action) {
         const type = slide.type || 'custom';
         const title = slide.title || 'Imported Slide';
         const newId = uuidv4();
+        // Prefer explicit JSON fields when the importer provides them; fall
+        // back to parsing data-section / data-subsection from the HTML so
+        // imports from raw HTML still populate the tracker.
+        let sectionLabel = slide.sectionLabel ?? null;
+        let subSectionLabel = slide.subSectionLabel ?? null;
+        if (sectionLabel == null && subSectionLabel == null) {
+          const parsed = extractSectionLabelsFromHTML(html);
+          sectionLabel = parsed.sectionLabel;
+          subSectionLabel = parsed.subSectionLabel;
+        }
         return {
           id: newId,
           title,
@@ -962,6 +1000,8 @@ function slideReducer(state, action) {
           customCSS: scopeCSS(unscopeCSS(slide.customCSS || ''), newId),
           pptxExportCode: slide.pptxExportCode || '',
           summary: slide.summary || generateSlideSummary(html, type, title),
+          sectionLabel,
+          subSectionLabel,
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
         };
@@ -1760,7 +1800,12 @@ export function SlideProvider({ children }) {
         if (code) {
           dispatch({ type: ACTIONS.UPDATE_SLIDE, payload: { id: slide.id, updates: { pptxCode: code } } });
         }
-      }).catch(() => {});
+      }).catch((err) => {
+        // Background pre-gen: failure here is not user-visible because
+        // exportToPPTX re-generates on demand. Log so it is not a true
+        // silent swallow, but do not surface to the chat.
+        console.warn('[PPTX Pre-gen] Background code generation failed for slide', slide.id, err);
+      });
     }
   }, [state.slides, state.settings]);
 

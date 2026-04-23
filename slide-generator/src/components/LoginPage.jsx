@@ -23,19 +23,6 @@ export default function LoginPage() {
 
   const isProcessing = inProgress !== 'none';
 
-  // Easy Auth has already authenticated the user at the edge by the time this
-  // page renders, so MSAL can acquire a token silently via hidden iframe SSO.
-  // Auto-trigger loginRedirect on mount to skip the "Sign in with Microsoft"
-  // button; users experience a single seamless sign-in instead of two.
-  useEffect(() => {
-    if (!isAuthenticated && inProgress === 'none') {
-      instance.loginRedirect(loginRequest).catch(() => {
-        // If silent flow fails (e.g. the Easy Auth session expired in the
-        // gap between pages), fall back to the visible button below.
-      });
-    }
-  }, [isAuthenticated, inProgress, instance]);
-
   return (
     <div style={{
       position: 'fixed', inset: 0,

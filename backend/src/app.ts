@@ -8,12 +8,6 @@ import { env } from './config/env';
 import { httpLogStream, logger } from './config/logger';
 import { errorHandler, notFoundHandler } from './common/middleware/error.middleware';
 import { standardLimiter } from './common/middleware/rate-limit.middleware';
-import {
-  allowlistMiddleware,
-  describeCurrentPrincipal,
-  getAllowlistSummary,
-  initAllowlist,
-} from './common/middleware/allowlist.middleware';
 
 // Route imports
 import authRoutes from './modules/auth/auth.routes';
@@ -60,8 +54,7 @@ app.use('/api/', standardLimiter);
 // Build ID — set at deploy time, used by frontend to detect new deployments
 const BUILD_ID = process.env.BUILD_ID || new Date().toISOString();
 
-// Health check (no auth required) -- must be defined before the allowlist
-// middleware so that App Service warm-up probes never hit the auth wall.
+// Health check (no auth required)
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -71,25 +64,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Initialise the allowlist once at boot. In log-only mode this simply records
-// every authenticated visitor; in enforcing mode it 403s anyone whose UPN is
-// not in the list.
-initAllowlist();
-app.use(allowlistMiddleware);
-
-// Operational endpoint: returns allowlist stats (never the emails themselves).
-// Gated by the same middleware above, so only allowlisted users can see it.
-app.get('/internal/allowlist', (_req, res) => {
-  res.json(getAllowlistSummary());
-});
-
-// Self-service diagnostic: lets an operator see which identifiers Easy Auth
-// is forwarding for the current session and whether any of them are in the
-// allowlist. All returned values are hashed; real UPNs are never exposed.
-app.get('/internal/whoami', (req, res) => {
-  res.json(describeCurrentPrincipal(req));
-});
-
 // API routes
 app.use('/api/templates', pptxMasterTemplatesRouter);
 app.use('/api/v1/auth', authRoutes);
@@ -97,9 +71,7 @@ app.use('/api/v1/organizations', organizationsRoutes);
 app.use('/api/v1/themes', themesRoutes);
 app.use('/api/v1/templates', templatesRoutes);
 
-// AI proxy -- gated by the allowlist middleware above. Calls through to the
-// PwC Shared Services GenAI backend using a server-side API key, so leaving
-// this open to anonymous users would let them burn the shared credential.
+// AI proxy (no auth required -- frontend calls this to reach PwC Shared Services)
 app.use('/api/ai', aiProxyRoutes);
 
 // Consulting skills registry (metadata only; bodies stay server-side and are

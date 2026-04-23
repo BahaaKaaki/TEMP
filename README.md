@@ -27,7 +27,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Auto-fetch available models from PwC Shared Services `/models` endpoint with grouped vendor display
 - Deck-aware template switching with pillar preservation and optional user guidance
-- Consulting Skills -- single-select playbook dropdown in the AI Assistant panel that steers the planner with a specific deliverable template (proposal, strategic plan, business case, etc.). Spans seven categories: Strategy; Commercial & Customer; Operating Model & Governance; Business Case & Value (split into "A. Strategic and Financial Decision Support" and "B. Value Creation and Performance"); Transformation & Execution; Stakeholder & Workshop; Proposal and Executive Communication.
+- Consulting Skills -- single-select playbook dropdown in the AI Assistant panel that steers the planner with a specific deliverable template (proposal, strategic plan, business case, etc.). Spans eight categories: Strategy; Commercial & Customer; Operating Model & Governance; Strategic and Financial Decision Support; Value Creation and Performance; Transformation & Execution; Stakeholder & Workshop; Proposal and Executive Communication.
 
 ## Consulting Skills
 

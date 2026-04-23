@@ -32,52 +32,36 @@ const DOWNLOADS_DIR = path.join(os.homedir(), 'Downloads');
 const BACKEND_ROOT = path.resolve(__dirname, '..');
 const SKILLS_DIR = path.join(BACKEND_ROOT, 'skills');
 
-// Seven-category structure that matches backend/src/modules/skills/
-// skills.service.ts. The Business Case & Value category is split internally
-// into two sub-sections; every other category has no sub-section.
-//
-// CATEGORY_BASE_ORDER controls both the display order of categories and the
-// starting `order` value inside the printed CATEGORY_MAP snippet. Sub-groups
-// inside Business Case & Value use offsets 0 and 50 to keep A/B cleanly
-// separated while still sitting in one numeric range.
+// Eight flat categories that match backend/src/modules/skills/
+// skills.service.ts. CATEGORY_BASE_ORDER controls both the display order of
+// categories and the starting `order` value inside the printed CATEGORY_MAP
+// snippet. The Business Case pack's slugs split across two categories --
+// SLUG_CATEGORY_OVERRIDES maps the Value-Creation half away from the pack's
+// default.
 const CATEGORY_BASE_ORDER = {
   'Strategy': 100,
   'Commercial & Customer': 200,
   'Operating Model & Governance': 300,
-  'Business Case & Value': 400,
-  'Transformation & Execution': 500,
-  'Stakeholder & Workshop': 600,
-  'Proposal and Executive Communication': 700,
+  'Strategic and Financial Decision Support': 400,
+  'Value Creation and Performance': 500,
+  'Transformation & Execution': 600,
+  'Stakeholder & Workshop': 700,
+  'Proposal and Executive Communication': 800,
 };
 
-const SUB_A = 'A. Strategic and Financial Decision Support';
-const SUB_B = 'B. Value Creation and Performance';
-
-// Per-slug sub-category for Business Case & Value. Slugs not in this map get
-// no sub-category, which is the right behaviour for every other pack.
-const SLUG_SUBCATEGORY = {
-  business_case_development: SUB_A,
-  business_case_narrative: SUB_A,
-  financial_case_scenario_and_sensitivity_framing: SUB_A,
-  options_evaluation_and_recommendation: SUB_A,
-  cost_optimization_efficiency: SUB_B,
-  cost_transformation_diagnostic_and_value_capture_plan: SUB_B,
-  procurement_supply_chain_strategy: SUB_B,
-  risk_strategy_enterprise_risk: SUB_B,
-  value_creation_initiative_portfolio_design: SUB_B,
-};
-
-// Sub-category -> order offset within its parent category.
-const SUBCATEGORY_OFFSET = {
-  [SUB_A]: 0,
-  [SUB_B]: 50,
+const SLUG_CATEGORY_OVERRIDES = {
+  cost_optimization_efficiency: 'Value Creation and Performance',
+  cost_transformation_diagnostic_and_value_capture_plan: 'Value Creation and Performance',
+  procurement_supply_chain_strategy: 'Value Creation and Performance',
+  risk_strategy_enterprise_risk: 'Value Creation and Performance',
+  value_creation_initiative_portfolio_design: 'Value Creation and Performance',
 };
 
 const PACKS = [
   { dirPrefix: 'Edwin_Strategy_Thematic_End_to_End_Pack', category: 'Strategy' },
   { dirPrefix: 'Edwin_Commercial_Market_Customer_Pack', category: 'Commercial & Customer' },
   { dirPrefix: 'Edwin_Operating_Model_Organization_Governance_Pack', category: 'Operating Model & Governance' },
-  { dirPrefix: 'Edwin_Business_Case_Value_Risk_Pack', category: 'Business Case & Value' },
+  { dirPrefix: 'Edwin_Business_Case_Value_Risk_Pack', category: 'Strategic and Financial Decision Support' },
   { dirPrefix: 'Edwin_Transformation_and_Execution_Pack', category: 'Transformation & Execution' },
   { dirPrefix: 'Edwin_Stakeholder_Workshop_Engagement_Pack', category: 'Stakeholder & Workshop' },
   { dirPrefix: 'Edwin_Proposals_Communication_Consulting_Craft_Pack', category: 'Proposal and Executive Communication' },
@@ -148,19 +132,8 @@ async function importPack(pack) {
   return { pack, imported, skipped };
 }
 
-function resolveCategory(_slug, pack) {
-  return pack.category;
-}
-
-function resolveSubCategory(slug) {
-  return SLUG_SUBCATEGORY[slug] || null;
-}
-
-function fmtEntry(slug, category, subCategory, order) {
-  if (subCategory) {
-    return `  ${slug}: { category: '${category}', subCategory: '${subCategory}', order: ${order} },`;
-  }
-  return `  ${slug}: { category: '${category}', order: ${order} },`;
+function resolveCategory(slug, pack) {
+  return SLUG_CATEGORY_OVERRIDES[slug] || pack.category;
 }
 
 function fmtCategoryBlock(category, slugs) {
@@ -168,32 +141,11 @@ function fmtCategoryBlock(category, slugs) {
   if (base === undefined) {
     console.warn(`[warn] Unknown category '${category}' has no base order`);
   }
-  const baseOrder = base ?? 0;
-
-  // Bucket slugs by resolved sub-category so A/B show up under their own
-  // banner in the emitted snippet.
-  const bySub = new Map();
-  for (const slug of slugs) {
-    const sub = resolveSubCategory(slug);
-    if (!bySub.has(sub)) bySub.set(sub, []);
-    bySub.get(sub).push(slug);
-  }
-  const subOrder = Array.from(bySub.keys()).sort((a, b) => {
-    const oa = a ? (SUBCATEGORY_OFFSET[a] ?? 999) : -1;
-    const ob = b ? (SUBCATEGORY_OFFSET[b] ?? 999) : -1;
-    return oa - ob;
-  });
-
   const lines = [`  // ${category}`];
-  for (const sub of subOrder) {
-    const subSlugs = bySub.get(sub) || [];
-    subSlugs.sort();
-    if (sub) lines.push(`  //   ${sub}`);
-    const subBase = baseOrder + (sub ? (SUBCATEGORY_OFFSET[sub] ?? 0) : 0);
-    subSlugs.forEach((slug, idx) => {
-      lines.push(fmtEntry(slug, category, sub, subBase + idx));
-    });
-  }
+  slugs.forEach((slug, idx) => {
+    const order = (base ?? 0) + idx;
+    lines.push(`  ${slug}: { category: '${category}', order: ${order} },`);
+  });
   return lines.join('\n');
 }
 

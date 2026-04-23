@@ -7,7 +7,6 @@ export interface SkillMetadata {
   name: string;
   description: string;
   category: string;
-  subCategory?: string;
   order: number;
 }
 
@@ -22,12 +21,14 @@ const SKILLS_DIR = path.join(process.cwd(), 'skills');
 // exist on disk but are not in this map stay on disk but are not surfaced to
 // users -- re-expose by adding an entry.
 //
-// Seven categories, with the Business Case & Value category split internally
-// into two sub-sections rendered as sub-headers inside a single group in the
-// picker. Other categories have no sub-sections.
-type SkillMapEntry = { category: string; subCategory?: string; order: number };
+// Eight flat categories rendered in the order defined by their order ranges.
+// "Strategic and Financial Decision Support" and "Value Creation and
+// Performance" are standalone categories (formerly two halves of a single
+// Business Case & Value group).
+const STRATEGIC_DECISION = 'Strategic and Financial Decision Support';
+const VALUE_PERFORMANCE = 'Value Creation and Performance';
 
-const CATEGORY_MAP: Record<string, SkillMapEntry> = {
+const CATEGORY_MAP: Record<string, { category: string; order: number }> = {
   // 1. Strategy -- corporate/sector/digital/sustainability/policy strategy playbooks.
   biotech_life_sciences_cluster_strategy_and_feasibility: { category: 'Strategy', order: 100 },
   corporate_strategy: { category: 'Strategy', order: 101 },
@@ -67,48 +68,48 @@ const CATEGORY_MAP: Record<string, SkillMapEntry> = {
   target_operating_model_design_and_activation_blueprint: { category: 'Operating Model & Governance', order: 309 },
   workforce_people_strategy: { category: 'Operating Model & Governance', order: 310 },
 
-  // 4. Business Case & Value -- split into two sub-sections.
-  //    A. Strategic and Financial Decision Support
-  business_case_development: { category: 'Business Case & Value', subCategory: 'A. Strategic and Financial Decision Support', order: 400 },
-  business_case_narrative: { category: 'Business Case & Value', subCategory: 'A. Strategic and Financial Decision Support', order: 401 },
-  financial_case_scenario_and_sensitivity_framing: { category: 'Business Case & Value', subCategory: 'A. Strategic and Financial Decision Support', order: 402 },
-  options_evaluation_and_recommendation: { category: 'Business Case & Value', subCategory: 'A. Strategic and Financial Decision Support', order: 403 },
-  //    B. Value Creation and Performance
-  cost_optimization_efficiency: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 450 },
-  cost_transformation_diagnostic_and_value_capture_plan: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 451 },
-  procurement_supply_chain_strategy: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 452 },
-  risk_strategy_enterprise_risk: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 453 },
-  value_creation_initiative_portfolio_design: { category: 'Business Case & Value', subCategory: 'B. Value Creation and Performance', order: 454 },
+  // 4. Strategic and Financial Decision Support -- business case, feasibility, options.
+  business_case_development: { category: STRATEGIC_DECISION, order: 400 },
+  business_case_narrative: { category: STRATEGIC_DECISION, order: 401 },
+  financial_case_scenario_and_sensitivity_framing: { category: STRATEGIC_DECISION, order: 402 },
+  options_evaluation_and_recommendation: { category: STRATEGIC_DECISION, order: 403 },
 
-  // 5. Transformation & Execution -- mobilization, PMO, change, benefits, readouts.
-  benefits_tracking_and_realization: { category: 'Transformation & Execution', order: 500 },
-  board_final_readout_pack: { category: 'Transformation & Execution', order: 501 },
-  change_management_and_adoption: { category: 'Transformation & Execution', order: 502 },
-  change_management_and_communication_plan: { category: 'Transformation & Execution', order: 503 },
-  governance_cadence_decision_forums: { category: 'Transformation & Execution', order: 504 },
-  implementation_activation_pmo: { category: 'Transformation & Execution', order: 505 },
-  kick_off_mobilization_pack: { category: 'Transformation & Execution', order: 506 },
-  kick_off_workplan_and_data_request_pack: { category: 'Transformation & Execution', order: 507 },
-  transformation_strategy: { category: 'Transformation & Execution', order: 508 },
-  weekly_steerco_pmo_status_deck: { category: 'Transformation & Execution', order: 509 },
+  // 5. Value Creation and Performance -- cost, value capture, procurement, risk.
+  cost_optimization_efficiency: { category: VALUE_PERFORMANCE, order: 500 },
+  cost_transformation_diagnostic_and_value_capture_plan: { category: VALUE_PERFORMANCE, order: 501 },
+  procurement_supply_chain_strategy: { category: VALUE_PERFORMANCE, order: 502 },
+  risk_strategy_enterprise_risk: { category: VALUE_PERFORMANCE, order: 503 },
+  value_creation_initiative_portfolio_design: { category: VALUE_PERFORMANCE, order: 504 },
 
-  // 6. Stakeholder & Workshop -- stakeholder, investor, consultation, workshop.
-  investor_partner_engagement: { category: 'Stakeholder & Workshop', order: 600 },
-  policy_public_consultation_model: { category: 'Stakeholder & Workshop', order: 601 },
-  stakeholder_communication_planning: { category: 'Stakeholder & Workshop', order: 602 },
-  stakeholder_engagement_plan: { category: 'Stakeholder & Workshop', order: 603 },
-  teaming_and_client_counterpart_model: { category: 'Stakeholder & Workshop', order: 604 },
-  workshop_design_and_facilitation: { category: 'Stakeholder & Workshop', order: 605 },
+  // 6. Transformation & Execution -- mobilization, PMO, change, benefits, readouts.
+  benefits_tracking_and_realization: { category: 'Transformation & Execution', order: 600 },
+  board_final_readout_pack: { category: 'Transformation & Execution', order: 601 },
+  change_management_and_adoption: { category: 'Transformation & Execution', order: 602 },
+  change_management_and_communication_plan: { category: 'Transformation & Execution', order: 603 },
+  governance_cadence_decision_forums: { category: 'Transformation & Execution', order: 604 },
+  implementation_activation_pmo: { category: 'Transformation & Execution', order: 605 },
+  kick_off_mobilization_pack: { category: 'Transformation & Execution', order: 606 },
+  kick_off_workplan_and_data_request_pack: { category: 'Transformation & Execution', order: 607 },
+  transformation_strategy: { category: 'Transformation & Execution', order: 608 },
+  weekly_steerco_pmo_status_deck: { category: 'Transformation & Execution', order: 609 },
 
-  // 7. Proposal and Executive Communication -- proposals, diagnostic, exec storyline.
-  baseline_as_is_diagnostic: { category: 'Proposal and Executive Communication', order: 700 },
-  benchmarking_peer_comparison_gap_analysis: { category: 'Proposal and Executive Communication', order: 701 },
-  executive_communication_top_down_storyline: { category: 'Proposal and Executive Communication', order: 702 },
-  executive_summary_and_synthesis: { category: 'Proposal and Executive Communication', order: 703 },
-  proposal_approach_and_workplan: { category: 'Proposal and Executive Communication', order: 704 },
-  proposal_development: { category: 'Proposal and Executive Communication', order: 705 },
-  team_structure_and_qa_governance: { category: 'Proposal and Executive Communication', order: 706 },
-  why_strategy_and: { category: 'Proposal and Executive Communication', order: 707 },
+  // 7. Stakeholder & Workshop -- stakeholder, investor, consultation, workshop.
+  investor_partner_engagement: { category: 'Stakeholder & Workshop', order: 700 },
+  policy_public_consultation_model: { category: 'Stakeholder & Workshop', order: 701 },
+  stakeholder_communication_planning: { category: 'Stakeholder & Workshop', order: 702 },
+  stakeholder_engagement_plan: { category: 'Stakeholder & Workshop', order: 703 },
+  teaming_and_client_counterpart_model: { category: 'Stakeholder & Workshop', order: 704 },
+  workshop_design_and_facilitation: { category: 'Stakeholder & Workshop', order: 705 },
+
+  // 8. Proposal and Executive Communication -- proposals, diagnostic, exec storyline.
+  baseline_as_is_diagnostic: { category: 'Proposal and Executive Communication', order: 800 },
+  benchmarking_peer_comparison_gap_analysis: { category: 'Proposal and Executive Communication', order: 801 },
+  executive_communication_top_down_storyline: { category: 'Proposal and Executive Communication', order: 802 },
+  executive_summary_and_synthesis: { category: 'Proposal and Executive Communication', order: 803 },
+  proposal_approach_and_workplan: { category: 'Proposal and Executive Communication', order: 804 },
+  proposal_development: { category: 'Proposal and Executive Communication', order: 805 },
+  team_structure_and_qa_governance: { category: 'Proposal and Executive Communication', order: 806 },
+  why_strategy_and: { category: 'Proposal and Executive Communication', order: 807 },
 };
 
 const skillCache = new Map<string, SkillRecord>();
@@ -169,7 +170,7 @@ function buildRecord(filename: string): SkillRecord | null {
   const name = extractTitle(body, slugToTitle(id));
   const description = extractDescription(body);
 
-  const record: SkillRecord = {
+  return {
     id,
     name,
     description,
@@ -177,8 +178,6 @@ function buildRecord(filename: string): SkillRecord | null {
     order: meta.order,
     body,
   };
-  if (meta.subCategory) record.subCategory = meta.subCategory;
-  return record;
 }
 
 function ensureLoaded(): void {

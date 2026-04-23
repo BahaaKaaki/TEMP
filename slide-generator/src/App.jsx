@@ -100,14 +100,25 @@ function EditorContent() {
  *   4. If `allowed === false` -> render <AccessDenied/> with a sign-out CTA.
  *   5. Otherwise -> render the editor.
  *
- * If the bootstrap call itself fails (network error, 401, etc.) we fall back
- * to showing the editor rather than locking users out of the app for a
- * transient hiccup -- any subsequent /api/* call will hit the same gate and
- * surface the real error there.
+ * Handling 401 on /api/whoami: this happens when MSAL has a cached account
+ * locally but the refresh token / Microsoft session has expired, so silent
+ * token acquisition returns no id_token. We force a fresh sign-in via
+ * `loginRedirect` -- Microsoft will SSO the user back in if their browser
+ * session is still valid, or prompt for password/MFA if it isn't. A session
+ * flag (`AUTH_RETRY_KEY`) guards against infinite redirect loops: if we
+ * already retried in the last 60s and are *still* 401, we stop and render
+ * the editor so the user isn't trapped by a backend misconfig.
+ *
+ * Any other non-ok response (500s, network errors) falls back to rendering
+ * the editor so a transient hiccup doesn't lock users out; downstream
+ * /api/* calls will surface the real error.
  */
+const AUTH_RETRY_KEY = 'edwinAuthRetryAt';
+const LOGIN_SCOPES = ['openid', 'profile', 'email'];
+
 function ProtectedRoute({ children }) {
   const isAuthenticated = useIsAuthenticated();
-  const { inProgress } = useMsal();
+  const { instance, inProgress } = useMsal();
   const navigate = useNavigate();
   const [bootstrap, setBootstrap] = useState({ status: 'pending', email: null });
 
@@ -126,11 +137,35 @@ function ProtectedRoute({ children }) {
       try {
         const res = await authFetch('/api/whoami');
         if (cancelled) return;
+
+        if (res.status === 401) {
+          const now = Date.now();
+          const lastRetry = parseInt(sessionStorage.getItem(AUTH_RETRY_KEY) || '0', 10);
+          if (now - lastRetry < 60_000) {
+            console.warn('[ProtectedRoute] /api/whoami still 401 after recent re-auth -- stopping redirect loop');
+            sessionStorage.removeItem(AUTH_RETRY_KEY);
+            setBootstrap({ status: 'allowed', email: null });
+            return;
+          }
+          console.warn('[ProtectedRoute] /api/whoami returned 401 -- triggering loginRedirect to refresh tokens');
+          sessionStorage.setItem(AUTH_RETRY_KEY, String(now));
+          try {
+            await instance.loginRedirect({ scopes: LOGIN_SCOPES });
+          } catch (err) {
+            console.error('[ProtectedRoute] loginRedirect failed:', err);
+            sessionStorage.removeItem(AUTH_RETRY_KEY);
+            setBootstrap({ status: 'allowed', email: null });
+          }
+          return;
+        }
+
         if (!res.ok) {
           console.warn('[ProtectedRoute] /api/whoami returned %d -- allowing through', res.status);
           setBootstrap({ status: 'allowed', email: null });
           return;
         }
+
+        sessionStorage.removeItem(AUTH_RETRY_KEY);
         const data = await res.json();
         if (cancelled) return;
         setBootstrap({
@@ -143,7 +178,7 @@ function ProtectedRoute({ children }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [isLoading, isAuthenticated]);
+  }, [isLoading, isAuthenticated, instance]);
 
   if (isLoading) return <AuthLoadingScreen />;
   if (!isAuthenticated) return null;

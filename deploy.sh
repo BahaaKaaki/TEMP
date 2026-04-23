@@ -58,6 +58,17 @@ if [ "$SKIP_BUILD" = false ]; then
   # (process.cwd()/skills in skills.service.ts), so they must ship with the
   # deployment bundle. Without this copy, the catalogue returns 0 skills.
   [ -d "$ROOT/backend/skills" ] && cp -r "$ROOT/backend/skills" "$DEPLOY_TEMP/skills" || true
+  # Confidential allowlist -- gitignored, generated locally by
+  # backend/scripts/build-allowlist.py. Fail loudly if missing to prevent a
+  # deploy that silently opens the app back up.
+  if [ -f "$ROOT/backend/config/allowlist.txt" ]; then
+    mkdir -p "$DEPLOY_TEMP/config"
+    cp "$ROOT/backend/config/allowlist.txt" "$DEPLOY_TEMP/config/allowlist.txt"
+    echo "Included allowlist.txt ($(wc -l <"$ROOT/backend/config/allowlist.txt" | tr -d ' ') lines)"
+  else
+    echo "WARNING: backend/config/allowlist.txt not found. The deployed app will fall back to log-only mode."
+    echo "         Generate it with: python3 backend/scripts/build-allowlist.py --input <path-to-xlsx>"
+  fi
   cp "$ROOT/backend/package.json" "$DEPLOY_TEMP/package.json"
   cp "$ROOT/backend/package-lock.json" "$DEPLOY_TEMP/package-lock.json" 2>/dev/null || true
 

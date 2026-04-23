@@ -2,6 +2,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { getCredentials, buildProviderHeaders } from './models.js';
 import { callWithModelFallback, buildRequestBody, parseAPIResponseContent } from './apiClient.js';
 import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
+import { authFetch } from '../authFetch.js';
 
 // Transform element content into a widget format using GPT
 // This takes the existing content of an element and transforms it into a specified widget type
@@ -41,7 +42,7 @@ ${widgetTemplate}
 Transform the original content into this widget format. Return only the filled HTML.`;
 
   try {
-    const response = await fetch(creds.apiEndpoint, {
+    const response = await authFetch(creds.apiEndpoint, {
       method: 'POST',
       headers: buildProviderHeaders(creds),
       body: JSON.stringify(buildRequestBody(

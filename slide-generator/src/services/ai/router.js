@@ -4,6 +4,7 @@ import { audit } from '../../utils/auditLog';
 import { selectBestTemplate, randomizeFamilyVariant, estimateItemCount } from '../templateEmbeddings';
 import { parseModelRef, findProvider, getCredentials } from './models.js';
 import { callWithModelFallback, callRouterWithImages, attachSkillIdToBody } from './apiClient.js';
+import { authFetch } from '../authFetch.js';
 
 // ============================================
 // RULE-BASED ROUTER (No API call needed)
@@ -2082,7 +2083,7 @@ USER REQUEST: "${routerPrompt}"`;
           settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;
       }
 
-      let resp = await fetch(responsesEndpoint, {
+      let resp = await authFetch(responsesEndpoint, {
         method: 'POST', headers: responsesHeaders, body: JSON.stringify(responsesBody),
       });
 
@@ -2094,7 +2095,7 @@ USER REQUEST: "${routerPrompt}"`;
         if (isFormatError && responsesBody.text) {
           console.warn('[Router Search] Structured output rejected by proxy, retrying without text.format:', errMsg);
           delete responsesBody.text;
-          resp = await fetch(responsesEndpoint, {
+          resp = await authFetch(responsesEndpoint, {
             method: 'POST', headers: responsesHeaders, body: JSON.stringify(responsesBody),
           });
         }
@@ -2162,7 +2163,7 @@ USER REQUEST: "${routerPrompt}"`;
             searchHeaders[settings.searchAuthHeader === 'bearer' ? 'Authorization' : 'api-key'] =
               settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;
           }
-          const searchResp = await fetch(settings.searchEndpoint, {
+          const searchResp = await authFetch(settings.searchEndpoint, {
             method: 'POST', headers: searchHeaders, body: JSON.stringify(searchBody),
           });
           if (searchResp.ok) {

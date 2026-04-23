@@ -112,6 +112,10 @@ The frontend never touches the PwC API directly. All AI calls go through the bac
 | `BASIC_AUTH_PASS` | Yes | Login password |
 | `PORT` | No | Server port (default: 3001) |
 | `NODE_ENV` | No | Environment (default: development) |
+| `AZURE_CLIENT_ID` | No | Entra ID app registration client id. Required only when `ALLOWLIST_MODE` is `log` or `enforce` so the backend can verify ID tokens from MSAL. |
+| `AZURE_TENANT_ID` | No | Entra ID tenant id (or `common` / `organizations`). Required when `ALLOWLIST_MODE` is `log` or `enforce`. |
+| `ALLOWLIST_MODE` | No | `off` (default), `log` (verify JWT + log violations, never block), or `enforce` (verify JWT + 403 unlisted users). See "Staff Allowlist" below. |
+| `ALLOWLIST_PATH` | No | Path to the newline-delimited allowlist file, relative to the backend cwd. Defaults to `config/allowlist.txt`. |
 
 ### Frontend
 
@@ -125,6 +129,32 @@ No environment variables needed. The frontend talks to the backend proxy.
 | `POST /api/ai/responses` | PwC `/v1/responses` | Search / Responses API (same `_skillId` injection) |
 | `GET /api/ai/models` | PwC `/models` | List available models |
 | `GET /api/skills` | (local) | Consulting-skill catalogue metadata -- id, name, description, category, order (bodies stay server-side) |
+| `GET /api/whoami` | (local) | Returns the caller's identity + allowlist verdict. Bypasses `allowlistMiddleware` so the frontend can render a branded "Access Denied" screen instead of a blank 403. |
+
+## Staff Allowlist (off by default)
+
+The backend ships with an optional staff-allowlist gate that verifies Entra ID ID tokens issued by the existing frontend MSAL flow, then checks the caller's email against a newline-delimited list on disk. It is shipped **disabled** (`ALLOWLIST_MODE=off`) and is activated entirely via App Service configuration -- no code change is needed to flip it on.
+
+### Modes
+
+| Mode | Behavior |
+|---|---|
+| `off` | No JWT verification, no list check. `/api/*` is open (back to the behavior from before this feature existed). |
+| `log` | Every `/api/*` call must carry a valid Entra ID Bearer token. Unlisted users are logged (`[allowlist] LOG-ONLY: <email>`) but are **never blocked**. Use this to preview who would be impacted before enforcing. |
+| `enforce` | Same as `log`, but unlisted users receive `403 { error: 'access_denied', reason: 'not_on_allowlist' }`. |
+
+### How it fits together
+
+1. The frontend already signs users in via MSAL (`@azure/msal-react`). `slide-generator/src/services/authFetch.js` is a thin `fetch` wrapper that attaches the MSAL ID token as a Bearer header on same-origin `/api/*` calls only -- never on outbound AI provider calls.
+2. `backend/src/common/middleware/entra-allowlist.middleware.ts` exposes two middlewares:
+   - `entraAuthMiddleware` verifies the JWT against the tenant's JWKS (`https://login.microsoftonline.com/<tenant>/discovery/v2.0/keys`) and attaches `req.user`.
+   - `allowlistMiddleware` compares `req.user.email` / `preferred_username` / `upn` against the in-memory set loaded from `ALLOWLIST_PATH`. Both are wired in `backend/src/app.ts` in front of every `/api/*` route except `/api/health` and `/api/whoami`.
+3. `GET /api/whoami` runs the JWT check but **not** the list check, so the frontend `ProtectedRoute` can bootstrap and render `AccessDenied` instead of letting the user hit the editor and see mystery 403s mid-chat.
+4. The list itself is produced by `backend/scripts/build-allowlist.py` from the confidential `Active staff list.xlsx`. The xlsx and the generated `backend/config/allowlist.txt` are both gitignored; `deploy.sh` bundles `backend/config/` into the deployment zip so the list ships with the app without going through source control.
+
+### Activation runbook
+
+Step-by-step Azure CLI commands for flipping the feature on (merge the PR -> build the list -> set app settings -> deploy -> observe in `log` -> flip to `enforce` -> rollback plan) live in [`docs/runbooks/allowlist-path-b-runbook.md`](docs/runbooks/allowlist-path-b-runbook.md). The runbook is the single source of truth for operating this feature in production -- update it, not the README, when the procedure changes.
 
 ## Model Configuration
 

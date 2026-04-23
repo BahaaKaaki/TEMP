@@ -11,6 +11,7 @@
  */
 
 import { SLIDE_TEMPLATES, getTemplateFlex } from '../utils/slideTemplates';
+import { authFetch } from './authFetch.js';
 
 // =============================================================================
 // TEMPLATE FAMILIES - Groups of similar templates
@@ -858,7 +859,7 @@ export function suggestTemplatesForContent(html, currentTemplateId = null, limit
  * Generate embedding for text using OpenAI API
  */
 async function generateEmbedding(text, apiKey, apiEndpoint = 'https://api.openai.com/v1/embeddings') {
-  const response = await fetch(apiEndpoint, {
+  const response = await authFetch(apiEndpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -907,7 +908,7 @@ function cosineSimilarity(a, b) {
  * Generate embeddings for multiple texts in a batch (more efficient)
  */
 async function generateEmbeddingsBatch(texts, apiKey, apiEndpoint = 'https://api.openai.com/v1/embeddings') {
-  const response = await fetch(apiEndpoint, {
+  const response = await authFetch(apiEndpoint, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -1386,7 +1387,7 @@ Best match (1-${candidates.length}):`;
       };
     }
 
-    const response = await fetch(apiEndpoint, {
+    const response = await authFetch(apiEndpoint, {
       method: 'POST',
       headers: authHeaders,
       body: JSON.stringify(requestBody),

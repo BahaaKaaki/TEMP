@@ -8,6 +8,12 @@ import { env } from './config/env';
 import { httpLogStream, logger } from './config/logger';
 import { errorHandler, notFoundHandler } from './common/middleware/error.middleware';
 import { standardLimiter } from './common/middleware/rate-limit.middleware';
+import {
+  entraAuthMiddleware,
+  allowlistMiddleware,
+  getAllowlistStatus,
+  isAllowed,
+} from './common/middleware/entra-allowlist.middleware';
 
 // Route imports
 import authRoutes from './modules/auth/auth.routes';
@@ -54,7 +60,8 @@ app.use('/api/', standardLimiter);
 // Build ID — set at deploy time, used by frontend to detect new deployments
 const BUILD_ID = process.env.BUILD_ID || new Date().toISOString();
 
-// Health check (no auth required)
+// Health check (no auth required -- probed by Azure App Service and the
+// frontend auto-reload poller, so must always respond).
 app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
@@ -64,6 +71,41 @@ app.get('/health', (req, res) => {
   });
 });
 
+// /api/whoami -- authenticated diagnostic used by the frontend bootstrap to
+// decide whether to render the app or the "access denied" screen. Runs JWT
+// verification but INTENTIONALLY skips the allowlist gate so we can return
+// 200 with `allowed: false` instead of a raw 403 (the UI then shows a proper
+// deny page instead of a broken "Signing in..." loop).
+app.get('/api/whoami', entraAuthMiddleware, (req, res) => {
+  const status = getAllowlistStatus();
+  const email = req.user?.email ?? null;
+
+  // mode=off    -> allow (no JWT required, treat everyone as allowed)
+  // mode=log    -> allow (but we still signal onAllowlist so UI can warn)
+  // mode=enforce-> authoritative: only if email is on the list
+  const onAllowlist = isAllowed(email);
+  const allowed =
+    status.mode === 'off' ? true
+    : status.mode === 'log' ? true
+    : onAllowlist;
+
+  res.json({
+    mode: status.mode,
+    email,
+    oid: req.user?.oid ?? null,
+    name: req.user?.name ?? null,
+    onAllowlist,
+    allowed,
+    allowlistLoaded: status.loaded,
+    allowlistSize: status.size,
+  });
+});
+
+// All /api/* traffic below this line is gated by Entra JWT + staff allowlist.
+// When ALLOWLIST_MODE=off (the default), both middlewares short-circuit and
+// behaviour is identical to today.
+app.use('/api', entraAuthMiddleware, allowlistMiddleware);
+
 // API routes
 app.use('/api/templates', pptxMasterTemplatesRouter);
 app.use('/api/v1/auth', authRoutes);
@@ -71,7 +113,7 @@ app.use('/api/v1/organizations', organizationsRoutes);
 app.use('/api/v1/themes', themesRoutes);
 app.use('/api/v1/templates', templatesRoutes);
 
-// AI proxy (no auth required -- frontend calls this to reach PwC Shared Services)
+// AI proxy (gated by the middleware chain above when enforcement is on).
 app.use('/api/ai', aiProxyRoutes);
 
 // Consulting skills registry (metadata only; bodies stay server-side and are

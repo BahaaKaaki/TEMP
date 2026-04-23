@@ -4,6 +4,7 @@ import { getVibePromptContext, isBaseVibe } from '../../utils/vibes';
 import { parseModelRef, findProvider, getCredentials, buildProviderHeaders, buildGeminiEndpoint, buildGeminiHeaders, isGemini3Model, isGemini25Model, extractGeminiResponseText } from './models.js';
 import { callWithModelFallback, getFallbackModels } from './apiClient.js';
 import { TITLE_HEADER_RULES } from './constants.js';
+import { authFetch } from '../authFetch.js';
 
 // ============================================
 // IMAGE GENERATION
@@ -375,7 +376,7 @@ export async function _callImageEndpoint(endpoint, headers, body, extractImage) 
         await new Promise(r => setTimeout(r, delay));
       }
 
-      const response = await fetch(endpoint, {
+      const response = await authFetch(endpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(body),

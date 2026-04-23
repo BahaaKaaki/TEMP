@@ -8,6 +8,8 @@
  * The shape returned here matches `state.availableSkills` in SlideContext.
  */
 
+import { authFetch } from './authFetch.js';
+
 /**
  * @typedef {Object} SkillMetadata
  * @property {string} id
@@ -24,7 +26,7 @@
  */
 export async function loadSkills() {
   try {
-    const res = await fetch('/api/skills', {
+    const res = await authFetch('/api/skills', {
       method: 'GET',
       headers: { Accept: 'application/json' },
     });

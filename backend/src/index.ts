@@ -3,6 +3,7 @@ import { env } from './config/env';
 import { logger } from './config/logger';
 import { checkDatabaseHealth, closeDatabasePool } from './config/database';
 import { initRedis, closeRedis } from './config/redis';
+import { initAllowlist } from './common/middleware/entra-allowlist.middleware';
 import fs from 'fs';
 import path from 'path';
 
@@ -32,6 +33,11 @@ async function main() {
   try {
     // Clean up any oversized uploaded templates
     cleanupUploadedTemplate();
+
+    // Load the staff allowlist into memory. No-op when ALLOWLIST_MODE=off;
+    // fails loudly (process exits) if the mode requires a file that is
+    // missing, so we never silently default-allow in production.
+    initAllowlist();
 
     // Initialize Redis (optional)
     await initRedis();

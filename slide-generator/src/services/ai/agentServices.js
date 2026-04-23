@@ -4,6 +4,7 @@ import { getCredentials, buildProviderHeaders, parseModelRef, findProvider } fro
 import { callWithModelFallback, buildRequestBody, parseAPIResponseContent, _acquireApiSlot, _releaseApiSlot, _apiState } from './apiClient.js';
 import { LEAN_ROUTER_PROMPT } from './constants.js';
 import { safeJSONParse } from './router.js';
+import { authFetch } from '../authFetch.js';
 
 // Generate PptxGenJS renderer code for a custom template
 export async function generatePptxRendererCode(templateHtml, templateTitle, settings) {
@@ -331,7 +332,7 @@ export async function agentChat(prompt, settings, options = {}) {
         try {
           let response;
           try {
-            response = await fetch(creds.apiEndpoint, {
+            response = await authFetch(creds.apiEndpoint, {
               method: 'POST',
               headers,
               body: JSON.stringify(requestBody),

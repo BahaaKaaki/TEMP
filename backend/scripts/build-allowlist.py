@@ -27,6 +27,15 @@ import openpyxl
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
+# Manual extras -- emails approved for access but not present in the HR xlsx
+# (e.g., onboarding lag, contractors, cross-LoS guests). Kept here instead of
+# mutating the generated allowlist so regenerating from a fresh xlsx never
+# silently drops these people. Review and prune this list whenever the HR
+# xlsx is refreshed.
+MANUAL_EXTRAS: frozenset[str] = frozenset({
+    "tarek.sultanem@pwc.com",
+})
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Build Edwin allowlist from XLSX")
@@ -122,6 +131,9 @@ def main() -> int:
 
         seen_emails.add(email)
 
+    manual_new = sorted(MANUAL_EXTRAS - seen_emails)
+    seen_emails |= MANUAL_EXTRAS
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
 
     sorted_emails = sorted(seen_emails)
@@ -133,6 +145,7 @@ def main() -> int:
         f"# generated_at: {timestamp}",
         f"# source: {args.input.name}",
         f"# rows: {len(sorted_emails)}",
+        f"# manual_extras: {len(MANUAL_EXTRAS)} declared / {len(manual_new)} new vs xlsx",
         f"# sha256_12: {digest}",
         f"# include_statuses: {args.include_statuses or '(all)'}",
         "# NOTE: This file is confidential. Do not commit. See .gitignore.",
@@ -149,6 +162,8 @@ def main() -> int:
     print(f"  skipped - no email column value: {skipped_no_email}")
     print(f"  skipped - malformed email:       {skipped_bad_email}")
     print(f"  skipped - status filter:         {skipped_status}")
+    print(f"  manual extras declared:          {len(MANUAL_EXTRAS)}")
+    print(f"  manual extras new vs xlsx:       {len(manual_new)}")
     print()
     print("Status distribution in the source (counts only):")
     for status, count in sorted(status_counter.items(), key=lambda x: -x[1]):

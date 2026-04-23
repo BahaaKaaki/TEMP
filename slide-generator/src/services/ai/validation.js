@@ -1,6 +1,7 @@
 import { debugLog, LogLevel } from '../../utils/debugLog';
 import { getCredentials, isGeminiModel, isGemini3Model, isGemini25Model, extractGeminiResponseText, buildProviderHeaders, buildGeminiEndpoint, buildGeminiHeaders } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
+import { authFetch } from '../authFetch.js';
 
 // AI-based HTML quality validation - checks layout similarity to prompt
 export async function validateHtmlWithAI(html, originalPrompt, settings) {
@@ -314,7 +315,7 @@ Respond in JSON:
         max_tokens: 1000,
         temperature: 0.3,
       };
-      const response = await fetch(creds.apiEndpoint, {
+      const response = await authFetch(creds.apiEndpoint, {
         method: 'POST',
         headers,
         body: JSON.stringify(requestBody),

@@ -10,8 +10,10 @@ import MainContent from './components/MainContent';
 import AIChatbot from './components/AIChatbot';
 import LoginPage from './components/LoginPage';
 import AuthLoadingScreen from './components/AuthLoadingScreen';
+import AccessDenied from './components/AccessDenied';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { loadSkills } from './services/skillsService';
+import { authFetch } from './services/authFetch';
 import PptxLab from './components/PptxLab';
 import 'frontend-comps/styles.css';
 import './styles/app.css';
@@ -83,10 +85,31 @@ function EditorContent() {
   );
 }
 
+/**
+ * Gates the editor on both MSAL auth state and the backend staff allowlist.
+ *
+ * The bootstrap flow:
+ *   1. Wait for MSAL to finish any redirect / silent handshake.
+ *   2. If unauthenticated -> navigate to /login (branded sign-in page).
+ *   3. If authenticated -> call /api/whoami to ask the backend whether this
+ *      identity is on the approved staff list. The backend determines the
+ *      answer from ALLOWLIST_MODE:
+ *        - off     : always `allowed: true`, no JWT required.
+ *        - log     : always `allowed: true` (log-only observation window).
+ *        - enforce : `allowed` reflects whether the email is on the list.
+ *   4. If `allowed === false` -> render <AccessDenied/> with a sign-out CTA.
+ *   5. Otherwise -> render the editor.
+ *
+ * If the bootstrap call itself fails (network error, 401, etc.) we fall back
+ * to showing the editor rather than locking users out of the app for a
+ * transient hiccup -- any subsequent /api/* call will hit the same gate and
+ * surface the real error there.
+ */
 function ProtectedRoute({ children }) {
   const isAuthenticated = useIsAuthenticated();
   const { inProgress } = useMsal();
   const navigate = useNavigate();
+  const [bootstrap, setBootstrap] = useState({ status: 'pending', email: null });
 
   const isLoading = inProgress !== InteractionStatus.None;
 
@@ -96,8 +119,38 @@ function ProtectedRoute({ children }) {
     }
   }, [isLoading, isAuthenticated, navigate]);
 
+  useEffect(() => {
+    if (isLoading || !isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await authFetch('/api/whoami');
+        if (cancelled) return;
+        if (!res.ok) {
+          console.warn('[ProtectedRoute] /api/whoami returned %d -- allowing through', res.status);
+          setBootstrap({ status: 'allowed', email: null });
+          return;
+        }
+        const data = await res.json();
+        if (cancelled) return;
+        setBootstrap({
+          status: data.allowed ? 'allowed' : 'denied',
+          email: data.email || null,
+        });
+      } catch (err) {
+        console.warn('[ProtectedRoute] /api/whoami failed:', err?.message || err);
+        if (!cancelled) setBootstrap({ status: 'allowed', email: null });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isLoading, isAuthenticated]);
+
   if (isLoading) return <AuthLoadingScreen />;
   if (!isAuthenticated) return null;
+  if (bootstrap.status === 'pending') return <AuthLoadingScreen />;
+  if (bootstrap.status === 'denied') {
+    return <AccessDenied email={bootstrap.email} />;
+  }
 
   return children;
 }

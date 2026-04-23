@@ -5,6 +5,7 @@ import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, FREESTYLE_
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage, downloadArrayBuffer } from '../services/pptxTemplateService';
 import { extractBranding } from '../services/brandingExtractor';
+import { authFetch } from '../services/authFetch.js';
 
 // ─── Utility helpers ────────────────────────────────────────────────────────
 function stripProviderPrefix(model) {
@@ -396,7 +397,7 @@ export default function SettingsModal({ onClose }) {
   const fetchModelsFromAPI = useCallback(async () => {
     setModelFetchStatus({ type: 'loading', message: 'Fetching models...' });
     try {
-      const res = await fetch('/api/ai/models');
+      const res = await authFetch('/api/ai/models');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       const modelIds = (data.data || data || [])

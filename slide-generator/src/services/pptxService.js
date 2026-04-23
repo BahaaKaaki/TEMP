@@ -23,6 +23,7 @@ import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
+import { authFetch } from './authFetch.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -307,7 +308,7 @@ async function callClaudeAPI(settings, credentials, systemPrompt, userPrompt) {
   const body = { model: mdl, max_tokens: settings.maxTokens || 8192, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] };
   const noTemp = /claude-opus-4-7|claude-sonnet-4-6/i.test(mdl);
   if (!noTemp && settings.temperature !== undefined) body.temperature = settings.temperature;
-  const response = await fetch(apiEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': credentials.apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify(body) });
+  const response = await authFetch(apiEndpoint, { method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': credentials.apiKey, 'anthropic-version': '2023-06-01' }, body: JSON.stringify(body) });
   if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error?.message || `Claude API error: ${response.status}`); }
   const data = await response.json();
   return data.content?.find(c => c.type === 'text')?.text || '';
@@ -355,7 +356,7 @@ export async function callAI(settings, credentials, systemPrompt, userPrompt) {
   else if (credentials.azurePrefix) headers['api-key'] = credentials.apiKey;
   else headers['Authorization'] = `Bearer ${credentials.apiKey}`;
 
-  const response = await fetch(credentials.apiEndpoint, { method: 'POST', headers, body: JSON.stringify(buildPptxRequestBody(credentials, settings, messages)) });
+  const response = await authFetch(credentials.apiEndpoint, { method: 'POST', headers, body: JSON.stringify(buildPptxRequestBody(credentials, settings, messages)) });
   if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error?.message || `API error: ${response.status}`); }
   const data = await response.json();
   return parsePptxResponseContent(data, credentials);

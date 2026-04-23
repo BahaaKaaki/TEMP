@@ -4,6 +4,7 @@
 
 import JSZip from 'jszip';
 import { extractBranding } from './brandingExtractor';
+import { authFetch } from './authFetch.js';
 
 /**
  * Store for the loaded template data.
@@ -27,7 +28,7 @@ export async function uploadTemplateToServer(arrayBuffer, fileName) {
   });
   const form = new FormData();
   form.append('template', blob, fileName || 'template.pptx');
-  const res = await fetch('/api/templates/pptx-master', { method: 'POST', body: form });
+  const res = await authFetch('/api/templates/pptx-master', { method: 'POST', body: form });
   if (!res.ok) {
     const text = await res.text();
     let msg = text;
@@ -47,7 +48,7 @@ export async function uploadTemplateToServer(arrayBuffer, fileName) {
  * @returns {Promise<{ data: ArrayBuffer, fileName: string } | null>}
  */
 export async function loadTemplateFromServer() {
-  const res = await fetch('/api/templates/pptx-master', { method: 'GET' });
+  const res = await authFetch('/api/templates/pptx-master', { method: 'GET' });
   if (res.status === 404) return null;
   if (!res.ok) {
     const text = await res.text();

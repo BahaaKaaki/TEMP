@@ -58,6 +58,10 @@ if [ "$SKIP_BUILD" = false ]; then
   # (process.cwd()/skills in skills.service.ts), so they must ship with the
   # deployment bundle. Without this copy, the catalogue returns 0 skills.
   [ -d "$ROOT/backend/skills" ] && cp -r "$ROOT/backend/skills" "$DEPLOY_TEMP/skills" || true
+  # Staff allowlist (Route B of allowlist-experiment). Gitignored and read
+  # from process.cwd()/config/allowlist.txt by entra-allowlist.middleware.ts.
+  # Only ships when it exists locally; never fails the deploy if it doesn't.
+  [ -d "$ROOT/backend/config" ] && cp -r "$ROOT/backend/config" "$DEPLOY_TEMP/config" || true
   cp "$ROOT/backend/package.json" "$DEPLOY_TEMP/package.json"
   cp "$ROOT/backend/package-lock.json" "$DEPLOY_TEMP/package-lock.json" 2>/dev/null || true
 

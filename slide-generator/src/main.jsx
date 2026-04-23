@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { PublicClientApplication, EventType } from '@azure/msal-browser'
 import { MsalProvider } from '@azure/msal-react'
 import { createMsalConfig, createLoginRequest, AuthProvider } from 'frontend-comps'
+import { setMsalInstance } from './services/authFetch'
 import App from './App.jsx'
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
@@ -34,6 +35,10 @@ async function boot() {
   if (account) {
     msalInstance.setActiveAccount(account);
   }
+
+  // Register the MSAL instance with the auth-aware fetch helper so every
+  // subsequent /api/* call can attach a fresh ID token transparently.
+  setMsalInstance(msalInstance, loginRequest);
 
   msalInstance.addEventCallback((event) => {
     if (event.eventType === EventType.LOGIN_SUCCESS && event.payload?.account) {

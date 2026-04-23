@@ -6,6 +6,9 @@ import {
   extractGeminiResponseText, parseModelRef, findProvider, getCredentials,
   buildProviderHeaders, buildGeminiEndpoint, buildGeminiHeaders,
 } from './models.js';
+// authFetch attaches an Entra ID token on same-origin /api/ calls and is a
+// passthrough for third-party provider URLs, so it's safe to swap in here.
+import { authFetch } from '../authFetch.js';
 
 // Shared mutable state for the last API request params (used by audit logging)
 export const _apiState = { lastRequestParams: null };
@@ -180,7 +183,7 @@ When the image shows a slide/presentation to recreate:
 
     attachSkillIdToBody(requestBody, settings, creds);
 
-    const response = await fetch(creds.apiEndpoint, {
+    const response = await authFetch(creds.apiEndpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
@@ -285,7 +288,7 @@ async function _callGeminiAPIInner(settings, systemPrompt, userPrompt, opts = {}
           await new Promise(r => setTimeout(r, delay));
         }
 
-        const response = await fetch(creds.apiEndpoint, {
+        const response = await authFetch(creds.apiEndpoint, {
           method: 'POST',
           headers,
           credentials: 'same-origin',

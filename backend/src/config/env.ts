@@ -49,6 +49,23 @@ const envSchema = z.object({
   PWC_API_KEY: z.string().default(''),
   PWC_API_BASE_URL: z.string().default('https://genai-sharedservice-emea.pwcinternal.com'),
 
+  // Entra ID JWT validation (Route B: backend-only allowlist)
+  // When ALLOWLIST_MODE is anything other than 'off', AZURE_CLIENT_ID and
+  // AZURE_TENANT_ID are required and every /api/* call (except /health and
+  // /api/whoami error paths) must carry a valid Authorization: Bearer <idToken>
+  // header issued by that tenant for that app.
+  AZURE_CLIENT_ID: z.string().default(''),
+  AZURE_TENANT_ID: z.string().default(''),
+
+  // Allowlist enforcement mode:
+  //   'off'     - middleware is a no-op (default). Same behaviour as today.
+  //   'log'     - JWT is required and verified; non-listed users are logged but allowed.
+  //   'enforce' - JWT is required and verified; non-listed users get 403.
+  ALLOWLIST_MODE: z.enum(['off', 'log', 'enforce']).default('off'),
+  // Path to the newline-separated lowercased-email allowlist file.
+  // Defaults to <repo>/backend/config/allowlist.txt (or deployed equivalent).
+  ALLOWLIST_PATH: z.string().default('config/allowlist.txt'),
+
   // Logging
   LOG_LEVEL: z.enum(['error', 'warn', 'info', 'debug']).default('info'),
 });

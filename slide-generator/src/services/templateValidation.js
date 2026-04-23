@@ -7,6 +7,7 @@
 import PptxGenJS from 'pptxgenjs';
 import { generatePptxRendererCode } from './aiService';
 import { createRendererFromCode, addFooter, COLORS, LAYOUT } from './pptxRenderers';
+import { authFetch } from './authFetch.js';
 
 export const VALIDATION_STATUS = {
   PENDING: 'pending',
@@ -148,7 +149,7 @@ Respond in JSON:
       content = extractGeminiResponseText(data.candidates?.[0]?.content?.parts);
     } else {
       // OpenAI API
-      const response = await fetch(apiEndpoint, {
+      const response = await authFetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -269,7 +270,7 @@ Respond in JSON:
     } else {
       // OpenAI Vision API
       const visionModel = settings.visionModel || 'gpt-4o';
-      const response = await fetch(apiEndpoint, {
+      const response = await authFetch(apiEndpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -114,31 +114,41 @@ function SkillsPicker({ skills, value, onChange, onClose, anchorRef, loading = f
         </div>
       ) : (
         <div className="skills-picker-body">
-          {grouped.map(({ category, skills: items }) => (
+          {grouped.map(({ category, subGroups }) => (
             <div key={category} className="skills-picker-group">
               <div className="skills-picker-group-label">{category}</div>
-              <ul className="skills-picker-list">
-                {items.map(skill => {
-                  const selected = skill.id === value;
-                  return (
-                    <li key={skill.id}>
-                      <button
-                        type="button"
-                        className={`skills-picker-item${selected ? ' skills-picker-item--selected' : ''}`}
-                        onClick={() => handleSelect(skill.id)}
-                      >
-                        <span className="skills-picker-item-body">
-                          <span className="skills-picker-item-name">{skill.name}</span>
-                          {skill.description && (
-                            <span className="skills-picker-item-desc">{skill.description}</span>
-                          )}
-                        </span>
-                        {selected && <Check />}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
+              {subGroups.map(({ subCategory, skills: items }) => (
+                <div
+                  key={subCategory || '__none__'}
+                  className={`skills-picker-subgroup${subCategory ? '' : ' skills-picker-subgroup--flat'}`}
+                >
+                  {subCategory && (
+                    <div className="skills-picker-subgroup-label">{subCategory}</div>
+                  )}
+                  <ul className="skills-picker-list">
+                    {items.map(skill => {
+                      const selected = skill.id === value;
+                      return (
+                        <li key={skill.id}>
+                          <button
+                            type="button"
+                            className={`skills-picker-item${selected ? ' skills-picker-item--selected' : ''}`}
+                            onClick={() => handleSelect(skill.id)}
+                          >
+                            <span className="skills-picker-item-body">
+                              <span className="skills-picker-item-name">{skill.name}</span>
+                              {skill.description && (
+                                <span className="skills-picker-item-desc">{skill.description}</span>
+                              )}
+                            </span>
+                            {selected && <Check />}
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
             </div>
           ))}
         </div>

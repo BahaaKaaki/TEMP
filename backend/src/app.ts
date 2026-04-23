@@ -10,6 +10,7 @@ import { errorHandler, notFoundHandler } from './common/middleware/error.middlew
 import { standardLimiter } from './common/middleware/rate-limit.middleware';
 import {
   allowlistMiddleware,
+  describeCurrentPrincipal,
   getAllowlistSummary,
   initAllowlist,
 } from './common/middleware/allowlist.middleware';
@@ -80,6 +81,13 @@ app.use(allowlistMiddleware);
 // Gated by the same middleware above, so only allowlisted users can see it.
 app.get('/internal/allowlist', (_req, res) => {
   res.json(getAllowlistSummary());
+});
+
+// Self-service diagnostic: lets an operator see which identifiers Easy Auth
+// is forwarding for the current session and whether any of them are in the
+// allowlist. All returned values are hashed; real UPNs are never exposed.
+app.get('/internal/whoami', (req, res) => {
+  res.json(describeCurrentPrincipal(req));
 });
 
 // API routes

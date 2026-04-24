@@ -283,10 +283,12 @@ CONTENT AND LAYOUT INTENT: ${contentPart || prompt}
 ${layoutPart !== contentPart && layoutPart !== prompt ? `LAYOUT DESCRIPTION: ${layoutPart}` : ''}`
       : `Create professional presentation slide(s) about: "${prompt}"`;
 
-    // Pass router's layout hint as a soft suggestion (not a rigid spec)
+    // Make router's layoutGuidance binding; also ban the repeated card/rail/stripe default.
     const routerLayoutGuidance = contextInfo?.layoutGuidance || null;
     const layoutHint = routerLayoutGuidance
-      ? `\nLAYOUT HINT (from narrative planner): "${routerLayoutGuidance}" — consider this, but choose whatever layout best serves the content. You are not bound to it.`
+      ? `\nREQUIRED LAYOUT STRUCTURE: "${routerLayoutGuidance}"
+- Preserve every named item, axis, phase, and number from the structure above.
+- Do NOT default to a row of accent-bordered cards, a left color rail, or a top color stripe — pick the visual that fits the reasoning.`
       : '';
 
     userPrompt = `${freestyleIntro}

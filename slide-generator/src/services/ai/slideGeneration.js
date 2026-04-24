@@ -306,15 +306,15 @@ ${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "thi
 ${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
 
 VISUAL QUALITY:
-- You MUST output a <style> block with scoped CSS for every custom class you use.
-- Never output a plain <ul> or <ol> — always wrap items in styled cards, accent-bordered blocks, or grid cells.
-- Numbers and KPIs must be visually prominent: large font (32-48px Georgia), accent color, with a small label.
-- Use CSS grid or flexbox for every layout — no unstyled stacked divs.
-- Every slide must look polished enough for a C-suite audience.
+- Output a <style> block with scoped CSS for every custom class.
+- No plain <ul>/<ol>; present lists as styled cards, rows, bands, or grid cells.
+- Make numbers/KPIs prominent with scale, Arial/var(--font-body), accent color, and concise labels.
+- Use grid/flex for structure; no unstyled stacked divs.
+- Deliver C-suite polish: clear hierarchy, alignment, breathing room, no overflow.
 
 CONTENT FIDELITY:
-- TOPIC PROMPT (e.g., "AI trends") → you generate the content. Be professional, specific, data-rich.
-- PRECISE CONTENT (specific bullets, data, phrasing) → you are a LAYOUT ENGINE. Arrange their content as-is. Do NOT reword.
+- TOPIC PROMPT (e.g., "AI trends") → generate credible strategic content without fake sources or unsupported exact metrics.
+- PRECISE CONTENT (specific bullets, data, phrasing) → act as a layout engine. Arrange as-is; do not reword.
 - If the user provides questions, they MUST remain as questions.
 - If the user provides specific data/numbers/names, reproduce them EXACTLY.
 - SOURCE/CITATION: Sources go ONLY in <footer>, never inside <div class="frame">.
@@ -683,7 +683,7 @@ export function ensureSlideStructure(html) {
     }
     innerContent = innerContent.replace(footerMatch[0], '');
   } else {
-    footerHtml = '<footer class="footer"><span></span><span></span></footer>';
+    footerHtml = '<footer class="footer"><span></span><span class="source"></span><span></span></footer>';
   }
 
   // Extract h1 for title (from anywhere in content, including inside frame)

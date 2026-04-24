@@ -476,7 +476,7 @@ export async function webSearch(query, settings, options = {}) {
       }
     }
 
-    const response = await fetch(settings.searchEndpoint, {
+    const response = await authFetch(settings.searchEndpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),
@@ -557,7 +557,7 @@ export async function researchWithSearch(fullPrompt, settings) {
       }
     }
 
-    const response = await fetch(settings.searchEndpoint, {
+    const response = await authFetch(settings.searchEndpoint, {
       method: 'POST',
       headers,
       body: JSON.stringify(requestBody),

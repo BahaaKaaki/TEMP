@@ -378,6 +378,10 @@ function loadState() {
           deepAnalysisModel: initialState.settings.deepAnalysisModel,
           pptxModel: initialState.settings.pptxModel,
           reportModel: initialState.settings.reportModel,
+          // Skill selection is one-shot: it clears after a successful
+          // generation and also on every app load, so a refresh never
+          // silently reuses a previously picked playbook.
+          selectedSkillId: null,
         },
       };
       console.log('[SlideContext] Loaded (models are code-managed):', {

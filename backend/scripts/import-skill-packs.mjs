@@ -50,7 +50,6 @@ const CATEGORY_BASE_ORDER = {
 };
 
 const SLUG_CATEGORY_OVERRIDES = {
-  cost_optimization_efficiency: 'Value Creation and Performance',
   cost_transformation_diagnostic_and_value_capture_plan: 'Value Creation and Performance',
   procurement_supply_chain_strategy: 'Value Creation and Performance',
   risk_strategy_enterprise_risk: 'Value Creation and Performance',

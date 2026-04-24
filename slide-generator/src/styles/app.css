@@ -12513,8 +12513,8 @@ body {
   position: absolute;
   top: calc(100% + 6px);
   left: 0;
-  min-width: 320px;
-  max-width: 380px;
+  min-width: 340px;
+  max-width: 420px;
   background: white;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -12532,7 +12532,7 @@ body {
   gap: 2px;
   padding: 4px 4px 8px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 6px;
+  margin-bottom: 8px;
 }
 
 .skills-picker-title {
@@ -12547,15 +12547,72 @@ body {
   line-height: 1.4;
 }
 
+.skills-picker-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  margin: 0 0 8px;
+  background: rgba(15, 23, 42, 0.03);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.skills-picker-search:focus-within {
+  border-color: var(--accent, #8e1e1e);
+  background: white;
+  box-shadow: 0 0 0 2px rgba(142, 30, 30, 0.08);
+}
+
+.skills-picker-search-icon {
+  flex-shrink: 0;
+  color: var(--text-secondary, #64748b);
+}
+
+.skills-picker-search-input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 12px;
+  color: var(--text-primary, #0f172a);
+  padding: 2px 0;
+}
+
+.skills-picker-search-input::placeholder {
+  color: var(--text-secondary, #94a3b8);
+}
+
+.skills-picker-search-clear {
+  flex-shrink: 0;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary, #64748b);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.skills-picker-search-clear:hover {
+  background: rgba(15, 23, 42, 0.06);
+  color: var(--text-primary, #0f172a);
+}
+
 .skills-picker-empty {
-  padding: 10px;
+  padding: 16px 10px;
   font-size: 11px;
   color: var(--text-secondary, #64748b);
   text-align: center;
 }
 
 .skills-picker-group {
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .skills-picker-group:last-child {
@@ -12563,23 +12620,71 @@ body {
 }
 
 .skills-picker-group-label {
-  font-size: 10px;
-  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 6px 6px;
+  border: none;
+  background: transparent;
   color: var(--accent, #8e1e1e);
+  font-size: 11px;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  padding: 4px 4px 4px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.1s ease;
+}
+
+.skills-picker-group-label:hover:not(:disabled) {
+  background: rgba(142, 30, 30, 0.05);
+}
+
+.skills-picker-group-label:disabled {
+  cursor: default;
+}
+
+.skills-picker-group-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.skills-picker-group-count {
+  flex-shrink: 0;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-secondary, #64748b);
+  text-transform: none;
+  letter-spacing: 0;
+  padding: 2px 6px;
+  background: rgba(15, 23, 42, 0.05);
+  border-radius: 10px;
+}
+
+.skills-picker-caret {
+  flex-shrink: 0;
+  color: var(--accent, #8e1e1e);
+  transition: transform 0.15s ease;
+}
+
+.skills-picker-caret--open {
+  transform: rotate(90deg);
 }
 
 .skills-picker-list {
   list-style: none;
-  margin: 0;
-  padding: 0;
+  margin: 2px 0 0;
+  padding: 0 0 4px 4px;
 }
 
 .skills-picker-list--none {
-  margin-bottom: 6px;
-  padding-bottom: 6px;
+  margin: 0 0 8px;
+  padding: 0 0 8px;
   border-bottom: 1px dashed var(--border);
 }
 
@@ -12641,17 +12746,27 @@ body {
   white-space: nowrap;
 }
 
+/* Descriptions clamp to one line by default (dense list). Rows expand on
+ * hover to reveal the full text, and search mode / selected row stay fully
+ * expanded so users never miss context while narrowing their choice. */
 .skills-picker-item-desc {
   font-size: 10.5px;
   font-weight: 400;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--text-secondary, #64748b);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: normal;
+}
+
+.skills-picker-item:hover .skills-picker-item-desc,
+.skills-picker-item--selected .skills-picker-item-desc,
+.skills-picker-item--expanded .skills-picker-item-desc,
+.skills-picker-item--none .skills-picker-item-desc {
+  -webkit-line-clamp: 6;
 }
 
 .skills-picker-item--selected .skills-picker-item-desc {

@@ -30,20 +30,18 @@ const VALUE_PERFORMANCE = 'Value Creation and Performance';
 
 const CATEGORY_MAP: Record<string, { category: string; order: number }> = {
   // 1. Strategy -- corporate/sector/digital/sustainability/policy strategy playbooks.
-  biotech_life_sciences_cluster_strategy_and_feasibility: { category: 'Strategy', order: 100 },
-  corporate_strategy: { category: 'Strategy', order: 101 },
-  corporate_strategy_full_strategic_plan: { category: 'Strategy', order: 102 },
-  destination_development_strategy_and_business_plan: { category: 'Strategy', order: 103 },
-  digital_technology_strategy: { category: 'Strategy', order: 104 },
-  growth_strategy: { category: 'Strategy', order: 105 },
-  investment_portfolio_strategy: { category: 'Strategy', order: 106 },
-  local_content_industrial_localization_strategy: { category: 'Strategy', order: 107 },
-  localization_local_content_strategy: { category: 'Strategy', order: 108 },
-  policy_and_regulatory_strategy: { category: 'Strategy', order: 109 },
-  regulatory_legislative_reform_strategy_and_implementation_plan: { category: 'Strategy', order: 110 },
-  sector_development_strategy_and_implementation_playbook: { category: 'Strategy', order: 111 },
-  sector_strategy: { category: 'Strategy', order: 112 },
-  sustainability_esg_strategy: { category: 'Strategy', order: 113 },
+  // Biotech sits last because it is a single-industry deep-dive playbook;
+  // keep broader / horizontal strategies at the top of the menu.
+  corporate_strategy_full_strategic_plan: { category: 'Strategy', order: 100 },
+  destination_development_strategy_and_business_plan: { category: 'Strategy', order: 101 },
+  digital_technology_strategy: { category: 'Strategy', order: 102 },
+  growth_strategy: { category: 'Strategy', order: 103 },
+  investment_portfolio_strategy: { category: 'Strategy', order: 104 },
+  local_content_industrial_localization_strategy: { category: 'Strategy', order: 105 },
+  regulatory_legislative_reform_strategy_and_implementation_plan: { category: 'Strategy', order: 106 },
+  sector_development_strategy_and_implementation_playbook: { category: 'Strategy', order: 107 },
+  sustainability_esg_strategy: { category: 'Strategy', order: 108 },
+  biotech_life_sciences_cluster_strategy_and_feasibility: { category: 'Strategy', order: 109 },
 
   // 2. Commercial & Customer -- market, customer, pricing, go-to-market.
   commercial_due_diligence_market_attractiveness: { category: 'Commercial & Customer', order: 200 },
@@ -56,60 +54,66 @@ const CATEGORY_MAP: Record<string, { category: string; order: number }> = {
   value_proposition_and_offering_design: { category: 'Commercial & Customer', order: 207 },
 
   // 3. Operating Model & Governance -- org design, TOM, governance, process, people.
+  // Dropped `operating_model` and `organization_design` (older/generic duplicates);
+  // kept `target_operating_model_design_and_activation_blueprint` and
+  // `organization_design_end_to_end` which carry the richer content.
   functional_statements_and_org_detailing: { category: 'Operating Model & Governance', order: 300 },
   governance_and_decision_rights: { category: 'Operating Model & Governance', order: 301 },
   holding_company_subsidiary_governance_and_incorporation_plan: { category: 'Operating Model & Governance', order: 302 },
-  operating_model: { category: 'Operating Model & Governance', order: 303 },
-  organization_design: { category: 'Operating Model & Governance', order: 304 },
-  organization_design_end_to_end: { category: 'Operating Model & Governance', order: 305 },
-  performance_management: { category: 'Operating Model & Governance', order: 306 },
-  process_and_service_delivery_design: { category: 'Operating Model & Governance', order: 307 },
-  shared_services_centralization_model: { category: 'Operating Model & Governance', order: 308 },
-  target_operating_model_design_and_activation_blueprint: { category: 'Operating Model & Governance', order: 309 },
-  workforce_people_strategy: { category: 'Operating Model & Governance', order: 310 },
+  organization_design_end_to_end: { category: 'Operating Model & Governance', order: 303 },
+  performance_management: { category: 'Operating Model & Governance', order: 304 },
+  process_and_service_delivery_design: { category: 'Operating Model & Governance', order: 305 },
+  shared_services_centralization_model: { category: 'Operating Model & Governance', order: 306 },
+  target_operating_model_design_and_activation_blueprint: { category: 'Operating Model & Governance', order: 307 },
+  workforce_people_strategy: { category: 'Operating Model & Governance', order: 308 },
 
   // 4. Strategic and Financial Decision Support -- business case, feasibility, options.
-  business_case_development: { category: STRATEGIC_DECISION, order: 400 },
-  business_case_narrative: { category: STRATEGIC_DECISION, order: 401 },
-  financial_case_scenario_and_sensitivity_framing: { category: STRATEGIC_DECISION, order: 402 },
-  options_evaluation_and_recommendation: { category: STRATEGIC_DECISION, order: 403 },
+  // Dropped `business_case_development` (older generic); `business_case_narrative`
+  // carries the consolidated playbook.
+  business_case_narrative: { category: STRATEGIC_DECISION, order: 400 },
+  financial_case_scenario_and_sensitivity_framing: { category: STRATEGIC_DECISION, order: 401 },
+  options_evaluation_and_recommendation: { category: STRATEGIC_DECISION, order: 402 },
 
   // 5. Value Creation and Performance -- cost, value capture, procurement, risk.
-  cost_optimization_efficiency: { category: VALUE_PERFORMANCE, order: 500 },
-  cost_transformation_diagnostic_and_value_capture_plan: { category: VALUE_PERFORMANCE, order: 501 },
-  procurement_supply_chain_strategy: { category: VALUE_PERFORMANCE, order: 502 },
-  risk_strategy_enterprise_risk: { category: VALUE_PERFORMANCE, order: 503 },
-  value_creation_initiative_portfolio_design: { category: VALUE_PERFORMANCE, order: 504 },
+  // Dropped `cost_optimization_efficiency` (older generic); the transformation
+  // diagnostic slug is the richer replacement.
+  cost_transformation_diagnostic_and_value_capture_plan: { category: VALUE_PERFORMANCE, order: 500 },
+  procurement_supply_chain_strategy: { category: VALUE_PERFORMANCE, order: 501 },
+  risk_strategy_enterprise_risk: { category: VALUE_PERFORMANCE, order: 502 },
+  value_creation_initiative_portfolio_design: { category: VALUE_PERFORMANCE, order: 503 },
 
   // 6. Transformation & Execution -- mobilization, PMO, change, benefits, readouts.
+  // Dropped `change_management_and_adoption` and `kick_off_mobilization_pack`
+  // (older generics); `change_management_and_communication_plan` and
+  // `kick_off_workplan_and_data_request_pack` carry the consolidated content.
   benefits_tracking_and_realization: { category: 'Transformation & Execution', order: 600 },
   board_final_readout_pack: { category: 'Transformation & Execution', order: 601 },
-  change_management_and_adoption: { category: 'Transformation & Execution', order: 602 },
-  change_management_and_communication_plan: { category: 'Transformation & Execution', order: 603 },
-  governance_cadence_decision_forums: { category: 'Transformation & Execution', order: 604 },
-  implementation_activation_pmo: { category: 'Transformation & Execution', order: 605 },
-  kick_off_mobilization_pack: { category: 'Transformation & Execution', order: 606 },
-  kick_off_workplan_and_data_request_pack: { category: 'Transformation & Execution', order: 607 },
-  transformation_strategy: { category: 'Transformation & Execution', order: 608 },
-  weekly_steerco_pmo_status_deck: { category: 'Transformation & Execution', order: 609 },
+  change_management_and_communication_plan: { category: 'Transformation & Execution', order: 602 },
+  governance_cadence_decision_forums: { category: 'Transformation & Execution', order: 603 },
+  implementation_activation_pmo: { category: 'Transformation & Execution', order: 604 },
+  kick_off_workplan_and_data_request_pack: { category: 'Transformation & Execution', order: 605 },
+  transformation_strategy: { category: 'Transformation & Execution', order: 606 },
+  weekly_steerco_pmo_status_deck: { category: 'Transformation & Execution', order: 607 },
 
   // 7. Stakeholder & Workshop -- stakeholder, investor, consultation, workshop.
+  // Dropped `stakeholder_communication_planning` (older generic);
+  // `stakeholder_engagement_plan` is the consolidated playbook.
   investor_partner_engagement: { category: 'Stakeholder & Workshop', order: 700 },
   policy_public_consultation_model: { category: 'Stakeholder & Workshop', order: 701 },
-  stakeholder_communication_planning: { category: 'Stakeholder & Workshop', order: 702 },
-  stakeholder_engagement_plan: { category: 'Stakeholder & Workshop', order: 703 },
-  teaming_and_client_counterpart_model: { category: 'Stakeholder & Workshop', order: 704 },
-  workshop_design_and_facilitation: { category: 'Stakeholder & Workshop', order: 705 },
+  stakeholder_engagement_plan: { category: 'Stakeholder & Workshop', order: 702 },
+  teaming_and_client_counterpart_model: { category: 'Stakeholder & Workshop', order: 703 },
+  workshop_design_and_facilitation: { category: 'Stakeholder & Workshop', order: 704 },
 
   // 8. Proposal and Executive Communication -- proposals, diagnostic, exec storyline.
+  // Dropped `proposal_approach_and_workplan` (older generic); `proposal_development`
+  // carries the end-to-end proposal playbook.
   baseline_as_is_diagnostic: { category: 'Proposal and Executive Communication', order: 800 },
   benchmarking_peer_comparison_gap_analysis: { category: 'Proposal and Executive Communication', order: 801 },
   executive_communication_top_down_storyline: { category: 'Proposal and Executive Communication', order: 802 },
   executive_summary_and_synthesis: { category: 'Proposal and Executive Communication', order: 803 },
-  proposal_approach_and_workplan: { category: 'Proposal and Executive Communication', order: 804 },
-  proposal_development: { category: 'Proposal and Executive Communication', order: 805 },
-  team_structure_and_qa_governance: { category: 'Proposal and Executive Communication', order: 806 },
-  why_strategy_and: { category: 'Proposal and Executive Communication', order: 807 },
+  proposal_development: { category: 'Proposal and Executive Communication', order: 804 },
+  team_structure_and_qa_governance: { category: 'Proposal and Executive Communication', order: 805 },
+  why_strategy_and: { category: 'Proposal and Executive Communication', order: 806 },
 };
 
 const skillCache = new Map<string, SkillRecord>();

@@ -9,6 +9,7 @@ import pdfjsWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import mammoth from 'mammoth';
 import * as XLSX from 'xlsx';
 import JSZip from 'jszip';
+import { authFetch } from './authFetch.js';
 
 // Configure PDF.js worker using bundled asset (CDN does not host v5.x worker files)
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorker;
@@ -841,7 +842,7 @@ export async function analyzeImageWithAI(base64, mimeType, settings) {
       headers['Authorization'] = `Bearer ${provider.apiKey}`;
     }
 
-    const response = await fetch(provider.apiUrl, {
+    const response = await authFetch(provider.apiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({

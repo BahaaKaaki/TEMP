@@ -834,7 +834,7 @@ USER'S CONTENT REQUEST:
 
 TITLE EXTRACTION: If the content request starts with "TITLE:" and/or "SUBTITLE:" markers, use them DIRECTLY:
 - "TITLE: ..." → h1.title (the header). Preserve the specific data, claims, and terminology. Lightly adjust to fit 8-12 words.
-- "SUBTITLE: ..." → h2.subtitle (the topic label). Use as-is for the 3-4 word noun phrase.
+- "SUBTITLE: ..." → h2.subtitle (the topic label). Use as-is for the 2-6 word noun phrase.
 Also recognize "SLIDE TITLE:" or "KEY MESSAGE:" as title sources.
 Do NOT replace a specific insight with a generic label.
 

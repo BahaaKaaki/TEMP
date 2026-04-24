@@ -283,10 +283,13 @@ CONTENT AND LAYOUT INTENT: ${contentPart || prompt}
 ${layoutPart !== contentPart && layoutPart !== prompt ? `LAYOUT DESCRIPTION: ${layoutPart}` : ''}`
       : `Create professional presentation slide(s) about: "${prompt}"`;
 
-    // Pass router's layout hint as a soft suggestion (not a rigid spec)
+    // Make router's layoutGuidance binding; ban the repeated colored-panel and card/rail/stripe defaults.
     const routerLayoutGuidance = contextInfo?.layoutGuidance || null;
     const layoutHint = routerLayoutGuidance
-      ? `\nLAYOUT HINT (from narrative planner): "${routerLayoutGuidance}" — consider this, but choose whatever layout best serves the content. You are not bound to it.`
+      ? `\nREQUIRED LAYOUT STRUCTURE: "${routerLayoutGuidance}"
+- Preserve every named item, axis, phase, and number from the structure above.
+- Do NOT create a large solid-color panel or sidebar (no "governing message" block, no full-height accent column, no "key insight" hero box). The h1.title already carries the page's message — do not duplicate it inside a colored container.
+- Do NOT default to a row of accent-bordered cards, a color rail, or a color stripe. Reserve var(--accent) for small emphasis (numbers, status tags, specific words), not for large solid fills.`
       : '';
 
     userPrompt = `${freestyleIntro}
@@ -306,15 +309,15 @@ ${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "thi
 ${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
 
 VISUAL QUALITY:
-- You MUST output a <style> block with scoped CSS for every custom class you use.
-- Never output a plain <ul> or <ol> — always wrap items in styled cards, accent-bordered blocks, or grid cells.
-- Numbers and KPIs must be visually prominent: large font (32-48px Georgia), accent color, with a small label.
-- Use CSS grid or flexbox for every layout — no unstyled stacked divs.
-- Every slide must look polished enough for a C-suite audience.
+- Output a <style> block with scoped CSS for every custom class.
+- No plain <ul>/<ol>; present lists as styled cards, rows, bands, or grid cells.
+- Make numbers/KPIs prominent with scale, Arial/var(--font-body), accent color, and concise labels.
+- Use grid/flex for structure; no unstyled stacked divs.
+- Deliver C-suite polish: clear hierarchy, alignment, breathing room, no overflow.
 
 CONTENT FIDELITY:
-- TOPIC PROMPT (e.g., "AI trends") → you generate the content. Be professional, specific, data-rich.
-- PRECISE CONTENT (specific bullets, data, phrasing) → you are a LAYOUT ENGINE. Arrange their content as-is. Do NOT reword.
+- TOPIC PROMPT (e.g., "AI trends") → generate credible strategic content without fake sources or unsupported exact metrics.
+- PRECISE CONTENT (specific bullets, data, phrasing) → act as a layout engine. Arrange as-is; do not reword.
 - If the user provides questions, they MUST remain as questions.
 - If the user provides specific data/numbers/names, reproduce them EXACTLY.
 - SOURCE/CITATION: Sources go ONLY in <footer>, never inside <div class="frame">.
@@ -683,7 +686,7 @@ export function ensureSlideStructure(html) {
     }
     innerContent = innerContent.replace(footerMatch[0], '');
   } else {
-    footerHtml = '<footer class="footer"><span></span><span></span></footer>';
+    footerHtml = '<footer class="footer"><span></span><span class="source"></span><span></span></footer>';
   }
 
   // Extract h1 for title (from anywhere in content, including inside frame)

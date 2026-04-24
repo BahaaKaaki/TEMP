@@ -1504,17 +1504,17 @@ export default function SettingsModal({ onClose }) {
   // ═══════════════════════════════════════════════════════════════════════════
   const renderPrompts = () => {
     const promptSections = [
-      { key: 'freestyleShell',   label: 'Shell (Layout & Structure)',      defaultVal: DEFAULT_SHELL,   desc: 'Canvas, HTML skeleton, output format, frame fit, and scoped CSS contract.' },
-      { key: 'freestyleTheme',   label: 'Theme (Colors, Fonts & Style)',   defaultVal: DEFAULT_THEME,   desc: 'Color tokens, typography, contrast, surfaces, and status color semantics.' },
-      { key: 'freestyleVibe',    label: 'Vibe (Style Variation)',          defaultVal: DEFAULT_VIBE,    desc: 'Creative consulting direction applied on top of the theme or selected preset.' },
-      { key: 'freestyleWriting', label: 'Writing Profile',                 defaultVal: DEFAULT_WRITING, desc: 'Executive language, content fidelity, density, bold leads, and source citations.' },
+      { key: 'freestyleShell',   label: 'Shell (Layout & Structure)',      defaultVal: DEFAULT_SHELL,   desc: 'Canvas dimensions, HTML skeleton, output format, CSS scoping rules, class naming.' },
+      { key: 'freestyleTheme',   label: 'Theme (Colors, Fonts & Style)',   defaultVal: DEFAULT_THEME,   desc: 'Design tokens, font families, contrast rules, design principles, visual anti-patterns.' },
+      { key: 'freestyleVibe',    label: 'Vibe (Style Variation)',          defaultVal: DEFAULT_VIBE,    desc: 'Active style variation applied on top of the theme. Currently locked to default.' },
+      { key: 'freestyleWriting', label: 'Writing Profile',                 defaultVal: DEFAULT_WRITING, desc: 'Title/subtitle style, text density, layout archetypes, source citations, content anti-patterns.' },
     ];
 
     return (
       <>
         <div style={sectionTitle}>Freestyle Prompt Sections</div>
         <div style={{ ...hint, marginBottom: 12 }}>
-          Four editable sections plus built-in PPTX hints compose the freestyle slide prompt. Edit a section to override its default, or leave it empty to use the built-in version.
+          These three sections compose the system prompt for freestyle slide generation. Edit a section to override the default, or leave empty to use the built-in version.
         </div>
 
         {promptSections.map(({ key, label, defaultVal, desc }) => {

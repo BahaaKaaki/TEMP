@@ -283,12 +283,13 @@ CONTENT AND LAYOUT INTENT: ${contentPart || prompt}
 ${layoutPart !== contentPart && layoutPart !== prompt ? `LAYOUT DESCRIPTION: ${layoutPart}` : ''}`
       : `Create professional presentation slide(s) about: "${prompt}"`;
 
-    // Make router's layoutGuidance binding; also ban the repeated card/rail/stripe default.
+    // Make router's layoutGuidance binding; ban the repeated colored-panel and card/rail/stripe defaults.
     const routerLayoutGuidance = contextInfo?.layoutGuidance || null;
     const layoutHint = routerLayoutGuidance
       ? `\nREQUIRED LAYOUT STRUCTURE: "${routerLayoutGuidance}"
 - Preserve every named item, axis, phase, and number from the structure above.
-- Do NOT default to a row of accent-bordered cards, a left color rail, or a top color stripe — pick the visual that fits the reasoning.`
+- Do NOT create a large solid-color panel or sidebar (no "governing message" block, no full-height accent column, no "key insight" hero box). The h1.title already carries the page's message — do not duplicate it inside a colored container.
+- Do NOT default to a row of accent-bordered cards, a color rail, or a color stripe. Reserve var(--accent) for small emphasis (numbers, status tags, specific words), not for large solid fills.`
       : '';
 
     userPrompt = `${freestyleIntro}

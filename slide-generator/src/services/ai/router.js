@@ -706,7 +706,7 @@ export function buildTemplateList() {
   output += `
 FREESTYLE (custom layout — no template):
 - freestyle: Fully custom slide designed from scratch with its own HTML + CSS. USE WHEN content doesn't naturally fit any template above, or when you want a unique visual treatment. The slide designer has full creative freedom to build any layout — columns, grids, timelines, metric dashboards, comparison tables, numbered rows, or anything else.
-  Optional "layoutGuidance" field: Describe the CONTENT SHAPE — what the slide should communicate and how many items there are. Examples: "3 strategic pillars each with a metric and impact statement", "before vs after comparison of operating models", "5 quarterly milestones with deliverables", "one hero stat ($47M) with 3 supporting explanations". The designer decides the visual treatment.
+  Optional "layoutGuidance" field: Describe the CONTENT SHAPE — what the slide should communicate and how many items there are. Examples: "3 strategic pillars each with a metric and impact statement", "before vs after comparison of operating models", "5 quarterly milestones with deliverables", "one KPI ($47M) with 3 short supporting explanations". The designer decides the visual treatment.
 
 IMAGE (AI-generated visual slides — uses image model):
 - image-full: Full-bleed AI-generated image covering entire slide. No text overlay. USE WHEN the content is best conveyed as a pure visual — conceptual diagram, strategic framework illustration, transformation journey visual, or infographic. REQUIRES "layoutGuidance" describing the visual to generate.
@@ -1032,11 +1032,13 @@ DESCRIBE CONTENT, NOT LAYOUT:
   BETTER: "3 strategic pillars, each with a key metric and one-sentence impact"
   BETTER: "4 growth drivers with supporting data points"
   BETTER: "before vs after comparison of the old and new operating model"
-  BETTER: "one headline stat ($47M savings) with 3 supporting explanations"
+  BETTER: "one KPI ($47M savings) with 3 supporting explanations"
+
+IMPORTANT: layoutGuidance must describe CONTENT COUNT and RELATIONSHIPS only. Do NOT use visual-container words ("governing message", "headline stat", "hero card", "callout box", "sidebar", "rail"). The creator reads those as literal colored blocks and collapses every slide into the same colored-panel template.
 
 layoutGuidance EXAMPLES (describe what the content IS, not how it should look):
   "3 pillars: innovation, growth, efficiency — each with a metric"
-  "$47M savings headline with 4 supporting factors"
+  "$47M savings with 4 supporting factors"
   "4 quarterly milestones with key deliverables"
   "current state vs target state comparison"
   "5 implementation phases with timeline"
@@ -1385,7 +1387,7 @@ Example — simple request (no agent, no documents):
 {
   "plan": [
     {"action":"create_slide","templateId":"cover","position":"start","title":"Digital Transformation Strategy 2026","subtitle":"Transformation Priorities","instruction":"Digital Transformation Strategy"},
-    {"action":"create_slide","templateId":"freestyle","position":"after_previous","title":"Three priorities will drive the majority of near-term value creation","subtitle":"Strategic Priorities","instruction":"3 priorities: 1) modernize core systems, 2) improve growth analytics, 3) automate service workflows","facts":["Core systems modernization accounts for the largest share of operational delays","Commercial teams lack consistent customer-level analytics","Service workflows remain highly manual in three high-volume processes"],"layoutGuidance":"one governing message with 3 priority areas, each supported by one proof point"},
+    {"action":"create_slide","templateId":"freestyle","position":"after_previous","title":"Three priorities will drive the majority of near-term value creation","subtitle":"Strategic Priorities","instruction":"3 priorities: 1) modernize core systems, 2) improve growth analytics, 3) automate service workflows","facts":["Core systems modernization accounts for the largest share of operational delays","Commercial teams lack consistent customer-level analytics","Service workflows remain highly manual in three high-volume processes"],"layoutGuidance":"3 priority areas (modernize core, growth analytics, service automation), each with one proof point"},
     {"action":"create_slide","templateId":"freestyle","position":"after_previous","title":"A phased rollout minimizes risk while delivering quick wins","subtitle":"Implementation Roadmap","instruction":"Implementation roadmap: 5 key milestones for H2 2026","layoutGuidance":"5 implementation milestones with deliverables and timeline"}
   ],
   "groups": [[0,1,2]],

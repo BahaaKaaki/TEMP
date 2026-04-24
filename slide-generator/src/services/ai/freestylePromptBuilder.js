@@ -24,7 +24,21 @@ export const FREESTYLE_PRESETS = {
     theme: null,
     vibe: `# Vibe -- Minimal Clean
 
-Maximum clarity, minimum objects. Use whitespace and typography for hierarchy; avoid cards/panels unless content genuinely needs containment. Use one accent move per slide, thin \`var(--border)\` dividers only when spacing is insufficient, and keep everything grayscale otherwise. Avoid shadows, heavy borders, rounded containers, and decorative fills.`,
+Design for maximum clarity with minimum visual elements.
+
+## Core principles
+1. **White space is the primary design tool** -- generous margins, no content touching edges.
+2. **Typography carries hierarchy** -- size, weight, and case distinguish levels. No borders or backgrounds needed for separation.
+3. **One accent color maximum** -- use \`var(--accent)\` on a single element per slide (a number, a border, an icon). Everything else is grayscale.
+4. **No containers** -- avoid cards, boxes, panels. Use spacing and alignment to group content.
+5. **Thin hairline dividers** -- 1px \`var(--border)\` only when spatial separation is insufficient.
+
+## What to avoid
+- Background fills on sections or cards
+- Drop shadows
+- Rounded corners on containers
+- Multiple colors on a single slide
+- Bold borders or thick accents`,
     writing: null,
   },
   bold: {
@@ -35,7 +49,26 @@ Maximum clarity, minimum objects. Use whitespace and typography for hierarchy; a
     theme: null,
     vibe: `# Vibe -- Bold Impact
 
-Design for persuasion with high contrast and fewer, larger elements. Make the key number, claim, or decision unmistakable with oversized Arial KPIs, strong accent blocks, heavy dividers, or assertive bands. Any accent/status fill must use \`var(--on-accent)\`. Minimum text size 13px. Avoid subtle, passive, low-contrast treatments.`,
+Design for maximum visual impact and persuasion.
+
+## Core principles
+1. **Oversized numbers and KPIs** -- key statistics at 36-48px, making them the undeniable focal point.
+2. **High contrast sections** -- use \`var(--accent)\` backgrounds with \`var(--on-accent)\` text for headers and callouts.
+3. **Thick accent elements** -- 6px+ left borders, heavy dividers, bold underlines.
+4. **All-caps section headings** -- h3/h4 in uppercase for commanding presence.
+5. **Fewer items, bigger presence** -- 3 items at large size beats 6 items at small size.
+
+## Color strategy
+- Use \`var(--accent)\` as dominant background color for hero sections
+- Use \`var(--accent-soft)\` for secondary emphasis
+- Reserve white for contrast areas within dark sections
+- Status colors (\`var(--success)\`, \`var(--danger)\`) at larger, more prominent sizes
+
+## What to avoid
+- Subtle styling -- everything should be deliberate and visible
+- Small text -- minimum 13px for any text
+- Low-contrast combinations
+- Passive visual treatments`,
     writing: null,
   },
   data: {
@@ -46,7 +79,26 @@ Design for persuasion with high contrast and fewer, larger elements. Make the ke
     theme: null,
     vibe: `# Vibe -- Data-Heavy Analytical
 
-Prioritize precise grids, dense but readable tables, compact KPI rows, clear units, and footer sources. Body may use 11px; labels/footnotes may use 10px. Use \`var(--border)\`, \`var(--surface)\`, and \`var(--surface-alt)\` for structure; reserve \`var(--accent)\` for the most important data point and status tokens for real trends/risks. Avoid decoration, vague units, and unsourced data.`,
+Design for maximum information density while maintaining readability.
+
+## Core principles
+1. **Grid-first layout** -- use CSS Grid for precise alignment of data elements.
+2. **Small but readable type** -- 11px body text is acceptable; 10px for labels and footnotes.
+3. **Dense tables** -- compact padding (4-6px), alternating row backgrounds with \`var(--surface)\` and \`var(--surface-alt)\`.
+4. **Metrics dashboard style** -- KPI cards with number + label + trend indicator arranged in tight grids.
+5. **Source citations on every data slide** -- footnote sources in the footer.
+
+## Color strategy
+- Use status colors extensively: \`var(--success)\` for positive, \`var(--danger)\` for negative, \`var(--warning)\` for neutral
+- Use \`var(--accent)\` sparingly -- only for the single most important data point
+- Use \`var(--border)\` generously for table structure and separators
+- Use \`var(--muted)\` for secondary labels and units
+
+## What to avoid
+- Decorative elements that compete with data
+- Large empty spaces -- fill with relevant context
+- Rounded corners on data tables (use sharp edges for precision)
+- Omitting units or sources`,
     writing: null,
   },
 };

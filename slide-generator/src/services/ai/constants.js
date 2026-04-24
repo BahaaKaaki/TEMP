@@ -162,7 +162,7 @@ h1.title (BLACK, LARGE - the HEADER):
 - WRONG: "AI-driven digital transformation enables sustainable competitive advantage across markets." (too long + period)
 
 h2.subtitle (BURGUNDY/RED, SMALLER - the TITLE):
-- SHORT NOUN PHRASE: 2-6 words only, NO VERBS
+- SHORT NOUN PHRASE: 3-4 words only, NO VERBS
 - Acts as a topic label/category for the page
 - SENTENCE CASE: Only first word capitalized, plus proper nouns
 - CORRECT: "Financial performance" (3 words, noun phrase)
@@ -178,7 +178,7 @@ SENTENCE CASE RULES FOR TITLES (h2):
 - All other words lowercase
 - NO VERBS - just nouns and adjectives
 
-REMEMBER: h1 = HEADER (verbal sentence with insight, 8-10 words max, NEVER ends with a period), h2 = TITLE (noun phrase, 2-6 words, NO verbs)
+REMEMBER: h1 = HEADER (verbal sentence with insight, 8-10 words max, NEVER ends with a period), h2 = TITLE (noun phrase, 3-4 words, NO verbs)
 
 VERTICAL LOGIC (CRITICAL):
 - The header/title MUST match the content structure exactly
@@ -193,7 +193,7 @@ VERTICAL LOGIC (CRITICAL):
 === END WRITING STYLE ===`;
 
 // Compact version for template filling - saves context tokens
-export const TITLE_HEADER_RULES = `WRITING RULES: h1.title = 8-12 word business insight with a verb, no period, no generic topic label, and preferably no leading count. Preserve user-provided titles, data, claims, and terminology; only change h1 when the user explicitly asks or provides a replacement. h2.subtitle = 2-6 word noun phrase, no verbs, no period. If h1 states a count, visible content must match that count exactly, so avoid counts unless essential. Never wrap title text in strong/b/em. Never put system metadata or bracketed instructions in titles/subtitles. Citations/sources go only in the footer source span, never inside .frame.`;
+export const TITLE_HEADER_RULES = `WRITING RULES: h1.title (black) = HEADER: a business "so what" sentence (8-12 WORDS MAX, contains verbs, makes a strategic claim or insight). CRITICAL: NEVER end h1 with a period (.) or any punctuation. Keep it SHORT — if over 12 words, cut it down. The header conveys a KEY BUSINESS MESSAGE — not a description of what's on the slide. NEVER start headers with a number or count (e.g., "9 actions...", "4 pillars..."). Instead lead with the insight or outcome. GOOD: "AI operations will cut carbon footprint by 40%" (8 words), "Strategic pillars position us for market growth" (7 words). BAD: "9 actions deliver measurable low carbon AI operations" (starts with number), "AI-driven transformation enables sustainable competitive advantage across global markets." (too long + period). TITLE PRESERVATION: The h1 header MUST stay about the SLIDE'S EXISTING TOPIC — never rewrite it to match the edit instruction. If the user says "refine visuals" or "make it cleaner", the h1 must still be about the slide's business content (e.g., "AI delivers 3x ROI in year one"), NOT about visual refinement. Only change the h1 if the user EXPLICITLY provides new title content (e.g., "title: X", "change the heading to X", or gives a clear business message to use). USER-PROVIDED TITLES: If the instruction explicitly contains a title or "so what" sentence intended as content, USE IT — preserve the user's specific data, claims, and terminology. You may lightly adjust to fit the 8-12 word format but NEVER replace their specific insight with a generic label. h2.subtitle (burgundy) = TITLE: 3-4 word noun phrase (NO verbs, topic label only, SENTENCE CASE, no periods). CONSISTENCY: if the header mentions a specific count, the content MUST have exactly that many items — so prefer NOT mentioning counts in headers. SOURCE/CITATION: Any source attribution or citation text MUST go ONLY in the <footer> element — NEVER place "Source:" labels or citation text inside the slide content area (<div class="frame">). TITLE FORMATTING: NEVER wrap title text in <strong>, <b>, or <em> tags — titles must be plain text only. CSS handles all styling. METADATA: NEVER include system tags like [Design Style: ...], [Vibe: ...], [SEARCH ...], or any bracketed metadata in titles or subtitles — those are system instructions, not content.`;
 
 // Lean router prompt for first GPT call - minimal tokens for intent classification
 export const LEAN_ROUTER_PROMPT = `You are a slide assistant router. Classify user intent and return action plan.
@@ -256,7 +256,7 @@ EXECUTIVE DESIGN PRINCIPLES:
 - Every element must earn its place
 - Visual hierarchy: one main message per slide — boardroom-ready
 - HEADER (h1): "so what" sentence 8-12 words with a verb (e.g., "AI delivers 3x ROI in year one")
-- SUBTITLE (h2): 2-6 word noun phrase, no verbs (e.g., "Implementation Results")
+- SUBTITLE (h2): 3-4 word noun phrase, no verbs (e.g., "Implementation Results")
 - SECTION TITLES (h3, h4): insight-driven 4-7 word phrases — never generic labels. Think: if someone only reads titles, do they get the story?
 
 CONSULTING STORYTELLING (for multiple slides):

@@ -11,7 +11,7 @@ import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
 const EDIT_SYSTEM_PROMPT = appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT);
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
 import { unscopeCSS } from '../../utils/cssScoping.js';
-import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext } from './slideContext.js';
+import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext, buildSectionMap } from './slideContext.js';
 import { extractSingleSlide, flattenNestedFrames, extractTitleFromHTML, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
 
@@ -424,12 +424,26 @@ NOTE: You requested additional context ("${contextRequest.reason}") but that inf
 export function buildDeckContextForSwitch(slides, currentIndex) {
   if (!slides || slides.length === 0) return { deckMap: '', neighborContext: '', pillarNote: '' };
 
-  const deckMap = slides.map((s, i) => {
+  const sectionTag = (s) => {
+    const sec = s?.sectionLabel ? String(s.sectionLabel).trim() : '';
+    const sub = s?.subSectionLabel ? String(s.subSectionLabel).trim() : '';
+    if (sec && sub) return ` [${sec} / ${sub}]`;
+    if (sec) return ` [${sec}]`;
+    if (sub) return ` [${sub}]`;
+    return '';
+  };
+
+  let deckMap = slides.map((s, i) => {
     const marker = i === currentIndex ? ' <-- THIS SLIDE' : '';
     const title = s.title || extractTitleFromHTML(s.html) || '(untitled)';
     const tmpl = s.templateId || s.type || 'unknown';
-    return `  ${i + 1}. [${tmpl}] "${title}"${marker}`;
+    return `  ${i + 1}. [${tmpl}] "${title}"${sectionTag(s)}${marker}`;
   }).join('\n');
+
+  const sectionMap = buildSectionMap(slides);
+  if (sectionMap) {
+    deckMap += `\n\n${sectionMap}`;
+  }
 
   let neighborContext = '';
   if (currentIndex > 0 && slides[currentIndex - 1]) {

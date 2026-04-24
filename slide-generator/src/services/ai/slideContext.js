@@ -255,6 +255,74 @@ export function buildContextString(slides, contextLevel = 'outline', storyline =
   return { context, tokenEstimate };
 }
 
+// Format a list of 1-based slide indices as a compact human-readable range.
+// Examples: [5] -> "slide 5", [5,6,7] -> "slides 5-7", [5,7,9] -> "slides 5, 7, 9".
+function formatSlideIndexRange(indices) {
+  if (!indices || indices.length === 0) return '';
+  const sorted = [...indices].sort((a, b) => a - b);
+  if (sorted.length === 1) return `slide ${sorted[0]}`;
+  const contiguous = sorted.every((n, i) => i === 0 || n === sorted[i - 1] + 1);
+  if (contiguous) return `slides ${sorted[0]}-${sorted[sorted.length - 1]}`;
+  return `slides ${sorted.join(', ')}`;
+}
+
+// Build a compact bracketed tag for a slide's section / subsection labels.
+// Returns '' when neither label is present.
+function formatSlideSectionTag(slide) {
+  const sec = slide?.sectionLabel ? String(slide.sectionLabel).trim() : '';
+  const sub = slide?.subSectionLabel ? String(slide.subSectionLabel).trim() : '';
+  if (sec && sub) return ` [${sec} / ${sub}]`;
+  if (sec) return ` [${sec}]`;
+  if (sub) return ` [${sub}]`;
+  return '';
+}
+
+// Build a section-map block summarizing which slides belong to which
+// section/subsection. Returns '' when no slide carries a section label.
+// Contiguous runs of the same sectionLabel are merged into one group so
+// the output reflects how sections are actually laid out in the deck.
+export function buildSectionMap(slides) {
+  if (!Array.isArray(slides) || slides.length === 0) return '';
+  const hasAnyLabel = slides.some(s => s?.sectionLabel || s?.subSectionLabel);
+  if (!hasAnyLabel) return '';
+
+  const groups = [];
+  let currentGroup = null;
+  slides.forEach((slide, i) => {
+    const sec = slide?.sectionLabel ? String(slide.sectionLabel).trim() : '';
+    const sub = slide?.subSectionLabel ? String(slide.subSectionLabel).trim() : '';
+    const key = sec || '(unsectioned)';
+    if (!currentGroup || currentGroup.key !== key) {
+      currentGroup = { key, label: sec, slides: [], subs: [] };
+      groups.push(currentGroup);
+    }
+    currentGroup.slides.push(i + 1);
+    if (sub) {
+      const existing = currentGroup.subs.find(s => s.label === sub);
+      if (existing) existing.slides.push(i + 1);
+      else currentGroup.subs.push({ label: sub, slides: [i + 1] });
+    }
+  });
+
+  const lines = ['SECTION MAP:'];
+  for (const g of groups) {
+    const label = g.label || '(unsectioned)';
+    lines.push(`  ${label}: ${formatSlideIndexRange(g.slides)}`);
+    for (const sub of g.subs) {
+      lines.push(`    - ${sub.label}: ${formatSlideIndexRange(sub.slides)}`);
+    }
+  }
+  // Convention note so the editing model respects how trackers are wired into
+  // the deck narrative (one-to-one with the executive summary pillars).
+  lines.push('');
+  lines.push('SECTION TRACKER CONVENTION:');
+  lines.push('  - Section trackers appear as a colored navigation tab on each body slide; they typically mirror the Executive Summary pillars 1:1.');
+  lines.push('  - Cover, Executive Summary, Section Divider and Closing slides intentionally carry no tracker — do NOT add one.');
+  lines.push('  - The slide subtitle is thematic framing and must differ from the tracker label.');
+  lines.push('  - Do NOT rename, renumber, or invent new trackers during an edit — keep the deck\'s section structure stable unless the user explicitly asks to change it.');
+  return lines.join('\n');
+}
+
 // Build MINIMAL context for slide editing - position + lightweight neighbor info
 // This reduces token usage significantly while keeping the agent informed
 export function buildMinimalEditContext(slides, currentIndex, options = {}) {
@@ -314,15 +382,23 @@ export function buildMinimalEditContext(slides, currentIndex, options = {}) {
     storylineContext = `\nSTORYLINE: ${titles}`;
   }
 
-  // Full deck structure with summaries (lightweight overview)
+  // Full deck structure with summaries (lightweight overview).
+  // Per-slide section tags let the model cross-reference each entry with the
+  // SECTION MAP below without re-checking, and the map itself gives a
+  // whole-deck view of how slides are grouped into sections.
   let deckStructure = '';
   if (includeDeckStructure && total > 1) {
     const structure = slides.map((slide, i) => {
       const marker = i === currentIndex ? '→ ' : '  ';
       const summary = slide.summary || generateSlideSummary(slide.html, slide.type, slide.title);
-      return `${marker}${i + 1}. ${summary}`;
+      return `${marker}${i + 1}. ${summary}${formatSlideSectionTag(slide)}`;
     }).join('\n');
     deckStructure = `\nDECK STRUCTURE:\n${structure}`;
+
+    const sectionMap = buildSectionMap(slides);
+    if (sectionMap) {
+      deckStructure += `\n\n${sectionMap}`;
+    }
   }
 
   // Pending instructions/comments for current slide

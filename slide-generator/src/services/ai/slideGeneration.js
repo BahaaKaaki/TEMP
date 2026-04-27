@@ -3,7 +3,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
-import { CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, getWorkLevelInstructions } from './constants.js';
+import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, getWorkLevelInstructions } from './constants.js';
 import { buildFreestyleSystemPrompt } from './freestylePromptBuilder.js';
 import { generateSlideSummary, buildDeckContext } from './slideContext.js';
 import { currentDateString } from './router.js';
@@ -17,6 +17,7 @@ import { applyPromptOverride, appendPromptOverride, recordPromptPayload } from '
 const _HARDCODED_COLOR_RE = /#[0-9a-f]{3,8}\b|rgb\(|rgba\(|hsl\(/gi;
 const _ALLOWED_INLINE_LAYOUT = /\b(position|top|left|right|bottom|width|height|display|float|flex|grid|transform)\s*:/i;
 const _DESIGN_TOKEN_RE = /var\(--/;
+const _CHART_GEOMETRY_CLASS_RE = /\b(chart|waterfall|wf-|bar|column|axis|connector|plot|series|line|gantt|funnel|matrix|quadrant|scatter|baseline)\b/i;
 
 const _BASE_CLASSES = new Set(['slide', 'title', 'subtitle', 'frame', 'footer', 'cover-slide', 'section-divider-slide', 'thank-you-slide', 'master-standard', 'master-default', 'master-blank', 'master-titleOnly', 'master-cover', 'master-emptyPage']);
 
@@ -34,14 +35,15 @@ export function validateFreestyleHTML(html, customCSS) {
   }
 
   // Check for hardcoded colors in inline styles (not in <style> blocks — those are OK as long as they use tokens)
-  const inlineStyleMatches = html.match(/style="([^"]+)"/g) || [];
+  const inlineStyleMatches = html.matchAll(/<[^>]+\sstyle=(["'])([\s\S]*?)\1[^>]*>/gi);
   for (const styleAttr of inlineStyleMatches) {
-    const value = styleAttr.replace('style="', '').replace('"', '');
+    const tag = styleAttr[0] || '';
+    const value = styleAttr[2] || '';
     const colorMatches = value.match(_HARDCODED_COLOR_RE);
     if (colorMatches) {
       issues.push(`Hardcoded color in inline style: "${colorMatches[0]}" — use var(--token) instead`);
     }
-    if (_ALLOWED_INLINE_LAYOUT.test(value)) {
+    if (_ALLOWED_INLINE_LAYOUT.test(value) && !_CHART_GEOMETRY_CLASS_RE.test(tag)) {
       issues.push(`Layout property in inline style — move layout CSS to the <style> block`);
     }
   }
@@ -314,6 +316,8 @@ VISUAL QUALITY:
 - Use CSS grid or flexbox for every layout — no unstyled stacked divs.
 - Every slide must look polished enough for a C-suite audience.
 
+${CHART_GEOMETRY_GUIDE}
+
 CONTENT FIDELITY:
 - TOPIC PROMPT (e.g., "AI trends") → you generate the content. Be professional, specific, data-rich.
 - PRECISE CONTENT (specific bullets, data, phrasing) → you are a LAYOUT ENGINE. Arrange their content as-is. Do NOT reword.
@@ -358,6 +362,8 @@ ${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
 - SOURCE/CITATION: Any source attribution (e.g., "Source: McKinsey 2024") goes ONLY in the <footer> — NEVER inside <div class="frame"> content area.
 - Footer: three spans — left: "${settings.footerBranding || 'Strategy&'}", center: <span class="source"> (footnote if citing a source, otherwise empty), right: page number
 ${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "this page", they mean the CURRENT SLIDE REFERENCE shown above' : ''}
+
+${CHART_GEOMETRY_GUIDE}
 
 CONTENT FIDELITY — PRESERVE THE USER'S CONTENT:
 The user's instruction is the PRIMARY input. Distinguish between two modes:

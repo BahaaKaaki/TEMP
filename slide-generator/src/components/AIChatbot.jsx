@@ -45,6 +45,17 @@ function buildStorylineSummary(storyline) {
   }).join('\n');
 }
 
+function cleanSlideCSSForAI(customCSS = '') {
+  return String(customCSS || '').replace(/\[data-slide-id="[^"]*"\]\s*/g, '');
+}
+
+function formatReferenceSlideForAI(slide, index, purpose = 'style/reference') {
+  if (!slide) return '';
+  const cleanCSS = cleanSlideCSSForAI(slide.customCSS);
+  const cssBlock = cleanCSS ? `<style>\n${cleanCSS}\n</style>\n` : '';
+  return `[Page ${index + 1}] "${slide.title || 'Untitled'}" (${slide.type || slide.templateId || 'custom'}) — use for ${purpose}:\n${cssBlock}${slide.html || ''}`;
+}
+
 function parseSlideReferences(prompt, slides, currentSlideIndex) {
   const references = [];
   let cleanedPrompt = prompt;
@@ -1179,7 +1190,7 @@ export default function AIChatbot() {
       const refIdx = parseInt(slideRefMatch[1], 10) - 1;
       const refSlide = currentState.slides[refIdx];
       if (refSlide) {
-        referenceContext = `\n\n=== REFERENCE SLIDES (match their style/design) ===\n[Slide ${refIdx + 1}] "${refSlide.title}":\n${refSlide.html}\n=== END REFERENCE ===`;
+        referenceContext = `\n\n=== REFERENCE SLIDES (match their style/design) ===\n${formatReferenceSlideForAI(refSlide, refIdx, 'visual format, CSS, spacing, and structure')}\n=== END REFERENCE ===`;
       }
     }
 
@@ -2578,7 +2589,8 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       // would be 100% duplicated. Only inject the global block for:
       //   - Path B (presearch): global raw text is genuinely different from step facts
       //   - Path A steps WITHOUT their own facts (cover, dividers): fallback grounding
-      const searchSource = routeResult.searchSource || 'presearch';
+      const searchSource = routeResult.searchSource || 'none';
+      const hasRouterSearchFacts = searchSource === 'inline' || searchSource === 'presearch';
       const buildSearchFactsBlock = (step) => {
         if (!searchRawContext) return '';
         if (searchSource === 'inline' && Array.isArray(step?.facts) && step.facts.length > 0) {
@@ -2586,6 +2598,25 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         }
         const trimmed = trimSearchResult(searchRawContext);
         return `\n\n=== KEY FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n${trimmed}\n=== END KEY FACTS ===\nIMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.\n`;
+      };
+      const buildStepFactsBlock = (step) => {
+        if (!Array.isArray(step?.facts) || step.facts.length === 0) return '';
+        const title = hasRouterSearchFacts
+          ? `VERIFIED FACTS FROM WEB SEARCH (current as of ${currentDateString()})`
+          : 'PLANNER FACTS FROM ROUTER (not web-verified)';
+        const closing = hasRouterSearchFacts ? 'END VERIFIED FACTS' : 'END PLANNER FACTS';
+        const lines = [`\n\n=== ${title} ===`, ...step.facts.map(f => `- ${f}`)];
+        if (Array.isArray(step.sources) && step.sources.length > 0) {
+          const srcLines = step.sources.map(s =>
+            typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
+          );
+          lines.push('Sources:', ...srcLines.map(s => `- ${s}`));
+        }
+        lines.push(`=== ${closing} ===`);
+        lines.push(hasRouterSearchFacts
+          ? 'IMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.'
+          : 'IMPORTANT: Use the planner facts above as task context. They are not independently web-verified unless sources are listed, so do not describe them as web search results.');
+        return `${lines.join('\n')}\n`;
       };
 
       // Only use router-set or user-set searchQuery; no auto-derivation.
@@ -2629,10 +2660,12 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
 
         // Add context from existing slides (for reference, not primary content)
         if (contextIndices.length > 0) {
-          const contextSlides = contextIndices.map(idx => baseState.slides[idx]).filter(Boolean);
+          const contextSlides = contextIndices
+            .map(idx => ({ idx, slide: baseState.slides[idx] }))
+            .filter(item => item.slide);
           if (contextSlides.length > 0) {
             const contextSlidesHtml = contextSlides
-              .map((s, i) => `[Page ${contextIndices[i] + 1}] "${s.title}" (${s.type || 'custom'}):\n${s.html}`)
+              .map(({ slide: s, idx }) => formatReferenceSlideForAI(s, idx, 'style/reference'))
               .join('\n\n---\n\n');
             contextForAI = `${contextForAI}\n\n[CONTEXT FROM EXISTING SLIDES - use for style/reference:]\n${contextSlidesHtml}`;
           }
@@ -2652,7 +2685,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             let prevContext = prevOutput.html;
             if (prevOutput.customCSS) {
               // Unscope CSS so AI sees clean selectors
-              const cleanCSS = prevOutput.customCSS.replace(/\[data-slide-id="[^"]*"\]\s*/g, '');
+              const cleanCSS = cleanSlideCSSForAI(prevOutput.customCSS);
               prevContext = `<style>\n${cleanCSS}\n</style>\n${prevOutput.html}`;
             }
             contextForAI = `${contextForAI}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]`;
@@ -2705,16 +2738,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           stepPrompt = structuredParts.join('\n') + '\n' + stepPrompt;
         }
         if (Array.isArray(step.facts) && step.facts.length > 0) {
-          stepPrompt += `\n\n=== VERIFIED FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n`;
-          stepPrompt += step.facts.map(f => `- ${f}`).join('\n');
-          if (Array.isArray(step.sources) && step.sources.length > 0) {
-            const srcLines = step.sources.map(s =>
-              typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
-            );
-            stepPrompt += '\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
-          }
-          stepPrompt += '\n=== END VERIFIED FACTS ===';
-          stepPrompt += '\nIMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.\n';
+          stepPrompt += buildStepFactsBlock(step);
         } else if (Array.isArray(step.sources) && step.sources.length > 0) {
           const srcLines = step.sources.map(s =>
             typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
@@ -3629,16 +3653,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               stepPromptLocal = structuredParts.join('\n') + '\n' + stepPromptLocal;
             }
             if (Array.isArray(step.facts) && step.facts.length > 0) {
-              stepPromptLocal += `\n\n=== VERIFIED FACTS FROM WEB SEARCH (current as of ${currentDateString()}) ===\n`;
-              stepPromptLocal += step.facts.map(f => `- ${f}`).join('\n');
-              if (Array.isArray(step.sources) && step.sources.length > 0) {
-                const srcLines = step.sources.map(s =>
-                  typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
-                );
-                stepPromptLocal += '\nSources:\n' + srcLines.map(s => `- ${s}`).join('\n');
-              }
-              stepPromptLocal += '\n=== END VERIFIED FACTS ===';
-              stepPromptLocal += '\nIMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.\n';
+              stepPromptLocal += buildStepFactsBlock(step);
             } else if (Array.isArray(step.sources) && step.sources.length > 0) {
               const srcLines = step.sources.map(s =>
                 typeof s === 'string' ? s : `${s.label || ''}${s.url ? ` (${s.url})` : ''}${s.note ? ` — ${s.note}` : ''}`
@@ -6637,14 +6652,16 @@ Original request: ${userPrompt}`;
                   type="button"
                   className={`pill-toggle-btn${state.settings.slideStylePreference === 'auto' ? ' active' : ''}`}
                   onClick={() => actions.updateSettings({ slideStylePreference: 'auto' })}
+                  aria-pressed={state.settings.slideStylePreference === 'auto'}
                 >
                   Auto
                 </button>
                 <button
                   type="button"
-                  className="pill-toggle-btn active"
+                  className={`pill-toggle-btn${state.settings.slideStylePreference === 'freestyle' ? ' active' : ''}`}
                   onClick={() => actions.updateSettings({ slideStylePreference: 'freestyle' })}
                   title="Freestyle HTML slides"
+                  aria-pressed={state.settings.slideStylePreference === 'freestyle'}
                 >
                   Freestyle
                 </button>

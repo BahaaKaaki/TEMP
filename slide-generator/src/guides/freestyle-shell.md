@@ -60,10 +60,20 @@ The `.frame` is exactly **904 x 366 px** with `overflow: hidden`. Content that e
 1. **Scope everything** under `.slide .frame` so styles don't leak.
 2. **Use class names** that describe the layout's purpose (e.g., `.pillar-grid`, `.metric-row`, `.phase-timeline`). Invent clear, semantic names. Every custom class used in the HTML must have a matching rule in the `<style>` block.
 3. **Size in pixels** relative to the **904 x 366** frame. Use `height: 100%` on the top-level container to fill the frame.
-4. **Use flexbox and CSS grid** freely for layout.
-5. **No inline layout styles.** All layout must be in the `<style>` block. Inline `style` is allowed only for `color: var(--token)` or minor tweaks.
+4. **Use flexbox and CSS grid** freely for normal consulting layouts.
+5. **No inline layout styles for normal layouts.** All standard layout must be in the `<style>` block. Inline `style` is allowed only for `color: var(--token)` or minor tweaks.
 6. **No JavaScript.** Pure HTML + CSS.
 7. **No bare selectors.** Do not use unscoped element selectors like `h3`, `p`, `span`, `div`. Every selector must be scoped under a custom class within `.slide .frame`.
 8. **No global definitions.** Do not define or modify `:root`, `body`, `.slide`, `.title`, `.subtitle`, `.frame`, `.footer`, or any unscoped element selector.
 9. **No undeclared classes.** Do not place a class in the HTML unless it is a base skeleton class (`.slide`, `.title`, `.subtitle`, `.frame`, `.footer`) or defined by you in the returned `<style>` block.
 10. **No invented global classes.** Do not create reusable global utility classes. Every class is local to this slide.
+
+## Complex chart geometry
+
+For data-driven geometric exhibits such as waterfall, bridge, column, bar, line, scatter, Gantt, funnel, matrix, or quadrant charts, switch into fixed-coordinate chart mode:
+
+- Create a chart canvas inside `.frame` with `position: relative` and explicit pixel dimensions.
+- Use `position: absolute` with explicit `left`, `top`, `width`, `height`, and `bottom` values for bars, marks, labels, connectors, baselines, and callouts, or use a single inline SVG with a fixed `viewBox`.
+- Do not rely on flexbox/grid to create the chart geometry itself. Flex/grid is acceptable only for surrounding summaries, legends, or text panels.
+- Inline styles are allowed only for data-driven geometry values on chart marks. Keep colors, fonts, borders, and reusable styling in scoped CSS classes using theme tokens.
+- For waterfall and bridge charts, calculate the baseline first; every bar needs explicit height and bottom/top position, connectors need explicit left/top/width, and labels need fixed bounding boxes.

@@ -73,13 +73,17 @@ Return **only** a `<style>` block followed by the slide HTML. Do not add explana
 1. **Scope everything** under `.slide .frame` so styles don't leak.
 2. **Use design tokens** for all colors -- `var(--accent)`, `var(--surface)`, etc.
 3. **CRITICAL CONTRAST RULE: Every element with `background: var(--accent)` or any dark/colored background MUST have `color: var(--on-accent)` (or `color: white`) set DIRECTLY on it AND on all child elements containing text.** This includes card headers, numbered badges, banner bars, pill labels, and any container with a maroon/dark fill. Never rely on inheritance alone -- explicitly set `color: var(--on-accent)` on each text-bearing element inside a dark container. Failure to do this produces invisible dark-on-dark text.
-4. **Use flexbox and CSS grid** freely for layout.
+4. **Use flexbox and CSS grid** freely for normal consulting layouts.
 5. **Use class names** that describe the layout's purpose (e.g., `.pillar-grid`, `.metric-row`, `.phase-timeline`). Invent clear, semantic names. Every custom class used in the HTML must have a matching rule in the `<style>` block.
 6. **Size in pixels** relative to the **904 x 366** frame. Use `height: 100%` on the top-level container to fill the frame.
-7. **No inline layout styles.** All layout must be in the `<style>` block. Inline `style` is allowed only for `color: var(--token)` or minor tweaks.
+7. **No inline layout styles for normal layouts.** All standard layout must be in the `<style>` block. Inline `style` is allowed only for `color: var(--token)` or minor tweaks. For complex chart marks only, inline numeric geometry such as `height`, `bottom`, `left`, `top`, and `width` is allowed.
 8. **No JavaScript.** Pure HTML + CSS.
 9. **No bare selectors.** Do not use unscoped element selectors like `h3`, `p`, `span`, `div`. Every selector must be scoped under a custom class within `.slide .frame`.
 10. **No global definitions.** Do not define or modify `:root`, `body`, `.slide`, `.title`, `.subtitle`, `.frame`, `.footer`, or any unscoped element selector.
+
+## Complex chart geometry
+
+For waterfall, bridge, bar, column, Gantt, line, scatter, funnel, matrix, or quadrant charts, create a fixed chart canvas inside `.frame` and position marks deterministically with absolute coordinates or a single fixed-viewBox SVG. Do not let flexbox/grid determine bar heights, baselines, connectors, or label positions. Use inline numeric styles only for data-driven geometry on chart marks; keep colors and reusable styling in scoped CSS classes.
 
 ## Masters
 

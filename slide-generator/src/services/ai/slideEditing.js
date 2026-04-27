@@ -3,7 +3,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
-import { CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT as BASE_EDIT_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
+import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT as BASE_EDIT_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
 import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
 import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
@@ -16,6 +16,9 @@ import { currentDateString, safeJSONParse } from './router.js';
 // edit prompt with the PPTX export-guidance hint guide appended.
 const getEditSystemPrompt = (settings) =>
   applyPromptOverride(settings, 'edit.system', appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT));
+
+const stripStyleBlocks = (html = '') =>
+  html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').trim();
 
 // Context tiers for smart context selection
 export const CONTEXT_TIERS = {
@@ -559,6 +562,8 @@ Description: ${template.description || 'Professional consulting slide'}
 TEMPLATE HTML (use as styling reference):
 ${template.html}
 
+${CHART_GEOMETRY_GUIDE}
+
 === PILLAR PRESERVATION (HIGHEST PRIORITY) ===
 Think like a management consultant redesigning a slide:
 1. COUNT the top-level sections/pillars in the source (e.g., 3 cards = 3 pillars, 4 grid cells = 4 pillars).
@@ -584,6 +589,7 @@ Think like a management consultant redesigning a slide:
 3. Extract meaningful content from current slide (titles, points, metrics) — never lose data
 4. If footer has page number, use slide ${positionContext ? 'position from above' : 'number'}
 5. Footer page numbers are injected dynamically — do NOT hardcode them
+6. Use the target template's existing classes and structure. Do NOT return a <style> block for template switches; the template CSS will be applied separately. Inline geometry is allowed only for chart mark coordinates.
 
 Return ONLY the transformed HTML.`;
 
@@ -603,7 +609,7 @@ Return ONLY the transformed HTML.`;
     // Extract single slide (AI may return both original and transformed - take the last one)
     content = extractSingleSlide(content);
 
-    return content;
+    return stripStyleBlocks(content);
   } catch (error) {
     if (error.message.includes('Failed to fetch')) {
       throw new Error('Network error. Please check your internet connection.');

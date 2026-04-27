@@ -5,6 +5,8 @@
  * preventing cross-slide style bleed in thumbnails, fullscreen, and HTML export.
  *
  * CSS is scoped at storage time (generation/edit), not at render time.
+ * Template CSS is intentionally reused rather than regenerated, then scoped to
+ * the concrete slide ID when the slide is added or updated.
  */
 
 /**
@@ -16,14 +18,19 @@ export function scopeCSS(css, slideId) {
   const attr = `[data-slide-id="${slideId}"]`;
 
   return css.replace(
-    /([^{}@/][^{}]*?)\s*\{/g,
+    /((?:\s*\/\*[\s\S]*?\*\/\s*)*[^{}@/][^{}]*?)\s*\{/g,
     (match, rawSelectors) => {
       // Skip @-rules (@media, @keyframes, etc.)
       if (rawSelectors.trim().startsWith('@')) return match;
-      // Skip comments
-      if (rawSelectors.trim().startsWith('/*')) return match;
 
-      const scoped = rawSelectors
+      // Keep leading comments, but scope the selector that follows them.
+      // Without this, blocks like "/* Chart */\n.slide .foo {" remained
+      // unscoped because the whole prelude started with a comment.
+      const commentPrefix = rawSelectors.match(/^(\s*(?:\/\*[\s\S]*?\*\/\s*)+)/)?.[1] || '';
+      const selectorText = rawSelectors.slice(commentPrefix.length);
+      if (!selectorText.trim()) return match;
+
+      const scoped = selectorText
         .split(',')
         .map(sel => {
           sel = sel.trim();
@@ -39,7 +46,7 @@ export function scopeCSS(css, slideId) {
         })
         .join(', ');
 
-      return `${scoped} {`;
+      return `${commentPrefix}${scoped} {`;
     }
   );
 }

@@ -26,7 +26,11 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Web search via PwC Responses API
 - Router search policy uses GPT 5.4 reasoning by default, but only attaches web search for requests that need current or external evidence; per-step search remains available for factual slides
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
+- Complex chart generation uses fixed-coordinate geometry guidance for waterfall/bridge/bar-style exhibits, with inline numeric positioning allowed only for chart marks
 - Template auto-match now attaches the selected template's extracted CSS consistently across create, insert, fill, and switch paths
+- Reused template CSS is normalized through per-slide `data-slide-id` scoping on add/update, including CSS blocks with comments before selectors
+- Template switching strips model-returned `<style>` blocks when template CSS is applied, reducing conflicts between generated CSS and extracted template CSS
+- Cross-slide format matching passes referenced slide HTML plus its unscoped `customCSS`, so "make this like slide N" has the actual visual rules, not just markup
 - Deck-aware routing uses active-page text, layout mix, section maps, and enriched storyline context for follow-on deck requests
 - Triage now selects context depth (`active_slide`, `reference_slides`, `deck_digest`, or `full_text_deck`) and separates target slides from reference slides for cross-slide edits
 - Section and subsection trackers can be updated as slide metadata without regenerating slide HTML

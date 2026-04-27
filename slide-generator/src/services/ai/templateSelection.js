@@ -4,7 +4,7 @@ import { audit } from '../../utils/auditLog';
 import { searchTemplatesByEmbedding, searchTemplatesByKeywords, selectBestTemplate, randomizeFamilyVariant, estimateItemCount } from '../templateEmbeddings';
 import { getCredentials } from './models.js';
 import { callWithModelFallback, getFastModelSettings } from './apiClient.js';
-import { CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
+import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
 import { buildFreestyleSystemPrompt } from './freestylePromptBuilder.js';
 import { extractSingleSlide, flattenNestedFrames, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
@@ -842,6 +842,8 @@ Do NOT replace a specific insight with a generic label.
 TEMPLATE HTML STRUCTURE:
 ${template.html}
 
+${CHART_GEOMETRY_GUIDE}
+
 ${TITLE_HEADER_RULES}
 
 CONTENT FIDELITY — PRESERVE THE USER'S CONTENT (HIGHEST PRIORITY):
@@ -900,6 +902,7 @@ ABSOLUTE RULES:
 - Maintain the template's visual rhythm and spacing
 - VERTICAL LOGIC: The header (h1) MUST match content count. If content has 3 cards, header must say "Three..." not "Five...". Count items first, then write header.
 - STRUCTURAL DIRECTIVES: If the content request contains [STRUCTURE: ...], you MUST follow it exactly. It overrides flex defaults. E.g., [STRUCTURE: exactly 5 items] means produce exactly 5, even if template default is 3.
+- Do NOT return a <style> block for named templates. Template CSS is applied separately; use existing template classes. Inline numeric styles are allowed only for chart geometry values.
 
 Return ONLY the filled HTML, no explanations.`;
   fillPrompt = appendPromptOverride(settings, 'slideGen.templateUser', fillPrompt);
@@ -919,6 +922,9 @@ Return ONLY the filled HTML, no explanations.`;
 
     // Extract single slide (AI may return both template example and filled - take the last one)
     content = extractSingleSlide(content) || '';
+    if (template.css) {
+      content = content.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').trim();
+    }
 
     // If slide wrapper is missing, wrap the content properly
     // Use regex to match class="slide" or class="slide ..." (with extra classes)

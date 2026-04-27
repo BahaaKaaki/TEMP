@@ -635,6 +635,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 40. **Conditional router search policy**: `aiRouteRequest` keeps GPT 5.4 reasoning and Structured Outputs for planning, but `getRouterSearchPolicy()` now attaches `web_search_preview` only when `routerSearchMode='always'`, triage flags `needsSearch`, or the prompt asks for current/external evidence. Normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring use no-search planning by default while still allowing per-step `searchQuery` + `searchGoal` when a factual slide needs fresh grounding. Router debug/audit metadata now records `searchSource`, policy reason, search call count, and search queries.
 
+41. **Complex chart geometry guidance**: freestyle, template fill, edit, and template-switch prompts now distinguish normal slide layouts from data-driven chart geometry. Waterfall/bridge/bar-style exhibits are instructed to use fixed chart canvases with absolute coordinates or SVG viewBoxes, while inline numeric positioning is allowed only on chart marks. Template fill/switch paths avoid model-returned `<style>` blocks when extracted template CSS is applied, reducing CSS conflicts for chart templates. Reused template CSS is normalized through `unscopeCSS()` + `scopeCSS()` on slide add/update so selectors are consistently tied to `data-slide-id`, including CSS rules preceded by comments. Cross-slide format matching now passes referenced slide HTML plus unscoped `customCSS` into execution prompts, so "make this like slide N" has actual visual rules instead of markup only. Router step facts are labeled as planner facts unless router search actually ran.
+
 ---
 
 ## 11. Pending / In Discussion

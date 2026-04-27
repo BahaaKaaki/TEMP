@@ -46,6 +46,20 @@ SLIDE SKELETON (handled by base CSS -- do NOT restyle):
 
 === END DESIGN TOKEN REFERENCE ===`;
 
+export const CHART_GEOMETRY_GUIDE = `
+=== COMPLEX CHART GEOMETRY RULES ===
+
+Use this mode for waterfall, bridge, column, bar, Gantt, scatter, quadrant, matrix, line, area, funnel, and other data-driven geometric exhibits.
+
+- Build a fixed chart canvas inside .frame, usually position: relative with explicit pixel dimensions.
+- Position marks, labels, connectors, axes, and callouts with explicit coordinates: position: absolute plus left/top/width/height, or a single inline SVG with viewBox="0 0 904 366".
+- Do NOT rely on flexbox/grid to create the chart geometry itself. Flex/grid is acceptable only for nearby legends, summary cards, or non-chart text panels.
+- Inline style is allowed ONLY for data-driven geometry values on chart marks, such as height, width, left, top, bottom, transform, or SVG coordinates. Continue using token colors from CSS classes.
+- For waterfall/bridge charts: compute the baseline first; every bar needs explicit height and bottom/top position, connectors need explicit left/top/width, labels need fixed bounding boxes.
+- Keep axis/baseline/labels deterministic. Do not let bars "flow" based on text length or flex distribution.
+
+=== END COMPLEX CHART GEOMETRY RULES ===`;
+
 // ── Work Level prompt builder ─────────────────────────────────────────────────
 // Generates scaling instructions based on work level setting.
 // Contexts: 'slide' (regular chatbot slide), 'agent' (agentic slide creation), 'report' (HTML report)
@@ -241,8 +255,10 @@ CSS RULES:
 2. Invent clear, semantic class names for your layout (e.g., .pillar-grid, .metric-row, .phase-timeline)
 3. Use var(--token) for ALL colors — never hardcode hex values
 4. Use flexbox and CSS grid freely; size in pixels relative to the 904 x 366 frame
-5. Put all layout in the <style> block — inline styles only for minor one-off tweaks like style="color: var(--accent)"
+5. Put normal slide layout in the <style> block — inline styles only for minor one-off tweaks, except for data-driven chart geometry as described below
 6. Every class used in the HTML must have a matching rule in <style>
+
+${CHART_GEOMETRY_GUIDE}
 
 CONTENT MODE:
 You MUST ALWAYS produce a complete slide. Never return JSON errors or "no context" messages.
@@ -299,6 +315,7 @@ CRITICAL — INLINE STYLE RULES:
 - NEVER use inline styles for layout or positioning (no position, top, left, width, height, display:flex, display:grid, float, transform).
 - NEVER hardcode colors (no #hex, no rgb(), no color names). ALWAYS use var(--token).
 - The ONLY acceptable inline styles: color with tokens (style="color: var(--accent)"), margin-top for minor spacing, font-weight for emphasis.
+- EXCEPTION: data-driven chart geometry may use inline numeric positioning/sizing values on chart marks only (bars, connectors, axes, labels), especially for waterfall/bridge charts.
 - ALL layout and sizing is handled by the pre-styled CSS classes below. Trust them.
 
 ## SLIDE STRUCTURE (every slide MUST follow this exact wrapper — no exceptions)
@@ -698,7 +715,7 @@ EXAMPLE 10 — Numbered key points (circled numbers with structured content):
 3. RESPECT CONTENT BUDGETS: Never exceed the max items for your chosen layout (see table above).
 4. APPROVED CLASSES ONLY: Every class you use must be in the APPROVED CSS CLASSES list above. Inventing classes produces raw unstyled HTML.
 5. NO EMOJIS IN BODY TEXT: No emojis in <li>, <p>, <strong>, or <h3>/<h4>. Emojis go only inside card-icon-circle.
-6. NO INLINE POSITIONING: No position, display, float, width, height, transform in style attributes.
+6. NO INLINE POSITIONING: No position, display, float, width, height, transform in style attributes, except data-driven chart geometry on chart marks.
 7. NO HARDCODED COLORS: Use var(--token). No #hex, no rgb(), no color names.
 8. INSIGHT TITLES: h1 should state a "so what" conclusion, not a label.
 9. BOLD LEAD PATTERN: <li><strong>Bold phrase</strong> — explanation with data</li>. No plain text bullets.
@@ -760,6 +777,8 @@ CSS RULES:
 4. For any NEW custom class introduced in the HTML, include a matching CSS rule in the returned <style> block
 5. Do not redefine base classes such as .slide, .title, .subtitle, .frame, .footer, or .source unless explicitly asked
 6. Use flexbox and CSS grid freely; size relative to the 904 x 366 frame
+
+${CHART_GEOMETRY_GUIDE}
 
 HEADING QUALITY:
 - SECTION TITLES (h3, h4): insight-driven 4-7 word phrases, never generic labels. Write conclusions the reader can grasp without body text.

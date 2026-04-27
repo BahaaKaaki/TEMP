@@ -761,9 +761,10 @@ function slideReducer(state, action) {
             ? null
             : (updates.pptxCode !== undefined ? updates.pptxCode : slide.pptxCode);
 
-          // Scope customCSS if it's being updated and not already scoped
-          const scopedUpdates = updates.customCSS !== undefined && updates.customCSS && !updates.customCSS.includes('data-slide-id')
-            ? { ...updates, customCSS: scopeCSS(updates.customCSS, slide.id) }
+          // Always normalize updated CSS through unscope -> scope. This handles
+          // template CSS and partially scoped model CSS consistently.
+          const scopedUpdates = updates.customCSS !== undefined && updates.customCSS
+            ? { ...updates, customCSS: scopeCSS(unscopeCSS(updates.customCSS), slide.id) }
             : updates;
 
           return {

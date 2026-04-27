@@ -5754,7 +5754,7 @@ export const SLIDE_TEMPLATES = {
     type: 'chart',
     master: 'standard',
     description: 'Bridge chart showing incremental changes from start to end',
-    note: 'Waterfall visualization for variance analysis, showing how individual factors contribute to change from start to end value. Use for P&L bridges, cost breakdowns, or impact decomposition.',
+    note: 'Waterfall visualization for variance analysis, showing how individual factors contribute to change from start to end value. Use fixed chart geometry: each bar needs explicit height and bottom values; connectors and labels must be positioned deterministically.',
     thumbnail: 'waterfall',
     category: 'Data & Metrics',
     html: `<div class="slide master-standard">
@@ -8191,7 +8191,7 @@ export const SLIDE_TEMPLATES = {
     type: 'strategy',
     master: 'standard',
     description: 'Waterfall chart showing financial bridge from baseline to target with initiative contributions',
-    note: 'Visual waterfall showing how initiatives contribute to financial improvement. Shows starting point, additions, subtractions, and end state. Use for value creation stories.',
+    note: 'Visual waterfall showing how initiatives contribute to financial improvement. Shows starting point, additions, subtractions, and end state. Use fixed chart geometry: every bridge bar needs explicit height and bottom values with deterministic labels/connectors.',
     thumbnail: 'waterfall',
     category: 'Data & Metrics',
     html: `<div class="slide master-standard">
@@ -8474,7 +8474,7 @@ export const TEMPLATE_GUIDANCE = {
   // ── Charts / Data ──
   barChartExhibit: 'Two dark panels (left) + 5-8 horizontal bars (right). Panel 1: context/background (3 bullets). Panel 2: key takeaways (3 bullets). Bar labels: 2-3 words. Source at bottom.',
   verticalBarChartExhibit: 'Two dark panels (left) + 5-8 vertical bars (right). Panel 1: context/background (3 bullets). Panel 2: key takeaways (3 bullets). Bar labels: 2-3 words. Source at bottom.',
-  waterfallChart: '5-8 bridge steps. Each: label (2-3 words) + value. Start and end totals required.',
+  waterfallChart: '5-8 bridge steps. Each: label (2-3 words) + value. Start/end totals required. Use explicit inline height/bottom values on each wf-column; do not use flex/grid to determine bar geometry.',
   graphInsights: 'Left: SVG chart (60%) — FIXED structure: 5 bars, 4 Y-axis labels, 5 X-axis labels. Only replace text inside existing <text> elements. NEVER add extra <text> or axis labels. Right: 3 numbered insights (8-10 words each).',
   dualCharts: 'Two charts side-by-side. Each: title + chart area. Minimal annotation text.',
   multiLineChart: '2-4 data series on a line chart. Legend (series names 2-3 words). Y-axis values (numbers only). X-axis labels (years or periods). Point labels optional. Takeaway: 1 sentence max.',
@@ -8503,7 +8503,7 @@ export const TEMPLATE_GUIDANCE = {
   initiativePrioritization: '4 quadrants (Quick Wins, Strategic Bets, Fill-ins, Deprioritize). 5-10 initiative items with ID + bold name (2-3 words). Use wave-1/wave-2/wave-defer classes for color coding. Legend: 2-3 wave groupings with W1/W2 tags.',
   initiativeCharter: 'Single initiative detail. Overview: description (25 words) + 3 objectives (8 words each). Timeline: 4 milestones. Risks: 3 items with mitigation. Sidebar: 4 metrics + team + 3 KPIs.',
   financialSummary: '2-3 financial blocks (investment, savings, revenue). Each: value + timeframe + 3 breakdown items. 4 metric cards: multiple, payback, NPV, IRR.',
-  financialWaterfall: '5-9 waterfall bars: start total, 3-5 additions/subtractions, end total. Each: value + label (2-3 words). Summary: 3 metrics.',
+  financialWaterfall: '5-9 waterfall bars: start total, 3-5 additions/subtractions, end total. Each: value + label (2-3 words). Summary: 3 metrics. Use explicit height/bottom values and deterministic connectors.',
 };
 
 /**

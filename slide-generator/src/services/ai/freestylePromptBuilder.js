@@ -83,7 +83,7 @@ Design for maximum information density while maintaining readability.
 
 ## Core principles
 1. **Grid-first layout** -- use CSS Grid for precise alignment of data elements.
-2. **Small but readable type** -- 11px body text is acceptable; 10px for labels and footnotes.
+2. **Compact but readable type** -- keep body text at 12px; use 10px only for labels, axes, legends, chips, sources, and footnotes.
 3. **Dense tables** -- compact padding (4-6px), alternating row backgrounds with \`var(--surface)\` and \`var(--surface-alt)\`.
 4. **Metrics dashboard style** -- KPI cards with number + label + trend indicator arranged in tight grids.
 5. **Source citations on every data slide** -- footnote sources in the footer.

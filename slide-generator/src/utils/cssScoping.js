@@ -9,15 +9,79 @@
  * the concrete slide ID when the slide is added or updated.
  */
 
+export const TYPOGRAPHY_FLOORS = Object.freeze({
+  absolute: 10,
+  body: 12,
+  sectionTitle: 14,
+});
+
+const SMALL_TEXT_SELECTOR_RE = /\b(footer|source|footnote|caption|meta|label|badge|chip|axis|tick|legend|unit|note|small)\b/i;
+const SECTION_TITLE_SELECTOR_RE = /\b(h3|h4|heading|headline|section|pillar|card-title|cell-title|grid-title|dense-title|timeline-title|kp-title)\b/i;
+const BODY_TEXT_SELECTOR_RE = /\b(p|li|td|th|body|text|copy|desc|description|content|insight|takeaway|bullet|cell|card)\b/i;
+
+function formatPx(value) {
+  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, '');
+}
+
+function typographyFloorForSelector(selector) {
+  if (SMALL_TEXT_SELECTOR_RE.test(selector)) return TYPOGRAPHY_FLOORS.absolute;
+  if (SECTION_TITLE_SELECTOR_RE.test(selector)) return TYPOGRAPHY_FLOORS.sectionTitle;
+  if (BODY_TEXT_SELECTOR_RE.test(selector)) return TYPOGRAPHY_FLOORS.body;
+  return TYPOGRAPHY_FLOORS.absolute;
+}
+
+function clampFontSizeDeclarations(body, minSize) {
+  return body
+    .replace(/font-size\s*:\s*([0-9]*\.?[0-9]+)px/gi, (match, size) => {
+      const numeric = Number(size);
+      if (!Number.isFinite(numeric) || numeric >= minSize) return match;
+      return match.replace(`${size}px`, `${formatPx(minSize)}px`);
+    })
+    .replace(/(font\s*:\s*[^;{}]*?)([0-9]*\.?[0-9]+)px(?=[/\s;])/gi, (match, prefix, size) => {
+      const numeric = Number(size);
+      if (!Number.isFinite(numeric) || numeric >= minSize) return match;
+      return `${prefix}${formatPx(minSize)}px`;
+    });
+}
+
+/**
+ * Normalize generated/template CSS to the deck typography contract.
+ * The model can still choose hierarchy, but it cannot store unreadable text.
+ */
+export function normalizeSlideTypographyCSS(css) {
+  if (!css) return '';
+
+  return css.replace(/([^{}@][^{}]*?)\{([^{}]*)\}/g, (match, selector, body) => {
+    const minSize = typographyFloorForSelector(selector);
+    const normalizedBody = clampFontSizeDeclarations(body, minSize);
+    return `${selector}{${normalizedBody}}`;
+  });
+}
+
+export function normalizeSlideTypographyHTML(html) {
+  if (!html) return html || '';
+
+  return html.replace(
+    /<([a-z][\w:-]*)([^>]*?)\sstyle=(["'])([\s\S]*?)\3([^>]*)>/gi,
+    (match, tagName, beforeStyle, quote, styleBody, afterStyle) => {
+      const classAttr = `${beforeStyle} ${afterStyle}`.match(/\sclass=(["'])([\s\S]*?)\1/i)?.[2] || '';
+      const minSize = typographyFloorForSelector(`${tagName} ${classAttr}`);
+      const normalizedStyle = clampFontSizeDeclarations(styleBody, minSize);
+      return `<${tagName}${beforeStyle} style=${quote}${normalizedStyle}${quote}${afterStyle}>`;
+    }
+  );
+}
+
 /**
  * Prefix every CSS rule selector with [data-slide-id="slideId"].
  * Rules already scoped or @-rules are left untouched.
  */
 export function scopeCSS(css, slideId) {
   if (!css || !slideId) return css || '';
+  const normalizedCSS = normalizeSlideTypographyCSS(css);
   const attr = `[data-slide-id="${slideId}"]`;
 
-  return css.replace(
+  return normalizedCSS.replace(
     /((?:\s*\/\*[\s\S]*?\*\/\s*)*[^{}@/][^{}]*?)\s*\{/g,
     (match, rawSelectors) => {
       // Skip @-rules (@media, @keyframes, etc.)

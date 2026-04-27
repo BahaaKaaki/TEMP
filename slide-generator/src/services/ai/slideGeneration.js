@@ -3,7 +3,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
-import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, getWorkLevelInstructions } from './constants.js';
+import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, TYPOGRAPHY_SIZE_GUIDE, getWorkLevelInstructions } from './constants.js';
 import { buildFreestyleSystemPrompt } from './freestylePromptBuilder.js';
 import { generateSlideSummary, buildDeckContext } from './slideContext.js';
 import { currentDateString } from './router.js';
@@ -316,6 +316,8 @@ VISUAL QUALITY:
 - Use CSS grid or flexbox for every layout — no unstyled stacked divs.
 - Every slide must look polished enough for a C-suite audience.
 
+${TYPOGRAPHY_SIZE_GUIDE}
+
 ${CHART_GEOMETRY_GUIDE}
 
 CONTENT FIDELITY:
@@ -364,6 +366,8 @@ ${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
 ${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "this page", they mean the CURRENT SLIDE REFERENCE shown above' : ''}
 
 ${CHART_GEOMETRY_GUIDE}
+
+${TYPOGRAPHY_SIZE_GUIDE}
 
 CONTENT FIDELITY — PRESERVE THE USER'S CONTENT:
 The user's instruction is the PRIMARY input. Distinguish between two modes:

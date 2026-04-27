@@ -8453,7 +8453,7 @@ export const TEMPLATE_GUIDANCE = {
 
   // ── Tables ──
   comparisonTable: '3-4 columns, 4-6 rows. Cell text: 1-3 words (scores, ratings, short labels). Header row required.',
-  denseTable: '5-6 columns, 10-15 rows. Cell text max 4 words. Font is 9px — keep everything ultra-short. Header row required.',
+  denseTable: '5-6 columns, 10-15 rows. Cell text max 4 words. Font is 10px minimum — keep everything ultra-short. Header row required.',
 
   // ── KPI / Metrics ──
   kpiMetrics: '3 KPI blocks (left) + 3 detail items (right). KPI: value (number+unit) + label (2-3 words). Detail: title (3 words) + 1 line.',

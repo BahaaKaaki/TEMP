@@ -36,6 +36,11 @@ export const LAYOUT = {
   cardRadius: 0.05,
 };
 
+export function pptxFontSize(size, fallback = 10) {
+  const numeric = Number(size ?? fallback);
+  return Math.max(10, Number.isFinite(numeric) ? numeric : fallback);
+}
+
 // ── Footer branding ──────────────────────────────────────────────────────────
 
 let _footerBranding = 'Strategy&';
@@ -61,7 +66,7 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
     w: numPos?.w ?? 1.3,
     h: numPos?.h ?? 0.25,
     fontFace: numFont.fontFace || 'Arial',
-    fontSize: numFont.fontSize || 7.5,
+    fontSize: pptxFontSize(numFont.fontSize, 10),
     bold: numFont.bold || false,
     color: COLORS.meta,
     align: 'right',
@@ -76,18 +81,18 @@ export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
   if (sectionLabel) {
     const sectionW = Math.max(1.0, sectionLabel.length * 0.065 + 0.35);
     slide.addShape('rect', { x: 0, y: 0, w: sectionW, h: 0.28, fill: { color: COLORS.maroon } });
-    slide.addText(sectionLabel, { x: 0.05, y: 0, w: sectionW - 0.1, h: 0.28, fontFace: 'Arial', fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
+    slide.addText(sectionLabel, { x: 0.05, y: 0, w: sectionW - 0.1, h: 0.28, fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
 
     if (subSectionLabel) {
       const subW = Math.max(0.8, subSectionLabel.length * 0.06 + 0.3);
       const subX = sectionW + 0.04;
       slide.addShape('rect', { x: subX, y: 0, w: subW, h: 0.25, fill: { color: COLORS.coal } });
-      slide.addText(subSectionLabel, { x: subX + 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: 'Arial', fontSize: 7, bold: true, color: COLORS.white, valign: 'middle' });
+      slide.addText(subSectionLabel, { x: subX + 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
     }
   } else if (subSectionLabel) {
     const subW = Math.max(0.8, subSectionLabel.length * 0.06 + 0.3);
     slide.addShape('rect', { x: 0, y: 0, w: subW, h: 0.25, fill: { color: COLORS.coal } });
-    slide.addText(subSectionLabel, { x: 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: 'Arial', fontSize: 7, bold: true, color: COLORS.white, valign: 'middle' });
+    slide.addText(subSectionLabel, { x: 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
   }
 }
 
@@ -128,7 +133,7 @@ export function addSourceNote(slide, html) {
     w: ftrPos?.w ?? 8.5,
     h: ftrPos?.h ?? 0.25,
     fontFace: ftrFont.fontFace || 'Arial',
-    fontSize: ftrFont.fontSize || 7.5,
+    fontSize: pptxFontSize(ftrFont.fontSize, 10),
     italic: ftrFont.italic ?? true,
     color: COLORS.meta,
     align: 'left',

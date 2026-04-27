@@ -13,8 +13,6 @@ AI-powered presentation generator that creates professional slide decks using Pw
 └── docs/               # Architecture, runbooks, and feature planning docs
 ```
 
-Key architecture reference: [`docs/edwin-apex-architecture-memo.md`](docs/edwin-apex-architecture-memo.md) maps Edwin V1, the proposed Edwin V2 agent architecture, APEX OS alignment, capability boundaries, data flows, and roadmap decisions.
-
 ## Features
 
 - AI slide generation via PwC Shared Services (model: `vertex_ai.gemini-3.1-pro-preview`)

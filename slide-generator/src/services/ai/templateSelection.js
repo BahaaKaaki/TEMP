@@ -4,7 +4,7 @@ import { audit } from '../../utils/auditLog';
 import { searchTemplatesByEmbedding, searchTemplatesByKeywords, selectBestTemplate, randomizeFamilyVariant, estimateItemCount } from '../templateEmbeddings';
 import { getCredentials } from './models.js';
 import { callWithModelFallback, getFastModelSettings } from './apiClient.js';
-import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
+import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, TYPOGRAPHY_SIZE_GUIDE, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
 import { buildFreestyleSystemPrompt } from './freestylePromptBuilder.js';
 import { extractSingleSlide, flattenNestedFrames, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
@@ -844,6 +844,8 @@ ${template.html}
 
 ${CHART_GEOMETRY_GUIDE}
 
+${TYPOGRAPHY_SIZE_GUIDE}
+
 ${TITLE_HEADER_RULES}
 
 CONTENT FIDELITY — PRESERVE THE USER'S CONTENT (HIGHEST PRIORITY):
@@ -893,6 +895,7 @@ OVERFLOW PREVENTION (CRITICAL):
 - The slide has a FIXED frame of 904×366px. Content MUST NOT overflow this boundary.
 - If content risks overflow: CUT content first. Remove the weakest point, shorten descriptions, reduce item count. LESS content that fits cleanly is ALWAYS better than cramming.
 - Only AFTER trimming content, if still tight, THEN slightly reduce font-size (by 1px max) or tighten padding.
+- Never reduce below the typography floors above: body text 12px, section/pillar/card titles 14px, all small labels at least 10px.
 - NEVER pack so much text that the slide feels "wall of text". Slides should feel LIGHT and easy to scan.
 - A slide with 3 strong points and breathing room is better than 6 points crammed together.
 

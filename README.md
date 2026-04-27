@@ -31,6 +31,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Reused template CSS is normalized through per-slide `data-slide-id` scoping on add/update, including CSS blocks with comments before selectors
 - Template switching strips model-returned `<style>` blocks when template CSS is applied, reducing conflicts between generated CSS and extracted template CSS
 - Cross-slide format matching passes referenced slide HTML plus its unscoped `customCSS`, so "make this like slide N" has the actual visual rules, not just markup
+- Slide typography is normalized on generation/import/update and PPTX export: no visible text below 10px/10pt, body copy targets 12px/12pt, and section/pillar/card titles target 14px/14pt
 - Deck-aware routing uses active-page text, layout mix, section maps, and enriched storyline context for follow-on deck requests
 - Triage now selects context depth (`active_slide`, `reference_slides`, `deck_digest`, or `full_text_deck`) and separates target slides from reference slides for cross-slide edits
 - Section and subsection trackers can be updated as slide metadata without regenerating slide HTML

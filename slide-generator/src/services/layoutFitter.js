@@ -5,13 +5,17 @@
 
 // Minimum font sizes (in px) to maintain readability
 const MIN_FONT_SIZES = {
-  h3: 12,
-  h4: 11,
-  p: 10,
+  h3: 14,
+  h4: 14,
+  h5: 14,
+  h6: 14,
+  p: 12,
+  li: 12,
+  td: 12,
+  th: 12,
+  strong: 12,
+  em: 12,
   span: 10,
-  li: 10,
-  td: 9,
-  th: 10,
   div: 10,
   default: 10,
 };
@@ -167,6 +171,11 @@ function applyScale(frameEl, scale) {
   wrapper.style.transform = `scale(${scale})`;
 }
 
+function getMinimumRenderedFontSize(textElements) {
+  const sizes = textElements.map(getFontSize).filter(size => Number.isFinite(size) && size > 0);
+  return sizes.length ? Math.min(...sizes) : MIN_FONT_SIZES.default;
+}
+
 /**
  * Main: Fit content to frame
  * Smart approach: inspect first, squeeze only if needed
@@ -232,9 +241,13 @@ export function fitContentToFrame(slideEl, options = {}) {
   // Phase 4: Scale as last resort
   const afterAdjust = inspectFrame(frameEl);
   if (afterAdjust.isOverflowing) {
-    const scale = Math.max(0.75, 1 / afterAdjust.ratio - 0.01);
-    applyScale(frameEl, scale);
-    adjustments.scaleApplied = scale;
+    const minRenderedFont = getMinimumRenderedFontSize(textElements);
+    const minReadableScale = MIN_FONT_SIZES.default / minRenderedFont;
+    const scale = Math.max(minReadableScale, 0.75, 1 / afterAdjust.ratio - 0.01);
+    if (scale < 1) {
+      applyScale(frameEl, scale);
+      adjustments.scaleApplied = scale;
+    }
   }
 
   const final = inspectFrame(frameEl);

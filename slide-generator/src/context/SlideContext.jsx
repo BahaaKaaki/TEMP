@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
 import { preGeneratePptxCode, hasAnyCredentials } from '../services/pptxService';
 import { DEFAULT_THEME } from '../utils/themeUtils';
-import { scopeCSS, unscopeCSS } from '../utils/cssScoping';
+import { normalizeSlideTypographyHTML, scopeCSS, unscopeCSS } from '../utils/cssScoping';
 import { generateSlideId } from '../utils/slideIds';
 // Import full CSS as raw string so it's available in state for AI and exports
 import SLIDES_CSS from '../styles/slides.css?raw';
@@ -567,7 +567,7 @@ function extractSectionLabelsFromHTML(html) {
 function slideReducer(state, action) {
   switch (action.type) {
     case ACTIONS.ADD_SLIDE: {
-      const html = action.payload.html || getDefaultSlideHTML();
+      const html = normalizeSlideTypographyHTML(action.payload.html || getDefaultSlideHTML());
       const type = action.payload.type || 'custom';
       const title = action.payload.title || 'Untitled Slide';
       const slideId = generateSlideId(state.slides.map(s => s.id));
@@ -651,7 +651,7 @@ function slideReducer(state, action) {
     case ACTIONS.INSERT_SLIDE_AT: {
       // Insert a slide at a specific position (0 = first, -1 = last)
       const { position, skipActiveChange, ...slideData } = action.payload;
-      const html = slideData.html || getDefaultSlideHTML();
+      const html = normalizeSlideTypographyHTML(slideData.html || getDefaultSlideHTML());
       const type = slideData.type || 'custom';
       const title = slideData.title || 'Untitled Slide';
       const slideId = generateSlideId(state.slides.map(s => s.id));
@@ -728,6 +728,9 @@ function slideReducer(state, action) {
     case ACTIONS.UPDATE_SLIDE: {
       const slideToUpdate = state.slides.find(s => s.id === action.payload.id);
       const updates = action.payload.updates;
+      const normalizedUpdates = updates.html !== undefined
+        ? { ...updates, html: normalizeSlideTypographyHTML(updates.html) }
+        : updates;
       const newTitle = updates.title || slideToUpdate?.title;
 
       // Sync title to storyline if title changed
@@ -743,29 +746,29 @@ function slideReducer(state, action) {
         slides: state.slides.map((slide) => {
           if (slide.id !== action.payload.id) return slide;
 
-          const newHtml = updates.html || slide.html;
-          const newType = updates.type || slide.type;
+          const newHtml = normalizedUpdates.html || slide.html;
+          const newType = normalizedUpdates.type || slide.type;
 
           // Regenerate summary if HTML, type, or title changed
-          const needsSummaryUpdate = updates.html || updates.type || updates.title;
+          const needsSummaryUpdate = normalizedUpdates.html || normalizedUpdates.type || normalizedUpdates.title;
 
           // Re-detect layoutType if HTML changed
-          const newLayoutType = updates.html ? detectLayoutType(newHtml) : slide.layoutType;
+          const newLayoutType = normalizedUpdates.html ? detectLayoutType(newHtml) : slide.layoutType;
 
           // Clear stale PPTX export code when HTML changes (unless explicitly provided in updates)
           // This ensures the next export regenerates from the new HTML instead of using stale cached code
-          const pptxRendererCode = updates.html && !('pptxRendererCode' in updates)
+          const pptxRendererCode = normalizedUpdates.html && !('pptxRendererCode' in normalizedUpdates)
             ? null
-            : (updates.pptxRendererCode !== undefined ? updates.pptxRendererCode : slide.pptxRendererCode);
-          const pptxCode = updates.html && !('pptxCode' in updates)
+            : (normalizedUpdates.pptxRendererCode !== undefined ? normalizedUpdates.pptxRendererCode : slide.pptxRendererCode);
+          const pptxCode = normalizedUpdates.html && !('pptxCode' in normalizedUpdates)
             ? null
-            : (updates.pptxCode !== undefined ? updates.pptxCode : slide.pptxCode);
+            : (normalizedUpdates.pptxCode !== undefined ? normalizedUpdates.pptxCode : slide.pptxCode);
 
           // Always normalize updated CSS through unscope -> scope. This handles
           // template CSS and partially scoped model CSS consistently.
-          const scopedUpdates = updates.customCSS !== undefined && updates.customCSS
-            ? { ...updates, customCSS: scopeCSS(unscopeCSS(updates.customCSS), slide.id) }
-            : updates;
+          const scopedUpdates = normalizedUpdates.customCSS !== undefined && normalizedUpdates.customCSS
+            ? { ...normalizedUpdates, customCSS: scopeCSS(unscopeCSS(normalizedUpdates.customCSS), slide.id) }
+            : normalizedUpdates;
 
           return {
             ...slide,
@@ -992,7 +995,7 @@ function slideReducer(state, action) {
     case ACTIONS.IMPORT_SLIDES: {
       const existingIds = new Set(state.slides.map(s => s.id).filter(Boolean));
       const importedSlides = action.payload.slides.map((slide) => {
-        const html = slide.html || '';
+        const html = normalizeSlideTypographyHTML(slide.html || '');
         const type = slide.type || 'custom';
         const title = slide.title || 'Imported Slide';
         const newId = generateSlideId(existingIds);

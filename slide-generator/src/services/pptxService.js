@@ -143,8 +143,10 @@ const c = {main:'111111', secondary:'222222', red:'A32020', maroon:'8E1E1E', zon
 STANDARD FONTS:
 - Titles: Georgia 28pt, color main
 - Subtitles: Arial 18pt bold, color red
-- Body text: Arial 12-14pt, color secondary
-- Card titles: Arial 16pt bold, color main
+- Body text, bullets, descriptions, and table cells: Arial 12-14pt, color secondary
+- Section titles, pillar titles, and card titles: Arial 14-16pt bold, color main
+- Labels, badges, chart axes, sources, and footer text: Arial 10pt minimum
+- Never output fontSize below 10. If text does not fit at 10pt+, reduce copy or split boxes; do not use tiny text.
 
 DEFAULT POSITIONS (may be overridden by template positions in the user prompt):
 - Title: x:0.48, y:0.42, w:12.36
@@ -165,7 +167,7 @@ use color:'8E1E1E'. NEVER substitute your own colors. The examples are structura
 always override example colors with the ACTUAL colors from the CSS/HTML of each slide.
 
 FOOTNOTES & SOURCES: If HTML contains source/footnote text, render as small text near slide bottom:
-  slide.addText("Source: ...", {x:0.48, y:6.7, w:12.36, h:0.25, fontFace:'Arial', fontSize:8, color:'4A4F57'});
+  slide.addText("Source: ...", {x:0.48, y:6.7, w:12.36, h:0.25, fontFace:'Arial', fontSize:10, color:'4A4F57'});
 
 BAR CHARTS: Render bar-chart-exhibit as native PptxGenJS shapes (filled rectangles proportional to %).
 
@@ -184,6 +186,7 @@ Interpret hints as follows:
 - step-number: keep the number as one prominent line, not multiple lines.
 - tight-box: minimise text margin / inset. Prefer margin:0, wrap:false, and valign:'middle' when that matches the CSS. Use fit:'shrink' only as a last resort to preserve one-line text.
 - align=... / valign=...: prefer that alignment for the hinted element.
+- typography-floor: even when using fit:'shrink', never set fontSize below 10; use 12 for normal body copy and 14 for section/pillar/card titles.
 
 If an element has no hint, render it normally from the CSS and HTML.
 
@@ -495,6 +498,13 @@ The CSS RULES section above is the RESOLVED stylesheet for this slide -- treat i
 5. Do NOT invent your own colors. Do NOT use gray/light colors for elements that are red/maroon in the CSS.
 6. The reference example is just a STRUCTURAL guide. Always use the ACTUAL colors from THIS slide's CSS/HTML.
 
+MANDATORY -- TYPOGRAPHY FIDELITY AND READABILITY:
+- Never emit fontSize below 10.
+- Use fontSize 12 or larger for body copy, bullets, descriptions, and table cells.
+- Use fontSize 14 or larger for section titles, pillar titles, card titles, grid-cell titles, and h3/h4 equivalents.
+- Use fontSize 10 only for labels, badges, chart axes, legends, captions, sources, and footer text.
+- Do not use fit:'shrink' to push text below those floors. If needed, shorten copied text only when the HTML/CSS already indicates it is a compact label.
+
 OUTPUT FORMAT (return ONLY this, no markdown):
 [
   function(pptx, slideNum, totalSlides) {
@@ -508,7 +518,8 @@ OUTPUT FORMAT (return ONLY this, no markdown):
 CRITICAL:
 - Use ACTUAL text from the HTML. Never use placeholder text.
 - Use ACTUAL colors from the CSS RULES. Never substitute your own colors.
-- The CSS RULES are the TRUTH. If CSS says .card-num { color: #8E1E1E }, use color:'8E1E1E' -- not gray, not light, not anything else.`;
+- The CSS RULES are the TRUTH. If CSS says .card-num { color: #8E1E1E }, use color:'8E1E1E' -- not gray, not light, not anything else.
+- Font sizes must respect the typography floor even if CSS or examples contain smaller legacy values.`;
 
   if (errorFeedback) {
     prompt += `
@@ -546,6 +557,20 @@ export function validateGeneratedCode(codeString, slideHtml) {
 
   if (!Array.isArray(slideFunctions) || typeof slideFunctions[0] !== 'function') {
     return { valid: false, errors: [{ type: 'FormatError', message: 'Response is not an array containing a function', details: 'Expected [function(pptx, slideNum, totalSlides) { ... }]' }] };
+  }
+
+  const tinyFontMatches = [...String(codeString).matchAll(/fontSize\s*:\s*([0-9]*\.?[0-9]+)/g)]
+    .map(match => Number(match[1]))
+    .filter(size => Number.isFinite(size) && size < 10);
+  if (tinyFontMatches.length > 0) {
+    return {
+      valid: false,
+      errors: [{
+        type: 'TypographyFloorError',
+        message: `PPTX code uses fontSize below 10 (${[...new Set(tinyFontMatches)].join(', ')})`,
+        details: 'Regenerate with fontSize >= 10 for labels/footer and >= 12 for normal body text. Never use tiny text to force fit.',
+      }],
+    };
   }
 
   // 2. Execution check on a sandboxed PptxGenJS instance
@@ -699,7 +724,7 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides) {
       if (cardTitle) pptxSlide.addText(cardTitle.textContent.trim(), { x: x + 0.15, y: contentY + 0.85, w: cardW - 0.3, h: 0.4, fontFace: 'Arial', fontSize: 14, color: COLORS.main, bold: true });
       let body = '';
       card.querySelectorAll('p').forEach(p => { const t = p.textContent.trim(); if (t) body += (body ? '\n\n' : '') + t; });
-      if (body) pptxSlide.addText(body.substring(0, 400), { x: x + 0.15, y: contentY + 1.35, w: cardW - 0.3, h: 2.2, fontFace: 'Arial', fontSize: 11, color: COLORS.secondary, valign: 'top' });
+      if (body) pptxSlide.addText(body.substring(0, 400), { x: x + 0.15, y: contentY + 1.35, w: cardW - 0.3, h: 2.2, fontFace: 'Arial', fontSize: 12, color: COLORS.secondary, valign: 'top' });
     });
   } else {
     const bullets = doc.querySelectorAll('li');

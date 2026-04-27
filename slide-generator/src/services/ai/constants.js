@@ -33,9 +33,10 @@ CONTRAST: When background is a dark token (--accent, --success, --danger), ALL t
 FONTS:
 - Titles: Georgia, serif - 28px, color: var(--heading)
 - Subtitles: Arial, sans-serif - 18px bold, color: var(--accent)
-- Section headings (h3, h4): Arial, sans-serif - 12-14px bold, color: var(--heading)
-- Body text: Arial, sans-serif - 11-12px, color: var(--body)
-- Footer: Arial, sans-serif - 10px, color: var(--muted)
+- Section headings, pillar titles, card titles (h3, h4): Arial, sans-serif - 14px bold, color: var(--heading)
+- Body text, paragraphs, bullets, table cells: Arial, sans-serif - 12px, color: var(--body)
+- Small labels, chips, badges, chart axes, captions, footer/source text: Arial, sans-serif - 10px minimum, color: var(--muted)
+- Never use font-size below 10px for any element. If text will not fit at these sizes, cut words/items rather than shrinking.
 
 SLIDE SKELETON (handled by base CSS -- do NOT restyle):
 - .slide: 960 x 540 px container
@@ -45,6 +46,17 @@ SLIDE SKELETON (handled by base CSS -- do NOT restyle):
 - footer.footer: bottom of slide
 
 === END DESIGN TOKEN REFERENCE ===`;
+
+export const TYPOGRAPHY_SIZE_GUIDE = `
+=== TYPOGRAPHY SIZE CONTRACT ===
+
+- Absolute minimum for every visible text element: 10px in HTML/CSS and 10pt in PPTX.
+- Body copy, bullets, descriptions, and table cells: 12px/12pt typical minimum.
+- Section titles, pillar titles, card titles, grid cell titles, and h3/h4: 14px/14pt typical minimum.
+- Labels, badges, chips, axis ticks, legends, captions, sources, and footer text may use 10px/10pt.
+- Do NOT solve overflow by shrinking below these floors. Cut content, reduce item count, tighten spacing, or split across slides instead.
+
+=== END TYPOGRAPHY SIZE CONTRACT ===`;
 
 export const CHART_GEOMETRY_GUIDE = `
 === COMPLEX CHART GEOMETRY RULES ===
@@ -57,6 +69,7 @@ Use this mode for waterfall, bridge, column, bar, Gantt, scatter, quadrant, matr
 - Inline style is allowed ONLY for data-driven geometry values on chart marks, such as height, width, left, top, bottom, transform, or SVG coordinates. Continue using token colors from CSS classes.
 - For waterfall/bridge charts: compute the baseline first; every bar needs explicit height and bottom/top position, connectors need explicit left/top/width, labels need fixed bounding boxes.
 - Keep axis/baseline/labels deterministic. Do not let bars "flow" based on text length or flex distribution.
+- Chart labels, axis ticks, and legends must remain at least 10px. Chart callouts and explanatory text should be 12px unless they are tiny labels.
 
 === END COMPLEX CHART GEOMETRY RULES ===`;
 
@@ -234,6 +247,8 @@ Return JSON only:
 export const DEFAULT_SYSTEM_PROMPT = `You are an expert Strategy& consulting presentation designer. You generate professional, executive-quality HTML slides with full creative freedom over layout.
 
 ${CSS_STYLE_GUIDE}
+
+${TYPOGRAPHY_SIZE_GUIDE}
 
 OUTPUT FORMAT:
 Return a <style> block followed by the slide HTML. No markdown fences, no explanations.

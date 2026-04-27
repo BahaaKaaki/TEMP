@@ -5,15 +5,17 @@ import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
 import { CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT as BASE_EDIT_SYSTEM_PROMPT, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_COMPONENT_GUIDE, getWorkLevelInstructions } from './constants.js';
 import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
-
-// All edit flows in this module produce slide HTML, so every call uses the
-// edit prompt with the PPTX export-guidance hint guide appended.
-const EDIT_SYSTEM_PROMPT = appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT);
+import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
 import { unscopeCSS } from '../../utils/cssScoping.js';
 import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext, buildSectionMap } from './slideContext.js';
 import { extractSingleSlide, flattenNestedFrames, extractTitleFromHTML, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
+
+// All edit flows in this module produce slide HTML, so every call uses the
+// edit prompt with the PPTX export-guidance hint guide appended.
+const getEditSystemPrompt = (settings) =>
+  applyPromptOverride(settings, 'edit.system', appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT));
 
 // Context tiers for smart context selection
 export const CONTEXT_TIERS = {
@@ -312,8 +314,16 @@ Footer branding: use "${settings.footerBranding || 'Strategy&'}" in footer left 
 
   try {
     let content;
+    const systemPrompt = getEditSystemPrompt(settings);
+    recordPromptPayload('edit.system', {
+      model: settings.model,
+      systemPrompt,
+      userPrompt,
+      slideTitle: title,
+      slideType: type,
+    });
 
-    content = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Check if GPT requested more context (max 1 retry)
     const contextRequest = detectContextRequest(content);
@@ -338,7 +348,7 @@ ${additionalContext}
 Now please modify the slide as requested.`;
 
         let retryContent;
-        retryContent = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, retryPrompt);
+        retryContent = await callWithModelFallback(settings, systemPrompt, retryPrompt);
         content = retryContent;
       } else {
         // Context not available - retry and tell AI to proceed without it
@@ -349,7 +359,7 @@ Now please modify the slide as requested.`;
 NOTE: You requested additional context ("${contextRequest.reason}") but that information is not available in the system. Please proceed with modifying the slide using your best judgment and the information already provided. Do not request more context - modify the slide now.`;
 
         let retryContent;
-        retryContent = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, retryPrompt);
+        retryContent = await callWithModelFallback(settings, systemPrompt, retryPrompt);
         content = retryContent;
       }
     }
@@ -579,8 +589,16 @@ Return ONLY the transformed HTML.`;
 
   try {
     let content;
+    const systemPrompt = getEditSystemPrompt(settings);
+    recordPromptPayload('edit.system', {
+      model: settings.model,
+      systemPrompt,
+      userPrompt,
+      templateId: template.id,
+      operation: 'switch_template',
+    });
 
-    content = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Extract single slide (AI may return both original and transformed - take the last one)
     content = extractSingleSlide(content);
@@ -690,8 +708,16 @@ Return ONLY the modified HTML for the current slide.`;
 
   try {
     let content;
+    const systemPrompt = getEditSystemPrompt(settings);
+    recordPromptPayload('edit.system', {
+      model: settings.model,
+      systemPrompt,
+      userPrompt,
+      slideTitle: title,
+      operation: 'context_edit',
+    });
 
-    content = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Extract single slide (AI may return multiple versions - take the last one)
     content = extractSingleSlide(content);
@@ -764,8 +790,16 @@ Return the modified HTML for ALL slides in this EXACT format:
 
   try {
     let content;
+    const systemPrompt = getEditSystemPrompt(settings);
+    recordPromptPayload('edit.system', {
+      model: settings.model,
+      systemPrompt,
+      userPrompt,
+      slideCount: totalSlides,
+      operation: 'multi_slide_edit',
+    });
 
-    content = await callWithModelFallback(settings, EDIT_SYSTEM_PROMPT, userPrompt);
+    content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 
     // Clean up
     content = content

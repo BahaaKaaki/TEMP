@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { generateSlides, generatePptxRendererCode, fillTemplateWithAI, selectTemplateWithAI, hasAnyApiKey, improveSlideWithSearch } from '../services/aiService';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
+import { getTemplateCustomCSS } from '../utils/templateCss';
 import TemplatePicker from './TemplatePicker';
 
 export default function AIPrompt() {
@@ -55,8 +56,6 @@ export default function AIPrompt() {
 
     try {
       let slides = [];
-      let matchedTemplateInfo = null;
-
       // Check if auto-match is enabled and no manual selection
       if (autoMatchTemplate && !selectedTemplate) {
         // Use AI to select the best template
@@ -68,7 +67,6 @@ export default function AIPrompt() {
           const modifiedTemplate = modifications[selectedAITemplate.id];
           const templateToUse = modifiedTemplate ? { ...selectedAITemplate, ...modifiedTemplate } : selectedAITemplate;
 
-          matchedTemplateInfo = templateToUse;
           setMatchedTemplate(templateToUse);
 
           // Generate slides using the AI-selected template
@@ -82,6 +80,7 @@ export default function AIPrompt() {
               title: `${templateToUse.title} - ${i + 1}`,
               type: templateToUse.id,
               html: filledHtml,
+              customCSS: getTemplateCustomCSS(templateToUse, filledHtml),
               summary: `Generated using ${templateToUse.title} template (AI selected)`,
               templateId: templateToUse.id,
             });

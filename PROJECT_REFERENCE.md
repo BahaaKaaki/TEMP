@@ -121,6 +121,7 @@ slide-themes-main/
 │   │   │   ├── documentParser.js      # Browser-side PDF/Word/Excel/PPTX/image parsing
 │   │   │   ├── knowledgeBase.js       # Knowledge base CRUD
 │   │   │   ├── knowledgeBaseRAG.js    # RAG retrieval (TF-IDF scoring)
+│   │   │   ├── ai/promptOverrides.js  # Debug prompt override registry/helpers
 │   │   │   ├── ai/improveSlideOrchestrator.js # Shared slide-improve orchestrator (context + search)
 │   │   │   ├── layoutValidation.js    # Slide layout validation
 │   │   │   ├── layoutFitter.js        # Content fitting to layout
@@ -133,6 +134,8 @@ slide-themes-main/
 │   │   │   ├── slideMasters.js        # Base layouts (default, blank, cover, etc.)
 │   │   │   ├── slideWidgets.js        # Widget definitions
 │   │   │   ├── themeUtils.js          # Theme config schema, DEFAULT_THEME, themeToCSS() converter
+│   │   │   ├── templateCss.js         # Template CSS resolution helper
+│   │   │   ├── slideIds.js            # Compact slide ID generation helper
 │   │   │   ├── vibes.js              # Legacy design variants (retained for backward compat)
 │   │   │   ├── debugLog.js            # Debug logging utility
 │   │   │   └── auditLog.js            # Audit logging utility
@@ -157,6 +160,7 @@ slide-themes-main/
 ├── deploy.ps1                         # Azure deployment script
 ├── docs/
 │   ├── AI_ASSISTANT_ARCHITECTURE.md   # Full AI chat/generation flow reference
+│   ├── edwin-apex-architecture-memo.md # Edwin V1/V2 architecture, APEX alignment, capability roadmap
 │   ├── PWC_GENAI_API_REFERENCE.md     # API endpoints, models, search, benchmarks
 │   ├── TECHNICAL_RESEARCH_REPORT.md   # Agent patterns, React architectures, competitor analysis
 │   └── plans/                         # Feature implementation plans
@@ -227,11 +231,11 @@ When a user types a message in the chatbot:
 
 2. UNIFIED TRIAGE (triageRequest)
    ├── Model: classifierModel (gpt-5.4-mini), ~1-2s
-   ├── Input: user prompt, slide context, deck overview
-   ├── Output: { scope, needsSearch, searchQuery, isTemplateSwitch, templateId, targetSlides, instruction, questions }
+   ├── Input: user prompt, active page text, deck digest, section map, layout mix, enriched storyline
+   ├── Output: { scope, contextLevel, needsSearch, searchQuery, isTemplateSwitch, templateId, targetSlides, referenceSlides, instruction, questions }
    ├── scope=qa → direct chatWithContext, no slide changes (return)
    ├── scope=direct → DIRECT path (step 3a)
-   ├── needsStoryline=true → rich storyline summary included in router context
+   ├── needsStoryline=true → enriched text-only storyline included in router context
    └── scope=plan / failure → PLANNER path (step 3b)
 
 3a. DIRECT EXECUTION (single-slide, no router)
@@ -240,16 +244,20 @@ When a user types a message in the chatbot:
    └── Execution: transformSlideToTemplate / fillTemplateWithAI / generateSlides / improveSlide
 
 3b. FULL ROUTER (multi-step planner)
-   ├── AI Router (aiRouteRequest) — GPT 5.4 with agentic search + Structured Outputs
-   │   ├── Path A: Responses API with web_search_preview (GPT models)
-   │   │   ├── Agentic search: reasoning.effort='low', multi-query research
+   ├── AI Router (aiRouteRequest) — GPT 5.4 reasoning with conditional search + Structured Outputs
+   │   ├── Search policy: auto by default; triage.needsSearch, explicit freshness/evidence language, or routerSearchMode='always' enables router web search
+   │   ├── No-search planning: GPT 5.4 still uses Responses API/Structured Outputs, but without web_search_preview for edits, tracker updates, restyles, template switches, and deck restructuring that only need deck context
+   │   ├── Path A: Responses API for GPT models, with web_search_preview attached only when policy allows
+   │   │   ├── Agentic search: reasoning.effort='low', multi-query research when enabled
    │   │   ├── Structured Outputs: text.format json_schema enforces field population
-   │   │   └── Result: searchSource='inline', facts/sources per step
-   │   ├── Path B: Pre-search + Chat Completions (non-GPT / fallback)
+   │   │   └── Result: searchSource='inline' when search ran, otherwise 'none'
+   │   ├── Path B: Pre-search + Chat Completions (non-GPT / image fallback) only when policy allows search
    │   │   └── Result: searchSource='presearch', raw text in searchRawContext
+   │   ├── Context: active page text summary, slide summaries, storyline, layout mix, section map, activeFlow, documents
    │   ├── Step fields: action, templateId, title, subtitle, instruction,
-   │   │   facts, sources, layoutGuidance, contextSlides, contextFromStep,
+   │   │   facts, sources, layoutGuidance, contextSlides, targetSlides, referenceSlides, contextFromStep,
    │   │   sectionTracker, subSectionTracker, searchQuery, searchGoal
+   │   ├── Tracker-only plans use update_trackers steps and update metadata without regenerating slide HTML
    │   ├── Returns: plan[], searchSource, contextStrategy, understanding
    │   └── May return: needsClarification + questions
    │
@@ -273,7 +281,7 @@ When a user types a message in the chatbot:
    │   │   ├── Fixed → direct placeholder replacement (cover, sectionDivider)
    │   │   ├── Image → generateImageSlide (image model)
    │   │   └── flushInsertsInOrder (deterministic slide order)
-   │   └── Non-create steps (edit, delete, switch) → executeStep individually
+   │   └── Non-create steps: independent edit/switch/tracker updates run in ID-based parallel chunks; deletes and dependent steps stay ordered
    └── Post-execution: sync storyline, update progress
 ```
 
@@ -372,7 +380,7 @@ Templates are HTML structures with placeholder content. Categories include:
 - **Content:** threeCards, kpiMetrics, timeline, comparison, executiveSummary, barChartExhibit, peerBenchmark, waterfallChart, initiativesLongList, etc.
 - **Closing:** nextSteps, thankYou, etc.
 
-Each template has: `id`, `title`, `type`, `master`, `description`, `note`, `category`, `html`, `css` (pre-extracted component CSS from legacy stylesheet), and optional `pptxRendererCode`. The `css` field is populated at import time from `templateStyles.js` and becomes the slide's `customCSS` when the template is applied.
+Each template has: `id`, `title`, `type`, `master`, `description`, `note`, `category`, `html`, `css` (pre-extracted component CSS from legacy stylesheet), and optional `pptxRendererCode`. The `css` field is populated at import time from `templateStyles.js`; `templateCss.js` resolves it consistently for AI-filled template creation, insert, and switch paths before `SlideContext` scopes it by `data-slide-id`.
 
 ### 4.4 Slide Masters
 
@@ -395,7 +403,7 @@ Core state shape:
 
 ```javascript
 {
-  slides: [],                    // Array of { id, title, html, customCSS, type, summary, pptxRendererCode }
+  slides: [],                    // Array of { id, title, html, customCSS, type, summary, pptxRendererCode }; new slide IDs use compact s_* values, legacy UUIDs remain valid
   sharedCSS: SLIDES_CSS,         // Shell CSS (single source of truth)
   theme: DEFAULT_THEME,          // Theme config: { name, colors: {...}, fonts: {...} }
   activeSlideId: null,           // Currently selected slide
@@ -413,6 +421,7 @@ Core state shape:
     freestyleTheme: '',           // Override for Theme prompt section (empty = code default)
     freestyleVibe: '',            // Override for Vibe prompt section (empty = code default)
     freestyleWriting: '',         // Override for Writing Profile section (empty = code default)
+    promptOverrides: {},          // Debug-only prompt overrides keyed by prompt surface
     selectedSkillId: null,        // Single active consulting-skill id (or null). Attached to router calls as _skillId; never applied to rendering/edits/transforms/validation. Manual-clear only.
     // Code-managed model assignments (always from initialState, never localStorage)
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Premium generation
@@ -523,10 +532,10 @@ Options: `-SkipBuild` (deploy only), `-SkipDeploy` (build only)
 ### Router Architecture
 
 Two routers operate in tandem:
-1. **AI Router** (`aiRouteRequest`): GPT 5.4 with agentic web search (`reasoning: { effort: 'low' }`) and Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Identity: "Strategy& Middle East, GCC region". Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
+1. **AI Router** (`aiRouteRequest`): GPT 5.4 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. Identity: "Strategy& Middle East, GCC region". Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
 2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
 
-The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level.
+The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `targetSlides`, `referenceSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level. Triage selects a `contextLevel` (`active_slide`, `reference_slides`, `deck_digest`, `full_text_deck`) so the router receives enough text-only deck context without defaulting to full-deck content on every request.
 
 **Consulting-skill injection.** When `settings.selectedSkillId` is set, `aiRouteRequest` copies it onto `routerSettings._skillId`. `apiClient.js` then attaches `_skillId` to the outgoing request body (`buildRequestBody` for text paths, `callRouterWithImages` for multimodal), but only when the call is routed through our PwC proxy (`authType === 'server'` or an `/api/ai/` endpoint). The backend's `applySkillInjection` prepends the skill's markdown + preamble to the system prompt and strips `_skillId` before forwarding. This keeps direct-provider calls unchanged and leaves slide rendering, edits, transforms, and validation paths untouched -- they never set `_skillId`. Clarifying questions stay on the same code path: when the skill's "Inputs the skill needs" section is not covered by the user's prompt, the router returns `intent=clarify` with missing-input questions.
 
@@ -534,7 +543,7 @@ The AI router can ask clarifying questions (returned as `needsClarification` wit
 
 Search operates at two layers:
 
-1. **Router-level agentic search** (always on): The router uses `web_search_preview` tool with `reasoning.effort: 'low'` to perform multi-query research during planning. Facts and sources are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'` to signal downstream code.
+1. **Router-level agentic search** (conditional): The router uses GPT 5.4 reasoning on every AI-router call, but only attaches `web_search_preview` when `getRouterSearchPolicy()` allows it. The policy enables search for `triage.needsSearch`, explicit search/freshness/evidence language, or `routerSearchMode='always'`; it disables search for normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring that only need deck/document context. Search results are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'`, `'presearch'`, or `'none'`.
 
 2. **Per-step search** (controlled by `settings.searchEnabled` toggle): For steps with `searchQuery` + `searchGoal`, a separate `webSearch()` call runs during slide execution. The search receives `searchGoal` as `instructions` and appends already-known facts as context to avoid redundant re-searching.
 
@@ -553,6 +562,8 @@ For structured decks (7+ slides):
 - `sectionTracker`: "1. Strategy", "2. Financials" (maroon tab on slide)
 - `subSectionTracker`: "Phase 1", "Phase 2" (grey tab, for multi-slide sections)
 - Executive summary items correspond 1:1 to section tracker groups
+- Router plans can emit `update_trackers` to rename or clear tracker metadata directly, avoiding unnecessary HTML regeneration for tracker-only requests.
+- `buildDeckStructure()` derives a canonical section model from executive summary items and slide tracker metadata; after executive-summary edits, `planTrackerSyncFromDeckStructures()` syncs renamed section points to matching downstream body-slide trackers when the section count still aligns.
 
 ---
 
@@ -606,6 +617,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 32. **UI/UX improvements and routing fix**: (a) **Auto-cover suppressed for small requests**: router prompt AUTO COVER rule now only adds a cover slide when 3+ slides are requested; 1-2 slide creation goes straight to content. (b) **Page number format**: changed from `N / total` to just `N` in both HTML preview (`injectPageNumber` in SlidePreview.jsx) and PPTX export (`addFooter` in pptxRenderers.js), matching the master PPTX template. (c) **Comments UI hidden**: floating comment button, slide-out comment panel, and slide list comment badges all hidden via `{false && (...)}` guards; `CommentPanel.jsx` and all comment logic preserved in code. (d) **Speed mode renamed**: `'quality'` -> `'premium'` throughout codebase (SlideContext, AIChatbot, SettingsModal); migration handles both old `'thinking'` and `'quality'` values. (e) **Bottom toolbar redesign**: speed mode toggle moved from top context bar to bottom input area as compact pill-slider; style preference simplified from 3-option (Auto/Templates/Freestyle) to 2-option (Auto/Freestyle) pill-slider; both use consistent `pill-toggle` CSS component. (f) **Search toggle restored**: magnifying glass icon button added to input toolbar between attach and send buttons; toggles `settings.searchEnabled`; blue when active, muted when off. (g) **Edit during plan execution**: chat input stays functional while SmartActionCard is executing; user can type slide edits that run in parallel via `improveSlideWithSearch`; plan is unaffected. (h) **Multi-select delete**: Delete/Backspace key and visible "Delete N slides" bar when 2+ slides selected in the slide list; includes confirmation prompt.
 
+33. Deck iteration fixes: template-filled slides consistently attach template CSS; triage/router/direct edit/agent triage use an enriched deck digest; router supports `update_trackers`; independent edits run in ID-based parallel chunks; debug prompt overrides and recent prompt payload visibility cover router, triage, generation, edit, validation, and PPTX; new slides use compact `s_*` IDs while preserving legacy UUIDs; cross-slide edits now separate target/reference slides and executive-summary section edits can sync tracker metadata downstream.
+
 33. **Router logging, reimagine, clarification, storyline, parallel edit, execution UX, and freestyle prompt architecture**: (a) **Structured router I/O logging**: added `console.groupCollapsed` input/output logs to all three router functions (`triageRequest`, `aiRouteRequest`, `routeRequest`) in `router.js`; triage logs model + user prompt + full input message + output; AI router logs model + context + parsed JSON + raw response; rule router logs prompt + intent + action. (b) **Reimagine title/subtitle preservation**: `handleReimagineSlide` in `AIChatbot.jsx` now extracts title and subtitle from slide HTML via `DOMParser`, counts main content sections in `.frame`, and uses `TITLE:` / `SUBTITLE:` markers with strong preservation instructions; title is always kept from the original slide instead of overwritten. (c) **Triage clarification removed**: `scope: "clarify"` always coerced to `scope: "plan"` so the router (with web search) handles all clarification; triage prompt schema simplified to `qa | direct | plan` only; clarification card rendering removed. (d) **Classifier-driven storyline**: triage now returns `needsStoryline: boolean`; when true, a rich multi-line storyline summary (title + description + key message per point) is passed to the router; `buildStorylineSummary()` helper replaces all flat `.map(s => s.title).join()` calls. (e) **Storyline bug fixes**: fixed `freshState.storyline?.summary` bug (storyline is an array, not an object with `.summary`); removed manual Storyline toggle button from `SmartActionCard.jsx` (inclusion is now automatic from classifier); storyline context injected into `buildContextForStep` for `create_slide` steps with position marker. (f) **Parallel edit fix**: removed `|| isLoading` from all 6 quick action button `disabled` props; buttons now only check `busySlideIds.has(activeSlide.id)`, allowing parallel quick actions on different slides while chat is processing. (g) **Execution progress UX**: replaced per-step technical rows during execution with consolidated progress card in `SmartActionCard.jsx` showing header ("Creating N slides..."), visual progress bar, and slide titles with checkmark/active/pending states; `buildStepDescription` updated to prefer `step.title` over "freestyle" label. (h) **Freestyle prompt split**: monolithic `freestyle-slide-guide.md` split into `freestyle-shell.md` (layout contract, CSS rules, archetypes, design principles), `freestyle-theme.md` (color tokens, fonts), `freestyle-writing.md` (content voice, process); `freestylePromptBuilder.js` composer assembles the three sections with per-section override support from settings. (i) **Freestyle wiring**: `generateSlides` in `slideGeneration.js` now uses `buildFreestyleSystemPrompt(settings)` instead of monolithic `FREESTYLE_SLIDE_GUIDE` import; `templateSelection.js` and `AgentApprovalDialog.jsx` also updated. (j) **Settings Prompts tab**: new "Prompts" tab in `SettingsModal.jsx` visible to all users (not behind DEBUG_MODE); shows 3 collapsible freestyle sections (Shell, Theme, Writing Profile) with actual code defaults from markdown files; each section shows "customized" badge when overridden with Reset button; "System Prompt Override" textarea relabeled and moved below sections; Report System Prompt included; old System Prompts block removed from Advanced tab. (k) **State migration**: `SlideContext.jsx` `SETTINGS_VERSION` bumped 10->11; `freestyleGuide` replaced with `freestyleShell`, `freestyleTheme`, `freestyleWriting`; migration copies legacy `freestyleGuide` to `freestyleShell`.
 
 34. **Freestyle prompt section reorganization**: (a) **Shell** rewritten to contain only layout concerns: canvas dimensions (960x540 slide, 904x366 frame), HTML skeleton, element positions, output format, CSS scoping rules, class naming conventions. Removed design tokens, layout archetypes, design principles, contrast rules, and anti-patterns that belonged elsewhere. (b) **Theme** expanded: design tokens table, font rules (Georgia/Arial with size ranges), critical contrast rule (on-accent for dark backgrounds), design principles (visual hierarchy, white space, alignment, accent usage, professional polish), visual anti-patterns (unstyled numbers, restyling base classes, CSS leakage, missing style block), and new closing readability/contrast line. (c) **Vibe** added as new fourth section (`freestyle-vibe.md`): contains base vibe description from `VIBES.default.gptDescription`; `freestyleVibe` state field added to SlideContext with v12 migration; visible in Settings Prompts tab as collapsible section. (d) **Writing Profile** expanded: content rules (titles, subtitles, density, bold leads, real content, no fabrication), all layout archetypes moved from Shell, source citations moved from Shell, content anti-patterns (plain bullet list, wall of text, uniform monotony), process checklist updated to reference archetypes locally. (e) **Builder updated**: `freestylePromptBuilder.js` now imports and composes 4 sections (shell + theme + vibe + writing) with per-section override support.
@@ -619,6 +632,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 38. **Template preview CSS, logout button, AI text stripping**: (a) **TemplateManager thumbnail CSS**: `TemplateThumbnail` now injects `getSlidePreviewStyles()` + per-template `css` via `<style>` tag and applies `slide-preview-styled` class, matching TemplatePicker's preview rendering; `getSlidePreviewStyles` exported from `TemplatePicker.jsx` and imported in `TemplateManager.jsx`. (b) **Logout button visibility**: replaced `frontend-comps` `LogoutButton` (which used Tailwind classes not present in this app) with a native `<button>` using `header-action-btn header-action-btn-icon` classes and an inline SVG log-out icon, matching Settings and other header buttons. (c) **AI preamble stripping**: `extractSingleSlide` in `slideGeneration.js` now strips any text the model prepends before the `<div class="slide">` tag when exactly one slide is found, preventing raw prose from rendering above the slide in `SlidePreview`.
 
 39. **Master plan batch (12 items)**: (a) **Cover title differentiation**: router prompt now distinguishes cover titles (3-8 word noun-phrase, no verbs) from body slide titles (8-12 word insight with verb); cover correction prompt enforces noun-phrase format. (b) **Subtitle range widened**: all subtitle rules changed from "2-4 word" to "2-6 word" across `router.js`, `freestyle-writing.md`, `freestyle-slide-guide.md`, and `constants.js`. (c) **Consultant identity**: router prompt identity updated to "senior consulting partner at Strategy& Middle East, primarily serving clients across the GCC region". (d) **Stop button fix**: three bugs fixed -- `abortControllerRef` no longer nulled after abort (signal stays readable); abort checks added inside `flushCreateBatch` (between bulk/freestyle/image generation phases); `AbortSignal` threaded through `callGeminiAPI` -> `callWithModelFallback` -> `generateSlides` -> all `fetch()` calls so in-flight HTTP requests are cancelled. (e) **Settings redesign**: non-debug users see a simplified single-column modal with Template (PPTX upload), Preferences (free-text guidance), Branding (footer + agent name), and Design Style (preset picker). Debug mode shows full sidebar + all sections. (f) **User preferences**: new `userPreferences` string in settings; injected into router `contextInfo` as `USER PREFERENCES` block and into `generateSlides` user prompt; persists across sessions. (g) **Deck structure context**: `slideSummaries` now include `sectionLabel` and `subSectionLabel` from existing slides; `slideList` in router context shows section/subsection markers; storyline always passed in full (no truncation). (h) **Freestyle presets**: new `FREESTYLE_PRESETS` registry in `freestylePromptBuilder.js` with 4 presets (Strategy& Default, Minimal Clean, Bold Impact, Data-Heavy); `freestylePreset` setting selects the active preset; preset-specific vibe overrides injected into system prompt. (i) **Plan editor (storyline manager)**: SmartActionCard step controls (reorder, delete) enabled for all users (previously debug-only); title/subtitle inputs always visible on create steps; section tracker badges shown per step; instruction editing accessible via expandable details (open by default in debug mode).
+
+40. **Conditional router search policy**: `aiRouteRequest` keeps GPT 5.4 reasoning and Structured Outputs for planning, but `getRouterSearchPolicy()` now attaches `web_search_preview` only when `routerSearchMode='always'`, triage flags `needsSearch`, or the prompt asks for current/external evidence. Normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring use no-search planning by default while still allowing per-step `searchQuery` + `searchGoal` when a factual slide needs fresh grounding. Router debug/audit metadata now records `searchSource`, policy reason, search call count, and search queries.
 
 ---
 

@@ -515,3 +515,290 @@ export function buildStorylineSummary(storyline, compact = true) {
     return `  ${i + 1}. ${p.title}${parentNote}${p.keyMessage ? ` - ${p.keyMessage}` : ''}`;
   }).join('\n');
 }
+
+export const CONTEXT_LEVELS = {
+  ACTIVE_SLIDE: 'active_slide',
+  REFERENCE_SLIDES: 'reference_slides',
+  DECK_DIGEST: 'deck_digest',
+  FULL_TEXT_DECK: 'full_text_deck',
+};
+
+export function normalizeContextLevel(level, fallback = CONTEXT_LEVELS.DECK_DIGEST) {
+  return Object.values(CONTEXT_LEVELS).includes(level) ? level : fallback;
+}
+
+function cleanStructureText(text) {
+  return String(text || '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/^(?:\d+|[ivx]+)[.)\s:-]+/i, '')
+    .replace(/^[-*\s]+/, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeComparableLabel(text) {
+  return cleanStructureText(text)
+    .replace(/^\d+\.\s*/, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim();
+}
+
+function toShortTrackerTitle(title, fallback = 'Section') {
+  const cleaned = cleanStructureText(title) || fallback;
+  return cleaned.split(/\s+/).slice(0, 4).join(' ');
+}
+
+function formatTrackerLabel(index, title) {
+  return `${index + 1}. ${toShortTrackerTitle(title)}`;
+}
+
+function isExecutiveSummarySlide(slide = {}) {
+  const haystack = `${slide.templateId || ''} ${slide.type || ''} ${slide.layoutType || ''} ${slide.title || ''}`.toLowerCase();
+  return haystack.includes('executivesummary') ||
+    haystack.includes('executive summary') ||
+    haystack.includes('exec summary') ||
+    haystack.includes('executive');
+}
+
+function getTextFromElement(el, selectors) {
+  for (const selector of selectors) {
+    const found = el.querySelector(selector);
+    const text = found?.textContent?.trim();
+    if (text) return text;
+  }
+  return el.textContent?.trim() || '';
+}
+
+function extractExecutiveSummaryItems(slide, slideIndex) {
+  if (!slide?.html || typeof document === 'undefined') return [];
+
+  const container = document.createElement('div');
+  container.innerHTML = slide.html;
+  const itemNodes = [
+    ...container.querySelectorAll('.exec-section, .exec-v-col, .exec-h-row, .summary-cell, .card, li'),
+  ];
+
+  const seen = new Set();
+  return itemNodes
+    .map((node, itemIndex) => {
+      const rawTitle = getTextFromElement(node, ['h4', '.exec-v-label', '.exec-h-label', '.summary-title', '.card-title', 'strong']);
+      const title = cleanStructureText(rawTitle);
+      if (!title || title.length < 3) return null;
+      const key = normalizeComparableLabel(title);
+      if (!key || seen.has(key)) return null;
+      seen.add(key);
+      return {
+        index: itemIndex,
+        slideIndex,
+        slideId: slide.id,
+        title,
+        trackerLabel: formatTrackerLabel(itemIndex, title),
+      };
+    })
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+export function buildDeckStructure(slides = []) {
+  const safeSlides = Array.isArray(slides) ? slides : [];
+  const sectionMap = new Map();
+  let executiveSummary = null;
+
+  safeSlides.forEach((slide, index) => {
+    if (!executiveSummary && isExecutiveSummarySlide(slide)) {
+      executiveSummary = {
+        slideIndex: index,
+        slideId: slide.id,
+        title: slide.title || 'Executive Summary',
+        items: extractExecutiveSummaryItems(slide, index),
+      };
+    }
+
+    if (slide.sectionLabel) {
+      const key = slide.sectionLabel;
+      if (!sectionMap.has(key)) {
+        sectionMap.set(key, {
+          index: sectionMap.size,
+          label: key,
+          normalizedLabel: normalizeComparableLabel(key),
+          slideIndices: [],
+          slideIds: [],
+          subSections: [],
+        });
+      }
+      const section = sectionMap.get(key);
+      section.slideIndices.push(index);
+      section.slideIds.push(slide.id);
+      if (slide.subSectionLabel && !section.subSections.includes(slide.subSectionLabel)) {
+        section.subSections.push(slide.subSectionLabel);
+      }
+    }
+  });
+
+  const sections = Array.from(sectionMap.values());
+  const executiveItems = executiveSummary?.items || [];
+  const missingFromTrackers = executiveItems
+    .filter((item, index) => {
+      const section = sections[index];
+      if (!section) return true;
+      return section.normalizedLabel !== normalizeComparableLabel(item.trackerLabel) &&
+        !section.normalizedLabel.includes(normalizeComparableLabel(item.title));
+    })
+    .map(item => item.trackerLabel);
+
+  const missingFromExecutiveSummary = sections
+    .filter((section, index) => {
+      const item = executiveItems[index];
+      if (!item) return true;
+      const itemLabel = normalizeComparableLabel(item.trackerLabel);
+      return section.normalizedLabel !== itemLabel &&
+        !section.normalizedLabel.includes(normalizeComparableLabel(item.title));
+    })
+    .map(section => section.label);
+
+  return {
+    executiveSummary,
+    sections,
+    trackerAlignment: {
+      status: executiveItems.length === 0 || sections.length === 0
+        ? 'unknown'
+        : (missingFromTrackers.length === 0 && missingFromExecutiveSummary.length === 0 ? 'aligned' : 'mismatch'),
+      missingFromTrackers,
+      missingFromExecutiveSummary,
+    },
+  };
+}
+
+export function planTrackerSyncFromDeckStructures(beforeStructure, afterStructure) {
+  const beforeItems = beforeStructure?.executiveSummary?.items || [];
+  const afterItems = afterStructure?.executiveSummary?.items || [];
+  const beforeSections = beforeStructure?.sections || [];
+
+  if (beforeItems.length === 0 || afterItems.length === 0 || beforeItems.length !== afterItems.length) {
+    return [];
+  }
+
+  return beforeItems.flatMap((beforeItem, index) => {
+    const afterItem = afterItems[index];
+    const section = beforeSections[index];
+    if (!afterItem || !section || !section.label) return [];
+
+    const newLabel = formatTrackerLabel(index, afterItem.title);
+    if (normalizeComparableLabel(section.label) === normalizeComparableLabel(newLabel)) return [];
+
+    return section.slideIds.map(slideId => ({
+      slideId,
+      oldSectionLabel: section.label,
+      newSectionLabel: newLabel,
+      reason: `Executive summary item ${index + 1} changed from "${beforeItem.title}" to "${afterItem.title}"`,
+    }));
+  });
+}
+
+export function buildDeckContextDigest(slides = [], options = {}) {
+  const {
+    activeSlideIndex = -1,
+    storyline = [],
+    maxContentCharsPerSlide = 500,
+    contextLevel = CONTEXT_LEVELS.DECK_DIGEST,
+    referenceSlides = [],
+  } = options;
+
+  const safeSlides = Array.isArray(slides) ? slides : [];
+  const normalizedContextLevel = normalizeContextLevel(contextLevel);
+  const referenceSet = new Set((referenceSlides || []).filter(idx => Number.isInteger(idx) && idx >= 0));
+  const layoutCounts = {};
+  const slideSummaries = safeSlides.map((slide, index) => {
+    const template = slide.templateId || slide.layoutType || slide.type || 'custom';
+    layoutCounts[template] = (layoutCounts[template] || 0) + 1;
+    const slideBudget = normalizedContextLevel === CONTEXT_LEVELS.FULL_TEXT_DECK
+      ? Math.max(maxContentCharsPerSlide, 1400)
+      : referenceSet.has(index)
+        ? Math.max(maxContentCharsPerSlide, 1000)
+        : maxContentCharsPerSlide;
+    const contentText = extractSlideContentForAI(slide.html || '', {
+      maxLength: slideBudget,
+      includeStructure: true,
+    });
+    return {
+      index,
+      id: slide.id,
+      title: slide.title || 'Untitled',
+      template,
+      type: slide.type || 'custom',
+      sectionLabel: slide.sectionLabel || null,
+      subSectionLabel: slide.subSectionLabel || null,
+      summary: slide.summary || generateSlideSummary(slide.html, slide.type, slide.title),
+      textSummary: contentText,
+      isEmpty: !slide.html || contentText === '[Empty slide]',
+    };
+  });
+
+  const layoutSummary = Object.entries(layoutCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([template, count]) => `${template}:${count}`)
+    .join(', ');
+
+  const activeSlide = activeSlideIndex >= 0 ? safeSlides[activeSlideIndex] : null;
+  const activeSlideContext = activeSlide ? {
+    index: activeSlideIndex,
+    id: activeSlide.id,
+    title: activeSlide.title || 'Untitled',
+    template: activeSlide.templateId || activeSlide.layoutType || activeSlide.type || 'custom',
+    sectionLabel: activeSlide.sectionLabel || null,
+    subSectionLabel: activeSlide.subSectionLabel || null,
+    textSummary: extractSlideContentForAI(activeSlide.html || '', {
+      maxLength: Math.max(maxContentCharsPerSlide, 700),
+      includeStructure: true,
+    }),
+    previousTitle: activeSlideIndex > 0 ? safeSlides[activeSlideIndex - 1]?.title || 'Untitled' : null,
+    nextTitle: activeSlideIndex < safeSlides.length - 1 ? safeSlides[activeSlideIndex + 1]?.title || 'Untitled' : null,
+  } : null;
+
+  const referenceSlideContexts = Array.from(referenceSet)
+    .map(index => {
+      const slide = safeSlides[index];
+      if (!slide) return null;
+      return {
+        index,
+        id: slide.id,
+        title: slide.title || 'Untitled',
+        template: slide.templateId || slide.layoutType || slide.type || 'custom',
+        sectionLabel: slide.sectionLabel || null,
+        subSectionLabel: slide.subSectionLabel || null,
+        textSummary: extractSlideContentForAI(slide.html || '', {
+          maxLength: normalizedContextLevel === CONTEXT_LEVELS.FULL_TEXT_DECK ? 1400 : 1000,
+          includeStructure: true,
+        }),
+      };
+    })
+    .filter(Boolean);
+
+  const enrichedStoryline = Array.isArray(storyline) && storyline.length > 0
+    ? storyline.map((point, index) => {
+        const slideIndex = point.slideId ? safeSlides.findIndex(s => s.id === point.slideId) : -1;
+        const slide = slideIndex >= 0 ? safeSlides[slideIndex] : null;
+        const parts = [
+          `${index + 1}. ${point.title || slide?.title || 'Untitled'}`,
+          point.description ? `Description: ${point.description}` : null,
+          point.keyMessage ? `Key: ${point.keyMessage}` : null,
+          slide ? `Slide ${slideIndex + 1}: ${slide.title || 'Untitled'}${formatSlideSectionTag(slide)}` : 'No linked slide',
+          slide ? `Text: ${extractSlideContentForAI(slide.html || '', { maxLength: 360, includeStructure: false })}` : null,
+        ].filter(Boolean);
+        return parts.join(' | ');
+      }).join('\n')
+    : '';
+
+  return {
+    slideCount: safeSlides.length,
+    contextLevel: normalizedContextLevel,
+    slideSummaries,
+    layoutSummary,
+    sectionMap: buildSectionMap(safeSlides),
+    deckStructure: buildDeckStructure(safeSlides),
+    referenceSlideContexts,
+    storylineSummary: enrichedStoryline || buildStorylineSummary(storyline, false),
+    activeSlideContext,
+  };
+}

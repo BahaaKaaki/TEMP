@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, triageRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, agentTriageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildDeckContextDigest, buildDeckStructure, planTrackerSyncFromDeckStructures, CONTEXT_LEVELS, normalizeContextLevel, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, triageRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, agentTriageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
 import { PRIMARY_ACTIONS, MORE_ACTIONS } from '../constants/slideActions';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
@@ -9,6 +9,7 @@ import { validateSlideLayout, formatValidationForAgent } from '../services/layou
 import { generateGPTContext, inspectSlide, agenticFixLoop, formatInspection } from '../services/layoutCorrectionService';
 import { parseMultipleDocuments, getAcceptString, isFileSupported, analyzeImageWithAI } from '../services/documentParser';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
+import { getTemplateCustomCSS } from '../utils/templateCss';
 import { VIBES } from '../utils/vibes';
 import { debugLog, LogLevel } from '../utils/debugLog';
 import TemplatePicker from './TemplatePicker';
@@ -702,7 +703,8 @@ export default function AIChatbot() {
         // Detect context slides
         let contextIndices = routeResult.contextNeeded?.slideIndices || [];
         const planContextIndices = routeResult.plan?.flatMap(step => step.contextSlides || []) || [];
-        const detectedContextIndices = [...new Set([...contextIndices, ...planContextIndices])];
+        const planReferenceIndices = routeResult.plan?.flatMap(step => step.referenceSlides || []) || [];
+        const detectedContextIndices = [...new Set([...contextIndices, ...planContextIndices, ...planReferenceIndices, ...(routeResult.referenceSlides || [])])];
 
         const enhancedRouteResult = {
           ...routeResult,
@@ -1196,7 +1198,7 @@ export default function AIChatbot() {
           html: transformedHtml,
           title: extractTitleFromHTML(transformedHtml) || slide.title,
           templateId: triage.templateId,
-          updateData: { html: transformedHtml, type: triage.templateId, templateId: triage.templateId, customCSS: SLIDE_TEMPLATES[triage.templateId]?.css || '', pptxRendererCode: null },
+          updateData: { html: transformedHtml, type: triage.templateId, templateId: triage.templateId, customCSS: getTemplateCustomCSS(triage.templateId, transformedHtml), pptxRendererCode: null },
         };
       }
       console.log('[DirectEdit] Template switch returned unchanged HTML, falling through to edit');
@@ -1220,22 +1222,18 @@ export default function AIChatbot() {
     let deckContext = '';
     if (currentState.slides.length > 1) {
       const slideIdx = currentState.slides.findIndex(s => s.id === slide.id);
-      const totalSlides = currentState.slides.length;
-      const posLine = `Slide ${slideIdx + 1} of ${totalSlides}`;
-      const prevSlide = slideIdx > 0 ? currentState.slides[slideIdx - 1] : null;
-      const nextSlide = slideIdx < totalSlides - 1 ? currentState.slides[slideIdx + 1] : null;
-      const neighborLine = [
-        prevSlide ? `Previous: "${prevSlide.title}"` : null,
-        nextSlide ? `Next: "${nextSlide.title}"` : null,
-      ].filter(Boolean).join(' | ');
-      const storyline = currentState.storyline;
-      let storylineLine = '';
-      if (storyline?.length > 0) {
-        storylineLine = 'Storyline: ' + storyline.map((s, i) =>
-          `${i + 1}. ${s.title}${s.slideId && currentState.slides.findIndex(sl => sl.id === s.slideId) === slideIdx ? ' [CURRENT]' : ''}`
-        ).join(' | ');
-      }
-      deckContext = `\n\n=== DECK CONTEXT ===\n${posLine}${neighborLine ? '\n' + neighborLine : ''}${storylineLine ? '\n' + storylineLine : ''}\n=== END DECK CONTEXT ===`;
+      const digest = buildDeckContextDigest(currentState.slides, {
+        activeSlideIndex: slideIdx,
+        storyline: currentState.storyline,
+      });
+      const active = digest.activeSlideContext;
+      deckContext = `\n\n=== DECK CONTEXT ===
+Slide ${slideIdx + 1} of ${currentState.slides.length}
+${active?.previousTitle ? `Previous: "${active.previousTitle}"\n` : ''}${active?.nextTitle ? `Next: "${active.nextTitle}"\n` : ''}
+${digest.layoutSummary ? `Layout mix: ${digest.layoutSummary}\n` : ''}
+${digest.sectionMap ? `${digest.sectionMap}\n` : ''}
+${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
+=== END DECK CONTEXT ===`;
     }
 
     const slideIsEmpty = isSlideEffectivelyEmpty(slide);
@@ -1252,7 +1250,7 @@ export default function AIChatbot() {
             html: filledHtml,
             title: extractTitleFromHTML(filledHtml) || template.title,
             templateTitle: template.title,
-            updateData: { html: filledHtml, title: extractTitleFromHTML(filledHtml) || template.title },
+            updateData: { html: filledHtml, title: extractTitleFromHTML(filledHtml) || template.title, customCSS: getTemplateCustomCSS(template, filledHtml), templateId, type: templateId },
           };
         }
       }
@@ -1318,10 +1316,17 @@ export default function AIChatbot() {
       const bgSlide = activeSlide;
       (async () => {
         try {
+          const bgSlides = stateRef.current.slides;
+          const bgActiveIndex = bgSlide ? bgSlides.findIndex(s => s.id === bgSlide.id) : -1;
+          const bgDigest = buildDeckContextDigest(bgSlides, {
+            activeSlideIndex: bgActiveIndex,
+            storyline: stateRef.current.storyline,
+          });
           const bgTriage = await triageRequest(bgPrompt, {
-            slides: stateRef.current.slides,
-            activeSlideIndex: bgSlide ? stateRef.current.slides.findIndex(s => s.id === bgSlide.id) : -1,
+            slides: bgSlides,
+            activeSlideIndex: bgActiveIndex,
             activeSlide: bgSlide,
+            deckContextDigest: bgDigest,
             attachedFiles: uploadedFiles.filter(f => f.content),
             chatHistory: messages.filter(m => !m.isHTML).slice(-6),
           }, stateRef.current.settings);
@@ -1477,6 +1482,10 @@ export default function AIChatbot() {
     // Default to first slide (0) when no slide is selected — never pass -1 to the router
     const currentSlideIndex = rawSlideIdx >= 0 ? rawSlideIdx : (currentState.slides.length > 0 ? 0 : -1);
     const { referencedSlides } = parseSlideReferences(userPrompt, currentState.slides, currentSlideIndex);
+    let deckContextDigest = buildDeckContextDigest(currentState.slides, {
+      activeSlideIndex: currentSlideIndex,
+      storyline: currentState.storyline,
+    });
 
     // Create abort controller for this operation
     abortControllerRef.current = new AbortController();
@@ -1489,12 +1498,13 @@ export default function AIChatbot() {
 
     // ─── UNIFIED TRIAGE: always runs, replaces both Tier 1 classifier and Tier 2 mini-classifier ───
     const recentMessages = messages.filter(m => !m.isHTML).slice(-6);
-    let triage = { scope: 'plan', needsSearch: false, searchQuery: null, isTemplateSwitch: false, templateId: null, targetSlides: [], instruction: effectivePrompt, questions: [] };
+    let triage = { scope: 'plan', needsSearch: false, searchQuery: null, isTemplateSwitch: false, templateId: null, targetSlides: [], referenceSlides: [], contextLevel: CONTEXT_LEVELS.DECK_DIGEST, instruction: effectivePrompt, questions: [] };
     try {
       triage = await triageRequest(effectivePrompt, {
         slides: currentState.slides,
         activeSlideIndex: currentSlideIndex,
         activeSlide,
+        deckContextDigest,
         attachedFiles: uploadedFiles.filter(f => f.content),
         chatHistory: recentMessages,
       }, currentState.settings);
@@ -1507,6 +1517,20 @@ export default function AIChatbot() {
     if (triage.scope === 'clarify') {
       triage.scope = 'plan';
     }
+
+    const promptReferenceIndices = referencedSlides.map(r => r.index);
+    const triageReferenceIndices = [...new Set([...(triage.referenceSlides || []), ...promptReferenceIndices])]
+      .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < currentState.slides.length);
+    const triageContextLevel = normalizeContextLevel(
+      triage.contextLevel,
+      triageReferenceIndices.length > 0 ? CONTEXT_LEVELS.REFERENCE_SLIDES : CONTEXT_LEVELS.DECK_DIGEST
+    );
+    deckContextDigest = buildDeckContextDigest(currentState.slides, {
+      activeSlideIndex: currentSlideIndex,
+      storyline: currentState.storyline,
+      contextLevel: triageContextLevel,
+      referenceSlides: triageReferenceIndices,
+    });
 
     // ─── Q&A: direct response, no slide changes ───
     if (triage.scope === 'qa') {
@@ -1541,7 +1565,22 @@ export default function AIChatbot() {
         const fullKnowledge = buildKnowledgeContextForPrompt(effectivePrompt, { fullContent: true });
         const result = await performDirectSlideEdit(activeSlide, effectivePrompt, triage, { knowledgeContext: fullKnowledge });
         if (result) {
+          const beforeDeckStructure = buildDeckStructure(currentState.slides);
+          const projectedSlides = currentState.slides.map((slide) =>
+            slide.id === activeSlide.id
+              ? { ...slide, ...result.updateData }
+              : slide
+          );
+          const trackerSyncUpdates = planTrackerSyncFromDeckStructures(
+            beforeDeckStructure,
+            buildDeckStructure(projectedSlides)
+          );
           actions.updateSlide(activeSlide.id, result.updateData);
+          trackerSyncUpdates.forEach(sync => {
+            if (sync.slideId !== activeSlide.id) {
+              actions.updateSlide(sync.slideId, { sectionLabel: sync.newSectionLabel });
+            }
+          });
           const label = result.action === 'template-switch' ? `Switched to: <strong>${result.templateId}</strong>`
             : result.action === 'filled' ? `Filled: <strong>${result.templateTitle || result.title}</strong>`
             : result.action === 'generated' ? `Created: <strong>${result.title || 'Slide'}</strong>`
@@ -1614,12 +1653,18 @@ export default function AIChatbot() {
           // Let AI decide based on the request + current deck context
           const triageContext = {
             slideCount: currentState.slides?.length || 0,
-            slideSummaries: (currentState.slides || []).map((s, idx) => ({
-              index: idx,
-              title: s.title || 'Untitled',
-              type: s.type || 'custom',
+            slideSummaries: deckContextDigest.slideSummaries.map(s => ({
+              index: s.index,
+              title: s.title,
+              type: s.type,
+              template: s.template,
+              sectionLabel: s.sectionLabel,
+              subSectionLabel: s.subSectionLabel,
             })),
-            storylineSummary: buildStorylineSummary(currentState.storyline),
+            layoutSummary: deckContextDigest.layoutSummary,
+            sectionMap: deckContextDigest.sectionMap,
+            activeSlideContext: deckContextDigest.activeSlideContext,
+            storylineSummary: deckContextDigest.storylineSummary || buildStorylineSummary(currentState.storyline),
           };
           const triage = await agentTriageRequest(userPrompt, triageContext, currentState.settings);
           shouldRunAgent = triage.useAgent;
@@ -1966,17 +2011,20 @@ export default function AIChatbot() {
         const currentSlideIdx = _rawIdx >= 0 ? _rawIdx : (freshState.slides.length > 0 ? 0 : -1);
         const currentSlide = currentSlideIdx >= 0 ? freshState.slides[currentSlideIdx] : null;
 
-        const storylineSummary = buildStorylineSummary(freshState.storyline);
+        const freshDigest = buildDeckContextDigest(freshState.slides, {
+          activeSlideIndex: currentSlideIdx,
+          storyline: freshState.storyline,
+          contextLevel: triageContextLevel,
+          referenceSlides: triageReferenceIndices,
+        });
+        const storylineSummary = freshDigest.storylineSummary || buildStorylineSummary(freshState.storyline);
 
         // Build slide summaries for AI router — index, title, template, section labels, pending comments
-        const slideSummaries = freshState.slides.map((s, idx) => {
+        const slideSummaries = freshDigest.slideSummaries.map((summary) => {
+          const s = freshState.slides[summary.index];
           const pendingComments = (s.comments || []).filter(c => !c.addressed);
           return {
-            index: idx,
-            title: s.title || 'Untitled',
-            template: s.templateId || s.layoutType || s.type || 'custom',
-            sectionLabel: s.sectionLabel || null,
-            subSectionLabel: s.subSectionLabel || null,
+            ...summary,
             pendingComments: pendingComments.length > 0 ? pendingComments.map(c => c.text) : undefined,
           };
         });
@@ -2017,6 +2065,12 @@ export default function AIChatbot() {
           slideCount: freshState.slides.length,
           currentSlideIndex: currentSlideIdx,
           storylineSummary: storylineSummary || '',
+          layoutSummary: freshDigest.layoutSummary,
+          sectionMap: freshDigest.sectionMap,
+          activeSlideContext: freshDigest.activeSlideContext,
+          deckStructure: freshDigest.deckStructure,
+          contextLevel: triageContextLevel,
+          deckContextDigest: freshDigest,
           slideSummaries, // Array of {index, title, pendingComments}
           activeFlow: activeFlow || undefined,
           parallelBatchSize: freshState.settings?.parallelSlideGeneration || 3,
@@ -2034,6 +2088,10 @@ export default function AIChatbot() {
             type: r.type,
             title: r.slide?.title,
           })) : null,
+          referenceSlides: triageReferenceIndices,
+          targetSlides: triage.targetSlides || [],
+          triageNeedsSearch: !!triage.needsSearch,
+          triageSearchQuery: triage.searchQuery || null,
           // Agent mode flag — affects router settings and audit log
           agentMode: shouldRunAgent,
           // Image-based mode — tell router to prefer image-content templates
@@ -2086,7 +2144,9 @@ export default function AIChatbot() {
             JSON.stringify(routeResult, null, 2),
             {
               model: routeResult.routerDebug?.model,
-              searchUsed: !!routeResult.searchRawContext,
+              searchUsed: !!routeResult.routerDebug?.routerSearchUsed || !!routeResult.searchRawContext,
+              searchSource: routeResult.searchSource,
+              searchPolicy: routeResult.routerDebug?.searchPolicy?.reason,
               templateId: routeResult.plan?.[0]?.templateId,
             }
           );
@@ -2150,12 +2210,13 @@ export default function AIChatbot() {
         // Detect context slides BEFORE setting pendingSmartAction
         let contextIndices = routeResult.contextNeeded?.slideIndices || [];
         const planContextIndices = routeResult.plan?.flatMap(step => step.contextSlides || []) || [];
+        const planReferenceIndices = routeResult.plan?.flatMap(step => step.referenceSlides || []) || [];
 
         // Include explicitly referenced slides from the prompt (e.g., "slide 3", "page 5")
         const referencedSlideIndices = referencedSlides.map(r => r.index);
 
         // Combine all detected context indices
-        let detectedContextIndices = [...new Set([...contextIndices, ...planContextIndices, ...referencedSlideIndices])];
+        let detectedContextIndices = [...new Set([...contextIndices, ...planContextIndices, ...planReferenceIndices, ...(routeResult.referenceSlides || []), ...referencedSlideIndices])];
 
         // Log when slides are detected from references
         if (referencedSlideIndices.length > 0) {
@@ -2371,7 +2432,8 @@ export default function AIChatbot() {
         ? routeResult.plan.map(step => ({
             ...step,
             // Merge step's own contextSlides with detected indices (deduplicated)
-            contextSlides: [...new Set([...(step.contextSlides || []), ...detectedContext])],
+            contextSlides: [...new Set([...(step.contextSlides || []), ...(step.referenceSlides || []), ...detectedContext])],
+            referenceSlides: [...new Set([...(step.referenceSlides || []), ...(routeResult.referenceSlides || [])])],
           }))
         : [{
             action: routeResult.action || 'create_slide',
@@ -2918,7 +2980,7 @@ export default function AIChatbot() {
                 html: filledHtml,
                 type: templateId,
                 templateId,
-                customCSS: template?.css || '',
+                customCSS: getTemplateCustomCSS(template, filledHtml),
                 summary: slideSummary,
                 ...(step.sectionTracker ? { sectionLabel: step.sectionTracker } : {}),
                 ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
@@ -3097,12 +3159,30 @@ export default function AIChatbot() {
               { templateId: step.templateId, searchUsed: editContext.includes('KEY FACTS FROM WEB SEARCH') || editContext.includes('WEB SEARCH RESULTS') }
             );
 
+            const beforeDeckStructure = buildDeckStructure(freshState.slides);
+            const projectedSlides = freshState.slides.map((slide) =>
+              slide.id === slideToEdit.id
+                ? { ...slide, html: newHtml, title: newTitle }
+                : slide
+            );
+            const afterDeckStructure = buildDeckStructure(projectedSlides);
+            const trackerSyncUpdates = planTrackerSyncFromDeckStructures(beforeDeckStructure, afterDeckStructure);
+
             actions.updateSlide(slideToEdit.id, {
               html: newHtml,
               customCSS: newCustomCSS,
               title: newTitle,
               ...(isImageSlide ? { templateId: slideToEdit.templateId, type: slideToEdit.type } : {}),
             });
+
+            if (trackerSyncUpdates.length > 0) {
+              console.log('[TrackerSync] Executive summary changed; syncing section trackers:', trackerSyncUpdates);
+              trackerSyncUpdates.forEach(sync => {
+                if (sync.slideId !== slideToEdit.id) {
+                  actions.updateSlide(sync.slideId, { sectionLabel: sync.newSectionLabel });
+                }
+              });
+            }
 
             actions.syncStorylineFromSlides();
             stepOutputs[stepIndex] = { html: newHtml, slideIndex: slideIdx, title: newTitle };
@@ -3189,6 +3269,7 @@ export default function AIChatbot() {
                 html: transformedHtml,
                 type: targetTemplateId,
                 templateId: targetTemplateId,
+                customCSS: getTemplateCustomCSS(targetTemplate, transformedHtml),
                 pptxRendererCode: null, // Clear stale export code so next PPTX export regenerates from new HTML
               });
               const newTitle = extractTitleFromHTML(transformedHtml) || slideToSwitch.title;
@@ -3197,6 +3278,42 @@ export default function AIChatbot() {
             } else {
               addMessage('assistant', `⚠️ Template switch returned invalid result for slide ${slideIdx + 1} — keeping original.`);
             }
+            return null;
+          }
+
+          case 'update_trackers':
+          case 'update_tracker': {
+            let slideIdx = step.slideIndex ?? (capturedSlideId
+              ? freshState.slides.findIndex(s => s.id === capturedSlideId)
+              : capturedSlideIdx);
+            const targetIndices = Array.isArray(step.targetSlides) && step.targetSlides.length > 0
+              ? step.targetSlides
+              : [slideIdx];
+            const targetSlides = targetIndices
+              .map(idx => ({ idx, slide: freshState.slides[idx] }))
+              .filter(item => item.slide);
+            if (targetSlides.length === 0) {
+              console.warn(`[SmartAction] No slides found for update_trackers`, targetIndices);
+              return null;
+            }
+
+            const updates = {};
+            const nextSectionLabel = step.sectionTracker ?? step.sectionLabel;
+            const nextSubSectionLabel = step.subSectionTracker ?? step.subSectionLabel;
+            if (nextSectionLabel !== undefined) updates.sectionLabel = nextSectionLabel || null;
+            if (nextSubSectionLabel !== undefined) updates.subSectionLabel = nextSubSectionLabel || null;
+            targetSlides.forEach(({ slide }) => actions.updateSlide(slide.id, updates));
+            const firstTarget = targetSlides[0];
+            stepOutputs[stepIndex] = {
+              html: firstTarget.slide.html,
+              slideIndex: firstTarget.idx,
+              title: firstTarget.slide.title,
+              sectionLabel: updates.sectionLabel,
+              subSectionLabel: updates.subSectionLabel,
+            };
+            targetSlides.forEach(({ idx, slide }) => {
+              editedSlides.push({ index: idx + 1, title: slide.title });
+            });
             return null;
           }
 
@@ -3442,7 +3559,7 @@ export default function AIChatbot() {
                 html,
                 type: b.step.templateId,
                 templateId: b.step.templateId,
-                customCSS: b.template?.css || '',
+                customCSS: getTemplateCustomCSS(b.template, html),
                 summary: generateSlideSummary(html, b.step.templateId, slideTitle),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
@@ -3615,16 +3732,28 @@ export default function AIChatbot() {
             }
 
             // Collect consecutive independent edit_slide steps targeting different slides
-            const isIndependentEdit = (s) => (s.action === 'edit_slide' || s.action === 'switch_template') && s.contextFromStep === undefined;
+            const getStepTargetId = (s) => {
+              const current = getFreshState();
+              if (Array.isArray(s?.targetSlides) && s.targetSlides.length > 0) {
+                return s.targetSlides
+                  .map(idx => current.slides[idx]?.id || `idx:${idx}`)
+                  .sort()
+                  .join('|');
+              }
+              const idx = s?.slideIndex ?? (capturedSlideId ? current.slides.findIndex(sl => sl.id === capturedSlideId) : capturedSlideIdx);
+              return current.slides[idx]?.id || `idx:${idx}`;
+            };
+            const isIndependentEdit = (s) => (s.action === 'edit_slide' || s.action === 'switch_template' || s.action === 'update_trackers' || s.action === 'update_tracker') && s.contextFromStep === undefined;
             if (isIndependentEdit(step)) {
               const editBatch = [{ step, actualIndex, si }];
-              const editTargets = new Set([step.slideIndex]);
+              const editTargets = new Set([getStepTargetId(step)]);
               let peekSi = si + 1;
               while (peekSi < group.length) {
                 const peekStep = planStepsRef[group[peekSi]];
-                if (peekStep && isIndependentEdit(peekStep) && !editTargets.has(peekStep.slideIndex)) {
+                const targetId = getStepTargetId(peekStep);
+                if (peekStep && isIndependentEdit(peekStep) && !editTargets.has(targetId)) {
                   editBatch.push({ step: peekStep, actualIndex: group[peekSi] + stepIndexOffset, si: peekSi });
-                  editTargets.add(peekStep.slideIndex);
+                  editTargets.add(targetId);
                   peekSi++;
                 } else {
                   break;
@@ -4286,8 +4415,9 @@ Original request: ${userPrompt}`;
                   .map(idx => editState.slides[idx].id);
 
                 let editedCount = 0;
-                for (const slideId of slideIdsToEdit) {
-                  if (isAborted()) break;
+                const editLimit = Math.max(1, Math.min(getFreshState().settings?.apiMaxConcurrent || 5, getFreshState().settings?.editAllBatchSize || 3));
+                const editOneSlide = async (slideId) => {
+                  if (isAborted()) return 0;
                   // Get absolutely fresh state for each slide edit
                   const latestState = getFreshState();
                   // Re-resolve by ID — immune to index drift from previous edits
@@ -4298,7 +4428,7 @@ Original request: ${userPrompt}`;
                       templateList: allTemplates,
                     });
                     const result = await improveSlide(slideInfo, instruction, latestState.settings);
-                    if (isAborted()) break;
+                    if (isAborted()) return 0;
 
                     const improved = result?.html || result;
                     const newCustomCSS = result?.customCSS;
@@ -4319,7 +4449,7 @@ Original request: ${userPrompt}`;
                       const updateData = { html: improved, summary: newSummary };
                       if (newCustomCSS) updateData.customCSS = newCustomCSS;
                       actions.updateSlide(slide.id, updateData);
-                      editedCount++;
+                      return 1;
                     } else {
                       debugLog(LogLevel.ERROR, 'edit_slides', `Skipped update - invalid HTML for slide ${idx + 1}`, {
                         improvedLength: improved?.length || 0,
@@ -4329,6 +4459,14 @@ Original request: ${userPrompt}`;
                       addMessage('assistant', `⚠️ Slide ${idx + 1} edit returned invalid result - keeping original.`);
                     }
                   }
+                  return 0;
+                };
+
+                for (let start = 0; start < slideIdsToEdit.length; start += editLimit) {
+                  if (isAborted()) break;
+                  const chunk = slideIdsToEdit.slice(start, start + editLimit);
+                  const results = await Promise.all(chunk.map(editOneSlide));
+                  editedCount += results.reduce((sum, n) => sum + n, 0);
                 }
 
                 addMessage('assistant', `🔧 Edited ${editedCount} slide${editedCount !== 1 ? 's' : ''}.`);
@@ -4521,6 +4659,7 @@ Original request: ${userPrompt}`;
                       html: filledHtml,
                       type: templateId,
                       templateId: templateId,
+                      customCSS: getTemplateCustomCSS(template, filledHtml),
                       summary: topic || fullPrompt,
                     }];
                   } else {
@@ -4595,6 +4734,7 @@ Original request: ${userPrompt}`;
                   html: filledHtml,
                   type: templateId,
                   templateId: templateId,
+                  customCSS: getTemplateCustomCSS(template, filledHtml),
                   summary: instruction,
                 });
 
@@ -4754,13 +4894,14 @@ Original request: ${userPrompt}`;
                   }
                 }
 
+                let insertTemplate = null;
                 if (!slideHtml && templateId && !isInsertImage) {
                   // Use specific template
-                  const template = allTemplates.find(t => t.id === templateId);
-                  if (template) {
-                    slideHtml = await fillTemplateWithAI(template, fullPrompt, insertState.settings, [], { agentMode: false });
+                  insertTemplate = allTemplates.find(t => t.id === templateId);
+                  if (insertTemplate) {
+                    slideHtml = await fillTemplateWithAI(insertTemplate, fullPrompt, insertState.settings, [], { agentMode: false });
                     if (isAborted()) break;
-                    slideTitle = template.title;
+                    slideTitle = insertTemplate.title;
                   }
                 }
 
@@ -4782,6 +4923,7 @@ Original request: ${userPrompt}`;
                     html: slideHtml,
                     type: templateId || 'custom',
                     templateId: templateId,
+                    customCSS: insertTemplate ? getTemplateCustomCSS(insertTemplate, slideHtml) : '',
                     summary: topic,
                   });
 
@@ -5656,7 +5798,7 @@ Original request: ${userPrompt}`;
                               deckContext, null
                             );
                             const newTitle = extractTitleFromHTML(transformedHtml) || freshSlide.title;
-                            actions.updateSlide(sid, { html: transformedHtml, type: templateId, templateId, title: newTitle, customCSS: SLIDE_TEMPLATES[templateId]?.css || '', pptxRendererCode: null });
+                            actions.updateSlide(sid, { html: transformedHtml, type: templateId, templateId, title: newTitle, customCSS: getTemplateCustomCSS(templateId, transformedHtml), pptxRendererCode: null });
                             addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Switched to: <strong>${templateId}</strong></div>`, { isHTML: true });
                           } catch (err) {
                             addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Template switch failed: ${err.message}</div>`, { isHTML: true });
@@ -6603,7 +6745,7 @@ Original request: ${userPrompt}`;
                     type="button"
                     className={`panel-search-toggle-btn ${state.settings.searchEnabled ? 'active' : ''}`}
                     onClick={() => actions.updateSettings({ searchEnabled: !state.settings.searchEnabled })}
-                    title={state.settings.searchEnabled ? 'Per-slide web search enabled — click to disable (router always uses search for planning)' : 'Per-slide web search disabled — click to enable (router always uses search for planning)'}
+                    title={state.settings.searchEnabled ? 'Web search enabled — router uses it only when needed; step searches can be toggled in the plan' : 'Web search disabled — router and slide execution will avoid web search'}
                   >
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <circle cx="11" cy="11" r="8" />

@@ -2,6 +2,7 @@ import { debugLog, LogLevel } from '../../utils/debugLog';
 import { getCredentials, isGeminiModel, isGemini3Model, isGemini25Model, extractGeminiResponseText, buildProviderHeaders, buildGeminiEndpoint, buildGeminiHeaders } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
 import { authFetch } from '../authFetch.js';
+import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 
 // AI-based HTML quality validation - checks layout similarity to prompt
 export async function validateHtmlWithAI(html, originalPrompt, settings) {
@@ -11,7 +12,7 @@ export async function validateHtmlWithAI(html, originalPrompt, settings) {
     throw new Error('API key is required for AI validation.');
   }
 
-  const systemPrompt = `You are a strict quality assurance expert for Strategy& consulting slide design.
+  const systemPrompt = applyPromptOverride(settings, 'validation.system', `You are a strict quality assurance expert for Strategy& consulting slide design.
 Your job is to critically evaluate HTML slide quality on TWO key aspects:
 
 1. LAYOUT MATCH TO PROMPT - Does the slide design match what was requested?
@@ -36,7 +37,7 @@ QUALITY ISSUES:
 - Walls of text (>50 words in a paragraph)
 - More than 5 bullet points or 4 cards
 - Generic headlines (not insight-driven)
-- Poor visual hierarchy`;
+- Poor visual hierarchy`);
 
   const userPrompt = `EVALUATE THIS SLIDE HTML:
 ${html}
@@ -78,6 +79,11 @@ Be CRITICAL. Most slides should score 40-70. Only truly excellent slides score 8
 
   try {
     let content;
+    recordPromptPayload('validation.system', {
+      model: settings.model,
+      systemPrompt,
+      userPrompt,
+    });
 
     content = await callWithModelFallback(settings, systemPrompt, userPrompt);
 

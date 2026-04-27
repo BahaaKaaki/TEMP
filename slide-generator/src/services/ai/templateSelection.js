@@ -8,6 +8,7 @@ import { CSS_STYLE_GUIDE, DEFAULT_SYSTEM_PROMPT, TITLE_HEADER_RULES, FREESTYLE_C
 import { buildFreestyleSystemPrompt } from './freestylePromptBuilder.js';
 import { extractSingleSlide, flattenNestedFrames, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
+import { applyPromptOverride, appendPromptOverride, recordPromptPayload } from './promptOverrides.js';
 
 // Helper to get master-specific instructions for template generation
 export function getMasterInstructions(master) {
@@ -820,7 +821,7 @@ No source data provided - this is a topic/theme request.
     flexSection = lines.join('\n');
   }
 
-  const fillPrompt = `You are filling in content for a Strategy& consulting slide template.
+  let fillPrompt = `You are filling in content for a Strategy& consulting slide template.
 TODAY: ${currentDateString()}
 
 TEMPLATE NAME: ${template.title}
@@ -901,12 +902,20 @@ ABSOLUTE RULES:
 - STRUCTURAL DIRECTIVES: If the content request contains [STRUCTURE: ...], you MUST follow it exactly. It overrides flex defaults. E.g., [STRUCTURE: exactly 5 items] means produce exactly 5, even if template default is 3.
 
 Return ONLY the filled HTML, no explanations.`;
+  fillPrompt = appendPromptOverride(settings, 'slideGen.templateUser', fillPrompt);
 
   try {
     let content;
+    const templateSystemPrompt = applyPromptOverride(settings, 'slideGen.templateSystem', DEFAULT_SYSTEM_PROMPT);
 
     console.log('[fillTemplateWithAI] Calling model:', settings.model, 'template:', template.id);
-    content = await callWithModelFallback(settings, DEFAULT_SYSTEM_PROMPT, fillPrompt);
+    recordPromptPayload('slideGen.templateSystem', {
+      model: settings.model,
+      templateId: template.id,
+      systemPrompt: templateSystemPrompt,
+      userPrompt: fillPrompt,
+    });
+    content = await callWithModelFallback(settings, templateSystemPrompt, fillPrompt);
 
     // Extract single slide (AI may return both template example and filled - take the last one)
     content = extractSingleSlide(content) || '';
@@ -1115,7 +1124,7 @@ ${template.html}
 === END SLIDE ${i + 1} ===`;
   }).join('\n\n');
 
-  const bulkPrompt = `You are generating MULTIPLE Strategy& consulting slides in ONE response.
+  let bulkPrompt = `You are generating MULTIPLE Strategy& consulting slides in ONE response.
 TODAY: ${currentDateString()}
 
 ${TITLE_HEADER_RULES}
@@ -1166,12 +1175,20 @@ OUTPUT FORMAT (output ONLY raw HTML, no labels or markers):
 <div class="slide ...">...</div>
 
 Return ONLY the HTML slides separated by <!-- SLIDE_SEPARATOR -->, no explanations.`;
+  bulkPrompt = appendPromptOverride(settings, 'slideGen.templateUser', bulkPrompt);
 
   try {
     let content;
+    const templateSystemPrompt = applyPromptOverride(settings, 'slideGen.templateSystem', DEFAULT_SYSTEM_PROMPT);
 
     console.log('[fillTemplatesBulk] Calling model:', settings.model, 'slides:', slideSpecs.length);
-    content = await callWithModelFallback(settings, DEFAULT_SYSTEM_PROMPT, bulkPrompt);
+    recordPromptPayload('slideGen.templateSystem', {
+      model: settings.model,
+      slideCount: slideSpecs.length,
+      systemPrompt: templateSystemPrompt,
+      userPrompt: bulkPrompt,
+    });
+    content = await callWithModelFallback(settings, templateSystemPrompt, bulkPrompt);
 
     // Split response by separator
     const slides = content.split(/<!--\s*SLIDE_SEPARATOR\s*-->/).map(s => s.trim()).filter(Boolean);

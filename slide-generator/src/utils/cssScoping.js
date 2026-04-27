@@ -1,7 +1,7 @@
 /**
  * Per-slide CSS namespacing.
  *
- * Scopes every CSS rule to a specific slide via [data-slide-id="UUID"],
+ * Scopes every CSS rule to a specific slide via [data-slide-id="<slide id>"],
  * preventing cross-slide style bleed in thumbnails, fullscreen, and HTML export.
  *
  * CSS is scoped at storage time (generation/edit), not at render time.

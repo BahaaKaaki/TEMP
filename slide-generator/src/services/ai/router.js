@@ -4,6 +4,8 @@ import { audit } from '../../utils/auditLog';
 import { selectBestTemplate, randomizeFamilyVariant, estimateItemCount } from '../templateEmbeddings';
 import { parseModelRef, findProvider, getCredentials } from './models.js';
 import { callWithModelFallback, callRouterWithImages, attachSkillIdToBody } from './apiClient.js';
+import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
+import { CONTEXT_LEVELS, normalizeContextLevel } from './slideContext.js';
 import { authFetch } from '../authFetch.js';
 
 // ============================================
@@ -270,6 +272,87 @@ export function parseSlideReferences(prompt, slideCount) {
   return [...new Set(refs)]; // dedupe
 }
 
+function normalizeSlideIndexArray(value, slideCount) {
+  if (!Array.isArray(value)) return [];
+  return [...new Set(value
+    .map(v => Number(v))
+    .filter(v => Number.isInteger(v) && v >= 0 && (slideCount <= 0 || v < slideCount)))];
+}
+
+function inferContextLevel(userPrompt, { scope = 'plan', needsStoryline = false, referenceSlides = [], targetSlides = [] } = {}) {
+  const prompt = String(userPrompt || '').toLowerCase();
+  if (/\b(full|entire|whole)\s+(deck|presentation)\b|\b(rewrite|restructure|reorganize|make .*mece|narrative|storyline|all slides)\b/.test(prompt)) {
+    return CONTEXT_LEVELS.FULL_TEXT_DECK;
+  }
+  if (referenceSlides.length > 0 || /\b(like|from|same as|match|copy|based on)\s+(slide|page|this|current|previous)\b/.test(prompt)) {
+    return CONTEXT_LEVELS.REFERENCE_SLIDES;
+  }
+  if (needsStoryline || targetSlides.length > 1 || scope === 'plan') {
+    return CONTEXT_LEVELS.DECK_DIGEST;
+  }
+  return CONTEXT_LEVELS.ACTIVE_SLIDE;
+}
+
+export const ROUTER_SEARCH_MODES = {
+  AUTO: 'auto',
+  ALWAYS: 'always',
+  OFF: 'off',
+};
+
+function normalizeRouterSearchMode(value) {
+  return Object.values(ROUTER_SEARCH_MODES).includes(value)
+    ? value
+    : ROUTER_SEARCH_MODES.AUTO;
+}
+
+function coerceBooleanSetting(value, defaultValue = true) {
+  if (value === undefined || value === null || value === '') return defaultValue;
+  if (value === true || value === 'true') return true;
+  if (value === false || value === 'false') return false;
+  return Boolean(value);
+}
+
+function getRouterSearchPolicy(userPrompt, {
+  mode = ROUTER_SEARCH_MODES.AUTO,
+  searchEnabled = true,
+  triageNeedsSearch = false,
+  triageSearchQuery = null,
+  hasDocumentsAttached = false,
+} = {}) {
+  const normalizedMode = normalizeRouterSearchMode(mode);
+  const prompt = String(userPrompt || '');
+
+  if (!searchEnabled) {
+    return { allowSearch: false, mode: normalizedMode, reason: 'disabled_by_settings' };
+  }
+  if (normalizedMode === ROUTER_SEARCH_MODES.OFF) {
+    return { allowSearch: false, mode: normalizedMode, reason: 'router_search_mode_off' };
+  }
+
+  const explicitNoSearch = /\b(no web search|don't search|do not search|without web search|without search|avoid search|do not look up|don't look up|use (?:only )?(?:deck|slide|provided|attached|document) context|based only on (?:the )?(?:deck|slides|attached|provided))/i.test(prompt);
+  if (explicitNoSearch) {
+    return { allowSearch: false, mode: normalizedMode, reason: 'user_requested_no_search' };
+  }
+
+  if (normalizedMode === ROUTER_SEARCH_MODES.ALWAYS) {
+    return { allowSearch: true, mode: normalizedMode, reason: 'router_search_mode_always' };
+  }
+  if (triageNeedsSearch) {
+    return { allowSearch: true, mode: normalizedMode, reason: 'triage_needs_search', query: triageSearchQuery || null };
+  }
+
+  const evidenceNeedPattern = /\b(web search|search the web|look up|research current|latest|most recent|recent developments?|up[-\s]?to[-\s]?date|as of\s+(?:[a-z]+\s+)?20\d{2}|current (?:market|data|facts?|numbers?|pricing|regulation|regulatory|status|events?|statistics|stats|figures|financials|forecast)|20(?:2[5-9]|3\d)|market size|market share|benchmarks?|competitors?|regulation|regulatory|news|statistics|stats|figures|financials|forecast|citations?|source URLs?|cite sources?|verify (?:facts?|numbers?|data)|validate (?:facts?|numbers?|data)|fact[-\s]?check|update (?:the )?(?:numbers?|stats|figures|data|facts?))\b/i;
+  if (evidenceNeedPattern.test(prompt)) {
+    return { allowSearch: true, mode: normalizedMode, reason: 'prompt_needs_external_or_current_evidence' };
+  }
+
+  if (hasDocumentsAttached) {
+    return { allowSearch: false, mode: normalizedMode, reason: 'attached_documents_are_primary_context' };
+  }
+
+  return { allowSearch: false, mode: normalizedMode, reason: 'no_external_evidence_need_detected' };
+}
+
 // Enhanced template matching with scoring
 export function matchTemplateFromPrompt(prompt) {
   const lower = prompt.toLowerCase();
@@ -467,6 +550,17 @@ export function routeRequest(userPrompt, context) {
     const refs = parseSlideReferences(userPrompt, slideCount);
     result.params.slideIndex = refs[0] ?? currentSlideIndex;
     result.contextNeeded = { type: 'none', slideIndices: [], reason: 'deletion' };
+    return result;
+  }
+
+  if (/\b(section|subsection|tracker|navigation tab|section label|subsection label)\b/i.test(userPrompt) &&
+      /\b(rename|relabel|update|change|set|clear|remove)\b/i.test(userPrompt)) {
+    result.intent = 'update_trackers';
+    result.action = 'update_trackers';
+    result.understanding = 'Updating slide tracker metadata';
+    const refs = parseSlideReferences(userPrompt, slideCount);
+    result.params.slideIndex = refs[0] ?? currentSlideIndex;
+    result.contextNeeded = { type: 'none', slideIndices: [], reason: 'tracker metadata only' };
     return result;
   }
 
@@ -776,6 +870,8 @@ export function getRouterOutputSchema() {
       sources: { anyOf: [{ type: 'array', items: sourceObj }, { type: 'null' }] },
       layoutGuidance: { type: ['string', 'null'] },
       contextSlides: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
+      targetSlides: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
+      referenceSlides: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
       contextFromStep: { type: ['integer', 'null'] },
       sectionTracker: { type: ['string', 'null'] },
       subSectionTracker: { type: ['string', 'null'] },
@@ -786,7 +882,7 @@ export function getRouterOutputSchema() {
       'action', 'slideIndex', 'templateId', 'position',
       'title', 'subtitle', 'instruction',
       'facts', 'sources', 'layoutGuidance',
-      'contextSlides', 'contextFromStep',
+      'contextSlides', 'targetSlides', 'referenceSlides', 'contextFromStep',
       'sectionTracker', 'subSectionTracker',
       'searchQuery', 'searchGoal',
     ],
@@ -800,16 +896,19 @@ export function getRouterOutputSchema() {
       questions: { anyOf: [{ type: 'array', items: questionObj }, { type: 'null' }] },
       groups: { anyOf: [{ type: 'array', items: { type: 'array', items: { type: 'integer' } } }, { type: 'null' }] },
       sourceSlides: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
+      targetSlides: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
+      referenceSlides: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
+      contextLevel: { type: ['string', 'null'] },
       needsStoryline: { type: ['boolean', 'null'] },
       needsReplanning: { type: ['boolean', 'null'] },
     },
-    required: ['plan', 'questions', 'groups', 'sourceSlides', 'needsStoryline', 'needsReplanning'],
+    required: ['plan', 'questions', 'groups', 'sourceSlides', 'targetSlides', 'referenceSlides', 'contextLevel', 'needsStoryline', 'needsReplanning'],
     additionalProperties: false,
   };
 }
 
-export function getRouterSystemPrompt() {
-  return `You are a senior consulting partner at Strategy& Middle East, primarily serving clients across the GCC region. You are also the work router and research planner for slide presentations.
+export function getRouterSystemPrompt(settings = null) {
+  const defaultPrompt = `You are a senior consulting partner at Strategy& Middle East, primarily serving clients across the GCC region. You are also the work router and research planner for slide presentations.
 
 Your role is to understand the user's real request and intent, decide the right deck structure, perform or coordinate research when needed, and produce a consultant-grade execution plan.
 Think like a senior strategy partner: precise, hypothesis-led, MECE, pyramid-structured, evidence-based, narrative-driven, and practical.
@@ -955,13 +1054,19 @@ Keep step instructions minimal: just the Key Message + Data Points if present.
 
 Steps see ONLY: (1) your instruction (which gets replaced with the full stored instruction), (2) contextSlides content if provided.
 
-ACTIONS: create_slide, edit_slide, delete_slide, switch_template, answer_question
+ACTIONS: create_slide, edit_slide, delete_slide, switch_template, update_trackers, answer_question
 
 CRITICAL: Greetings and small talk (hi, hello, hey, thanks, bye) MUST use answer_question. NEVER create slides for conversational messages.
+
+CRITICAL - TARGET vs REFERENCE SLIDES:
+- targetSlides = slides that will be changed by the request
+- referenceSlides = slides that should be read for style, content, structure, or tracker context
+- contextSlides is the execution compatibility field: include every referenceSlides index that the step must read as full HTML
 
 CRITICAL - "contextSlides" MECHANISM:
 When user references specific slides (e.g., "detail slide 3", "like page 5", "based on current slide"):
 - EACH step MUST have its own "contextSlides": [index, ...] array (0-based indices)
+- Also populate "referenceSlides" with those same indices unless the slide is the edit target
 - The execution step will READ those slides and see their full HTML content
 - You only see titles - execution sees full HTML with actual content
 - Max 5 slides per step
@@ -1173,10 +1278,11 @@ The sub-section tracker appears as a grey box next to the main maroon tracker.
 
 RULES:
 - "add element" (bullet, text) = edit_slide (NOT create)
+- "rename/relabel/update trackers/sections/subsections only" = update_trackers (NOT edit_slide)
 - "create N slides" = output ALL steps (up to 30 max)
 - INDEXING: 0-based internally. "slide 1" = index 0
 - Use separate fields: title, subtitle, instruction, facts, sources — do not merge them into one combined block
-- EACH step referencing slides MUST have contextSlides with exact indices (up to 5)
+- EACH step referencing slides MUST have contextSlides/referenceSlides with exact indices (up to 5)
 - Reference items by position (pillar 1, item 2, first bullet, etc.) - NEVER invent names
 - AUTO COVER: When creating a new deck from scratch (empty deck or no cover exists) AND the user requests 3 or more slides, ALWAYS add a cover slide as the FIRST step (templateId: "cover", position: "start"). For 1-2 slide requests, do NOT add a cover — just create the requested content slides directly.
 - Greetings, thanks, bye, and other conversational messages must use "answer_question"
@@ -1206,7 +1312,7 @@ DECK STRUCTURE & STORYTELLING (think like a senior consulting partner):
 STEP FIELDS — STRUCTURED OUTPUT (CRITICAL):
 Each step may include these separate fields. Do NOT merge them into one combined block.
 
-- action: the operation (create_slide, edit_slide, delete_slide, switch_template, answer_question)
+- action: the operation (create_slide, edit_slide, delete_slide, switch_template, update_trackers, answer_question)
 - slideIndex: (REQUIRED for edit_slide and delete_slide) 0-based index of the slide to modify. Slide 1 = 0, Slide 7 = 6.
 - templateId: which template to use
 - position: where to place the slide
@@ -1217,9 +1323,12 @@ Each step may include these separate fields. Do NOT merge them into one combined
 - sources: array of backing references for externally sourced facts (each: {label, url, note})
 - layoutGuidance: for freestyle — describes the logical content shape
 - contextSlides: array of 0-based slide indices to reference
+- targetSlides: array of 0-based slide indices changed by this step; for single edit, usually [slideIndex]
+- referenceSlides: array of 0-based slide indices read but not directly changed
 - contextFromStep: step index whose output this step depends on
 - sectionTracker: section label for navigation (e.g., "1. Market Context")
 - subSectionTracker: sub-section label (e.g., "Phase 1")
+- update_trackers steps: set slideIndex plus sectionTracker/subSectionTracker. Keep instruction short and do not request HTML regeneration.
 - searchQuery: precise search query for slide-specific data
 - searchGoal: what the search must retrieve (use alongside searchQuery)
 
@@ -1265,10 +1374,13 @@ Each slide is built by a separate AI call that sees ONLY its own instruction (+ 
 5. NUMBERS AND DATA POINTS: When specific numbers appear in one slide (e.g., "$4.2B market size"), repeat the EXACT same number in related slides. Don't let parallel sub-agents invent different figures.
 
 6. SEARCH GROUNDING — HOW IT WORKS:
-Your web search during planning gives YOU rich context for building the plan. The slide generation models that execute each step receive:
+You may be called with router inline search enabled or disabled. Check "Router inline search policy" in the current state.
+When router inline search is enabled, your web search during planning gives YOU rich context for building the plan. The slide generation models that execute each step receive:
   (a) The facts[] and sources[] you include in each step (primary grounding data)
   (b) OPTIONAL: Raw, detailed per-step search results — triggered ONLY when you set searchQuery + searchGoal
-Because each step sees only its own facts[] (not your full search context), include ALL relevant facts for each step. Set searchQuery + searchGoal on slides that need MORE detail than your facts[] provide.
+Because each step sees only its own facts[] (not your full search context), include ALL relevant facts for each step.
+When router inline search is disabled but slide execution search is available, set searchQuery + searchGoal for slides that need external, current, or verified facts.
+When neither router nor slide execution search is available, do not invent current facts; ask a clarification question if current evidence is required.
 
 7. SAME-FORMAT FREESTYLE SLIDES:
 When the router judges that multiple NEW slides should repeat the same visual format, it MUST treat them as a dependent slide family, not fully parallel slides.
@@ -1290,13 +1402,14 @@ SLIDE POSITIONING:
 - Multiple slides: first gets specific position, rest use "after_previous"
 
 INLINE SEARCH BEHAVIOR:
-You have a web search tool. When the user's topic requires current data, external facts, or named entities:
+If router inline search is enabled, you have a web search tool. When the user's topic requires current data, external facts, or named entities:
 - Make MULTIPLE separate search calls for different entities or aspects — do NOT try to cover everything in one broad query
 - Search for each major entity, company, or topic area SEPARATELY to get thorough, targeted results
 - Use targeted queries with "latest", "most recent", or date ranges (e.g., "April 2026")
 - Verify you have the NEWEST information for each entity before finalizing your plan
 - For a topic covering 3+ entities (e.g., "compare AI labs"), make at least one search per entity
-- For structural edits, reformatting, or topics where you already have sufficient knowledge, skip searching entirely
+- For structural edits, reformatting, tracker updates, template switches, or topics where deck/document context is sufficient, skip searching entirely
+If router inline search is disabled, do not behave as if you searched. Use the deck/documents provided, and use per-step searchQuery + searchGoal only when slide execution needs fresh facts.
 
 SEARCH QUERY STRATEGY — CRITICAL:
 Do NOT restrict every query to site: prefixes. site: queries only match the exact domain and miss subdomains, developer portals, release notes, and changelog pages.
@@ -1437,6 +1550,7 @@ REMEMBER:
 - In agent mode: YOU choose templates, agent provides content + research only
 - NEVER drop or summarize research — pass the full Instruction + Data Points through to the step instruction
 - SLIDES: You can't see content (only titles) → use contextSlides, reference by position`;
+  return applyPromptOverride(settings, 'router.system', defaultPrompt);
 }
 
 // ============================================
@@ -1552,7 +1666,7 @@ export async function classifyRequest(userPrompt, context, settings) {
 }
 
 // ── Unified Triage System Prompt ──
-const TRIAGE_SYSTEM_PROMPT = `You are a presentation assistant triage agent. Given a user prompt and the current deck state, return a JSON classification.
+export const TRIAGE_SYSTEM_PROMPT = `You are a presentation assistant triage agent. Given a user prompt and the current deck state, return a JSON classification.
 
 Return ONLY valid JSON with these fields:
 - scope: "qa" | "direct" | "plan"
@@ -1562,6 +1676,8 @@ Return ONLY valid JSON with these fields:
 - isTemplateSwitch: boolean - true if user wants to switch the slide template/layout
 - templateId: string or null - the target template if switching
 - targetSlides: array of 0-indexed slide indices affected (Slide 1 = index 0)
+- referenceSlides: array of 0-indexed slide indices used as style/content/structure references
+- contextLevel: "active_slide" | "reference_slides" | "deck_digest" | "full_text_deck" - how much text-only deck context the router should receive
 - instruction: string - the core instruction for execution
 
 SCOPES:
@@ -1586,6 +1702,13 @@ needsStoryline rules:
 - TRUE for "edit the deck", "restructure", "reorder slides", "add context slides", or any cross-slide narrative operation
 - FALSE for single-slide edits, template switches, Q&A, or isolated content changes
 - When in doubt, set false
+
+contextLevel rules:
+- "active_slide": isolated active-slide edit with no cross-slide dependency
+- "reference_slides": user asks to match, copy, compare, expand, or use another slide/page as a reference
+- "deck_digest": normal deck planning, add slides, tracker changes, or section-aware requests
+- "full_text_deck": whole-deck rewrite/restructure/MECE/storyline work where slide-by-slide text is needed
+- If the request names another slide/page, put that 0-based index in referenceSlides
 
 Additional rules:
 - Greetings, thanks, conversational → scope "qa"
@@ -1626,6 +1749,7 @@ export async function triageRequest(userPrompt, context, settings) {
     slides = [],
     activeSlideIndex = -1,
     activeSlide = null,
+    deckContextDigest = null,
     attachedFiles = [],
     chatHistory = [],
   } = context;
@@ -1634,7 +1758,7 @@ export async function triageRequest(userPrompt, context, settings) {
   const triageSettings = {
     ...settings,
     model: triageModel,
-    maxTokens: 400,
+    maxTokens: 600,
     temperature: 0,
   };
 
@@ -1644,8 +1768,15 @@ export async function triageRequest(userPrompt, context, settings) {
     : `NO ACTIVE SLIDE (${slideCount} slides in deck)`;
 
   const deckOverview = slideCount > 0
-    ? `DECK: ${slides.map((s, i) => `${i + 1}. ${s.title || 'Untitled'}${i === activeSlideIndex ? ' [ACTIVE]' : ''}`).join(', ')}`
+    ? `DECK: ${(deckContextDigest?.slideSummaries || slides).map((s, i) => `${(s.index ?? i) + 1}. ${s.title || 'Untitled'}${s.template ? ` (${s.template})` : ''}${s.sectionLabel ? ` [${s.sectionLabel}]` : ''}${s.subSectionLabel ? ` > ${s.subSectionLabel}` : ''}${(s.index ?? i) === activeSlideIndex ? ' [ACTIVE]' : ''}`).join(', ')}`
     : 'DECK: Empty (no slides yet)';
+
+  const activeDigest = deckContextDigest?.activeSlideContext
+    ? `\nACTIVE SLIDE TEXT:\n${deckContextDigest.activeSlideContext.textSummary || '[Empty slide]'}`
+    : '';
+  const structureDigest = deckContextDigest
+    ? `\nDECK DIGEST:\nLayout mix: ${deckContextDigest.layoutSummary || 'none'}\n${deckContextDigest.sectionMap || 'No section trackers set.'}\n${deckContextDigest.storylineSummary ? `Storyline:\n${deckContextDigest.storylineSummary}` : ''}`
+    : '';
 
   const filesInfo = attachedFiles.length > 0
     ? `\nATTACHED DOCUMENTS: ${attachedFiles.map(f => f.fileName || f.name || 'file').join(', ')}`
@@ -1659,12 +1790,18 @@ export async function triageRequest(userPrompt, context, settings) {
     ? `\nRECENT CHAT:\n${chatHistory.map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${trimMsg(m.content)}`).join('\n')}\n`
     : '';
 
-  const userMessage = `${activeInfo}\n${deckOverview}${filesInfo}${recentChat}\n\nUSER: ${userPrompt}`;
+  const userMessage = `${activeInfo}${activeDigest}\n${deckOverview}${structureDigest}${filesInfo}${recentChat}\n\nUSER: ${userPrompt}`;
 
   try {
+    const systemPrompt = applyPromptOverride(settings, 'triage.system', TRIAGE_SYSTEM_PROMPT);
+    recordPromptPayload('triage.system', {
+      model: triageModel,
+      systemPrompt,
+      userPrompt: userMessage,
+    });
     const raw = await callWithModelFallback(
       triageSettings,
-      TRIAGE_SYSTEM_PROMPT,
+      systemPrompt,
       userMessage,
       { role: 'text' }
     );
@@ -1680,6 +1817,8 @@ export async function triageRequest(userPrompt, context, settings) {
         isTemplateSwitch: false,
         templateId: null,
         targetSlides: [],
+        referenceSlides: [],
+        contextLevel: inferContextLevel(userPrompt, { scope: 'plan' }),
         instruction: userPrompt,
         questions: [],
       };
@@ -1691,6 +1830,21 @@ export async function triageRequest(userPrompt, context, settings) {
       ? parsed.scope
       : 'plan';
 
+    const targetSlides = normalizeSlideIndexArray(parsed.targetSlides, slideCount);
+    const parsedReferenceSlides = normalizeSlideIndexArray(parsed.referenceSlides, slideCount);
+    const fallbackReferenceSlides = parsedReferenceSlides.length > 0
+      ? parsedReferenceSlides
+      : parseSlideReferences(userPrompt, slideCount).filter(idx => idx !== activeSlideIndex);
+    const contextLevel = normalizeContextLevel(
+      parsed.contextLevel,
+      inferContextLevel(userPrompt, {
+        scope,
+        needsStoryline: !!parsed.needsStoryline,
+        referenceSlides: fallbackReferenceSlides,
+        targetSlides,
+      })
+    );
+
     const triageResult = {
       scope,
       needsSearch: !!parsed.needsSearch,
@@ -1698,7 +1852,9 @@ export async function triageRequest(userPrompt, context, settings) {
       searchQuery: parsed.searchQuery || null,
       isTemplateSwitch: !!parsed.isTemplateSwitch,
       templateId: parsed.templateId || null,
-      targetSlides: Array.isArray(parsed.targetSlides) ? parsed.targetSlides : [],
+      targetSlides,
+      referenceSlides: fallbackReferenceSlides,
+      contextLevel,
       instruction: parsed.instruction || userPrompt,
       questions: [],
     };
@@ -1721,6 +1877,8 @@ export async function triageRequest(userPrompt, context, settings) {
       isTemplateSwitch: false,
       templateId: null,
       targetSlides: [],
+      referenceSlides: [],
+      contextLevel: inferContextLevel(userPrompt, { scope: 'plan' }),
       instruction: userPrompt,
       questions: [],
     };
@@ -1745,6 +1903,15 @@ export async function aiRouteRequest(userPrompt, context, settings) {
     slideSummaries = [],      // Array of {index, title, pendingComments}
     storylineSummary = '',    // Brief storyline description
     layoutSummary = '',       // e.g., "bullets:3, cards:2"
+    sectionMap = '',
+    activeSlideContext = null,
+    deckContextDigest = null,
+    deckStructure = null,
+    contextLevel = CONTEXT_LEVELS.DECK_DIGEST,
+    referenceSlides = [],
+    targetSlides = [],
+    triageNeedsSearch = false,
+    triageSearchQuery = null,
     activeFlow = null,
     parallelBatchSize = 3,    // Max parallel steps per group (from settings.parallelSlideGeneration)
     // FULL document content - router makes all decisions directly
@@ -1764,6 +1931,9 @@ export async function aiRouteRequest(userPrompt, context, settings) {
     contextMode = 'deck',
     chatHistory = [],
   } = context;
+  const normalizedContextLevel = normalizeContextLevel(contextLevel || deckContextDigest?.contextLevel);
+  const normalizedReferenceSlides = normalizeSlideIndexArray(referenceSlides, slideCount);
+  const normalizedTargetSlides = normalizeSlideIndexArray(targetSlides, slideCount);
 
   // Get router model - use big model if requested, otherwise unified routerModel
   const defaultRouterModel = 'pwc:openai.gpt-5.4';
@@ -1776,13 +1946,17 @@ export async function aiRouteRequest(userPrompt, context, settings) {
   const effectiveMaxTokens = !agentMode
     ? (settings.chatRouterMaxTokens || 16384)
     : (settings.routerMaxTokens || 16384);
-  const effectiveSearchEnabled = !agentMode
-    ? (settings.chatRouterSearchEnabled !== undefined ? settings.chatRouterSearchEnabled : true)
-    : (settings.routerSearchEnabled || false);
+  const routerSearchToggleEnabled = !agentMode
+    ? coerceBooleanSetting(settings.chatRouterSearchEnabled, true)
+    : coerceBooleanSetting(settings.routerSearchEnabled, false);
+  const effectiveSearchEnabled = coerceBooleanSetting(settings.searchEnabled, true) && routerSearchToggleEnabled;
+  const routerSearchMode = normalizeRouterSearchMode(settings.routerSearchMode || settings.chatRouterSearchMode);
 
   console.log('[Router Search]', 'Toggle:', {
     agentMode,
     effectiveSearchEnabled,
+    routerSearchMode,
+    globalSearchEnabled: settings.searchEnabled,
     chatRouterSearchEnabled: settings.chatRouterSearchEnabled,
     routerSearchEnabled: settings.routerSearchEnabled,
   });
@@ -1816,12 +1990,27 @@ export async function aiRouteRequest(userPrompt, context, settings) {
     console.log('[skills] router attaching skillId=%s model=%s', selectedSkillId, routerModelRef);
   }
 
-  // Detect whether the router model supports inline web search via the Responses API.
-  // GPT/o-series models support web_search_preview natively; Gemini/Claude do not.
+  // Detect whether the router model supports the Responses API. GPT/o-series can
+  // use it with or without web_search_preview; the search policy decides tools.
   const isGPTRouter = routerModelName.includes('gpt-') || routerModelName.includes('o3') || routerModelName.includes('o4-');
-  const canUseResponsesAPI = isGPTRouter && settings.searchEndpoint && effectiveSearchEnabled && !agentMode;
-  console.log('[Router Search]', 'Responses API inline search:', canUseResponsesAPI ? 'YES' : 'NO (fallback to pre-search)',
-    { isGPTRouter, hasSearchEndpoint: !!settings.searchEndpoint, searchEnabled: effectiveSearchEnabled, agentMode });
+  const canUseRouterResponsesAPI = isGPTRouter && settings.searchEndpoint && !agentMode;
+  const routerSearchPolicy = getRouterSearchPolicy(userPrompt, {
+    mode: routerSearchMode,
+    searchEnabled: effectiveSearchEnabled,
+    triageNeedsSearch,
+    triageSearchQuery,
+    hasDocumentsAttached,
+  });
+  const canUseInlineSearch = canUseRouterResponsesAPI && routerSearchPolicy.allowSearch;
+  console.log('[Router Search]', 'Policy:', {
+    canUseRouterResponsesAPI,
+    canUseInlineSearch,
+    isGPTRouter,
+    hasSearchEndpoint: !!settings.searchEndpoint,
+    searchEnabled: effectiveSearchEnabled,
+    agentMode,
+    ...routerSearchPolicy,
+  });
 
   // Build compact slide list — index, title, template, section labels. Mark the current slide.
   const slideList = slideSummaries.length > 0
@@ -1853,11 +2042,11 @@ ${referencedSlides.map(r => `  - Index ${r.index} = Page ${r.index + 1}: "${r.ti
 `
     : '';
 
-  const searchAvailable = !!(settings.searchEnabled && settings.searchEndpoint && settings.searchApiKey) || !!effectiveSearchEnabled;
+  const searchAvailable = !!(coerceBooleanSetting(settings.searchEnabled, true) && settings.searchEndpoint && settings.searchApiKey);
 
   console.log('[Router Search]', 'Prompt hint "Web search available":', searchAvailable ? 'YES' : 'NO',
-    '(custom search endpoint:', !!(settings.searchEnabled && settings.searchEndpoint && settings.searchApiKey),
-    '| router model may use built-in search:', !!effectiveSearchEnabled, ')');
+    '(custom search endpoint:', searchAvailable,
+    '| router inline search allowed:', !!canUseInlineSearch, ')');
 
   // ── Condense agent-generated prompts for the router ──
   // Agent prompts contain verbose per-slide instructions (~30-50K chars) that overwhelm the router.
@@ -1982,17 +2171,42 @@ SEARCH: Include a searchQuery when real data would strengthen the title — the 
     ? `\nRECENT CONVERSATION:\n${chatHistory.map(m => `${m.type === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n')}\n`
     : '';
 
+  const activeSlideBlock = activeSlideContext
+    ? `\nACTIVE PAGE CONTEXT:\n- Slide ${activeSlideContext.index + 1}: "${activeSlideContext.title}" (${activeSlideContext.template || 'custom'})\n${activeSlideContext.sectionLabel ? `- Section: ${activeSlideContext.sectionLabel}\n` : ''}${activeSlideContext.subSectionLabel ? `- Subsection: ${activeSlideContext.subSectionLabel}\n` : ''}${activeSlideContext.previousTitle ? `- Previous: "${activeSlideContext.previousTitle}"\n` : ''}${activeSlideContext.nextTitle ? `- Next: "${activeSlideContext.nextTitle}"\n` : ''}- Text-only content:\n${activeSlideContext.textSummary || '[Empty slide]'}\n`
+    : '';
+
+  const sectionMapBlock = sectionMap || deckContextDigest?.sectionMap
+    ? `\n${sectionMap || deckContextDigest.sectionMap}\n`
+    : '';
+
+  const effectiveDeckStructure = deckStructure || deckContextDigest?.deckStructure || null;
+  const deckStructureBlock = effectiveDeckStructure
+    ? `\nDECK STRUCTURE MODEL:
+- Executive summary: ${effectiveDeckStructure.executiveSummary ? `slide ${effectiveDeckStructure.executiveSummary.slideIndex + 1} with ${effectiveDeckStructure.executiveSummary.items?.length || 0} item(s)` : 'none detected'}
+- Sections: ${(effectiveDeckStructure.sections || []).map(section => `${section.label} -> slides ${section.slideIndices.map(i => i + 1).join(', ')}`).join(' | ') || 'none'}
+- Tracker alignment: ${effectiveDeckStructure.trackerAlignment?.status || 'unknown'}\n`
+    : '';
+
+  const referenceContextBlock = deckContextDigest?.referenceSlideContexts?.length
+    ? `\nREFERENCE SLIDE TEXT CONTEXT:
+${deckContextDigest.referenceSlideContexts.map(ref => `- Slide ${ref.index + 1}: "${ref.title}" (${ref.template})${ref.sectionLabel ? ` [${ref.sectionLabel}]` : ''}\n${ref.textSummary}`).join('\n\n')}\n`
+    : '';
+
   const contextInfo = `CURRENT STATE:
 - Total slides: ${slideCount}
 - User is viewing slide index ${currentSlideIndex} (0-based) → slide ${currentSlideIndex + 1} of ${slideCount}. "this slide" or "current slide" = index ${currentSlideIndex}.
+- Context policy: ${normalizedContextLevel}
+- Target slides from triage: ${normalizedTargetSlides.length ? normalizedTargetSlides.map(i => i + 1).join(', ') : 'none'}
+- Reference slides from triage: ${normalizedReferenceSlides.length ? normalizedReferenceSlides.map(i => i + 1).join(', ') : 'none'}
 - Has cover slide: ${hasCoverSlide ? 'YES' : 'NO'}
 - Storyline: ${storylineSummary || 'none'}
 - Max parallel steps per group: ${parallelBatchSize}
-- Web search available: ${searchAvailable ? 'YES — add "searchQuery" to steps that need real-time or specific data' : 'NO — do not add searchQuery'}
+- Web search available to slide execution: ${searchAvailable ? 'YES — add "searchQuery" to steps that need real-time or specific data' : 'NO — do not add searchQuery'}
+- Router inline search policy: ${canUseInlineSearch ? `ENABLED (${routerSearchPolicy.reason})` : `DISABLED (${routerSearchPolicy.reason})`}
 - Slide style preference: ${settings.slideStylePreference === 'freestyle' ? 'FREESTYLE — always use templateId "freestyle" for create_slide steps (except cover/sectionDivider)' : settings.slideStylePreference === 'templates' ? 'TEMPLATES — always use a named template for create_slide steps, never "freestyle"' : 'AUTO — choose the best template or freestyle based on content'}
 - Context mode: ${contextMode === 'slide' ? 'THIS SLIDE — user is focused on editing the current slide. Prefer edit_slide for the current slide unless the prompt clearly asks to create new slides.' : 'DECK — user is working on the full deck. Free to create, edit, delete, or batch-operate across slides.'}
 ${layoutSummary ? `- LAYOUTS ALREADY IN DECK: ${layoutSummary} — DO NOT repeat the most-used layouts. Pick different templates and content shapes for new slides.` : ''}
-${agentModeNote}${imageModeNote}${documentSection}
+${activeSlideBlock}${sectionMapBlock}${deckStructureBlock}${referenceContextBlock}${agentModeNote}${imageModeNote}${documentSection}
 SLIDE TITLES:
 ${slideList}
 ${referencedSlidesSection}
@@ -2004,6 +2218,8 @@ ${activeFlow.sections.map((s, i) => `  ${i + 1}. template="${s.templateHint}" | 
 USER REQUEST: "${routerPrompt}"`;
 
   let routerSearchRawText = '';
+  let routerSearchCallCount = 0;
+  let routerSearchQueries = [];
   let response;
 
   const routerCallStart = Date.now();
@@ -2032,12 +2248,21 @@ USER REQUEST: "${routerPrompt}"`;
     hasImages,
   });
 
+  const routerSystemPrompt = getRouterSystemPrompt(settings);
+  recordPromptPayload('router.system', {
+    model: routerSettings.model,
+    systemPrompt: routerSystemPrompt,
+    userPrompt: contextInfo,
+    hasImages,
+  });
+
   try {
-    // ── PATH A: Responses API with inline web search (GPT models) ──
-    // Single call: the model searches the web AND produces the plan in one request.
-    // Eliminates the separate pre-search step (~15-20s savings).
-    if (canUseResponsesAPI && !hasImages) {
-      console.log('[Router Search] Using Responses API with inline web_search_preview (single call)');
+    // ── PATH A: Responses API (GPT models) ──
+    // Single call with Structured Outputs. The web search tool is attached only
+    // when the search policy says this request needs external/current evidence.
+    if (canUseRouterResponsesAPI && !hasImages) {
+      console.log('[Router Search] Using Responses API%s',
+        canUseInlineSearch ? ' with inline web_search_preview' : ' without search tools');
 
       const responsesEndpoint = (settings.searchEndpoint || '').startsWith('/api/')
         ? settings.searchEndpoint
@@ -2045,9 +2270,8 @@ USER REQUEST: "${routerPrompt}"`;
       const isServerProxy = (settings.searchApiKey === 'server-managed') || responsesEndpoint.startsWith('/api/');
       const responsesBody = {
         model: routerModelName,
-        instructions: getRouterSystemPrompt(),
+        instructions: routerSystemPrompt,
         input: contextInfo,
-        tools: [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }],
         max_output_tokens: effectiveMaxTokens,
         text: {
           format: {
@@ -2058,6 +2282,9 @@ USER REQUEST: "${routerPrompt}"`;
           },
         },
       };
+      if (canUseInlineSearch) {
+        responsesBody.tools = [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }];
+      }
       if (effectiveReasoningEffort && effectiveReasoningEffort !== 'none') {
         responsesBody.reasoning = { effort: effectiveReasoningEffort };
       }
@@ -2111,13 +2338,16 @@ USER REQUEST: "${routerPrompt}"`;
 
       const data = await resp.json();
       let planText = '';
-      let searchText = '';
       let searchCallCount = 0;
+      const searchQueries = [];
 
       if (data.output && Array.isArray(data.output)) {
         for (const item of data.output) {
           if (item.type === 'web_search_call') {
             searchCallCount++;
+            const action = item.action || {};
+            if (action.query) searchQueries.push(action.query);
+            if (Array.isArray(action.queries)) searchQueries.push(...action.queries);
           } else if (item.type === 'message' && item.content) {
             for (const c of item.content) {
               if (c.type === 'output_text' && c.text) {
@@ -2127,6 +2357,8 @@ USER REQUEST: "${routerPrompt}"`;
           }
         }
       }
+      routerSearchCallCount = searchCallCount;
+      routerSearchQueries = [...new Set(searchQueries)].slice(0, 12);
 
       console.log('[Router Search] Responses API: %d search call(s), plan %d chars', searchCallCount, planText.length);
 
@@ -2146,8 +2378,8 @@ USER REQUEST: "${routerPrompt}"`;
       // Used for non-GPT models, agent mode, or image-based routing.
       let routerSearchContext = '';
 
-      const searchConfigured = searchAvailable && settings.searchEnabled && settings.searchEndpoint && settings.searchModel && !agentMode;
-      if (searchConfigured && !canUseResponsesAPI) {
+      const searchConfigured = searchAvailable && coerceBooleanSetting(settings.searchEnabled, true) && settings.searchEndpoint && settings.searchModel && !agentMode && routerSearchPolicy.allowSearch;
+      if (searchConfigured && (!canUseRouterResponsesAPI || hasImages)) {
         try {
           const searchQuery = `${routerPrompt} latest ${currentDateString()}`;
           console.log('[Router Search] Pre-searching for router context:', searchQuery);
@@ -2171,13 +2403,19 @@ USER REQUEST: "${routerPrompt}"`;
             let resultText = '';
             if (searchData.output && Array.isArray(searchData.output)) {
               for (const item of searchData.output) {
-                if (item.type === 'message' && item.content) {
+                if (item.type === 'web_search_call') {
+                  routerSearchCallCount++;
+                  const action = item.action || {};
+                  if (action.query) routerSearchQueries.push(action.query);
+                  if (Array.isArray(action.queries)) routerSearchQueries.push(...action.queries);
+                } else if (item.type === 'message' && item.content) {
                   for (const c of item.content) { if (c.text) resultText += c.text + '\n'; }
                 }
               }
             }
             if (resultText.trim()) {
               routerSearchRawText = resultText.trim();
+              routerSearchQueries = [...new Set(routerSearchQueries)].slice(0, 12);
               routerSearchContext = `\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\n${routerSearchRawText}\n=== END SEARCH RESULTS ===\nIMPORTANT: Use the search results above to inform your plan with CURRENT, accurate data and dates. Do not rely on outdated training knowledge.\n`;
               console.log('[Router Search] Pre-search returned', resultText.length, 'chars for router context');
             }
@@ -2206,14 +2444,14 @@ USER REQUEST: "${routerPrompt}"`;
             console.log('[AI Router] Using multimodal call with', pendingImages.length, 'image(s)');
             response = await callRouterWithImages(
               routerSettings,
-              getRouterSystemPrompt(),
+              routerSystemPrompt,
               contextInfoWithSearch,
               pendingImages
             );
           } else {
             response = await callWithModelFallback(
               routerSettings,
-              getRouterSystemPrompt(),
+              routerSystemPrompt,
               contextInfoWithSearch,
               { role: 'text' }
             );
@@ -2295,6 +2533,8 @@ USER REQUEST: "${routerPrompt}"`;
       templateId: parsed.templateId,
       slideIndex: parsed.slideIndex,
       contextSlides: parsed.contextSlides || [],
+      targetSlides: parsed.targetSlides || null,
+      referenceSlides: parsed.referenceSlides || null,
       instruction: '',
     }];
 
@@ -2307,7 +2547,11 @@ USER REQUEST: "${routerPrompt}"`;
       if (Array.isArray(step.contextSlides)) {
         step.contextSlides.forEach(idx => sourceSlides.add(idx));
       }
+      if (Array.isArray(step.referenceSlides)) {
+        step.referenceSlides.forEach(idx => sourceSlides.add(idx));
+      }
     });
+    normalizedReferenceSlides.forEach(idx => sourceSlides.add(idx));
     const contextSlideIndices = [...sourceSlides].sort((a, b) => a - b);
 
     // First step determines primary action/template for backwards compatibility
@@ -2414,11 +2658,23 @@ USER REQUEST: "${routerPrompt}"`;
           }
         }
 
+        const stepReferenceSlides = normalizeSlideIndexArray(step.referenceSlides, slideCount);
+        const stepContextSlides = normalizeSlideIndexArray([
+          ...(step.contextSlides || []),
+          ...stepReferenceSlides,
+        ], slideCount);
+        const stepTargetSlides = normalizeSlideIndexArray(
+          step.targetSlides || (resolvedSlideIndex != null ? [resolvedSlideIndex] : []),
+          slideCount
+        );
+
         return {
           action: step.action,
           templateId: step.templateId || null,
           slideIndex: resolvedSlideIndex,
-          contextSlides: step.contextSlides || [],
+          contextSlides: stepContextSlides,
+          targetSlides: stepTargetSlides,
+          referenceSlides: stepReferenceSlides,
           instruction: mergedInstruction,
           position: step.position || 'end',
           contextFromStep: step.contextFromStep ?? null,
@@ -2435,6 +2691,9 @@ USER REQUEST: "${routerPrompt}"`;
         };
       }),
       groups: parsed.groups || null,
+      contextLevel: normalizeContextLevel(parsed.contextLevel, normalizedContextLevel),
+      targetSlides: normalizeSlideIndexArray(parsed.targetSlides || normalizedTargetSlides, slideCount),
+      referenceSlides: normalizeSlideIndexArray(parsed.referenceSlides || normalizedReferenceSlides, slideCount),
       needsReplanning: parsed.needsReplanning || false,
       contextNeeded: {
         type: contextSlideIndices.length > 0 ? 'slide_html' : 'none',
@@ -2454,7 +2713,7 @@ USER REQUEST: "${routerPrompt}"`;
         })(),
       },
       aiRouted: true,
-      searchSource: canUseResponsesAPI ? 'inline' : 'presearch',
+      searchSource: routerSearchCallCount > 0 ? 'inline' : (routerSearchRawText ? 'presearch' : 'none'),
       // Batch continuation - if more slides are requested than max batch (5)
       remainingCount: parsed.remainingCount || 0,
       // Debug info for UI display
@@ -2464,21 +2723,33 @@ USER REQUEST: "${routerPrompt}"`;
           slideCount,
           currentSlideIndex,
           layoutSummary,
+          sectionMap: sectionMap || deckContextDigest?.sectionMap || '',
+          activeSlideContext,
+          contextLevel: normalizedContextLevel,
+          referenceSlides: normalizedReferenceSlides,
+          targetSlides: normalizedTargetSlides,
+          deckStructure: effectiveDeckStructure,
+          deckContextDigest,
           storylineSummary,
           slideSummaries,
         },
-        systemPrompt: getRouterSystemPrompt(),
+        systemPrompt: routerSystemPrompt,
         userPrompt: contextInfo,
         rawResponse: response,
         parsedResponse: parsed,
+        searchPolicy: routerSearchPolicy,
+        routerSearchAllowed: canUseInlineSearch,
+        routerSearchUsed: routerSearchCallCount > 0 || !!routerSearchRawText,
+        searchCallCount: routerSearchCallCount,
+        searchQueries: routerSearchQueries,
       },
     };
 
-    // Path A (Responses API with inline search): the router searched inline but
-    // routerSearchRawText is empty because the API doesn't expose raw results.
+    // Path A (Responses API with inline search): when the router actually searched
+    // inline, searchRawContext is empty because the API doesn't expose raw results.
     // Synthesize searchRawContext from all facts/sources in the plan so
     // buildSearchFactsBlock() can provide baseline grounding for every step.
-    if (canUseResponsesAPI && !routerSearchRawText && result.plan) {
+    if (routerSearchCallCount > 0 && !routerSearchRawText && result.plan) {
       const factLines = [];
       for (const step of result.plan) {
         if (Array.isArray(step.facts)) {
@@ -2525,8 +2796,8 @@ USER REQUEST: "${routerPrompt}"`;
       confidence: parsed.confidence,
     });
 
-    console.groupCollapsed(`[AI Router] ${result.intent} → ${result.plan?.length || 0} steps | model=${routerModelRef} | search=${canUseResponsesAPI ? 'inline' : effectiveSearchEnabled ? 'pre-search' : 'off'}`);
-    console.log('INPUT', { model: routerModelRef, userPrompt: userPrompt.slice(0, 300), slideCount, contextMode, searchAvailable: effectiveSearchEnabled });
+    console.groupCollapsed(`[AI Router] ${result.intent} → ${result.plan?.length || 0} steps | model=${routerModelRef} | search=${result.searchSource}`);
+    console.log('INPUT', { model: routerModelRef, userPrompt: userPrompt.slice(0, 300), slideCount, contextMode, searchAvailable: effectiveSearchEnabled, searchPolicy: routerSearchPolicy });
     console.log('FULL CONTEXT INFO', contextInfo);
     console.log('OUTPUT', { intent: result.intent, confidence: parsed.confidence, planSteps: result.plan?.map(s => ({ action: s.action, templateId: s.templateId, title: s.title })), searchRawContextLen: routerSearchRawText?.length || 0 });
     console.log('RAW RESPONSE', response);
@@ -2542,7 +2813,8 @@ USER REQUEST: "${routerPrompt}"`;
       context: `${parsed.plan?.length || 0} steps, confidence: ${parsed.confidence || 'n/a'}`,
       maxTokens: routerSettings.maxTokens || null,
       reasoningEffort: routerSettings.reasoningEffort || null,
-      searchEnabled: effectiveSearchEnabled,
+      searchEnabled: routerSearchCallCount > 0 || !!routerSearchRawText,
+      searchPolicy: routerSearchPolicy.reason,
       temperature: routerSettings.temperature ?? null,
       duration: routerDuration,
       inputLen: contextInfo.length,

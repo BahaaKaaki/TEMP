@@ -8,6 +8,7 @@ import { buildFreestyleSystemPrompt } from './freestylePromptBuilder.js';
 import { generateSlideSummary, buildDeckContext } from './slideContext.js';
 import { currentDateString } from './router.js';
 import { LAYOUT_GUIDANCE_MAP } from './imageGeneration.js';
+import { applyPromptOverride, appendPromptOverride, recordPromptPayload } from './promptOverrides.js';
 
 // ============================================
 // FREESTYLE VALIDATION (brand compliance)
@@ -123,10 +124,10 @@ export async function generateSlides(prompt, settings, slideCount = 3, existingS
     // User has a custom system prompt - use it
     activeSystemPrompt = systemPrompt;
   } else if (isFreestyle && !customTemplate) {
-    activeSystemPrompt = buildFreestyleSystemPrompt(settings);
+    activeSystemPrompt = applyPromptOverride(settings, 'slideGen.freestyleSystem', buildFreestyleSystemPrompt(settings));
   } else {
     // Template mode: use full examples
-    activeSystemPrompt = DEFAULT_SYSTEM_PROMPT;
+    activeSystemPrompt = applyPromptOverride(settings, 'slideGen.templateSystem', DEFAULT_SYSTEM_PROMPT);
   }
 
   if (!creds.apiKey) {
@@ -304,6 +305,7 @@ ${coverInstruction}
 - Footer: three spans — left: "${settings.footerBranding || 'Strategy&'}", center: <span class="source"> (footnote if citing a source, otherwise empty), right: page number
 ${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "this page", they mean the CURRENT SLIDE REFERENCE shown above' : ''}
 ${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
+${settings.userPreferences ? `\nUSER PREFERENCES (apply unless contradicted by the specific request above):\n${settings.userPreferences}\n` : ''}
 
 VISUAL QUALITY:
 - You MUST output a <style> block with scoped CSS for every custom class you use.
@@ -320,6 +322,7 @@ CONTENT FIDELITY:
 - SOURCE/CITATION: Sources go ONLY in <footer>, never inside <div class="frame">.
 
 Return the <style> block first, then the slide(s) as raw HTML, separated by a blank line between each slide.`;
+    userPrompt = appendPromptOverride(settings, 'slideGen.freestyleUser', userPrompt);
 
   } else {
     // === TEMPLATE / NON-FREESTYLE USER PROMPT ===
@@ -375,6 +378,7 @@ Rules for PRECISE content:
 Even for PRECISE content, always use CSS components (card-row, split-layout, content-list, grid-2x2, etc.) rather than raw paragraphs or unstyled lists. Structure their content into the layout — each point becomes a card, a list item, a grid cell, etc.
 ${settings.userPreferences ? `\nUSER PREFERENCES (apply unless contradicted by the specific request above):\n${settings.userPreferences}\n` : ''}
 Return the slide(s) as raw HTML, separated by a blank line between each slide.`;
+    userPrompt = appendPromptOverride(settings, 'slideGen.templateUser', userPrompt);
   }
 
   console.groupCollapsed(
@@ -388,6 +392,14 @@ Return the slide(s) as raw HTML, separated by a blank line between each slide.`;
   console.log(userPrompt);
   console.groupEnd();
   console.groupEnd();
+
+  recordPromptPayload(isFreestyle && !customTemplate ? 'slideGen.freestyleSystem' : 'slideGen.templateSystem', {
+    model: settings.model,
+    systemPrompt: activeSystemPrompt,
+    userPrompt,
+    slideCount,
+    isFreestyle,
+  });
 
   try {
     let content;

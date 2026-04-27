@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
-import { DEFAULT_SYSTEM_PROMPT, setApiMaxConcurrent } from '../services/aiService';
+import { DEFAULT_SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT, PROMPT_OVERRIDE_DEFS, getLastPromptPayloads, setApiMaxConcurrent } from '../services/aiService';
 import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, FREESTYLE_PRESETS } from '../services/ai/freestylePromptBuilder.js';
+import { getRouterSystemPrompt, TRIAGE_SYSTEM_PROMPT } from '../services/ai/router.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage, downloadArrayBuffer } from '../services/pptxTemplateService';
 import { extractBranding } from '../services/brandingExtractor';
@@ -388,6 +389,7 @@ export default function SettingsModal({ onClose }) {
   const [extractedBranding, setExtractedBranding] = useState(null);
   const [expandedAdvanced, setExpandedAdvanced] = useState({});
   const [newEndpointInput, setNewEndpointInput] = useState({});
+  const [promptPayloadRefresh, setPromptPayloadRefresh] = useState(0);
   const [fetchedModels, setFetchedModels] = useState(() => {
     try { return JSON.parse(localStorage.getItem('pwc_fetched_models') || 'null'); } catch { return null; }
   });
@@ -1509,6 +1511,34 @@ export default function SettingsModal({ onClose }) {
       { key: 'freestyleVibe',    label: 'Vibe (Style Variation)',          defaultVal: DEFAULT_VIBE,    desc: 'Active style variation applied on top of the theme. Currently locked to default.' },
       { key: 'freestyleWriting', label: 'Writing Profile',                 defaultVal: DEFAULT_WRITING, desc: 'Title/subtitle style, text density, layout archetypes, source citations, content anti-patterns.' },
     ];
+    const promptOverrideDefaults = {
+      'router.system': getRouterSystemPrompt(),
+      'triage.system': TRIAGE_SYSTEM_PROMPT,
+      'slideGen.freestyleSystem': `${DEFAULT_SHELL}\n\n${DEFAULT_THEME}\n\n${DEFAULT_VIBE}\n\n${DEFAULT_WRITING}`,
+      'slideGen.freestyleUser': '',
+      'slideGen.templateSystem': DEFAULT_SYSTEM_PROMPT,
+      'slideGen.templateUser': '',
+      'edit.system': EDIT_SYSTEM_PROMPT,
+      'validation.system': 'You are a strict quality assurance expert for Strategy& consulting slide design.',
+      'pptx.system': DEFAULT_PPTX_SYSTEM_PROMPT,
+    };
+    const promptOverrides = settings.promptOverrides || {};
+    const lastPromptPayloads = getLastPromptPayloads();
+    void promptPayloadRefresh;
+    const updatePromptOverride = (key, value) => {
+      setSettings({
+        ...settings,
+        promptOverrides: {
+          ...promptOverrides,
+          [key]: value,
+        },
+      });
+    };
+    const resetPromptOverride = (key) => {
+      const next = { ...promptOverrides };
+      delete next[key];
+      setSettings({ ...settings, promptOverrides: next });
+    };
 
     return (
       <>
@@ -1586,6 +1616,75 @@ export default function SettingsModal({ onClose }) {
             placeholder="Leave empty for default."
             style={{ width: '100%', minHeight: 80, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4, borderRadius: 6, border: '1px solid var(--border)', padding: 8 }}
           />
+        </div>
+
+        <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
+        <div style={sectionTitle}>Prompt Debug Overrides</div>
+        <div style={{ ...hint, marginBottom: 8 }}>
+          Debug-only prompt registry. Overrides replace defaults unless labeled as a postamble, where they are appended to the user prompt.
+        </div>
+        {PROMPT_OVERRIDE_DEFS.map(def => {
+          const value = promptOverrides[def.key] || '';
+          const isCustom = value.trim() !== '';
+          const defaultText = promptOverrideDefaults[def.key] || '';
+          return (
+            <div key={def.key} style={{ ...boxStyle, marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 12 }}>{def.label} <span style={{ color: '#888', fontWeight: 400 }}>({def.key})</span></div>
+                  <div style={{ fontSize: 10, color: '#888' }}>{def.description}{def.mode === 'append' ? ' Appended to the user prompt.' : ''}</div>
+                </div>
+                {isCustom && <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => resetPromptOverride(def.key)}>Reset</button>}
+              </div>
+              <details style={{ marginTop: 8 }}>
+                <summary style={{ cursor: 'pointer', fontSize: 11, color: '#666' }}>Default prompt</summary>
+                <pre style={{ maxHeight: 140, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 10, background: '#f7f7f7', padding: 8, borderRadius: 6 }}>{defaultText || '(no default postamble)'}</pre>
+              </details>
+              <textarea
+                value={value}
+                onChange={(e) => updatePromptOverride(def.key, e.target.value)}
+                placeholder={def.mode === 'append' ? 'Optional postamble appended to this prompt surface.' : 'Leave empty to use the default prompt.'}
+                style={{ width: '100%', minHeight: 90, marginTop: 8, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4, borderRadius: 6, border: '1px solid var(--border)', padding: 8 }}
+              />
+            </div>
+          );
+        })}
+
+        <div style={{ ...boxStyle, marginTop: 12 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 12 }}>Recent Prompt Payloads</div>
+              <div style={{ fontSize: 10, color: '#888' }}>Last 20 router, generation, edit, validation, and PPTX payloads recorded locally in this browser.</div>
+            </div>
+            <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => setPromptPayloadRefresh(Date.now())}>Refresh</button>
+          </div>
+          {lastPromptPayloads.length === 0 ? (
+            <div style={{ ...hint, marginTop: 8 }}>No prompt payloads recorded yet.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+              {lastPromptPayloads.slice(0, 6).map((entry, index) => {
+                const payloadText = JSON.stringify(entry.payload || {}, null, 2);
+                return (
+                  <details key={`${entry.surface}-${entry.timestamp}-${index}`}>
+                    <summary style={{ cursor: 'pointer', fontSize: 11 }}>
+                      {entry.surface} at {entry.timestamp}
+                    </summary>
+                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 6 }}>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        style={{ fontSize: 10 }}
+                        onClick={() => navigator.clipboard?.writeText(JSON.stringify(entry, null, 2))}
+                      >
+                        Copy payload
+                      </button>
+                    </div>
+                    <pre style={{ maxHeight: 180, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 10, background: '#f7f7f7', padding: 8, borderRadius: 6 }}>{payloadText}</pre>
+                  </details>
+                );
+              })}
+            </div>
+          )}
         </div>
       </>
     );

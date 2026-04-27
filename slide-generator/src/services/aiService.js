@@ -73,10 +73,24 @@ export {
   buildDeckOutline,
   buildContextString,
   buildMinimalEditContext,
+  buildDeckContextDigest,
+  buildDeckStructure,
+  planTrackerSyncFromDeckStructures,
+  CONTEXT_LEVELS,
+  normalizeContextLevel,
   updateSlideSummary,
   detectSlideLayout,
   buildStorylineSummary,
 } from './ai/slideContext.js';
+
+export {
+  PROMPT_OVERRIDE_DEFS,
+  getPromptOverride,
+  applyPromptOverride,
+  appendPromptOverride,
+  recordPromptPayload,
+  getLastPromptPayloads,
+} from './ai/promptOverrides.js';
 
 // ── slideGeneration.js — core generation, freestyle, parsing ─────────────────
 export {

@@ -10,8 +10,10 @@ AI-powered presentation generator that creates professional slide decks using Pw
 ├── backend/            # Express API server + AI proxy (port 3001)
 ├── gpt-export/         # ChatGPT custom GPT knowledge files
 ├── examples/           # Sample HTML decks and templates
-└── docs/plans/         # Architecture and feature planning docs
+└── docs/               # Architecture, runbooks, and feature planning docs
 ```
+
+Key architecture reference: [`docs/edwin-apex-architecture-memo.md`](docs/edwin-apex-architecture-memo.md) maps Edwin V1, the proposed Edwin V2 agent architecture, APEX OS alignment, capability boundaries, data flows, and roadmap decisions.
 
 ## Features
 
@@ -24,7 +26,15 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
 - Web search via PwC Responses API
+- Router search policy uses GPT 5.4 reasoning by default, but only attaches web search for requests that need current or external evidence; per-step search remains available for factual slides
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
+- Template auto-match now attaches the selected template's extracted CSS consistently across create, insert, fill, and switch paths
+- Deck-aware routing uses active-page text, layout mix, section maps, and enriched storyline context for follow-on deck requests
+- Triage now selects context depth (`active_slide`, `reference_slides`, `deck_digest`, or `full_text_deck`) and separates target slides from reference slides for cross-slide edits
+- Section and subsection trackers can be updated as slide metadata without regenerating slide HTML
+- Executive summary edits can sync renamed section points back to downstream section trackers when the section structure still matches by order
+- Prompt Debug settings expose router, triage, generation, edit, validation, and PPTX prompt overrides plus recent prompt payloads for troubleshooting look and feel
+- New slides use compact stable IDs while older UUID-based decks continue to load unchanged
 - Auto-fetch available models from PwC Shared Services `/models` endpoint with grouped vendor display
 - Deck-aware template switching with pillar preservation and optional user guidance
 - Consulting Skills -- single-select playbook dropdown in the AI Assistant panel that steers the planner with a specific deliverable template (proposal, strategic plan, business case, etc.). Spans eight categories: Strategy; Commercial & Customer; Operating Model & Governance; Strategic and Financial Decision Support; Value Creation and Performance; Transformation & Execution; Stakeholder & Workshop; Proposal and Executive Communication.
@@ -172,7 +182,7 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
 | PPTX (export) | `vertex_ai.gemini-3.1-pro-preview` |
 
-Model assignments are server-controlled. The Settings modal shows which model is assigned to each role.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 
 ## Azure Deployment
 

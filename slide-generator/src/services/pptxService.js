@@ -24,6 +24,7 @@ import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
 import { authFetch } from './authFetch.js';
+import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -594,7 +595,7 @@ export function validateGeneratedCode(codeString, slideHtml) {
 // ── Core: generate code for one slide with retry loop ────────────────────────
 
 async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials) {
-  const systemPrompt = settings?.pptxSystemPrompt?.trim() || DEFAULT_PPTX_SYSTEM_PROMPT;
+  const systemPrompt = applyPromptOverride(settings, 'pptx.system', settings?.pptxSystemPrompt?.trim() || DEFAULT_PPTX_SYSTEM_PROMPT);
   let lastCode = null;
   let lastErrors = [];
 
@@ -608,6 +609,14 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
 
     try {
       const userPrompt = await buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback);
+      recordPromptPayload('pptx.system', {
+        model: settings?.pptxModel || DEFAULT_PPTX_MODEL,
+        systemPrompt,
+        userPrompt,
+        slideNum,
+        totalSlides,
+        attempt: attempt + 1,
+      });
       const raw = await callAI(settings, credentials, systemPrompt, userPrompt);
       const codeString = extractJSArray(raw);
       lastCode = codeString;

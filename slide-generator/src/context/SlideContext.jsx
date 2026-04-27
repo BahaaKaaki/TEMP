@@ -4,6 +4,7 @@ import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from 
 import { preGeneratePptxCode, hasAnyCredentials } from '../services/pptxService';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { scopeCSS, unscopeCSS } from '../utils/cssScoping';
+import { generateSlideId } from '../utils/slideIds';
 // Import full CSS as raw string so it's available in state for AI and exports
 import SLIDES_CSS from '../styles/slides.css?raw';
 const SlideContext = createContext(null);
@@ -79,11 +80,13 @@ const initialState = {
     routerModel: 'pwc:openai.gpt-5.4',                      // Tier 2 full planner
     routerReasoningEffort: 'low',
     routerMaxTokens: 65536,
+    routerSearchMode: 'auto', // 'auto' | 'always' | 'off' -- auto gates search on evidence need
     routerSearchEnabled: false,
     // Legacy chatbot-router fields (kept for backward compat, mirrors routerModel)
     chatRouterModel: 'pwc:openai.gpt-5.4',
     chatRouterReasoningEffort: 'low',
     chatRouterMaxTokens: 65536,
+    chatRouterSearchMode: 'auto',
     chatRouterSearchEnabled: true,
     deepAnalysisModel: '',
     deepAnalysisReasoningEffort: 'medium',
@@ -184,6 +187,7 @@ const initialState = {
     freestyleTheme: '',
     freestyleVibe: '',
     freestyleWriting: '',
+    promptOverrides: {},
     // User preferences -- persistent free-text guidance injected into all LLM prompts
     userPreferences: '',
     // Branding
@@ -270,9 +274,13 @@ function loadState() {
 
       // MIGRATION: Fix slides with instruction-based titles (e.g., "Create a...")
       // This is a ONE-TIME migration - only runs when bad titles are detected
-      let migratedSlides = (parsed.slides || []).map(s =>
-        s.id ? s : { ...s, id: uuidv4() }
-      );
+      const existingSlideIds = new Set((parsed.slides || []).map(s => s.id).filter(Boolean));
+      let migratedSlides = (parsed.slides || []).map(s => {
+        if (s.id) return s;
+        const id = generateSlideId(existingSlideIds);
+        existingSlideIds.add(id);
+        return { ...s, id };
+      });
       let migratedStoryline = parsed.storyline || [];
 
       const hasBadTitles = migratedSlides.some(s =>
@@ -562,7 +570,7 @@ function slideReducer(state, action) {
       const html = action.payload.html || getDefaultSlideHTML();
       const type = action.payload.type || 'custom';
       const title = action.payload.title || 'Untitled Slide';
-      const slideId = uuidv4();
+      const slideId = generateSlideId(state.slides.map(s => s.id));
       const storyPointId = action.payload.storyPointId || `sp-${slideId}`;
 
       // Detect layout type from HTML for agent awareness
@@ -646,7 +654,7 @@ function slideReducer(state, action) {
       const html = slideData.html || getDefaultSlideHTML();
       const type = slideData.type || 'custom';
       const title = slideData.title || 'Untitled Slide';
-      const slideId = uuidv4();
+      const slideId = generateSlideId(state.slides.map(s => s.id));
       const storyPointId = slideData.storyPointId || `sp-${slideId}`;
 
       const newSlide = {
@@ -981,11 +989,13 @@ function slideReducer(state, action) {
     }
 
     case ACTIONS.IMPORT_SLIDES: {
+      const existingIds = new Set(state.slides.map(s => s.id).filter(Boolean));
       const importedSlides = action.payload.slides.map((slide) => {
         const html = slide.html || '';
         const type = slide.type || 'custom';
         const title = slide.title || 'Imported Slide';
-        const newId = uuidv4();
+        const newId = generateSlideId(existingIds);
+        existingIds.add(newId);
         // Prefer explicit JSON fields when the importer provides them; fall
         // back to parsing data-section / data-subsection from the HTML so
         // imports from raw HTML still populate the tracker.

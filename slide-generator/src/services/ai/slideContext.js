@@ -545,7 +545,10 @@ export function buildStorylineSummary(storyline, compact = true) {
 
   return storyline.map((p, i) => {
     const parentNote = p.parentId ? ` (child of: ${storyline.find(sp => sp.id === p.parentId)?.title || 'parent'})` : '';
-    return `  ${i + 1}. ${p.title}${parentNote}${p.keyMessage ? ` - ${p.keyMessage}` : ''}`;
+    const inventory = Array.isArray(p.contentInventory) && p.contentInventory.length > 0
+      ? ` | Content: ${p.contentInventory.join('; ')}`
+      : '';
+    return `  ${i + 1}. ${p.title}${parentNote}${p.keyMessage ? ` - ${p.keyMessage}` : ''}${inventory}`;
   }).join('\n');
 }
 
@@ -972,6 +975,9 @@ export function buildDeckContextDigest(slides = [], options = {}) {
           `${index + 1}. ${point.title || slide?.title || 'Untitled'}`,
           point.description ? `Description: ${point.description}` : null,
           point.keyMessage ? `Key: ${point.keyMessage}` : null,
+          Array.isArray(point.contentInventory) && point.contentInventory.length > 0
+            ? `Content: ${point.contentInventory.join('; ')}`
+            : null,
           slide ? `Slide ${slideIndex + 1}: ${slide.title || 'Untitled'}${formatSlideSectionTag(slide)}` : 'No linked slide',
           slide ? `Text: ${extractSlideContentForAI(slide.html || '', { maxLength: 360, includeStructure: false })}` : null,
         ].filter(Boolean);

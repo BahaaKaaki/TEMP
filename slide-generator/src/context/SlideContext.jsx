@@ -35,7 +35,7 @@ const initialState = {
   flows: [], // Array of { id, name, description, overallGuidance, sections: [...] }
   modifiedSystemTemplates: {}, // Map of systemTemplateId -> modified template data
   // Storyline and agent workflow
-  storyline: [], // Array of { id, title, description, slideId?, order }
+  storyline: [], // Array of { id, title, description, keyMessage, contentInventory?, slideId?, order }
   storylineStatus: 'none', // 'none' | 'generated' | 'approved' | 'populated'
   skeletonMode: false, // Whether deck is in skeleton review mode
   // UI state for AI router context highlighting
@@ -1355,6 +1355,7 @@ function slideReducer(state, action) {
         title: point.title || '',
         description: point.description || '',
         keyMessage: point.keyMessage || '',
+        contentInventory: Array.isArray(point.contentInventory) ? point.contentInventory : [],
         templateId: point.templateId || null,
         parentId: point.parentId || null,
         slideId: point.slideId || null,

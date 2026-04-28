@@ -959,8 +959,9 @@ export default function AIChatbot() {
     };
 
     // Collect all selected option cards + free text per question and submit
-    window.__submitClarificationAnswers = () => {
-      const card = document.querySelector('.clarification-card');
+    window.__submitClarificationAnswers = (sourceEl) => {
+      const cards = Array.from(document.querySelectorAll('.clarification-card'));
+      const card = sourceEl?.closest?.('.clarification-card') || cards[cards.length - 1];
       if (!card) return;
       const blocks = card.querySelectorAll('.clarification-question-block');
       const parts = [];
@@ -2416,7 +2417,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
   <div class="clarification-body">
     ${questionBlocksHtml}
     <div class="clarification-submit-row">
-      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers()">Submit Answers</button>
+      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers(this)">Submit Answers</button>
     </div>
   </div>
 </div>`;

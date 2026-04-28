@@ -108,6 +108,111 @@ function parseSlideReferences(prompt, slides, currentSlideIndex) {
   return { referencedSlides: uniqueRefs, cleanedPrompt };
 }
 
+function buildReorderResultFromNumbers(numbers, slides) {
+  const totalSlides = slides.length;
+  const allNumbers = Array.from({ length: totalSlides }, (_, index) => index + 1);
+  const selectedNumbers = new Set(numbers);
+
+  const firstSelectedIndex = Math.min(...numbers.map(n => n - 1));
+  const prefix = allNumbers
+    .slice(0, firstSelectedIndex)
+    .filter(n => !selectedNumbers.has(n));
+  const suffix = allNumbers
+    .filter(n => !selectedNumbers.has(n) && !prefix.includes(n));
+  const fullOrder = [...prefix, ...numbers, ...suffix];
+  const orderedIds = fullOrder.map(n => slides[n - 1]?.id);
+  const currentOrder = slides.map(slide => slide.id);
+
+  return {
+    orderedIds,
+    displayOrder: fullOrder,
+    omittedNumbers: allNumbers.filter(n => !selectedNumbers.has(n)),
+    isNoop: orderedIds.every((id, index) => id === currentOrder[index]),
+  };
+}
+
+function parseSlideReorderRequest(prompt, slides) {
+  if (!prompt || !Array.isArray(slides) || slides.length < 2) return null;
+
+  const text = String(prompt).trim();
+  const hasSlideSubject = /\b(slides?|pages?|deck)\b/i.test(text);
+  const hasReorderIntent = /\b(reorder|rearrange|arrange|sequence|order|move|swap)\b/i.test(text);
+  if (!hasSlideSubject || !hasReorderIntent) return null;
+
+  const normalizeMoveResult = (orderedSlides) => {
+    const orderedIds = orderedSlides.map(slide => slide.id);
+    const currentOrder = slides.map(slide => slide.id);
+    return {
+      orderedIds,
+      displayOrder: orderedSlides.map(slide => slides.findIndex(s => s.id === slide.id) + 1),
+      omittedNumbers: [],
+      isNoop: orderedIds.every((id, index) => id === currentOrder[index]),
+    };
+  };
+
+  const swapMatch = text.match(/\bswap\b.*?(?:slide|page)\s*#?\s*(\d+).*?\b(?:and|with)\b.*?(?:slide|page)\s*#?\s*(\d+)/i);
+  if (swapMatch) {
+    const first = Number(swapMatch[1]);
+    const second = Number(swapMatch[2]);
+    if (first < 1 || first > slides.length || second < 1 || second > slides.length) {
+      return { error: `Slide numbers must be between 1 and ${slides.length}.` };
+    }
+    const reordered = [...slides];
+    [reordered[first - 1], reordered[second - 1]] = [reordered[second - 1], reordered[first - 1]];
+    return normalizeMoveResult(reordered);
+  }
+
+  const relativeMoveMatch = text.match(/\bmove\b.*?(?:slide|page)\s*#?\s*(\d+).*?\b(before|after)\b.*?(?:slide|page)\s*#?\s*(\d+)/i);
+  if (relativeMoveMatch) {
+    const source = Number(relativeMoveMatch[1]);
+    const relation = relativeMoveMatch[2].toLowerCase();
+    const target = Number(relativeMoveMatch[3]);
+    if (source < 1 || source > slides.length || target < 1 || target > slides.length) {
+      return { error: `Slide numbers must be between 1 and ${slides.length}.` };
+    }
+    if (source === target) return { error: 'Source and target slides must be different.' };
+
+    const movingSlide = slides[source - 1];
+    const targetSlide = slides[target - 1];
+    const reordered = slides.filter(slide => slide.id !== movingSlide.id);
+    const targetIndex = reordered.findIndex(slide => slide.id === targetSlide.id);
+    reordered.splice(relation === 'after' ? targetIndex + 1 : targetIndex, 0, movingSlide);
+    return normalizeMoveResult(reordered);
+  }
+
+  const absoluteMoveMatch = text.match(/\bmove\b.*?(?:slide|page)\s*#?\s*(\d+).*?\b(?:to|into)\b\s*(?:position\s*)?#?\s*(\d+)/i);
+  if (absoluteMoveMatch) {
+    const source = Number(absoluteMoveMatch[1]);
+    const targetPosition = Number(absoluteMoveMatch[2]);
+    if (source < 1 || source > slides.length || targetPosition < 1 || targetPosition > slides.length) {
+      return { error: `Slide numbers must be between 1 and ${slides.length}.` };
+    }
+
+    const reordered = [...slides];
+    const [movingSlide] = reordered.splice(source - 1, 1);
+    reordered.splice(targetPosition - 1, 0, movingSlide);
+    return normalizeMoveResult(reordered);
+  }
+
+  const sequenceMatch = text.match(/\d+\s*(?:-|,|>|then|to)\s*\d+(?:\s*(?:-|,|>|then|to)\s*\d+)*/i);
+  if (!sequenceMatch) return null;
+
+  const numbers = (sequenceMatch[0].match(/\d+/g) || []).map(Number);
+  if (numbers.length < 2) return null;
+
+  const duplicates = numbers.filter((n, index) => numbers.indexOf(n) !== index);
+  if (duplicates.length > 0) {
+    return { error: `Slide ${duplicates[0]} appears more than once in the requested order.` };
+  }
+
+  const invalid = numbers.find(n => n < 1 || n > slides.length);
+  if (invalid) {
+    return { error: `Slide ${invalid} does not exist. This deck has ${slides.length} slide(s).` };
+  }
+
+  return buildReorderResultFromNumbers(numbers, slides);
+}
+
 // Parse slide targets from prompt for Edit All mode
 // Returns: { targetIndices: number[] | null, editAll: boolean, cleanedPrompt: string }
 function parseSlideTargets(prompt, totalSlides) {
@@ -1402,6 +1507,26 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
     // CRITICAL: Get current state from ref to avoid stale closure issues
     // The state variable from the closure may be outdated
     const currentState = stateRef.current;
+
+    const slideReorder = parseSlideReorderRequest(userPrompt, currentState.slides);
+    if (slideReorder) {
+      if (slideReorder.error) {
+        addMessage('assistant', slideReorder.error);
+        return;
+      }
+
+      if (slideReorder.isNoop) {
+        addMessage('assistant', `Slides are already in this order: ${slideReorder.displayOrder.join(', ')}.`);
+        return;
+      }
+
+      actions.reorderSlidesById(slideReorder.orderedIds);
+      const omittedText = slideReorder.omittedNumbers.length > 0
+        ? ` Kept omitted slides (${slideReorder.omittedNumbers.join(', ')}) in their existing relative order.`
+        : '';
+      addMessage('assistant', `Reordered slides to: ${slideReorder.displayOrder.join(', ')}.${omittedText}`);
+      return;
+    }
 
     // Check if any provider has an API key configured
     const hasAnyKey = currentState.settings.apiKey ||

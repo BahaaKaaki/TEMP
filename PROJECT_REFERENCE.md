@@ -226,6 +226,7 @@ When a user types a message in the chatbot:
    ├── If agent is running → push to live input queue (real-time interaction)
    ├── If budget command → add budget credits
    ├── If "Edit All" mode toggled → switch to batch editing
+   ├── If prompt is an explicit slide reorder (e.g., 3-4-2-5-6) → apply deterministic array reorder, no AI call
    ├── Auto-name deck (fire-and-forget, fast model) if deckName is default
    └── Proceed to classification
 
@@ -638,6 +639,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 41. **Complex chart geometry guidance**: freestyle, template fill, edit, and template-switch prompts now distinguish normal slide layouts from data-driven chart geometry. Waterfall/bridge/bar-style exhibits are instructed to use fixed chart canvases with absolute coordinates or SVG viewBoxes, while inline numeric positioning is allowed only on chart marks. Template fill/switch paths avoid model-returned `<style>` blocks when extracted template CSS is applied, reducing CSS conflicts for chart templates. Reused template CSS is normalized through `unscopeCSS()` + `scopeCSS()` on slide add/update so selectors are consistently tied to `data-slide-id`, including CSS rules preceded by comments. Cross-slide format matching now passes referenced slide HTML plus unscoped `customCSS` into execution prompts, so "make this like slide N" has actual visual rules instead of markup only. Router step facts are labeled as planner facts unless router search actually ran.
 
 42. **Slide typography floors**: generation prompts, freestyle guides, template fill prompts, layout fitting, CSS/HTML storage normalization, and PPTX export prompts now share a typography contract: no visible text below 10px/10pt, body copy and table cells at 12px/12pt, and section/pillar/card titles at 14px/14pt. `scopeCSS()` normalizes stored custom CSS before per-slide scoping, `SlideContext` normalizes inline HTML font sizes on add/import/update, the layout fitter avoids shrinking or scaling below readable floors, and PPTX export validation rejects generated code with `fontSize < 10`.
+
+43. **Deterministic slide reorder**: Chat prompts with explicit slide sequences (for example `3-4-2-5-6`), plus simple move/swap commands, bypass the AI router and apply a single undoable slide-array reorder. Omitted slides are preserved in their existing relative order, preventing the router from turning reorder requests into create/delete execution plans.
 
 ---
 

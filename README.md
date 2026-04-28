@@ -31,6 +31,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Reused template CSS is normalized through per-slide `data-slide-id` scoping on add/update, including CSS blocks with comments before selectors
 - Template switching strips model-returned `<style>` blocks when template CSS is applied, reducing conflicts between generated CSS and extracted template CSS
 - Cross-slide format matching passes referenced slide HTML plus its unscoped `customCSS`, so "make this like slide N" has the actual visual rules, not just markup
+- Explicit slide reorder prompts such as `3-4-2-5-6` are handled deterministically without an AI planning call, preserving omitted slides in their existing relative order
 - Slide typography is normalized on generation/import/update and PPTX export: no visible text below 10px/10pt, body copy targets 12px/12pt, and section/pillar/card titles target 14px/14pt
 - Deck-aware routing uses active-page text, layout mix, section maps, and enriched storyline context for follow-on deck requests
 - Triage now selects context depth (`active_slide`, `reference_slides`, `deck_digest`, or `full_text_deck`) and separates target slides from reference slides for cross-slide edits
@@ -186,6 +187,10 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 | PPTX (export) | `vertex_ai.gemini-3.1-pro-preview` |
 
 Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
+
+## Linting
+
+The frontend ESLint config keeps undefined symbols and parse-level issues as blocking errors, while legacy cleanup categories such as unused helpers, React Compiler migration warnings, and Fast Refresh export warnings are reported as warnings so `npm run lint` remains usable during active development.
 
 ## Azure Deployment
 

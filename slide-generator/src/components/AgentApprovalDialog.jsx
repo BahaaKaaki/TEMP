@@ -194,6 +194,12 @@ export default function AgentApprovalDialog({
 
   // Get the actual guidelines being used (custom from settings or defaults)
   const customSystemPrompt = settings?.systemPrompt;
+  const customFreestyleGuide = !!(
+    settings?.freestyleShell ||
+    settings?.freestyleTheme ||
+    settings?.freestyleVibe ||
+    settings?.freestyleWriting
+  );
   const planningGuidelines = getAgentPlanningGuidelines();
   const executionGuidelines = customSystemPrompt || DEFAULT_SYSTEM_PROMPT;
   const freestyleGuide = isOpen ? buildFreestyleSystemPrompt(settings || {}) : '';

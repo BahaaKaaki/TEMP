@@ -425,6 +425,7 @@ const ACTIONS = {
   UPDATE_SLIDE: 'UPDATE_SLIDE',
   DELETE_SLIDE: 'DELETE_SLIDE',
   REORDER_SLIDES: 'REORDER_SLIDES',
+  REORDER_SLIDES_BY_ID: 'REORDER_SLIDES_BY_ID',
   MOVE_SLIDE: 'MOVE_SLIDE', // Combined reorder + parent change
   MOVE_SLIDES_BATCH: 'MOVE_SLIDES_BATCH', // Atomic multi-slide move (avoids stale closure in forEach)
   SET_ACTIVE_SLIDE: 'SET_ACTIVE_SLIDE',
@@ -869,6 +870,43 @@ function slideReducer(state, action) {
           newStoryline = newStoryline.map((p, idx) => ({ ...p, order: idx }));
         }
       }
+
+      return {
+        ...state,
+        slides: newSlides,
+        storyline: newStoryline,
+      };
+    }
+
+    case ACTIONS.REORDER_SLIDES_BY_ID: {
+      const { orderedIds } = action.payload;
+      if (!Array.isArray(orderedIds) || orderedIds.length !== state.slides.length) return state;
+
+      const currentIds = new Set(state.slides.map(s => s.id));
+      const orderedIdSet = new Set(orderedIds);
+      if (orderedIdSet.size !== state.slides.length) return state;
+      if (!orderedIds.every(id => currentIds.has(id))) return state;
+
+      const slideById = new Map(state.slides.map(slide => [slide.id, slide]));
+      const newSlides = orderedIds.map(id => slideById.get(id));
+
+      const storylineById = new Map(state.storyline.map(point => [point.id, point]));
+      const orderedStoryline = [];
+      const usedStoryPointIds = new Set();
+
+      for (const slide of newSlides) {
+        if (slide.storyPointId && storylineById.has(slide.storyPointId)) {
+          const point = storylineById.get(slide.storyPointId);
+          orderedStoryline.push(point);
+          usedStoryPointIds.add(point.id);
+        }
+      }
+
+      const remainingStoryline = state.storyline.filter(point => !usedStoryPointIds.has(point.id));
+      const newStoryline = [...orderedStoryline, ...remainingStoryline].map((point, index) => ({
+        ...point,
+        order: index,
+      }));
 
       return {
         ...state,
@@ -1897,6 +1935,9 @@ export function SlideProvider({ children }) {
 
     reorderSlides: (fromIndex, toIndex) =>
       dispatchWithHistory({ type: ACTIONS.REORDER_SLIDES, payload: { fromIndex, toIndex } }),
+
+    reorderSlidesById: (orderedIds) =>
+      dispatchWithHistory({ type: ACTIONS.REORDER_SLIDES_BY_ID, payload: { orderedIds } }),
 
     // Combined move operation - reorder + change parent atomically
     moveSlide: (slideId, newParentId, targetIndex) =>

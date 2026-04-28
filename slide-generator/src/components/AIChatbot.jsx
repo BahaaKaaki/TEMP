@@ -491,7 +491,7 @@ function formatMarkdownToHtml(text) {
   return html;
 }
 
-export default function AIChatbot() {
+export default function AIChatbot({ initialHandoff = null }) {
   const { state, actions, activeSlide, isPanelOpen, togglePanel } = useSlides();
   const knowledgeBase = useKnowledgeBase();
 
@@ -623,6 +623,39 @@ export default function AIChatbot() {
       addMessage(msg.type, msg.content, options);
     }
   }, []);
+
+  // Inject handoff context from an external app (e.g. FDI Tracker)
+  const handoffConsumedRef = useRef(false);
+  useEffect(() => {
+    if (!initialHandoff || handoffConsumedRef.current) return;
+    handoffConsumedRef.current = true;
+
+    // Clear previous deck so the user starts fresh
+    actions.clearAll();
+
+    // Disable web search to preserve the handed-off data as-is
+    setSlideSearchEnabled(false);
+
+    // Reset chat to only the handoff context
+    const source = initialHandoff.source || 'External app';
+    const parts = [`**Handoff from ${source}**\n`];
+    if (initialHandoff.question) parts.push(`**Question:** ${initialHandoff.question}\n`);
+    if (initialHandoff.answer) parts.push(`**Analysis:**\n${initialHandoff.answer}\n`);
+    if (initialHandoff.citations?.length) {
+      parts.push(`**Sources:** ${initialHandoff.citations.join(', ')}`);
+    }
+
+    setMessages([
+      { type: 'assistant', content: parts.join('\n'), timestamp: new Date() },
+    ]);
+
+    if (initialHandoff.suggestedPrompt) {
+      setPrompt(initialHandoff.suggestedPrompt);
+    }
+
+    // Open the AI panel so the user sees the handoff immediately
+    if (!isPanelOpen) togglePanel();
+  }, [initialHandoff]);
 
   // Clear the "No skill / pick skill" selection after a successful generation.
   // One-shot behavior: the user picks a skill, generates once, and then the

@@ -13,11 +13,19 @@
   --frame-w: 904px;
   --frame-h: 366px;
   --footer-x: var(--left-x);
-  --footer-y: auto;
-  --footer-bottom: 0;
+  --footer-y: 516px;
+  --footer-bottom: auto;
   --footer-w: var(--frame-w);
-  --footer-padding-bottom: 14px;
+  --footer-padding-bottom: 0;
   --footer-font-size: 10px;
+  --source-x: var(--footer-x);
+  --source-y: var(--footer-y);
+  --source-w: calc(var(--footer-w) - 32px);
+  --source-h: 16px;
+  --slide-num-x: calc(var(--footer-x) + var(--footer-w) - 16px);
+  --slide-num-y: var(--footer-y);
+  --slide-num-w: 16px;
+  --slide-num-h: 16px;
   --title-font-size: 28px;
   --title-font-weight: 400;
   --title-line-height: 1.2;
@@ -155,6 +163,7 @@
   top: var(--footer-y);
   bottom: var(--footer-bottom);
   width: var(--footer-w);
+  height: var(--source-h);
   padding-bottom: var(--footer-padding-bottom);
   display: flex;
   justify-content: space-between;
@@ -162,6 +171,26 @@
   font: var(--footer-font-size)/1 var(--font-body, Arial, sans-serif);
   color: var(--muted);
   box-sizing: border-box;
+}
+
+.slide footer.footer > span:first-child {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  text-align: left;
+  color: var(--muted);
+}
+
+.slide footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: var(--muted);
 }
 
 .slide footer.footer .source {

@@ -61,13 +61,13 @@ const STC_THEME = {
       '--title-y': '28px',
       '--title-w': '931px',
       '--title-font-size': '28px',
-      '--title-font-weight': '600',
+      '--title-font-weight': '500',
       '--title-line-height': '1.15',
       '--subtitle-y': '105px',
       '--subtitle-w': '931px',
       '--subtitle-color': '#FF375E',
       '--subtitle-font-size': '16px',
-      '--subtitle-font-weight': '600',
+      '--subtitle-font-weight': '500',
       '--frame-y': '134px',
       '--frame-w': '931px',
       '--frame-h': '340px',
@@ -77,6 +77,14 @@ const STC_THEME = {
       '--footer-w': '931px',
       '--footer-font-size': '9px',
       '--footer-padding-bottom': '0',
+      '--source-x': '15px',
+      '--source-y': '494px',
+      '--source-w': '465px',
+      '--source-h': '19px',
+      '--slide-num-x': '935px',
+      '--slide-num-y': '519px',
+      '--slide-num-w': '14px',
+      '--slide-num-h': '10px',
     },
   },
 };
@@ -111,8 +119,8 @@ const STC_LAYOUT_CONTRACT = {
 
 const STC_FREESTYLE_OVERRIDES = {
   shell: `Default to a 16:9 white STC board template on a 960x540 canvas. These STC positions replace any generic shell defaults:
-- h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward/Arial semibold 28px, color #4F008C.
-- h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward/Arial semibold 16px, color #FF375E.
+- h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward/Arial medium 28px, color #4F008C.
+- h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward/Arial medium 16px, color #FF375E.
 - div.frame: left 15px, top 134px, width 933px, height 340px. Design all custom content inside this STC frame, not the generic 904x366 frame.
 - footer: source at bottom-left around x=15 y=494; slide number bottom-right around x=935 y=519.
 Use structured content in the middle band and keep the bottom footer band clear. Use the standard content bands exactly unless the user explicitly asks for a cover, divider, appendix, or editorial variant.`,

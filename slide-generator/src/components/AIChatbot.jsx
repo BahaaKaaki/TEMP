@@ -225,8 +225,24 @@ function parseSlideReorderRequest(prompt, slides) {
 function isLikelySlideReorderPrompt(prompt, slideCount = 0) {
   if (!prompt || slideCount < 2) return false;
   const text = String(prompt).toLowerCase();
-  return /\b(slides?|pages?|deck)\b/.test(text)
-    && /\b(reorder|rearrange|move|swap)\b/.test(text);
+  const hasSlideSubject = /\b(slides?|pages?|deck)\b/.test(text);
+  const hasReorderIntent = /\b(reorder|rearrange|arrange|sequence|order|move|swap)\b/.test(text);
+  if (!hasSlideSubject || !hasReorderIntent) return false;
+
+  const hasExplicitSlideMove = [
+    /\bswap\b.*?(?:slide|page)\s*#?\s*\d+.*?\b(?:and|with)\b.*?(?:slide|page)\s*#?\s*\d+/i,
+    /\bmove\b.*?(?:slide|page)\s*#?\s*\d+.*?\b(before|after)\b.*?(?:slide|page)\s*#?\s*\d+/i,
+    /\bmove\b.*?(?:slide|page)\s*#?\s*\d+.*?\b(?:to|into)\b\s*(?:position\s*)?#?\s*\d+/i,
+    /\d+\s*(?:-|,|>|then|to)\s*\d+(?:\s*(?:-|,|>|then|to)\s*\d+)*/i,
+  ].some(pattern => pattern.test(text));
+  if (hasExplicitSlideMove) return true;
+
+  // "Rearrange/restructure the deck for better flow" is a content/storyline
+  // restructuring request, not a pure slide-array reorder.
+  const hasStructuralRewriteIntent = /\b(restructure|reorganize|reorganise|revamp|rework|reshape|rewrite|redesign|improve|strengthen|simplify|streamline|storyline|narrative|flow|logic|coherence|section|agenda|outline|add|create|generate|remove|delete|merge|split|combine|consolidate)\b/.test(text);
+  if (hasStructuralRewriteIntent) return false;
+
+  return /\b(reorder|rearrange|arrange|sequence|order)\b/.test(text);
 }
 
 function hasUnsafeReorderPlan(plan = []) {
@@ -1563,15 +1579,12 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       }
 
       if (slideReorder.isNoop) {
-        addMessage('assistant', `Slides are already in this order: ${slideReorder.displayOrder.join(', ')}.`);
+        addMessage('assistant', 'Done. The deck order was already up to date.');
         return;
       }
 
       actions.reorderSlidesById(slideReorder.orderedIds);
-      const omittedText = slideReorder.omittedNumbers.length > 0
-        ? ` Kept omitted slides (${slideReorder.omittedNumbers.join(', ')}) in their existing relative order.`
-        : '';
-      addMessage('assistant', `Reordered slides to: ${slideReorder.displayOrder.join(', ')}.${omittedText}`);
+      addMessage('assistant', 'Done.');
       return;
     }
 
@@ -2366,7 +2379,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         ) {
           addMessage(
             'assistant',
-            'I can reorder existing slides, but I will not create or delete slides to do it. Please provide the exact slide order, for example `3-4-2-5-6`, or say `swap slides 4 and 5`.'
+            'Please provide the exact slide order to apply, for example `3-4-2-5-6`, or say `swap slides 4 and 5`.'
           );
           setIsLoading(false);
           setProgress(null);
@@ -3456,7 +3469,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             }
 
             if (!nextOrder) {
-              addMessage('assistant', 'I need the exact slide order to reorder safely, for example `3-4-2-5-6`.');
+              addMessage('assistant', 'Please provide the exact slide order to apply, for example `3-4-2-5-6`.');
               return null;
             }
 
@@ -4228,8 +4241,8 @@ Original request: ${userPrompt}`;
       if (deletedSlides.length > 0) {
         summaryParts.push(`Deleted ${deletedSlides.length} slide${deletedSlides.length > 1 ? 's' : ''}`);
       }
-      if (reorderedSlides.length > 0) {
-        summaryParts.push('Reordered slides');
+      if (reorderedSlides.length > 0 && summaryParts.length === 0) {
+        summaryParts.push('Updated deck');
       }
 
       const summaryMessage = summaryParts.length > 0
@@ -4312,7 +4325,6 @@ Original request: ${userPrompt}`;
         if (createdSlides.length > 0) resultHtml += renderSection('Created', createdSlides, '&#10003;');
         if (editedSlides.length > 0) resultHtml += renderSection('Edited', editedSlides, '&#9998;');
         if (deletedSlides.length > 0) resultHtml += renderSection('Removed', deletedSlides, '&#10007;');
-        if (reorderedSlides.length > 0) resultHtml += renderSection('Reordered', reorderedSlides, '&#8645;');
 
         resultHtml += '</div>';
 

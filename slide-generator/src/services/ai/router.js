@@ -1067,7 +1067,7 @@ CRITICAL - REORDERING EXISTING SLIDES:
 - NEVER represent a reorder as create_slide + delete_slide. Reordering changes slide array order only; it must not generate, duplicate, or remove slide content.
 - If the requested order is explicit, set orderedSlideIndices to the desired 0-based slide order. It may be a full deck order or the ordered subset the user named; omitted slides will keep their current relative order.
 - For a single move, you may set fromIndex and toIndex instead.
-- If the request is too ambiguous to derive a safe order, return answer_question asking for the exact slide order.
+- If the request is too ambiguous to derive a safe order, return answer_question with a concise clarification question. Do not mention create/delete guardrails.
 
 CRITICAL - TARGET vs REFERENCE SLIDES:
 - targetSlides = slides that will be changed by the request

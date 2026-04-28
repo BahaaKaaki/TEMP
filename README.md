@@ -199,7 +199,7 @@ Settings includes a **Client Design Profile** selector. The default remains Stra
 
 Uploaded PPTX masters are now stored by profile/template slot in IndexedDB, so an STC upload does not overwrite the default Strategy& template. The legacy backend `/api/templates/pptx-master` slot is still used for the default Strategy& profile until the server-side template catalog is added. Client demo checks are available through `clientProfileValidation.js` for STC color/font/footer/layout readiness.
 
-STC leaves the footer/source text blank by default; sources should appear only when a real citation exists. The slide shell resolves `STC Forward` through local font aliases (`STC Forward`, `stc Forward`, `STCForward` variants) and falls back to Arial only if the corporate font is not installed or bundled.
+STC leaves the footer/source text blank by default; sources should appear only when a real citation exists. The frontend bundles `STC Forward` regular, medium, and bold fonts under `public/fonts/stc-forward/`, with local font aliases as fallback.
 
 ## Azure Deployment
 

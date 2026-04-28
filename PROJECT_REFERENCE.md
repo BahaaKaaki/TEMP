@@ -372,7 +372,7 @@ Slide CSS is organized into three layers:
 
 Theme config lives in `state.theme` (see `themeUtils.js` for schema and `themeToCSS()` conversion). Default theme: Strategy& brand (#8E1E1E accent, Georgia/Arial fonts). The client template profile registry keeps the durable `settings.clientDesignProfileId` and derives preview/export theme tokens from the active profile. STC is the first full profile with purple #4F008C as the semantic primary accent, STC Forward / Arial typography, canonical title/subtitle/body/footer bands, prompt-section overrides, PPTX export hints, sandbox evidence metadata, and validation rules. The Board Affairs playbook standard content layout is the canonical geometry reference for the current title/subtitle/body/source/page bands. Profile themes may include `layout.cssVars`, which `themeToCSS()` emits to the shared `.slide` shell so profile positions affect the actual HTML canvas, not only export prompts.
 
-STC profile source/footer behavior is intentionally blank by default; the left footer/source slot should only contain a real source or explicit user-provided footer label. The shared slide CSS declares local `STC Forward` font aliases (`STC Forward`, `stc Forward`, `STCForward` variants) and disables synthetic browser bolding; without an installed or bundled corporate font, the browser falls back to Arial.
+STC profile source/footer behavior is intentionally blank by default; the left footer/source slot should only contain a real source or explicit user-provided footer label. The frontend bundles `STC Forward` regular, medium, and bold fonts under `public/fonts/stc-forward/`; shared slide CSS loads those files, declares local aliases, and disables synthetic browser bolding.
 
 ### 4.3 Legacy Vibes
 

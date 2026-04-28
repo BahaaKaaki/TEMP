@@ -3,6 +3,7 @@
 @font-face {
   font-family: "STC Forward";
   src:
+    url("/fonts/stc-forward/STCForward-Regular.ttf") format("truetype"),
     local("STC Forward"),
     local("STC Forward Regular"),
     local("stc Forward"),
@@ -17,12 +18,25 @@
 @font-face {
   font-family: "STC Forward";
   src:
+    url("/fonts/stc-forward/STCForward-Medium.ttf") format("truetype"),
     local("STC Forward Medium"),
     local("stc Forward Medium"),
     local("STCForward-Medium"),
     local("STC Forward"),
     local("stc Forward");
   font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "STC Forward";
+  src:
+    url("/fonts/stc-forward/STCForward-Bold.ttf") format("truetype"),
+    local("STC Forward Bold"),
+    local("stc Forward Bold"),
+    local("STCForward-Bold");
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }

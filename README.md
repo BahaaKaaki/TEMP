@@ -38,6 +38,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Section and subsection trackers can be updated as slide metadata without regenerating slide HTML
 - Executive summary trackers are derived from semantic slide text, including freestyle HTML with arbitrary div/span classes, and apply to body slides rather than the executive summary slide
 - Prompt Debug settings expose router, triage, generation, edit, validation, and PPTX prompt overrides plus recent prompt payloads for troubleshooting look and feel
+- Multi-round clarification cards submit answers from the active question card, so follow-up question sets preserve first, second, and later-round user preferences
 - Router context includes the active page's full HTML structure without CSS, so planning can see card/pillar/table hierarchy instead of relying only on text digests
 - Rich storyline sync from existing slides also analyzes each slide's full HTML structure without CSS and stores a `contentInventory` for pillars, cards, bullets, metrics, table rows, and labels
 - New slides use compact stable IDs while older UUID-based decks continue to load unchanged

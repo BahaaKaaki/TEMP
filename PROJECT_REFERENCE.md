@@ -646,6 +646,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 45. **Rich storyline full-content sync**: `syncStorylineFromSlidesAI()` now passes each slide's CSS-stripped full HTML plus untruncated text into storyline extraction, and stores a `contentInventory` array per story point so downstream storyline-aware prompts retain all major pillars, cards, bullets, metrics, labels, and table rows.
 
+46. **Clarification card submit scoping**: Multi-round router and agent clarification cards submit answers from the clicked card instead of the first historical card in the chat transcript, so first, second, and later question rounds preserve their own selected options and free-text answers.
+
 ---
 
 ## 11. Pending / In Discussion

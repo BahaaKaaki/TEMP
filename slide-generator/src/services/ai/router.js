@@ -1785,7 +1785,7 @@ export async function triageRequest(userPrompt, context, settings) {
     : 'DECK: Empty (no slides yet)';
 
   const activeDigest = deckContextDigest?.activeSlideContext
-    ? `\nACTIVE SLIDE TEXT:\n${deckContextDigest.activeSlideContext.textSummary || '[Empty slide]'}`
+    ? `\nACTIVE SLIDE TEXT:\n${deckContextDigest.activeSlideContext.textSummary || '[Empty slide]'}${deckContextDigest.activeSlideContext.structuralHtml ? `\nACTIVE SLIDE HTML WITHOUT CSS:\n${deckContextDigest.activeSlideContext.structuralHtml}` : ''}`
     : '';
   const structureDigest = deckContextDigest
     ? `\nDECK DIGEST:\nLayout mix: ${deckContextDigest.layoutSummary || 'none'}\n${deckContextDigest.sectionMap || 'No section trackers set.'}\n${deckContextDigest.storylineSummary ? `Storyline:\n${deckContextDigest.storylineSummary}` : ''}`
@@ -2185,7 +2185,7 @@ SEARCH: Include a searchQuery when real data would strengthen the title — the 
     : '';
 
   const activeSlideBlock = activeSlideContext
-    ? `\nACTIVE PAGE CONTEXT:\n- Slide ${activeSlideContext.index + 1}: "${activeSlideContext.title}" (${activeSlideContext.template || 'custom'})\n${activeSlideContext.sectionLabel ? `- Section: ${activeSlideContext.sectionLabel}\n` : ''}${activeSlideContext.subSectionLabel ? `- Subsection: ${activeSlideContext.subSectionLabel}\n` : ''}${activeSlideContext.previousTitle ? `- Previous: "${activeSlideContext.previousTitle}"\n` : ''}${activeSlideContext.nextTitle ? `- Next: "${activeSlideContext.nextTitle}"\n` : ''}- Text-only content:\n${activeSlideContext.textSummary || '[Empty slide]'}\n`
+    ? `\nACTIVE PAGE CONTEXT:\n- Slide ${activeSlideContext.index + 1}: "${activeSlideContext.title}" (${activeSlideContext.template || 'custom'})\n${activeSlideContext.sectionLabel ? `- Section: ${activeSlideContext.sectionLabel}\n` : ''}${activeSlideContext.subSectionLabel ? `- Subsection: ${activeSlideContext.subSectionLabel}\n` : ''}${activeSlideContext.previousTitle ? `- Previous: "${activeSlideContext.previousTitle}"\n` : ''}${activeSlideContext.nextTitle ? `- Next: "${activeSlideContext.nextTitle}"\n` : ''}- Text-only content:\n${activeSlideContext.textSummary || '[Empty slide]'}\n${activeSlideContext.structuralHtml ? `- Full page HTML without CSS:\n${activeSlideContext.structuralHtml}\n` : ''}`
     : '';
 
   const sectionMapBlock = sectionMap || deckContextDigest?.sectionMap

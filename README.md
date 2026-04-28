@@ -197,9 +197,9 @@ The frontend ESLint config keeps undefined symbols and parse-level issues as blo
 
 Settings includes a **Client Design Profile** selector. The default remains Strategy&, while the built-in STC profile applies STC semantic theme tokens, footer branding, layout bands, prompt-section guidance, and PPTX export positioning derived from the STC sandbox evidence plus the Board Affairs playbook standard content layout. Selecting STC is enough to test the profile; the preview canvas receives STC title/subtitle/content/footer positions through theme CSS variables.
 
-Uploaded PPTX masters are now stored by profile/template slot in IndexedDB, so an STC upload does not overwrite the default Strategy& template. The legacy backend `/api/templates/pptx-master` slot is still used for the default Strategy& profile until the server-side template catalog is added. Client demo checks are available through `clientProfileValidation.js` for STC color/font/footer/layout readiness.
+Uploaded PPTX masters are now stored by profile/template slot in IndexedDB, so an STC upload does not overwrite the default Strategy& template. The backend `/api/templates/pptx-master` endpoint serves the legacy Strategy& default and the built-in STC Playbook master through `?profileId=stc`; a user-uploaded STC template remains a local profile-bound override. Client demo checks are available through `clientProfileValidation.js` for STC color/font/footer/layout readiness.
 
-STC leaves the footer/source text blank by default; sources should appear only when a real citation exists. The frontend bundles `STC Forward` regular, medium, and bold fonts under `public/fonts/stc-forward/`, with local font aliases as fallback.
+STC leaves the footer/source text blank by default; sources should appear only when a real citation exists. The backend stores `STC Forward` regular, medium, and bold fonts under `backend/assets/fonts/stc-forward/`; the frontend loads them through the authenticated `/api/assets/fonts/stc-forward/` route and declares STC Forward as the only STC profile font family. PPTX export enforces `fontFace: 'STC Forward'` for STC-generated code and merges against the backend STC Playbook master so the deck inherits the STC theme/master and logo chrome.
 
 ## Azure Deployment
 

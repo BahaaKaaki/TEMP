@@ -116,6 +116,27 @@ app.use('/api/v1/templates', templatesRoutes);
 // AI proxy (gated by the middleware chain above when enforcement is on).
 app.use('/api/ai', aiProxyRoutes);
 
+const STC_FONT_ASSETS_DIR = path.join(process.cwd(), 'assets', 'fonts', 'stc-forward');
+const STC_FONT_FILES: Record<string, string> = {
+  'STCForward-Regular.ttf': 'STCForward-Regular.ttf',
+  'STCForward-Medium.ttf': 'STCForward-Medium.ttf',
+  'STCForward-Bold.ttf': 'STCForward-Bold.ttf',
+};
+
+app.get('/api/assets/fonts/stc-forward/:fileName', (req, res, next) => {
+  const safeFileName = STC_FONT_FILES[req.params.fileName];
+  if (!safeFileName) {
+    res.status(404).json({ error: 'FONT_NOT_FOUND' });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'font/ttf');
+  res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
+  res.sendFile(path.join(STC_FONT_ASSETS_DIR, safeFileName), (err) => {
+    if (err) next(err);
+  });
+});
+
 // Consulting skills registry (metadata only; bodies stay server-side and are
 // injected by the AI proxy when a router call includes `_skillId`).
 app.use('/api/skills', skillsRoutes);

@@ -63,8 +63,11 @@ export async function uploadTemplateToServer(arrayBuffer, fileName) {
  * GET stored PPTX master from the server.
  * @returns {Promise<{ data: ArrayBuffer, fileName: string } | null>}
  */
-export async function loadTemplateFromServer() {
-  const res = await authFetch('/api/templates/pptx-master', { method: 'GET' });
+export async function loadTemplateFromServer(profileId = 'strategy') {
+  const params = profileId && profileId !== 'strategy'
+    ? `?profileId=${encodeURIComponent(profileId)}`
+    : '';
+  const res = await authFetch(`/api/templates/pptx-master${params}`, { method: 'GET' });
   if (res.status === 404) return null;
   if (!res.ok) {
     const text = await res.text();
@@ -129,18 +132,19 @@ export async function saveTemplateToStorage(arrayBuffer, fileName, chrome = null
       console.warn('[PPTX Template] Server upload failed:', e.message);
     }
   } else {
-    console.info('[PPTX Template] Server profile catalog is not available yet; stored template locally for profile:', normalized.profileId);
+    console.info('[PPTX Template] Stored template locally for profile:', normalized.profileId);
   }
 }
 
 export async function loadTemplateFromStorage(options = {}) {
   const normalized = normalizeTemplateOptions(options);
   const key = templateStorageKey(normalized);
-  const canUseLegacyServer = normalized.profileId === 'strategy' && normalized.templateId === 'default';
+  const canUseServerDefault = ['strategy', 'stc'].includes(normalized.profileId) && normalized.templateId === 'default';
+  const canUseLegacyLocal = normalized.profileId === 'strategy' && normalized.templateId === 'default';
   let serverData = null;
-  if (canUseLegacyServer) {
+  if (canUseServerDefault) {
     try {
-      const serverTemplate = await loadTemplateFromServer();
+      const serverTemplate = await loadTemplateFromServer(normalized.profileId);
       if (serverTemplate) {
         serverData = {
           data: serverTemplate.data,
@@ -165,7 +169,7 @@ export async function loadTemplateFromStorage(options = {}) {
       const store = tx.objectStore(DB_STORE);
       const req = store.get(key);
       req.onsuccess = () => {
-        if (req.result || !canUseLegacyServer) {
+        if (req.result || !canUseLegacyLocal) {
           resolve(req.result || null);
           return;
         }
@@ -179,7 +183,7 @@ export async function loadTemplateFromStorage(options = {}) {
     console.warn('[PPTX Template] IndexedDB read failed:', e.message);
   }
 
-  const record = serverData || localRecord;
+  const record = canUseLegacyLocal ? (serverData || localRecord) : (localRecord || serverData);
   if (!record) {
     console.log('[PPTX Template] No template found for profile slot:', key);
     return null;
@@ -391,7 +395,10 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
   // ── Step 4a: Write logo media file if chrome provides one ───────────────
   const LOGO_RID = 'rId900';
-  const LOGO_MEDIA = 'ppt/media/logo_chrome.png';
+  const logoMediaExt = String(chrome?.logo?.mediaPath || '').split('.').pop()?.toLowerCase() || 'png';
+  const safeLogoExt = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'emf', 'wmf'].includes(logoMediaExt) ? logoMediaExt : 'png';
+  const LOGO_MEDIA = `ppt/media/logo_chrome.${safeLogoExt}`;
+  const LOGO_TARGET = `../media/logo_chrome.${safeLogoExt}`;
   let hasLogo = false;
 
   if (chrome?.logo?.image) {
@@ -438,7 +445,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
       if (hasLogo) {
         genRelsXml = genRelsXml.replace(
           '</Relationships>',
-          `<Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo_chrome.png"/></Relationships>`
+          `<Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${LOGO_TARGET}"/></Relationships>`
         );
       }
       tplZip.file(genSlideRelsPath, genRelsXml);
@@ -447,7 +454,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${targetLayoutNum}.xml"/>`;
       if (hasLogo) {
-        slideRel += `\n  <Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo_chrome.png"/>`;
+        slideRel += `\n  <Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${LOGO_TARGET}"/>`;
       }
       slideRel += '\n</Relationships>';
       tplZip.file(genSlideRelsPath, slideRel);

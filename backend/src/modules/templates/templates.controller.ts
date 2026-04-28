@@ -10,6 +10,12 @@ const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 const PPTX_MASTER_PATH = path.join(UPLOADS_DIR, 'pptx-master.pptx');
 const PPTX_META_PATH = path.join(UPLOADS_DIR, 'pptx-master.meta.json');
 const DEFAULT_PPTX_PATH = path.join(process.cwd(), 'assets', 'S&_Template 1.pptx');
+const PROFILE_DEFAULT_PPTX: Record<string, { path: string; displayName: string }> = {
+  stc: {
+    path: path.join(process.cwd(), 'assets', 'client-templates', 'stc', 'default-master.pptx'),
+    displayName: 'STC Board Affairs Playbook master.pptx',
+  },
+};
 
 type MulterRequest = Request & { file?: Express.Multer.File };
 
@@ -29,20 +35,22 @@ export function uploadPptxMaster(req: Request, res: Response, next: NextFunction
   }
 }
 
-/** GET /api/templates/pptx-master */
-export function downloadPptxMaster(_req: Request, res: Response, next: NextFunction): void {
+/** GET /api/templates/pptx-master?profileId=strategy|stc */
+export function downloadPptxMaster(req: Request, res: Response, next: NextFunction): void {
   try {
+    const profileId = typeof req.query.profileId === 'string' ? req.query.profileId : 'strategy';
+    const profileDefault = profileId === 'strategy' ? null : PROFILE_DEFAULT_PPTX[profileId];
     const hasUploaded = fs.existsSync(PPTX_MASTER_PATH);
-    const resolvedPath = hasUploaded ? PPTX_MASTER_PATH : DEFAULT_PPTX_PATH;
+    const resolvedPath = profileDefault?.path || (hasUploaded ? PPTX_MASTER_PATH : DEFAULT_PPTX_PATH);
 
     if (!fs.existsSync(resolvedPath)) {
       res.status(404).json({ error: 'No PPTX master template available' });
       return;
     }
 
-    let displayName = hasUploaded ? 'pptx-master.pptx' : path.basename(DEFAULT_PPTX_PATH);
+    let displayName = profileDefault?.displayName || (hasUploaded ? 'pptx-master.pptx' : path.basename(DEFAULT_PPTX_PATH));
     try {
-      if (hasUploaded && fs.existsSync(PPTX_META_PATH)) {
+      if (!profileDefault && hasUploaded && fs.existsSync(PPTX_META_PATH)) {
         const raw = fs.readFileSync(PPTX_META_PATH, 'utf8');
         const meta = JSON.parse(raw) as { fileName?: string };
         if (meta.fileName && typeof meta.fileName === 'string') {

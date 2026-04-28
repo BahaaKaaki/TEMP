@@ -14,6 +14,7 @@ import {
   addSourceNote,
   addSectionTracker,
   setFooterBranding,
+  setPptxFontFace,
   setTemplatePositions,
 } from './pptxRenderers';
 import { applyTemplateToGenerated, loadTemplateFromStorage, downloadArrayBuffer } from './pptxTemplateService';
@@ -31,6 +32,22 @@ import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.j
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
 const DEFAULT_PPTX_MODEL = 'pwc:bedrock.anthropic.claude-opus-4-7';
+const PROFILE_PPTX_FONT_FACE = {
+  stc: 'STC Forward',
+};
+
+function getProfilePptxFontFace(profile) {
+  return PROFILE_PPTX_FONT_FACE[profile?.id] || null;
+}
+
+function enforcePptxFontFaceForProfile(codeString, profile) {
+  const fontFace = getProfilePptxFontFace(profile);
+  if (!fontFace || !codeString) return codeString;
+  return String(codeString).replace(
+    /fontFace\s*:\s*(['"`])[^'"`]+?\1/g,
+    `fontFace:'${fontFace}'`
+  );
+}
 
 /**
  * Convert a theme object into the PPTX color palette snippet and hint.
@@ -459,6 +476,7 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
   if (html.includes('cover-slide') || html.includes('cover-title')) exampleCode = COVER_TRANSLATION_EXAMPLE.code;
   else if (html.includes('kpi-block') || html.includes('two-col')) exampleCode = KPI_TRANSLATION_EXAMPLE.code;
   if (decision.useTemplate && decision.pptxRendererCode) exampleCode = decision.pptxRendererCode;
+  exampleCode = enforcePptxFontFaceForProfile(exampleCode, activeProfile);
 
   const hints = parsePptxHints(html);
   const hintsBlock = formatHintsForPrompt(hints);
@@ -472,6 +490,7 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
   );
 
   const tplPos = buildPositionBlock(settings?.templatePositions) || buildProfilePositionBlock(activeProfile);
+  const profileFontFace = getProfilePptxFontFace(activeProfile);
   const clientProfileBlock = buildClientProfileContext(settings || {}, {
     includeTheme: true,
     includeLayout: true,
@@ -538,7 +557,7 @@ The CSS RULES section above is the RESOLVED stylesheet for this slide -- treat i
 6. The reference example is just a STRUCTURAL guide. Always use the ACTUAL colors from THIS slide's CSS/HTML.
 
 MANDATORY -- TYPOGRAPHY FIDELITY AND READABILITY:
-- Never emit fontSize below 10.
+${profileFontFace ? `- For this client profile, every text box MUST set fontFace:'${profileFontFace}'. Do not use Arial, Georgia, Calibri, Aptos, or generic font fallbacks.\n` : ''}- Never emit fontSize below 10.
 - Use fontSize 12 or larger for body copy, bullets, descriptions, and table cells.
 - Use fontSize 14 or larger for section titles, pillar titles, card titles, grid-cell titles, and h3/h4 equivalents.
 - Use fontSize 10 only for labels, badges, chart axes, legends, captions, sources, and footer text.
@@ -660,6 +679,7 @@ export function validateGeneratedCode(codeString, slideHtml) {
 
 async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials) {
   const systemPrompt = applyPromptOverride(settings, 'pptx.system', settings?.pptxSystemPrompt?.trim() || DEFAULT_PPTX_SYSTEM_PROMPT);
+  const activeProfile = getActiveClientProfile(settings || {});
   let lastCode = null;
   let lastErrors = [];
 
@@ -682,7 +702,7 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
         attempt: attempt + 1,
       });
       const raw = await callAI(settings, credentials, systemPrompt, userPrompt);
-      const codeString = extractJSArray(raw);
+      const codeString = enforcePptxFontFaceForProfile(extractJSArray(raw), activeProfile);
       lastCode = codeString;
 
       const validation = validateGeneratedCode(codeString, slide.html);
@@ -716,9 +736,20 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
 function parseHTML(html) { return new DOMParser().parseFromString(html, 'text/html'); }
 function getText(doc, sel) { const el = doc.querySelector(sel); return el ? el.textContent.trim() : ''; }
 
-function generateFallbackSlide(pptx, slide, slideNum, totalSlides) {
+function generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile = null) {
   const pptxSlide = pptx.addSlide();
   const doc = parseHTML(slide.html || '<div></div>');
+  const isStc = activeProfile?.id === 'stc';
+  const profilePositions = activeProfile?.chrome?.positions || {};
+  const fontFace = getProfilePptxFontFace(activeProfile);
+  const titleFont = fontFace || 'Georgia';
+  const bodyFont = fontFace || 'Arial';
+  const titlePos = profilePositions.title || { x: 0.48, y: 0.42, w: 12.36, h: 0.8 };
+  const subtitlePos = profilePositions.subtitle || { x: 0.48, y: 1.40, w: 12.36, h: 0.4 };
+  const bodyPos = profilePositions.body || { x: 0.48, y: 2.0, w: 12.36, h: 4.9 };
+  const colors = isStc
+    ? { main: '4F008C', secondary: '1D252D', accent: '4F008C', subtitle: 'FF375E', surface: 'FBF8FE', border: 'DBB8F3', meta: '515360' }
+    : { main: COLORS.main, secondary: COLORS.secondary, accent: COLORS.maroon, subtitle: COLORS.red, surface: COLORS.zone1, border: COLORS.border, meta: COLORS.meta };
 
   const isCover = (slide.html || '').includes('cover-slide') || (slide.html || '').includes('master-cover');
   const isDivider = (slide.html || '').includes('section-divider');
@@ -727,51 +758,51 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides) {
     pptxSlide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: 'FFFFFF' } });
     const cat = getText(doc, '.cover-category');
     const title = getText(doc, '.cover-title') || getText(doc, '.title') || 'Presentation';
-    if (cat) pptxSlide.addText(cat.toUpperCase(), { x: 0.48, y: 1.94, w: 12.36, h: 0.5, fontFace: 'Arial', fontSize: 18, color: COLORS.red, bold: true });
-    pptxSlide.addText(title, { x: 0.48, y: 2.64, w: 9.7, h: 2.0, fontFace: 'Georgia', fontSize: 42, color: COLORS.main, valign: 'top' });
+    if (cat) pptxSlide.addText(cat.toUpperCase(), { x: 0.48, y: 1.94, w: 12.36, h: 0.5, fontFace: bodyFont, fontSize: 18, color: colors.subtitle, bold: true });
+    pptxSlide.addText(title, { x: 0.48, y: 2.64, w: 9.7, h: 2.0, fontFace: titleFont, fontSize: 42, color: colors.main, valign: 'top' });
     // Cover branding and date — no footer row
     const branding = getText(doc, '.cover-branding');
     const date = getText(doc, '.cover-date');
-    if (branding) pptxSlide.addText(branding, { x: 0.48, y: 6.50, w: 4.0, h: 0.3, fontFace: 'Arial', fontSize: 16, bold: true, color: COLORS.meta });
-    if (date) pptxSlide.addText(date, { x: 9.5, y: 6.50, w: 3.3, h: 0.3, fontFace: 'Arial', fontSize: 13, color: COLORS.meta, align: 'right' });
+    if (branding) pptxSlide.addText(branding, { x: 0.48, y: 6.50, w: 4.0, h: 0.3, fontFace: bodyFont, fontSize: 16, bold: true, color: colors.meta });
+    if (date) pptxSlide.addText(date, { x: 9.5, y: 6.50, w: 3.3, h: 0.3, fontFace: bodyFont, fontSize: 13, color: colors.meta, align: 'right' });
     return;
   }
   if (isDivider) {
     pptxSlide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: 'FFFFFF' } });
-    pptxSlide.addShape('rect', { x: 0, y: 0, w: 0.33, h: 7.5, fill: { color: COLORS.maroon } });
+    pptxSlide.addShape('rect', { x: 0, y: 0, w: 0.33, h: 7.5, fill: { color: colors.accent } });
     const title = getText(doc, '.section-divider-title, .divider-title') || getText(doc, '.title') || 'Section';
-    pptxSlide.addText(title, { x: 1.1, y: 2.5, w: 10, h: 1.5, fontFace: 'Georgia', fontSize: 36, color: COLORS.main, bold: true });
+    pptxSlide.addText(title, { x: 1.1, y: 2.5, w: 10, h: 1.5, fontFace: titleFont, fontSize: 36, color: colors.main, bold: true });
     addFooter(pptxSlide, slideNum, totalSlides);
     return;
   }
 
   const title = getText(doc, '.title, h1, .cover-title');
   const subtitle = getText(doc, '.subtitle, h2');
-  if (title) pptxSlide.addText(title, { x: 0.48, y: 0.42, w: 12.36, h: 0.8, fontFace: 'Georgia', fontSize: 28, color: COLORS.main });
-  if (subtitle) pptxSlide.addText(subtitle, { x: 0.48, y: 1.40, w: 12.36, h: 0.4, fontFace: 'Arial', fontSize: 18, color: COLORS.red, bold: true });
+  if (title) pptxSlide.addText(title, { x: titlePos.x, y: titlePos.y, w: titlePos.w, h: titlePos.h, fontFace: titleFont, fontSize: titlePos.font?.fontSize || 28, color: colors.main });
+  if (subtitle) pptxSlide.addText(subtitle, { x: subtitlePos.x, y: subtitlePos.y, w: subtitlePos.w, h: subtitlePos.h, fontFace: bodyFont, fontSize: subtitlePos.font?.fontSize || 18, color: colors.subtitle, bold: subtitlePos.font?.bold ?? true });
 
-  const contentY = 2.0;
+  const contentY = bodyPos.y;
   const cards = doc.querySelectorAll('.card, .grid-cell, .kpi-block, .stat-box');
   if (cards.length > 0) {
-    const cardW = 12.36 / Math.min(cards.length, 4) - 0.2;
+    const cardW = bodyPos.w / Math.min(cards.length, 4) - 0.2;
     cards.forEach((card, i) => {
       if (i >= 4) return;
-      const x = 0.48 + i * (cardW + 0.2);
-      pptxSlide.addShape('rect', { x, y: contentY, w: cardW, h: 4.0, fill: { color: COLORS.zone1 }, line: { color: COLORS.border, width: 0.5 } });
-      pptxSlide.addShape('rect', { x, y: contentY, w: cardW, h: 0.06, fill: { color: COLORS.maroon } });
+      const x = bodyPos.x + i * (cardW + 0.2);
+      pptxSlide.addShape('rect', { x, y: contentY, w: cardW, h: Math.min(4.0, bodyPos.h), fill: { color: colors.surface }, line: { color: colors.border, width: 0.5 } });
+      pptxSlide.addShape('rect', { x, y: contentY, w: cardW, h: 0.06, fill: { color: colors.accent } });
       const cardTitle = card.querySelector('h3, h4, strong, .card-title');
-      if (cardTitle) pptxSlide.addText(cardTitle.textContent.trim(), { x: x + 0.15, y: contentY + 0.85, w: cardW - 0.3, h: 0.4, fontFace: 'Arial', fontSize: 14, color: COLORS.main, bold: true });
+      if (cardTitle) pptxSlide.addText(cardTitle.textContent.trim(), { x: x + 0.15, y: contentY + 0.85, w: cardW - 0.3, h: 0.4, fontFace: bodyFont, fontSize: 14, color: colors.main, bold: true });
       let body = '';
       card.querySelectorAll('p').forEach(p => { const t = p.textContent.trim(); if (t) body += (body ? '\n\n' : '') + t; });
-      if (body) pptxSlide.addText(body.substring(0, 400), { x: x + 0.15, y: contentY + 1.35, w: cardW - 0.3, h: 2.2, fontFace: 'Arial', fontSize: 12, color: COLORS.secondary, valign: 'top' });
+      if (body) pptxSlide.addText(body.substring(0, 400), { x: x + 0.15, y: contentY + 1.35, w: cardW - 0.3, h: 2.2, fontFace: bodyFont, fontSize: 12, color: colors.secondary, valign: 'top' });
     });
   } else {
     const bullets = doc.querySelectorAll('li');
     if (bullets.length > 0) {
-      bullets.forEach((b, i) => { if (i >= 8) return; pptxSlide.addText(b.textContent.trim().substring(0, 200), { x: 0.75, y: contentY + i * 0.6, w: 11.5, h: 0.5, fontFace: 'Arial', fontSize: 14, color: COLORS.main, bullet: true }); });
+      bullets.forEach((b, i) => { if (i >= 8) return; pptxSlide.addText(b.textContent.trim().substring(0, 200), { x: bodyPos.x + 0.25, y: contentY + i * 0.6, w: bodyPos.w - 0.5, h: 0.5, fontFace: bodyFont, fontSize: 14, color: colors.main, bullet: true }); });
     } else {
         let yPos = contentY;
-      doc.querySelectorAll('p').forEach((p, i) => { if (i >= 6 || yPos > 6.5) return; const t = p.textContent.trim(); if (t && t.length > 5) { pptxSlide.addText(t.substring(0, 400), { x: 0.48, y: yPos, w: 12.36, h: 0.8, fontFace: 'Arial', fontSize: 13, color: COLORS.secondary, valign: 'top' }); yPos += 0.85; } });
+      doc.querySelectorAll('p').forEach((p, i) => { if (i >= 6 || yPos > 6.5) return; const t = p.textContent.trim(); if (t && t.length > 5) { pptxSlide.addText(t.substring(0, 400), { x: bodyPos.x, y: yPos, w: bodyPos.w, h: 0.8, fontFace: bodyFont, fontSize: 13, color: colors.secondary, valign: 'top' }); yPos += 0.85; } });
     }
   }
   addSourceNote(pptxSlide, slide.html);
@@ -806,6 +837,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   const totalSlides = slides.length;
   setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
   setTemplatePositions(activeProfilePositions);
+  setPptxFontFace(getProfilePptxFontFace(activeProfile));
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
@@ -841,10 +873,11 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       // Use pre-generated PPTX code if available and valid
       if (slide.pptxCode) {
         try {
-          const validation = validateGeneratedCode(slide.pptxCode, slide.html);
+          const codeString = enforcePptxFontFaceForProfile(slide.pptxCode, activeProfile);
+          const validation = validateGeneratedCode(codeString, slide.html);
           if (validation.valid && validation.slideFunctions) {
             console.log(`[PPTX] Slide ${slideNum}: using pre-generated code`);
-            aiResults[i] = { success: true, slideFunctions: validation.slideFunctions, code: slide.pptxCode, cached: true };
+            aiResults[i] = { success: true, slideFunctions: validation.slideFunctions, code: codeString, cached: true };
             completed++;
             if (onProgress) onProgress({ phase: 'rendering', processed: completed, total: totalSlides, message: `Slide ${completed}/${totalSlides} (pre-generated)` });
             return;
@@ -912,7 +945,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       }
 
       if (!rendered) {
-        generateFallbackSlide(pptx, slide, slideNum, totalSlides);
+        generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile);
       }
 
       if (slide.sectionLabel || slide.subSectionLabel) {
@@ -949,7 +982,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
     }
 
     if (!rendered) {
-        generateFallbackSlide(pptx, slide, slideNum, totalSlides);
+        generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile);
       }
 
     if (slide.sectionLabel || slide.subSectionLabel) {
@@ -1010,6 +1043,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 
   setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
   setTemplatePositions(activeProfilePositions);
+  setPptxFontFace(getProfilePptxFontFace(activeProfile));
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
@@ -1044,7 +1078,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
       }
     }
 
-  if (!rendered) generateFallbackSlide(pptx, slide, slideNumber, totalSlides);
+  if (!rendered) generateFallbackSlide(pptx, slide, slideNumber, totalSlides, activeProfile);
 
     if (slide.sectionLabel || slide.subSectionLabel) {
     const s = pptx.slides;

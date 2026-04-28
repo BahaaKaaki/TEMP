@@ -45,6 +45,7 @@ export function pptxFontSize(size, fallback = 10) {
 
 let _footerBranding = 'Strategy&';
 let _tplPositions = null;
+let _profileFontFace = null;
 
 export function setFooterBranding(branding) {
   _footerBranding = branding ?? 'Strategy&';
@@ -52,6 +53,14 @@ export function setFooterBranding(branding) {
 
 export function setTemplatePositions(positions) {
   _tplPositions = positions || null;
+}
+
+export function setPptxFontFace(fontFace) {
+  _profileFontFace = fontFace || null;
+}
+
+function profileFontFace(fallback) {
+  return _profileFontFace || fallback;
 }
 
 export function addFooter(slide, slideNum, totalSlides, slideType) {
@@ -65,7 +74,7 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
     y: numPos?.y ?? 7.05,
     w: numPos?.w ?? 1.3,
     h: numPos?.h ?? 0.25,
-    fontFace: numFont.fontFace || 'Arial',
+    fontFace: numFont.fontFace || profileFontFace('Arial'),
     fontSize: pptxFontSize(numFont.fontSize, 10),
     bold: numFont.bold || false,
     color: COLORS.meta,
@@ -81,29 +90,29 @@ export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
   if (sectionLabel) {
     const sectionW = Math.max(1.0, sectionLabel.length * 0.065 + 0.35);
     slide.addShape('rect', { x: 0, y: 0, w: sectionW, h: 0.28, fill: { color: COLORS.maroon } });
-    slide.addText(sectionLabel, { x: 0.05, y: 0, w: sectionW - 0.1, h: 0.28, fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
+    slide.addText(sectionLabel, { x: 0.05, y: 0, w: sectionW - 0.1, h: 0.28, fontFace: profileFontFace('Arial'), fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
 
     if (subSectionLabel) {
       const subW = Math.max(0.8, subSectionLabel.length * 0.06 + 0.3);
       const subX = sectionW + 0.04;
       slide.addShape('rect', { x: subX, y: 0, w: subW, h: 0.25, fill: { color: COLORS.coal } });
-      slide.addText(subSectionLabel, { x: subX + 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
+      slide.addText(subSectionLabel, { x: subX + 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: profileFontFace('Arial'), fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
     }
   } else if (subSectionLabel) {
     const subW = Math.max(0.8, subSectionLabel.length * 0.06 + 0.3);
     slide.addShape('rect', { x: 0, y: 0, w: subW, h: 0.25, fill: { color: COLORS.coal } });
-    slide.addText(subSectionLabel, { x: 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
+    slide.addText(subSectionLabel, { x: 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: profileFontFace('Arial'), fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
   }
 }
 
 // ── Title / subtitle helpers ─────────────────────────────────────────────────
 
 export function addTitle(slide, text) {
-  slide.addText(text, { x: LAYOUT.titleX, y: LAYOUT.titleY, w: LAYOUT.titleW, h: 0.8, fontFace: 'Georgia', fontSize: 28, color: COLORS.main });
+  slide.addText(text, { x: LAYOUT.titleX, y: LAYOUT.titleY, w: LAYOUT.titleW, h: 0.8, fontFace: profileFontFace('Georgia'), fontSize: 28, color: COLORS.main });
 }
 
 export function addSubtitle(slide, text) {
-  slide.addText(text, { x: LAYOUT.subtitleX, y: LAYOUT.subtitleY, w: LAYOUT.subtitleW, h: 0.4, fontFace: 'Arial', fontSize: 18, color: COLORS.red, bold: true });
+  slide.addText(text, { x: LAYOUT.subtitleX, y: LAYOUT.subtitleY, w: LAYOUT.subtitleW, h: 0.4, fontFace: profileFontFace('Arial'), fontSize: 18, color: COLORS.red, bold: true });
 }
 
 // ── Source note ──────────────────────────────────────────────────────────────
@@ -132,7 +141,7 @@ export function addSourceNote(slide, html) {
     y: ftrPos?.y ?? 7.05,
     w: ftrPos?.w ?? 8.5,
     h: ftrPos?.h ?? 0.25,
-    fontFace: ftrFont.fontFace || 'Arial',
+    fontFace: ftrFont.fontFace || profileFontFace('Arial'),
     fontSize: pptxFontSize(ftrFont.fontSize, 10),
     italic: ftrFont.italic ?? true,
     color: COLORS.meta,

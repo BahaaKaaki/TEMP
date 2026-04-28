@@ -51,9 +51,9 @@ const STC_THEME = {
     surfaceLilac: '#F2E6FA',
   },
   fonts: {
-    title: '"STC Forward", Arial, sans-serif',
-    heading: '"STC Forward", Arial, sans-serif',
-    body: '"STC Forward", Arial, sans-serif',
+    title: '"STC Forward"',
+    heading: '"STC Forward"',
+    body: '"STC Forward"',
   },
   layout: {
     cssVars: {
@@ -119,8 +119,8 @@ const STC_LAYOUT_CONTRACT = {
 
 const STC_FREESTYLE_OVERRIDES = {
   shell: `Default to a 16:9 white STC board template on a 960x540 canvas. These STC positions replace any generic shell defaults:
-- h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward/Arial medium 28px, color #4F008C.
-- h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward/Arial medium 16px, color #FF375E.
+- h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward medium 28px, color #4F008C.
+- h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward medium 16px, color #FF375E.
 - div.frame: left 15px, top 134px, width 933px, height 340px. Design all custom content inside this STC frame, not the generic 904x366 frame.
 - footer: source at bottom-left around x=15 y=494; slide number bottom-right around x=935 y=519.
 Use structured content in the middle band and keep the bottom footer band clear. Use the standard content bands exactly unless the user explicitly asks for a cover, divider, appendix, or editorial variant.`,
@@ -172,6 +172,7 @@ const STC_COMPONENT_PATTERNS = [
 
 const STC_PPTX_CONTRACT = {
   slideSize: '16:9 widescreen',
+  fontPolicy: 'Use STC Forward as the explicit fontFace for every text box. Do not use Arial, Georgia, Calibri, Aptos, or generic fallbacks.',
   logoPolicy: 'Small STC logo top-left on white slides; white/reversed logo on photo covers as needed.',
   sourcePolicy: 'Bottom-left on non-cover slides.',
   pageNumberPolicy: 'Bottom-right on non-cover slides.',
@@ -192,7 +193,7 @@ const STC_PROMPT_CONTRACT = `# STC Client Design Contract
 - Use yellow (#FFDD40), orange (#FF6A39), cyan (#1BCED8), and gray (#8E9AA0) as secondary accents only.
 
 ## Typography
-- Use STC Forward with Arial fallback for titles, headings, labels, tables, and body copy.
+- Use STC Forward for titles, headings, labels, tables, and body copy. Do not declare Arial or generic fallback families in generated STC HTML/CSS.
 - Do not use Georgia for STC slides.
 - Keep visible text at 10px or larger; body/table text should target 12px and section/card titles 14px+.
 
@@ -230,12 +231,20 @@ function pxRectToInches(rect, canvas = STC_LAYOUT_CONTRACT.canvas) {
   };
 }
 
+const STC_PPTX_FONTS = {
+  title: { fontFace: 'STC Forward', fontSize: 28, bold: false },
+  subtitle: { fontFace: 'STC Forward', fontSize: 16, bold: false },
+  body: { fontFace: 'STC Forward', fontSize: 12, bold: false },
+  footer: { fontFace: 'STC Forward', fontSize: 9, italic: false, bold: false },
+  slideNum: { fontFace: 'STC Forward', fontSize: 8, bold: false },
+};
+
 const stcStandardInches = {
-  title: pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.title),
-  subtitle: pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.subtitle),
-  body: pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.body),
-  footer: pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.source),
-  slideNum: pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.slideNumber),
+  title: { ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.title), font: STC_PPTX_FONTS.title },
+  subtitle: { ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.subtitle), font: STC_PPTX_FONTS.subtitle },
+  body: { ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.body), font: STC_PPTX_FONTS.body },
+  footer: { ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.source), font: STC_PPTX_FONTS.footer },
+  slideNum: { ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.slideNumber), font: STC_PPTX_FONTS.slideNum },
 };
 
 export const CLIENT_DESIGN_PROFILES = {
@@ -285,10 +294,11 @@ export const CLIENT_DESIGN_PROFILES = {
     pptxMaster: {
       mode: 'profile-bound',
       templateId: PROFILE_TEMPLATE_SLOT.DEFAULT,
-      bundled: false,
+      bundled: true,
       storageKey: 'client-template:stc:default',
-      serverSync: 'planned-template-catalog',
-      notes: 'Reference PPTX files stay outside the repo; derived profile contract is stored in code.',
+      serverSync: 'backend-profile-default',
+      serverProfileId: 'stc',
+      notes: 'Default STC master is served from backend assets; user-uploaded STC templates remain profile-bound local overrides.',
     },
     chrome: {
       footerText: '',

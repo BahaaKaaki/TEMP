@@ -14,6 +14,7 @@ import AccessDenied from './components/AccessDenied';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { loadSkills } from './services/skillsService';
 import { authFetch } from './services/authFetch';
+import { loadStcForwardFonts } from './services/stcFontLoader';
 import PptxLab from './components/PptxLab';
 import 'frontend-comps/styles.css';
 import './styles/app.css';
@@ -168,6 +169,10 @@ function ProtectedRoute({ children }) {
         sessionStorage.removeItem(AUTH_RETRY_KEY);
         const data = await res.json();
         if (cancelled) return;
+        if (data.allowed) {
+          await loadStcForwardFonts();
+          if (cancelled) return;
+        }
         setBootstrap({
           status: data.allowed ? 'allowed' : 'denied',
           email: data.email || null,

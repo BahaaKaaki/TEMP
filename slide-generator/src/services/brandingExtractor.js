@@ -383,7 +383,15 @@ async function extractLogo(zip) {
 
     const imageData = await mediaFile.async('base64');
     const ext = mediaPath.split('.').pop().toLowerCase();
-    const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml' };
+    const mimeMap = {
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      gif: 'image/gif',
+      svg: 'image/svg+xml',
+      emf: 'image/x-emf',
+      wmf: 'image/wmf',
+    };
 
     candidates.push({
       image: `data:${mimeMap[ext] || 'image/png'};base64,${imageData}`,

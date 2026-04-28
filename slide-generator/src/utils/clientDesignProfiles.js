@@ -274,7 +274,7 @@ export const CLIENT_DESIGN_PROFILES = {
     name: 'STC',
     description: 'Use STC purple, dense exhibit layouts, and STC TMT reference-deck behavior.',
     status: 'sandbox-0.1',
-    footerBranding: 'stc',
+    footerBranding: '',
     theme: STC_THEME,
     layoutContract: STC_LAYOUT_CONTRACT,
     freestyleOverrides: STC_FREESTYLE_OVERRIDES,
@@ -291,7 +291,7 @@ export const CLIENT_DESIGN_PROFILES = {
       notes: 'Reference PPTX files stay outside the repo; derived profile contract is stored in code.',
     },
     chrome: {
-      footerText: 'stc',
+      footerText: '',
       positions: stcStandardInches,
     },
     evidence: {
@@ -410,6 +410,14 @@ export function getActiveClientProfile(settings = {}) {
 
 export function getClientProfileTheme(profileId) {
   return getClientDesignProfile(profileId).theme;
+}
+
+export function getClientProfileFooterBranding(settings = {}, fallback = 'Strategy&') {
+  const profile = getActiveClientProfile(settings);
+  if (profile && Object.prototype.hasOwnProperty.call(profile, 'footerBranding')) {
+    return settings.footerBranding ?? profile.footerBranding ?? '';
+  }
+  return settings.footerBranding ?? fallback;
 }
 
 export function getClientProfileTemplateStorageKey(profileId = 'strategy', templateId = PROFILE_TEMPLATE_SLOT.DEFAULT) {
@@ -583,7 +591,7 @@ export function buildClientProfileContext(settings = {}, options = {}) {
     profile.theme?.alternateVariants?.length
       ? `Alternate variants: ${profile.theme.alternateVariants.map(variant => `${variant.id} (${variant.usage})`).join('; ')}`
       : '',
-    `Footer branding: ${profile.footerBranding || settings.footerBranding || 'Strategy&'}`,
+    `Footer/source text: ${getClientProfileFooterBranding(settings, '') || '[blank unless a real source is provided]'}`,
   ].filter(Boolean);
   if (includeTheme && profile.theme) {
     sections.push(`Semantic theme tokens:\n${JSON.stringify(profile.theme, null, 2)}`);

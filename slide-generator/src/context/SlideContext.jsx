@@ -416,6 +416,9 @@ function loadState() {
         const activeProfile = getClientDesignProfile(loadedState.settings.clientDesignProfileId);
         loadedState.theme = activeProfile.theme;
         loadedState.settings.clientProfileVersion = activeProfile.status || String(activeProfile.schemaVersion || '');
+        if (activeProfile.id === 'stc' && loadedState.settings.footerBranding === 'stc') {
+          loadedState.settings.footerBranding = '';
+        }
       }
       return loadedState;
     }
@@ -1038,6 +1041,9 @@ function slideReducer(state, action) {
       const activeProfile = profileChanged ? getClientDesignProfile(nextSettings.clientDesignProfileId) : null;
       if (activeProfile) {
         nextSettings.clientProfileVersion = activeProfile.status || String(activeProfile.schemaVersion || '');
+        if (Object.prototype.hasOwnProperty.call(activeProfile, 'footerBranding')) {
+          nextSettings.footerBranding = activeProfile.footerBranding ?? '';
+        }
       }
       return {
         ...state,

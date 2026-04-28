@@ -1,5 +1,32 @@
 /* ===== MINIMAL SHARED SLIDE CSS ===== */
 
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward"),
+    local("STC Forward Regular"),
+    local("stc Forward"),
+    local("stc Forward Regular"),
+    local("STCForward"),
+    local("STCForward-Regular");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward Medium"),
+    local("stc Forward Medium"),
+    local("STCForward-Medium"),
+    local("STC Forward"),
+    local("stc Forward");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 .slide {
   /* Layout */
   --slide-w: 960px;
@@ -75,6 +102,7 @@
   overflow: hidden;
   box-sizing: border-box;
   font-family: Arial, sans-serif;
+  font-synthesis: none;
   color: var(--body);
 }
 

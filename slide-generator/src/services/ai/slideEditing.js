@@ -7,7 +7,7 @@ import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT as BASE_EDIT_
 import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
 import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
-import { appendClientDesignContract } from '../../utils/clientDesignProfiles.js';
+import { appendClientDesignContract, getClientProfileFooterBranding } from '../../utils/clientDesignProfiles.js';
 import { unscopeCSS } from '../../utils/cssScoping.js';
 import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext, buildSectionMap } from './slideContext.js';
 import { extractSingleSlide, flattenNestedFrames, extractTitleFromHTML, ensureSlideStructure } from './slideGeneration.js';
@@ -310,7 +310,7 @@ ${cssContext}${positionContext}${metadataContext}${contextNote}${neighborContext
 
 ${TITLE_HEADER_RULES}
 
-Footer branding: use "${settings.footerBranding || 'Strategy&'}" in footer left span.`;
+Footer/source text: use "${getClientProfileFooterBranding(settings, 'Strategy&')}" in footer left span; if this value is empty, leave the left span blank unless a real source is provided.`;
 
   debugLog(LogLevel.INFO, 'improveSlide', `Starting edit: "${instruction.substring(0, 100)}..."`, {
     slideTitle: title,

@@ -47,7 +47,7 @@ let _footerBranding = 'Strategy&';
 let _tplPositions = null;
 
 export function setFooterBranding(branding) {
-  _footerBranding = branding || 'Strategy&';
+  _footerBranding = branding ?? 'Strategy&';
 }
 
 export function setTemplatePositions(positions) {

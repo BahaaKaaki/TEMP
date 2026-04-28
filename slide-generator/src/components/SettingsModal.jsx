@@ -650,7 +650,9 @@ export default function SettingsModal({ onClose }) {
       ...s,
       clientDesignProfileId: profile.id,
       clientProfileVersion: profile.status || String(profile.schemaVersion || ''),
-      footerBranding: profile.footerBranding || s.footerBranding,
+      footerBranding: Object.prototype.hasOwnProperty.call(profile, 'footerBranding')
+        ? (profile.footerBranding ?? '')
+        : s.footerBranding,
     }));
   };
 
@@ -695,7 +697,7 @@ export default function SettingsModal({ onClose }) {
                 Default variant: {selectedProfile.theme?.defaultVariant || 'default'}<br />
                 Template slot: {selectedProfile.pptxMaster?.templateId || 'default'}<br />
                 Template storage: {selectedProfile.pptxMaster?.mode || 'user-uploaded'}<br />
-                Footer: {selectedProfile.footerBranding || settings.footerBranding || 'Strategy&'}
+                Footer/source: {selectedProfile.footerBranding || settings.footerBranding || 'blank by default'}
               </div>
             </div>
             <div style={{ padding: 10, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--page, #fff)' }}>
@@ -1412,7 +1414,7 @@ export default function SettingsModal({ onClose }) {
 
         <div className="form-group">
           <label>Footer / Branding</label>
-          <input type="text" value={settings.footerBranding || 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Strategy&" />
+          <input type="text" value={settings.footerBranding ?? 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Source (optional)" />
           <div style={hint}>Shown in the footer of every slide.</div>
         </div>
 
@@ -1860,7 +1862,7 @@ export default function SettingsModal({ onClose }) {
       <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
         <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
           <label style={{ fontSize: 12 }}>Footer Branding</label>
-          <input type="text" value={settings.footerBranding || 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Strategy&" style={{ fontSize: 12 }} />
+          <input type="text" value={settings.footerBranding ?? 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Source (optional)" style={{ fontSize: 12 }} />
         </div>
         <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
           <label style={{ fontSize: 12 }}>Manager Name</label>
@@ -1901,7 +1903,7 @@ export default function SettingsModal({ onClose }) {
         <div style={{ display: 'flex', gap: 12 }}>
           <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
             <label style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, display: 'block' }}>Footer Text</label>
-            <input type="text" value={settings.footerBranding || 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Strategy&" style={{ fontSize: 12 }} />
+            <input type="text" value={settings.footerBranding ?? 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Source (optional)" style={{ fontSize: 12 }} />
           </div>
           <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
             <label style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, display: 'block' }}>Agent Name</label>

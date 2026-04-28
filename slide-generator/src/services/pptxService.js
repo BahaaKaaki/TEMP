@@ -22,7 +22,7 @@ import { resolveCustomProperties } from './ai/cssExtraction';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
-import { buildClientProfileContext, getActiveClientProfile } from '../utils/clientDesignProfiles.js';
+import { buildClientProfileContext, getActiveClientProfile, getClientProfileFooterBranding } from '../utils/clientDesignProfiles.js';
 import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
 import { authFetch } from './authFetch.js';
 import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
@@ -799,12 +799,12 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       ...settings,
       templatePositions: activeProfilePositions,
       theme: settings.theme || activeProfile.theme,
-      footerBranding: settings.footerBranding || activeProfile.footerBranding,
+      footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
     };
   }
 
   const totalSlides = slides.length;
-  setFooterBranding(settings?.footerBranding || activeProfile.footerBranding || 'Strategy&');
+  setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
   setTemplatePositions(activeProfilePositions);
 
   const useAI = settings && hasAnyCredentials(settings);
@@ -1004,11 +1004,11 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
       ...settings,
       templatePositions: activeProfilePositions,
       theme: settings.theme || activeProfile.theme,
-      footerBranding: settings.footerBranding || activeProfile.footerBranding,
+      footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
     };
   }
 
-  setFooterBranding(settings?.footerBranding || activeProfile.footerBranding || 'Strategy&');
+  setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
   setTemplatePositions(activeProfilePositions);
 
   const useAI = settings && hasAnyCredentials(settings);

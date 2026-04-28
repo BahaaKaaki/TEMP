@@ -3,6 +3,7 @@ import DEFAULT_THEME from '../../guides/freestyle-theme.md?raw';
 import DEFAULT_VIBE from '../../guides/freestyle-vibe.md?raw';
 import DEFAULT_WRITING from '../../guides/freestyle-writing.md?raw';
 import DEFAULT_PPTX_HINTS from '../../guides/freestyle-pptx-hints.md?raw';
+import { appendClientDesignContract, applyClientProfilePromptSections } from '../../utils/clientDesignProfiles.js';
 
 export { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, DEFAULT_PPTX_HINTS };
 
@@ -115,13 +116,16 @@ export function buildFreestyleSystemPrompt(settings = {}) {
   const vibeCustom = !!(settings.freestyleVibe && settings.freestyleVibe.trim());
   const writingCustom = !!(settings.freestyleWriting && settings.freestyleWriting.trim());
 
-  const shell = shellCustom ? settings.freestyleShell : (preset?.shell || DEFAULT_SHELL);
-  const theme = themeCustom ? settings.freestyleTheme : (preset?.theme || DEFAULT_THEME);
-  const vibe = vibeCustom ? settings.freestyleVibe : (preset?.vibe || DEFAULT_VIBE);
-  const writing = writingCustom ? settings.freestyleWriting : (preset?.writing || DEFAULT_WRITING);
-  const hints = DEFAULT_PPTX_HINTS;
+  const baseSections = {
+    shell: shellCustom ? settings.freestyleShell : (preset?.shell || DEFAULT_SHELL),
+    theme: themeCustom ? settings.freestyleTheme : (preset?.theme || DEFAULT_THEME),
+    vibe: vibeCustom ? settings.freestyleVibe : (preset?.vibe || DEFAULT_VIBE),
+    writing: writingCustom ? settings.freestyleWriting : (preset?.writing || DEFAULT_WRITING),
+    hints: DEFAULT_PPTX_HINTS,
+  };
+  const { shell, theme, vibe, writing, hints } = applyClientProfilePromptSections(baseSections, settings);
 
-  const assembled = [shell, theme, vibe, writing, hints].join('\n\n---\n\n');
+  const assembled = appendClientDesignContract([shell, theme, vibe, writing, hints].join('\n\n---\n\n'), settings);
 
   console.groupCollapsed(
     '[FreestylePrompt] Assembled system prompt (%d chars) — Shell:%s Theme:%s Vibe:%s Writing:%s Hints:default',

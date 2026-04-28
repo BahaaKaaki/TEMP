@@ -22,6 +22,7 @@ import { resolveCustomProperties } from './ai/cssExtraction';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
+import { buildClientProfileContext, getActiveClientProfile } from '../utils/clientDesignProfiles.js';
 import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
 import { authFetch } from './authFetch.js';
 import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
@@ -411,8 +412,36 @@ function buildPositionBlock(tplPositions) {
   return lines.join('\n');
 }
 
+function pxRectToInches(rect, canvas) {
+  if (!rect || !canvas?.widthPx || !canvas?.widthIn) return null;
+  const scale = canvas.widthIn / canvas.widthPx;
+  const round = value => Number((value * scale).toFixed(3));
+  return {
+    x: round(rect.x),
+    y: round(rect.y),
+    w: round(rect.w),
+    h: round(rect.h),
+  };
+}
+
+function buildProfilePositionBlock(profile) {
+  const layout = profile?.layoutContract;
+  const standard = layout?.standardContent;
+  if (!standard) return null;
+  const positions = {
+    title: pxRectToInches(standard.title, layout.canvas),
+    subtitle: pxRectToInches(standard.subtitle, layout.canvas),
+    body: pxRectToInches(standard.body, layout.canvas),
+    footer: pxRectToInches(standard.source, layout.canvas),
+    slideNum: pxRectToInches(standard.slideNumber, layout.canvas),
+  };
+  const block = buildPositionBlock(positions);
+  return block ? block.replace('(from uploaded client template)', `(from active ${profile.name} profile layout contract)`) : null;
+}
+
 export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
   const palette = themeToPptxPalette(settings?.theme);
+  const activeProfile = getActiveClientProfile(settings || {});
 
   const rawBaseCSS = extractRelevantCSS(slide.html, slide.customCSS || '');
   const resolvedBaseCSS = resolveCustomProperties(rawBaseCSS, settings?.theme);
@@ -442,7 +471,16 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
       .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"')
   );
 
-  const tplPos = buildPositionBlock(settings?.templatePositions);
+  const tplPos = buildPositionBlock(settings?.templatePositions) || buildProfilePositionBlock(activeProfile);
+  const clientProfileBlock = buildClientProfileContext(settings || {}, {
+    includeTheme: true,
+    includeLayout: true,
+    includeValidation: true,
+    includeEvidence: false,
+    includePromptSections: false,
+    includeComponents: true,
+    includePptx: true,
+  });
 
   let prompt = `TASK: Convert this HTML slide to a PptxGenJS function.
 
@@ -474,6 +512,7 @@ ${palette.hint}
 - Accent: ${palette.colors.accent}
 - Card backgrounds: ${palette.colors.cardBg}
 - Borders: ${palette.colors.border}
+${clientProfileBlock ? `\n========== ACTIVE CLIENT PROFILE ==========\n${clientProfileBlock}\n` : ''}
 
 ========== REFERENCE EXAMPLE ==========
 ${exampleCode}
@@ -751,15 +790,22 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
+  const activeProfile = getActiveClientProfile(settings || {});
   let templateData = null;
-  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
-  if (templateData?.chrome?.positions && settings) {
-    settings = { ...settings, templatePositions: templateData.chrome.positions };
+  try { templateData = await loadTemplateFromStorage({ profileId: activeProfile.id }); } catch (e) { /* ignore */ }
+  const activeProfilePositions = templateData?.chrome?.positions || activeProfile.chrome?.positions || null;
+  if (activeProfilePositions && settings) {
+    settings = {
+      ...settings,
+      templatePositions: activeProfilePositions,
+      theme: settings.theme || activeProfile.theme,
+      footerBranding: settings.footerBranding || activeProfile.footerBranding,
+    };
   }
 
   const totalSlides = slides.length;
-  setFooterBranding(settings?.footerBranding || 'Strategy&');
-  setTemplatePositions(templateData?.chrome?.positions || null);
+  setFooterBranding(settings?.footerBranding || activeProfile.footerBranding || 'Strategy&');
+  setTemplatePositions(activeProfilePositions);
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
@@ -949,14 +995,21 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
+  const activeProfile = getActiveClientProfile(settings || {});
   let templateData = null;
-  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
-  if (templateData?.chrome?.positions && settings) {
-    settings = { ...settings, templatePositions: templateData.chrome.positions };
+  try { templateData = await loadTemplateFromStorage({ profileId: activeProfile.id }); } catch (e) { /* ignore */ }
+  const activeProfilePositions = templateData?.chrome?.positions || activeProfile.chrome?.positions || null;
+  if (activeProfilePositions && settings) {
+    settings = {
+      ...settings,
+      templatePositions: activeProfilePositions,
+      theme: settings.theme || activeProfile.theme,
+      footerBranding: settings.footerBranding || activeProfile.footerBranding,
+    };
   }
 
-  setFooterBranding(settings?.footerBranding || 'Strategy&');
-  setTemplatePositions(templateData?.chrome?.positions || null);
+  setFooterBranding(settings?.footerBranding || activeProfile.footerBranding || 'Strategy&');
+  setTemplatePositions(activeProfilePositions);
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;

@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 
+import { getClientDesignProfile } from '../utils/clientDesignProfiles';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 
 const EMU_PER_INCH = 914400;
@@ -9,10 +10,11 @@ const EMU_PER_INCH = 914400;
  * from a PPTX file.
  *
  * @param {ArrayBuffer} pptxBuffer - The raw PPTX file bytes
- * @returns {Promise<{theme: object, raw: object, chrome: object}|null>}
+ * @returns {Promise<{theme: object, raw: object, chrome: object, evidence: object}|null>}
  */
-export async function extractBranding(pptxBuffer) {
+export async function extractBranding(pptxBuffer, options = {}) {
   const zip = await JSZip.loadAsync(pptxBuffer);
+  const profile = getClientDesignProfile(options.profileId || 'strategy');
 
   const themeFile = zip.file('ppt/theme/theme1.xml');
   if (!themeFile) return null;
@@ -26,9 +28,23 @@ export async function extractBranding(pptxBuffer) {
 
   if (!colors && !fonts) return null;
 
-  const theme = mapToAppTheme(colors, fonts);
+  const theme = profile.id === 'strategy'
+    ? mapToAppTheme(colors, fonts)
+    : structuredClone(profile.theme || mapToAppTheme(colors, fonts));
   const chrome = await extractChrome(zip);
-  return { theme, raw: { colors, fonts }, chrome };
+  const evidence = await extractTemplateEvidence(zip, { rawColors: colors, rawFonts: fonts, profile });
+  return {
+    theme,
+    raw: {
+      colors,
+      fonts,
+      semanticMapping: profile.id === 'strategy' ? 'raw-theme-slots' : `profile:${profile.id}`,
+    },
+    chrome,
+    evidence,
+    profileId: profile.id,
+    extractionVersion: 'client-profile-v1',
+  };
 }
 
 function extractColors(doc) {
@@ -162,6 +178,99 @@ function mixHex(hex1, hex2, ratio) {
 function isLightColor(hex) {
   const { r, g, b } = hexToRgb(hex);
   return (r * 299 + g * 587 + b * 114) / 1000 > 128;
+}
+
+async function extractTemplateEvidence(zip, { rawColors, rawFonts, profile } = {}) {
+  const paths = Object.keys(zip.files);
+  const slidePaths = paths.filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f));
+  const masterPaths = paths.filter(f => /^ppt\/slideMasters\/slideMaster\d+\.xml$/.test(f));
+  const layoutPaths = paths
+    .filter(f => /^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(f))
+    .sort((a, b) => parseInt(a.match(/(\d+)/g).pop(), 10) - parseInt(b.match(/(\d+)/g).pop(), 10));
+
+  const fontUsage = {};
+  const footerLabels = new Set();
+  const layoutSummaries = [];
+
+  for (const path of layoutPaths) {
+    const xml = await zip.files[path].async('string');
+    collectFontUsage(xml, fontUsage);
+    collectFooterLikeText(xml, footerLabels);
+    layoutSummaries.push({
+      path,
+      name: xml.match(/<p:cSld\s+name="([^"]+)"/)?.[1] || null,
+      type: xml.match(/<p:sldLayout[^>]*type="([^"]+)"/)?.[1] || null,
+      placeholders: summarizePlaceholders(xml),
+      shapeCount: (xml.match(/<p:sp\b/g) || []).length,
+      pictureCount: (xml.match(/<p:pic\b/g) || []).length,
+    });
+  }
+
+  const masterSummaries = [];
+  for (const path of masterPaths) {
+    const xml = await zip.files[path].async('string');
+    collectFontUsage(xml, fontUsage);
+    collectFooterLikeText(xml, footerLabels);
+    masterSummaries.push({
+      path,
+      shapeCount: (xml.match(/<p:sp\b/g) || []).length,
+      pictureCount: (xml.match(/<p:pic\b/g) || []).length,
+    });
+  }
+
+  return {
+    profileId: profile?.id || 'strategy',
+    slideCount: slidePaths.length,
+    masterCount: masterPaths.length,
+    layoutCount: layoutPaths.length,
+    rawThemeColors: rawColors || {},
+    rawThemeFonts: rawFonts || {},
+    semanticTheme: profile?.id && profile.id !== 'strategy'
+      ? 'Profile semantic theme overrides raw OOXML theme slots.'
+      : 'Raw OOXML theme slots mapped to Edwin theme tokens.',
+    fontUsage,
+    footerLabels: Array.from(footerLabels).slice(0, 20),
+    layouts: layoutSummaries,
+    masters: masterSummaries,
+  };
+}
+
+function collectFontUsage(xml, fontUsage) {
+  const matches = xml.matchAll(/<a:latin[^>]*typeface="([^"]+)"/g);
+  for (const match of matches) {
+    const font = match[1];
+    if (!font) continue;
+    fontUsage[font] = (fontUsage[font] || 0) + 1;
+  }
+}
+
+function collectFooterLikeText(xml, footerLabels) {
+  const matches = xml.matchAll(/<a:t>([^<]{1,120})<\/a:t>/g);
+  for (const match of matches) {
+    const text = match[1].trim();
+    if (!text) continue;
+    if (/\b(source|confidential|strategy&|stc|page|copyright|footer)\b/i.test(text)) {
+      footerLabels.add(text);
+    }
+  }
+}
+
+function summarizePlaceholders(xml) {
+  const summaries = [];
+  const spRegex = /<p:sp\b[\s\S]*?<\/p:sp>/g;
+  let match;
+  while ((match = spRegex.exec(xml)) !== null) {
+    const shapeXml = match[0];
+    if (!/<p:ph\b/.test(shapeXml)) continue;
+    const phMatch = shapeXml.match(/<p:ph\b([^>]*)\/?>/);
+    const attrs = phMatch?.[1] || '';
+    summaries.push({
+      type: attrs.match(/\btype="([^"]+)"/)?.[1] || 'body',
+      idx: attrs.match(/\bidx="([^"]+)"/)?.[1] || null,
+      position: extractShapePosition(shapeXml),
+    });
+  }
+  return summaries;
 }
 
 // ── Template Chrome Extraction ──────────────────────────────────────────────

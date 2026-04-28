@@ -1,13 +1,13 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-04-14
+> Last updated: 2026-04-27
 
 ---
 
 ## 1. Overview
 
-**Edwin Slides Creator** is an AI-powered presentation generator that creates professional slide decks in a Strategy& / PwC consulting style. It uses PwC Shared Services GenAI API for AI capabilities.
+**Edwin Slides Creator** is an AI-powered presentation generator that creates professional slide decks in a Strategy& / PwC consulting style, with V1 client design profiles for client-specific theming and prompt guidance. It uses PwC Shared Services GenAI API for AI capabilities.
 
 - **Repository:** `https://github.com/pwc-me-adv-strategyand/edwin-slides-creator.git`
 - **Branch:** `feature/bugfixes-and-enhancements`
@@ -134,6 +134,8 @@ slide-themes-main/
 │   │   │   ├── slideMasters.js        # Base layouts (default, blank, cover, etc.)
 │   │   │   ├── slideWidgets.js        # Widget definitions
 │   │   │   ├── themeUtils.js          # Theme config schema, DEFAULT_THEME, themeToCSS() converter
+│   │   │   ├── clientDesignProfiles.js # Versioned client template profile registry, themes, prompt/layout/PPTX contracts
+│   │   │   ├── clientProfileValidation.js # Client-profile demo readiness checks for colors, fonts, footer, and layout contract
 │   │   │   ├── templateCss.js         # Template CSS resolution helper
 │   │   │   ├── slideIds.js            # Compact slide ID generation helper
 │   │   │   ├── vibes.js              # Legacy design variants (retained for backward compat)
@@ -271,6 +273,7 @@ When a user types a message in the chatbot:
 
 5. EXECUTION (executeFromSmartAction)
    ├── Speed mode determines generation model for all steps
+   ├── Active client design profile appends profile-specific design contract to generation/edit system prompts
    ├── Structured fields (title, subtitle, facts, sources) prepended to step prompt
    ├── Build groups from router plan
    ├── For each group → executeGroupParallel
@@ -342,7 +345,7 @@ Slides in state (HTML + CSS)
 Slide CSS is organized into three layers:
 
 1. **Shell** (`slides.css`) -- structural CSS for `.slide`, `.title`, `.subtitle`, `.frame`, `.footer` with canvas dimensions (960x540), absolute positions, and overflow rules. Includes master-specific overrides (`master-blank`, `master-titleOnly`, `master-cover`, `master-emptyPage`). Never modified by LLM or user.
-2. **Theme** (`state.theme` -> CSS custom properties via `themeToCSS()`) -- JSON config mapping semantic tokens to concrete values (colors, fonts). Injected at render and export time. Changing the theme recolors all slides instantly. Populated from `DEFAULT_THEME` or extracted from uploaded PPTX templates via `brandingExtractor.js`.
+2. **Theme** (`state.theme` -> CSS custom properties via `themeToCSS()`) -- JSON config mapping semantic tokens to concrete values (colors, fonts). Injected at render and export time. Changing the theme recolors all slides instantly. Populated from `DEFAULT_THEME`, built-in client design profiles via `clientDesignProfiles.js`, or extracted from uploaded PPTX templates via `brandingExtractor.js`.
 3. **Content CSS** (per-slide `customCSS`) -- LLM-generated `<style>` blocks with scoped layout classes. Uses `var(--token)` for all colors so themes propagate automatically. Built-in templates carry pre-extracted component CSS (from `templateStyles.js`, sourced from `slides-legacy.css`).
 
 ### 4.2 Design Tokens
@@ -367,7 +370,7 @@ Slide CSS is organized into three layers:
 | `--font-heading` | Heading font family |
 | `--font-body` | Body font family |
 
-Theme config lives in `state.theme` (see `themeUtils.js` for schema and `themeToCSS()` conversion). Default theme: Strategy& brand (#8E1E1E accent, Georgia/Arial fonts).
+Theme config lives in `state.theme` (see `themeUtils.js` for schema and `themeToCSS()` conversion). Default theme: Strategy& brand (#8E1E1E accent, Georgia/Arial fonts). The client template profile registry keeps the durable `settings.clientDesignProfileId` and derives preview/export theme tokens from the active profile. STC is the first full profile with purple #4F008C as the semantic primary accent, STC Forward / Arial typography, canonical title/subtitle/body/footer bands, prompt-section overrides, PPTX export hints, sandbox evidence metadata, and validation rules. The Board Affairs playbook standard content layout is the canonical geometry reference for the current title/subtitle/body/source/page bands. Profile themes may include `layout.cssVars`, which `themeToCSS()` emits to the shared `.slide` shell so profile positions affect the actual HTML canvas, not only export prompts.
 
 ### 4.3 Legacy Vibes
 
@@ -406,7 +409,7 @@ Core state shape:
 {
   slides: [],                    // Array of { id, title, html, customCSS, type, summary, pptxRendererCode }; new slide IDs use compact s_* values, legacy UUIDs remain valid
   sharedCSS: SLIDES_CSS,         // Shell CSS (single source of truth)
-  theme: DEFAULT_THEME,          // Theme config: { name, colors: {...}, fonts: {...} }
+  theme: DEFAULT_THEME,          // Theme config: { name, colors: {...}, fonts: {...}, layout?: { cssVars } }
   activeSlideId: null,           // Currently selected slide
   selectedSlideIds: [],          // Multi-selected slides (for export)
   deckName: 'Untitled Deck',
@@ -424,6 +427,8 @@ Core state shape:
     freestyleWriting: '',         // Override for Writing Profile section (empty = code default)
     promptOverrides: {},          // Debug-only prompt overrides keyed by prompt surface
     selectedSkillId: null,        // Single active consulting-skill id (or null). Attached to router calls as _skillId; never applied to rendering/edits/transforms/validation. Manual-clear only.
+    clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
+    clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
     // Code-managed model assignments (always from initialState, never localStorage)
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
@@ -435,7 +440,7 @@ Core state shape:
 }
 ```
 
-The `settings` slice is versioned via `SETTINGS_VERSION` in `SlideContext.jsx`. When incompatible shape changes ship (e.g., multi-select skills -> single-select), the loader runs an in-place migration against any persisted state before committing it to the reducer.
+The `settings` slice is versioned via `SETTINGS_VERSION` in `SlideContext.jsx`. When incompatible shape changes ship (e.g., multi-select skills -> single-select), the loader runs an in-place migration against any persisted state before committing it to the reducer. Profile-backed themes are restored at load time when `settings.clientDesignProfileId` is not `strategy`.
 
 
 ---
@@ -455,8 +460,8 @@ The `settings` slice is versioned via `SETTINGS_VERSION` in `SlideContext.jsx`. 
 | `/api/v1/organizations` | Organization CRUD |
 | `/api/v1/themes` | Theme CRUD |
 | `/api/v1/templates` | Template CRUD |
-| `POST /api/templates/pptx-master` | Upload PPTX master (multipart field `template`); saved as `uploads/pptx-master.pptx` |
-| `GET /api/templates/pptx-master` | Download stored PPTX master (404 if none) |
+| `POST /api/templates/pptx-master` | Legacy default-profile PPTX master upload (multipart field `template`); saved as `uploads/pptx-master.pptx` |
+| `GET /api/templates/pptx-master` | Legacy default-profile PPTX master download (404 if none). Frontend storage is profile-keyed; server template catalog is planned for profile-specific masters. |
 | `GET /health` | Health check (no auth) |
 
 ### Consulting Skills Module
@@ -643,6 +648,10 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 43. **Deterministic slide reorder**: Chat prompts with explicit slide sequences (for example `3-4-2-5-6`), two-slide reorder phrases (for example `reorder slides 4 and 5`), plus simple move/swap commands, bypass the AI router and apply a single undoable slide-array reorder. Omitted slides are preserved in their existing relative order. Router fallback has a real `reorder_slides` action, and the create/delete guard is limited to pure reorder requests so broader deck restructuring can still change content.
 
 44. **Executive summary tracker context**: Deck context extraction now reads semantic text from freestyle HTML even when point labels are rendered with arbitrary div/span classes. Executive summary detection checks template metadata plus HTML subtitle/class hints, router context includes the actual summary item labels, and exact one-summary-item-per-body-slide tracker requests apply deterministically to body slides only.
+
+45. **Client template profile registry**: Replaced the STC V1 prompt preset with a versioned client profile registry. STC now carries semantic theme tokens, footer branding, canonical layout bands, prompt/layout/PPTX contracts, sandbox evidence metadata, and validation rules. Settings exposes active profile assets and profile-bound PPTX status; `SlideContext` keeps durable `clientDesignProfileId` plus profile version; router/generation/edit/image/PPTX paths receive the active profile context; uploaded PPTX masters are stored by profile slot locally while the legacy server slot remains default-profile only.
+
+46. **STC layout and prompt-section overrides**: The STC profile now encodes the GPT-derived purple consulting family as the default variant and the telecom outlook style as an explicit editorial alternate. Profile data includes freestyle shell/theme/vibe/writing/CSS/PPTX override sections, component patterns, PPTX contract rules, dense table/org/process bands, and stricter validation checks. `themeToCSS()` emits profile layout variables for the shared slide shell, so selecting STC moves the preview canvas title/subtitle/content/footer geometry without requiring a PPTX upload. The standard content geometry is aligned to the Board Affairs playbook reference layout (`12_Content slide _ VCS_to use`).
 
 ---
 

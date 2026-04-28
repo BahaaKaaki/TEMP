@@ -7,6 +7,7 @@ import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT as BASE_EDIT_
 import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
 import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
+import { appendClientDesignContract } from '../../utils/clientDesignProfiles.js';
 import { unscopeCSS } from '../../utils/cssScoping.js';
 import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext, buildSectionMap } from './slideContext.js';
 import { extractSingleSlide, flattenNestedFrames, extractTitleFromHTML, ensureSlideStructure } from './slideGeneration.js';
@@ -15,7 +16,10 @@ import { currentDateString, safeJSONParse } from './router.js';
 // All edit flows in this module produce slide HTML, so every call uses the
 // edit prompt with the PPTX export-guidance hint guide appended.
 const getEditSystemPrompt = (settings) =>
-  applyPromptOverride(settings, 'edit.system', appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT));
+  appendClientDesignContract(
+    applyPromptOverride(settings, 'edit.system', appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT)),
+    settings
+  );
 
 const stripStyleBlocks = (html = '') =>
   html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').trim();

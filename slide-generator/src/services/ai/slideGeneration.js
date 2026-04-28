@@ -9,6 +9,7 @@ import { generateSlideSummary, buildDeckContext } from './slideContext.js';
 import { currentDateString } from './router.js';
 import { LAYOUT_GUIDANCE_MAP } from './imageGeneration.js';
 import { applyPromptOverride, appendPromptOverride, recordPromptPayload } from './promptOverrides.js';
+import { appendClientDesignContract } from '../../utils/clientDesignProfiles.js';
 
 // ============================================
 // FREESTYLE VALIDATION (brand compliance)
@@ -131,6 +132,7 @@ export async function generateSlides(prompt, settings, slideCount = 3, existingS
     // Template mode: use full examples
     activeSystemPrompt = applyPromptOverride(settings, 'slideGen.templateSystem', DEFAULT_SYSTEM_PROMPT);
   }
+  activeSystemPrompt = appendClientDesignContract(activeSystemPrompt, settings);
 
   if (!creds.apiKey) {
     throw new Error('API key is required. Please configure it in Settings.');

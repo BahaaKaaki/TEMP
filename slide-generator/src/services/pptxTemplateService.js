@@ -5,6 +5,7 @@
 import JSZip from 'jszip';
 import { extractBranding } from './brandingExtractor';
 import { authFetch } from './authFetch.js';
+import { getClientProfileTemplateStorageKey } from '../utils/clientDesignProfiles.js';
 
 /**
  * Store for the loaded template data.
@@ -12,7 +13,22 @@ import { authFetch } from './authFetch.js';
  */
 const DB_NAME = 'pptxTemplateDB';
 const DB_STORE = 'templates';
-const DB_KEY = 'baseTemplate';
+const LEGACY_DB_KEY = 'baseTemplate';
+
+function normalizeTemplateOptions(options = {}) {
+  if (typeof options === 'string') {
+    return { profileId: options, templateId: 'default' };
+  }
+  return {
+    profileId: options.profileId || 'strategy',
+    templateId: options.templateId || 'default',
+  };
+}
+
+function templateStorageKey(options = {}) {
+  const normalized = normalizeTemplateOptions(options);
+  return getClientProfileTemplateStorageKey(normalized.profileId, normalized.templateId);
+}
 
 // ── Server sync (persists across browsers when backend is available) ─────────
 
@@ -71,41 +87,74 @@ function openDB() {
   });
 }
 
-export async function saveTemplateToStorage(arrayBuffer, fileName, chrome = null) {
+export async function saveTemplateToStorage(arrayBuffer, fileName, chrome = null, options = {}) {
+  const normalized = normalizeTemplateOptions(options);
+  const key = templateStorageKey(normalized);
   const db = await openDB();
-  const record = { data: arrayBuffer, fileName, savedAt: Date.now() };
+  const record = {
+    data: arrayBuffer,
+    fileName,
+    savedAt: Date.now(),
+    profileId: normalized.profileId,
+    templateId: normalized.templateId,
+    storageKey: key,
+  };
   if (chrome) record.chrome = chrome;
+  if (options.extraction) {
+    record.extraction = {
+      profileId: options.extraction.profileId,
+      extractionVersion: options.extraction.extractionVersion,
+      raw: options.extraction.raw,
+      evidence: options.extraction.evidence,
+    };
+  }
   await new Promise((resolve, reject) => {
     const tx = db.transaction(DB_STORE, 'readwrite');
-    tx.objectStore(DB_STORE).put(record, DB_KEY);
+    const store = tx.objectStore(DB_STORE);
+    store.put(record, key);
+    if (normalized.profileId === 'strategy' && normalized.templateId === 'default') {
+      store.put(record, LEGACY_DB_KEY);
+    }
     tx.oncomplete = () => {
-      console.log('[PPTX Template] Saved template to IndexedDB:', fileName, arrayBuffer.byteLength, 'bytes',
+      console.log('[PPTX Template] Saved template to IndexedDB:', fileName, arrayBuffer.byteLength, 'bytes', `(${key})`,
         chrome ? '(with chrome)' : '');
       resolve();
     };
     tx.onerror = () => reject(tx.error);
   });
-  try {
-    await uploadTemplateToServer(arrayBuffer, fileName);
-  } catch (e) {
-    console.warn('[PPTX Template] Server upload failed:', e.message);
+  if (normalized.profileId === 'strategy' && normalized.templateId === 'default') {
+    try {
+      await uploadTemplateToServer(arrayBuffer, fileName);
+    } catch (e) {
+      console.warn('[PPTX Template] Server upload failed:', e.message);
+    }
+  } else {
+    console.info('[PPTX Template] Server profile catalog is not available yet; stored template locally for profile:', normalized.profileId);
   }
 }
 
-export async function loadTemplateFromStorage() {
+export async function loadTemplateFromStorage(options = {}) {
+  const normalized = normalizeTemplateOptions(options);
+  const key = templateStorageKey(normalized);
+  const canUseLegacyServer = normalized.profileId === 'strategy' && normalized.templateId === 'default';
   let serverData = null;
-  try {
-    const serverTemplate = await loadTemplateFromServer();
-    if (serverTemplate) {
-      serverData = {
-        data: serverTemplate.data,
-        fileName: serverTemplate.fileName,
-        savedAt: Date.now(),
-      };
-      console.log('[PPTX Template] Loaded from server:', serverData.fileName, serverData.data?.byteLength, 'bytes');
+  if (canUseLegacyServer) {
+    try {
+      const serverTemplate = await loadTemplateFromServer();
+      if (serverTemplate) {
+        serverData = {
+          data: serverTemplate.data,
+          fileName: serverTemplate.fileName,
+          savedAt: Date.now(),
+          profileId: normalized.profileId,
+          templateId: normalized.templateId,
+          storageKey: key,
+        };
+        console.log('[PPTX Template] Loaded from server:', serverData.fileName, serverData.data?.byteLength, 'bytes');
+      }
+    } catch (e) {
+      console.warn('[PPTX Template] Server template unavailable, trying local:', e.message);
     }
-  } catch (e) {
-    console.warn('[PPTX Template] Server template unavailable, trying local:', e.message);
   }
 
   let localRecord = null;
@@ -113,8 +162,17 @@ export async function loadTemplateFromStorage() {
     const db = await openDB();
     localRecord = await new Promise((resolve, reject) => {
       const tx = db.transaction(DB_STORE, 'readonly');
-      const req = tx.objectStore(DB_STORE).get(DB_KEY);
-      req.onsuccess = () => resolve(req.result || null);
+      const store = tx.objectStore(DB_STORE);
+      const req = store.get(key);
+      req.onsuccess = () => {
+        if (req.result || !canUseLegacyServer) {
+          resolve(req.result || null);
+          return;
+        }
+        const legacyReq = store.get(LEGACY_DB_KEY);
+        legacyReq.onsuccess = () => resolve(legacyReq.result || null);
+        legacyReq.onerror = () => reject(legacyReq.error);
+      };
       req.onerror = () => reject(req.error);
     });
   } catch (e) {
@@ -123,7 +181,7 @@ export async function loadTemplateFromStorage() {
 
   const record = serverData || localRecord;
   if (!record) {
-    console.log('[PPTX Template] No template found');
+    console.log('[PPTX Template] No template found for profile slot:', key);
     return null;
   }
 
@@ -140,13 +198,23 @@ export async function loadTemplateFromStorage() {
   if (needsReExtract) {
     try {
       console.log('[PPTX Template] Re-extracting branding for font metadata...');
-      const result = await extractBranding(record.data);
+      const result = await extractBranding(record.data, { profileId: normalized.profileId });
       if (result?.chrome) {
         record.chrome = result.chrome;
         const db = await openDB();
         await new Promise((resolve, reject) => {
           const tx = db.transaction(DB_STORE, 'readwrite');
-          tx.objectStore(DB_STORE).put({ ...record, chrome: result.chrome }, DB_KEY);
+          tx.objectStore(DB_STORE).put({
+            ...record,
+            chrome: result.chrome,
+            extraction: {
+              profileId: result.profileId,
+              extractionVersion: result.extractionVersion,
+              raw: result.raw,
+              evidence: result.evidence,
+            },
+            storageKey: key,
+          }, key);
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);
         });
@@ -160,18 +228,24 @@ export async function loadTemplateFromStorage() {
   if (serverData) {
     console.log('[PPTX Template] Loaded from server:', record.fileName, record.data?.byteLength, 'bytes');
   } else {
-    console.log('[PPTX Template] Loaded from IndexedDB:', record.fileName, record.data?.byteLength, 'bytes');
+    console.log('[PPTX Template] Loaded from IndexedDB:', record.fileName, record.data?.byteLength, 'bytes', `(${key})`);
   }
   return record;
 }
 
-export async function clearTemplateFromStorage() {
+export async function clearTemplateFromStorage(options = {}) {
+  const normalized = normalizeTemplateOptions(options);
+  const key = templateStorageKey(normalized);
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(DB_STORE, 'readwrite');
-    tx.objectStore(DB_STORE).delete(DB_KEY);
+    const store = tx.objectStore(DB_STORE);
+    store.delete(key);
+    if (normalized.profileId === 'strategy' && normalized.templateId === 'default') {
+      store.delete(LEGACY_DB_KEY);
+    }
     tx.oncomplete = () => {
-      console.log('[PPTX Template] Cleared template from IndexedDB');
+      console.log('[PPTX Template] Cleared template from IndexedDB:', key);
       resolve();
     };
     tx.onerror = () => reject(tx.error);

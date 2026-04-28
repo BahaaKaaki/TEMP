@@ -23,6 +23,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - PowerPoint (.pptx) export via PptxGenJS with template-aware merging (logo injection, master shape isolation, smart layout selection, template position awareness)
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
+- Client template profiles can switch generation away from the default Strategy& look; STC ships as the first full profile with semantic theme tokens, layout CSS variables, prompt-section overrides, footer branding, PPTX export hints, evidence metadata, and validation rules
 - Web search via PwC Responses API
 - Router search policy uses GPT 5.4 reasoning by default, but only attaches web search for requests that need current or external evidence; per-step search remains available for factual slides
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
@@ -191,6 +192,12 @@ Model assignments are server-controlled. The Settings modal shows which model is
 ## Linting
 
 The frontend ESLint config keeps undefined symbols and parse-level issues as blocking errors, while legacy cleanup categories such as unused helpers, React Compiler migration warnings, and Fast Refresh export warnings are reported as warnings so `npm run lint` remains usable during active development.
+
+## Client Design Profiles
+
+Settings includes a **Client Design Profile** selector. The default remains Strategy&, while the built-in STC profile applies STC semantic theme tokens, footer branding, layout bands, prompt-section guidance, and PPTX export positioning derived from the STC sandbox evidence plus the Board Affairs playbook standard content layout. Selecting STC is enough to test the profile; the preview canvas receives STC title/subtitle/content/footer positions through theme CSS variables.
+
+Uploaded PPTX masters are now stored by profile/template slot in IndexedDB, so an STC upload does not overwrite the default Strategy& template. The legacy backend `/api/templates/pptx-master` slot is still used for the default Strategy& profile until the server-side template catalog is added. Client demo checks are available through `clientProfileValidation.js` for STC color/font/footer/layout readiness.
 
 ## Azure Deployment
 

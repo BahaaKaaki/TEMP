@@ -2195,9 +2195,11 @@ SEARCH: Include a searchQuery when real data would strengthen the title — the 
   const effectiveDeckStructure = deckStructure || deckContextDigest?.deckStructure || null;
   const deckStructureBlock = effectiveDeckStructure
     ? `\nDECK STRUCTURE MODEL:
-- Executive summary: ${effectiveDeckStructure.executiveSummary ? `slide ${effectiveDeckStructure.executiveSummary.slideIndex + 1} with ${effectiveDeckStructure.executiveSummary.items?.length || 0} item(s)` : 'none detected'}
+- Executive summary: ${effectiveDeckStructure.executiveSummary ? `slide ${effectiveDeckStructure.executiveSummary.slideIndex + 1} "${effectiveDeckStructure.executiveSummary.title}" with ${effectiveDeckStructure.executiveSummary.items?.length || 0} item(s)` : 'none detected'}
+${effectiveDeckStructure.executiveSummary?.items?.length ? `- Executive summary items: ${effectiveDeckStructure.executiveSummary.items.map(item => item.trackerLabel).join('; ')}` : ''}
 - Sections: ${(effectiveDeckStructure.sections || []).map(section => `${section.label} -> slides ${section.slideIndices.map(i => i + 1).join(', ')}`).join(' | ') || 'none'}
-- Tracker alignment: ${effectiveDeckStructure.trackerAlignment?.status || 'unknown'}\n`
+- Tracker alignment: ${effectiveDeckStructure.trackerAlignment?.status || 'unknown'}
+- Tracker rule: when adding or updating section trackers from an executive summary, do NOT set a section tracker on the executive summary slide unless the user explicitly asks. Apply the executive summary item labels to the corresponding body/detail slides.\n`
     : '';
 
   const referenceContextBlock = deckContextDigest?.referenceSlideContexts?.length

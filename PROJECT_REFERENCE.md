@@ -642,6 +642,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 43. **Deterministic slide reorder**: Chat prompts with explicit slide sequences (for example `3-4-2-5-6`), two-slide reorder phrases (for example `reorder slides 4 and 5`), plus simple move/swap commands, bypass the AI router and apply a single undoable slide-array reorder. Omitted slides are preserved in their existing relative order. Router fallback now has a real `reorder_slides` action and a guardrail that rejects create/delete plans for reorder-like requests.
 
+44. **Executive summary tracker context**: Deck context extraction now reads semantic text from freestyle HTML even when point labels are rendered with arbitrary div/span classes. Executive summary detection checks template metadata plus HTML subtitle/class hints, router context includes the actual summary item labels, and exact one-summary-item-per-body-slide tracker requests apply deterministically to body slides only.
+
 ---
 
 ## 11. Pending / In Discussion

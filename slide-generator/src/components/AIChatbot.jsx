@@ -234,6 +234,32 @@ function hasUnsafeReorderPlan(plan = []) {
   return plan.some(step => ['create_slide', 'create_from_template', 'delete_slide'].includes(step?.action));
 }
 
+function isTrackerUpdatePrompt(prompt) {
+  if (!prompt) return false;
+  const text = String(prompt).toLowerCase();
+  return /\b(trackers?|section\s+labels?|section\s+tabs?|navigation)\b/.test(text)
+    && /\b(add|apply|update|set|sync|align|fix)\b/.test(text);
+}
+
+function buildExecutiveSummaryTrackerUpdate(slides = [], deckStructure = null) {
+  const executiveSummary = deckStructure?.executiveSummary;
+  const items = executiveSummary?.items || [];
+  if (!Array.isArray(slides) || slides.length < 2 || !executiveSummary || items.length === 0) return null;
+
+  const execIndex = executiveSummary.slideIndex;
+  const afterExec = slides
+    .map((slide, index) => ({ slide, index }))
+    .filter(({ index }) => index > execIndex);
+
+  if (afterExec.length !== items.length) return null;
+
+  return afterExec.map(({ slide, index }, itemIndex) => ({
+    slide,
+    index,
+    sectionLabel: items[itemIndex].trackerLabel,
+  }));
+}
+
 // Parse slide targets from prompt for Edit All mode
 // Returns: { targetIndices: number[] | null, editAll: boolean, cleanedPrompt: string }
 function parseSlideTargets(prompt, totalSlides) {
@@ -1643,6 +1669,25 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       activeSlideIndex: currentSlideIndex,
       storyline: currentState.storyline,
     });
+
+    const trackerUpdates = isTrackerUpdatePrompt(effectivePrompt)
+      ? buildExecutiveSummaryTrackerUpdate(currentState.slides, deckContextDigest.deckStructure)
+      : null;
+    if (trackerUpdates?.length > 0) {
+      trackerUpdates.forEach(({ slide, sectionLabel }) => {
+        actions.updateSlide(slide.id, { sectionLabel });
+      });
+      actions.syncStorylineFromSlides();
+      const labels = trackerUpdates
+        .map(({ index, sectionLabel }) => `Slide ${index + 1}: ${sectionLabel}`)
+        .join('<br />');
+      addMessage(
+        'assistant',
+        `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Added trackers from the executive summary:<br />${labels}</div>`,
+        { isHTML: true }
+      );
+      return;
+    }
 
     // Create abort controller for this operation
     abortControllerRef.current = new AbortController();
@@ -3528,9 +3573,16 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             const targetIndices = Array.isArray(step.targetSlides) && step.targetSlides.length > 0
               ? step.targetSlides
               : [slideIdx];
+            const trackerDeckStructure = buildDeckStructure(freshState.slides);
+            const executiveSummaryIndex = trackerDeckStructure?.executiveSummary?.slideIndex;
             const targetSlides = targetIndices
               .map(idx => ({ idx, slide: freshState.slides[idx] }))
-              .filter(item => item.slide);
+              .filter(item => item.slide)
+              .filter(item => !(
+                isTrackerUpdatePrompt(userPrompt) &&
+                item.idx === executiveSummaryIndex &&
+                (trackerDeckStructure?.executiveSummary?.items || []).length > 0
+              ));
             if (targetSlides.length === 0) {
               console.warn(`[SmartAction] No slides found for update_trackers`, targetIndices);
               return null;

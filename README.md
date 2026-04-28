@@ -36,7 +36,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Deck-aware routing uses active-page text, layout mix, section maps, and enriched storyline context for follow-on deck requests
 - Triage now selects context depth (`active_slide`, `reference_slides`, `deck_digest`, or `full_text_deck`) and separates target slides from reference slides for cross-slide edits
 - Section and subsection trackers can be updated as slide metadata without regenerating slide HTML
-- Executive summary edits can sync renamed section points back to downstream section trackers when the section structure still matches by order
+- Executive summary trackers are derived from semantic slide text, including freestyle HTML with arbitrary div/span classes, and apply to body slides rather than the executive summary slide
 - Prompt Debug settings expose router, triage, generation, edit, validation, and PPTX prompt overrides plus recent prompt payloads for troubleshooting look and feel
 - New slides use compact stable IDs while older UUID-based decks continue to load unchanged
 - Auto-fetch available models from PwC Shared Services `/models` endpoint with grouped vendor display

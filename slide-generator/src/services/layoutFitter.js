@@ -70,7 +70,7 @@ function getTextElements(frameEl) {
     }
   );
   let node;
-  while (node = walker.nextNode()) elements.push(node);
+  while ((node = walker.nextNode())) elements.push(node);
   return elements;
 }
 

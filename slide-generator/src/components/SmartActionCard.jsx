@@ -264,7 +264,6 @@ export default function SmartActionCard({
       [newPlan[stepIdx - 1], newPlan[stepIdx]] = [newPlan[stepIdx], newPlan[stepIdx - 1]];
       return newPlan;
     });
-    setEditedGroups(null);
   };
 
   const moveStepDown = (stepIdx) => {
@@ -274,7 +273,6 @@ export default function SmartActionCard({
       [newPlan[stepIdx], newPlan[stepIdx + 1]] = [newPlan[stepIdx + 1], newPlan[stepIdx]];
       return newPlan;
     });
-    setEditedGroups(null);
   };
 
   const deleteStep = (stepIdx) => {
@@ -282,7 +280,6 @@ export default function SmartActionCard({
       if (!prev || prev.length <= 1) return prev;
       return prev.filter((_, i) => i !== stepIdx);
     });
-    setEditedGroups(null);
   };
 
   // Toggle context slide for a specific step

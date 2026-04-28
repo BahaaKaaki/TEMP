@@ -41,6 +41,9 @@ function buildStorylineSummary(storyline) {
     let line = `${i + 1}. ${s.title || 'Untitled'}`;
     if (s.description) line += ` -- ${s.description}`;
     if (s.keyMessage) line += ` | Key: ${s.keyMessage}`;
+    if (Array.isArray(s.contentInventory) && s.contentInventory.length > 0) {
+      line += ` | Content: ${s.contentInventory.join('; ')}`;
+    }
     return line;
   }).join('\n');
 }

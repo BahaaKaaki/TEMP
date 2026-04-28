@@ -5,7 +5,7 @@ import { getCredentials } from './models.js';
 import { callWithModelFallback } from './apiClient.js';
 import { TITLE_HEADER_RULES } from './constants.js';
 import { safeJSONParse } from './router.js';
-import { extractSlideContentForAI } from './slideContext.js';
+import { extractSlideContentForAI, extractSlideHtmlForRouter } from './slideContext.js';
 import { ensureSlideStructure } from './slideGeneration.js';
 import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
 
@@ -151,14 +151,16 @@ export async function syncStorylineFromSlidesAI(slides, settings) {
     return [];
   }
 
-  // Extract content from each slide (without raw HTML)
+  // Give the strategist the same structural signal the router gets: full slide
+  // HTML with CSS removed, so cards/pillars/tables are visible without truncation.
   const slidesSummary = slides.map((slide, idx) => ({
     index: idx,
     id: slide.id,
     title: slide.title || `Slide ${idx + 1}`,
     type: slide.type || 'unknown',
     summary: slide.summary || '',
-    content: extractSlideContentForAI(slide.html, { maxLength: 300 }),
+    textSummary: extractSlideContentForAI(slide.html || '', { maxLength: Number.MAX_SAFE_INTEGER }),
+    htmlWithoutCss: extractSlideHtmlForRouter(slide.html || ''),
   }));
 
   const systemPrompt = `You are a presentation strategist analyzing an existing slide deck to extract its storyline.
@@ -167,7 +169,7 @@ Your job is to analyze the slides and create a structured storyline that capture
 1. The narrative flow and key messages
 2. The logical hierarchy (which slides support which)
 3. Proper point types for each slide
-4. Key messages and descriptions
+4. Key messages, descriptions, and a complete inventory of visible content
 
 POINT TYPES:
 - "cover": Opening/title slide
@@ -197,6 +199,9 @@ OUTPUT FORMAT - Return JSON array:
     "title": "Short title label (3-4 words, no periods)",
     "description": "What this slide conveys",
     "keyMessage": "The main takeaway",
+    "contentInventory": [
+      "Every major visible item: pillars, cards, bullets, table rows, metrics, labels, and named sections"
+    ],
     "pointType": "insight",
     "suggestedLayout": "three-card",
     "parentSlideIndex": null or index of parent slide
@@ -213,6 +218,7 @@ Extract the storyline, identifying:
 2. The hierarchy (which slides are sub-points of others)
 3. The appropriate point type
 4. Better short titles (3-4 words) if current ones are too long
+5. A contentInventory array that preserves ALL major visible content from each slide's htmlWithoutCss, including every pillar/card/table row/bullet/metric. Do not omit later items in a repeated structure.
 
 Return ONLY the JSON array.`;
 
@@ -237,6 +243,9 @@ Return ONLY the JSON array.`;
       title: point.title || `Point ${idx + 1}`,
       description: point.description || '',
       keyMessage: point.keyMessage || '',
+      contentInventory: Array.isArray(point.contentInventory)
+        ? point.contentInventory.filter(Boolean).map(item => String(item).trim()).filter(Boolean)
+        : [],
       suggestedLayout: point.suggestedLayout || 'content-list',
       pointType: point.pointType || 'insight',
       parentId: null, // Resolved below
@@ -297,6 +306,7 @@ export async function syncSlidesFromStorylineAI(storyline, slides, settings) {
     suggestedLayout: point.suggestedLayout,
     parentId: point.parentId,
     keyMessage: point.keyMessage,
+    contentInventory: Array.isArray(point.contentInventory) ? point.contentInventory : [],
     hasSlide: slides.some(s => s.storyPointId === point.id),
   }));
 

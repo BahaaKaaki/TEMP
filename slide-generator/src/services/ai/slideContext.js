@@ -103,6 +103,8 @@ export function extractSlideContentForAI(html, options = {}) {
 
   tempDiv.innerHTML = html;
 
+  const allTextLines = getVisibleTextLines(tempDiv);
+
   // Extract structured content
   const title = tempDiv.querySelector('.title, .cover-title, h1')?.textContent?.trim() || '';
   const subtitle = tempDiv.querySelector('.subtitle, .cover-category, h2')?.textContent?.trim() || '';
@@ -132,6 +134,14 @@ export function extractSlideContentForAI(html, options = {}) {
   tempDiv.querySelectorAll('li').forEach(el => {
     const text = el.textContent?.trim();
     if (text && text.length > 5) contentParts.push(`- ${text.substring(0, 100)}`);
+  });
+
+  // Freestyle slides often use arbitrary div/span class names. Fall back to
+  // DOM text-node order so router context still sees point labels.
+  allTextLines.forEach(text => {
+    if (!text || text === title || text === subtitle) return;
+    if (contentParts.some(part => normalizeComparableLabel(part) === normalizeComparableLabel(text))) return;
+    contentParts.push(text.substring(0, 150));
   });
 
   // Build output
@@ -553,12 +563,57 @@ function formatTrackerLabel(index, title) {
   return `${index + 1}. ${toShortTrackerTitle(title)}`;
 }
 
+function getVisibleTextLines(root) {
+  if (!root || typeof document === 'undefined') return [];
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode(node) {
+      const parent = node.parentElement;
+      if (!parent) return NodeFilter.FILTER_REJECT;
+      if (['STYLE', 'SCRIPT', 'NOSCRIPT', 'SVG'].includes(parent.tagName)) return NodeFilter.FILTER_REJECT;
+      if (parent.closest('[aria-hidden="true"], .sr-only, .visually-hidden')) return NodeFilter.FILTER_REJECT;
+      return node.textContent?.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+    },
+  });
+
+  const lines = [];
+  let node;
+  while ((node = walker.nextNode())) {
+    const text = node.textContent.replace(/\s+/g, ' ').trim();
+    if (text) lines.push(text);
+  }
+  return lines;
+}
+
+function isNoiseSummaryLabel(text) {
+  const normalized = normalizeComparableLabel(text);
+  return !normalized ||
+    normalized === 'key message' ||
+    normalized === 'executive summary' ||
+    normalized === 'summary' ||
+    normalized === 'content' ||
+    normalized === 'takeaways';
+}
+
 function isExecutiveSummarySlide(slide = {}) {
   const haystack = `${slide.templateId || ''} ${slide.type || ''} ${slide.layoutType || ''} ${slide.title || ''}`.toLowerCase();
-  return haystack.includes('executivesummary') ||
+  if (haystack.includes('executivesummary') ||
     haystack.includes('executive summary') ||
     haystack.includes('exec summary') ||
-    haystack.includes('executive');
+    haystack.includes('executive')) {
+    return true;
+  }
+
+  if (!slide.html || typeof document === 'undefined') return false;
+  const container = document.createElement('div');
+  container.innerHTML = slide.html;
+  const subtitle = container.querySelector('.subtitle, .cover-category, h2')?.textContent || '';
+  const classNames = Array.from(container.querySelectorAll('[class]'))
+    .map(el => el.className)
+    .join(' ');
+  const textHint = `${subtitle} ${classNames}`.toLowerCase();
+  return textHint.includes('executive summary') ||
+    textHint.includes('exec summary') ||
+    /\bexec[-_\s]?summary\b/.test(textHint);
 }
 
 function getTextFromElement(el, selectors) {
@@ -570,21 +625,120 @@ function getTextFromElement(el, selectors) {
   return el.textContent?.trim() || '';
 }
 
+function extractSummaryItemTitle(node) {
+  const titleSelectors = [
+    'h3',
+    'h4',
+    'h5',
+    '.agenda-title',
+    '.summary-title',
+    '.summary-label',
+    '.card-title',
+    '.item-title',
+    '.point-title',
+    '.takeaway-title',
+    '.factor-title',
+    '.pillar-title',
+    '.theme-title',
+    '.heading',
+    '.label',
+    '.title',
+    'strong',
+    'b',
+  ];
+  const directTitle = cleanStructureText(getTextFromElement(node, titleSelectors));
+  if (directTitle && !isNoiseSummaryLabel(directTitle)) return directTitle;
+
+  const lines = getVisibleTextLines(node)
+    .map(cleanStructureText)
+    .filter(line => line && !isNoiseSummaryLabel(line));
+
+  const standaloneNumberIndex = lines.findIndex(line => /^\d{1,2}$/.test(line));
+  if (standaloneNumberIndex >= 0) {
+    const nextLine = lines.slice(standaloneNumberIndex + 1).find(line => !/^\d{1,2}$/.test(line));
+    if (nextLine) return nextLine;
+  }
+
+  const numberedLine = lines.find(line => /^\d{1,2}[.)\s:-]+/.test(line));
+  if (numberedLine) return cleanStructureText(numberedLine);
+
+  const conciseLine = lines.find(line => line.split(/\s+/).length <= 10 && line.length <= 90);
+  if (conciseLine) return conciseLine;
+
+  return lines[0] || '';
+}
+
+function extractNumberedSummaryItemsFromText(slide, slideIndex) {
+  if (!slide?.html || typeof document === 'undefined') return [];
+  const container = document.createElement('div');
+  container.innerHTML = slide.html;
+  const lines = getVisibleTextLines(container)
+    .map(cleanStructureText)
+    .filter(line => line && !isNoiseSummaryLabel(line));
+
+  const items = [];
+  const seen = new Set();
+  for (let i = 0; i < lines.length; i++) {
+    const current = lines[i];
+    let title = '';
+    if (/^\d{1,2}$/.test(current)) {
+      title = lines.slice(i + 1).find(line => !/^\d{1,2}$/.test(line)) || '';
+    } else {
+      const numbered = current.match(/^(\d{1,2})[.)\s:-]+(.+)$/);
+      if (numbered) title = numbered[2];
+    }
+
+    title = cleanStructureText(title);
+    const key = normalizeComparableLabel(title);
+    if (!title || title.length < 3 || seen.has(key) || isNoiseSummaryLabel(title)) continue;
+    seen.add(key);
+    items.push({
+      index: items.length,
+      slideIndex,
+      slideId: slide.id,
+      title,
+      trackerLabel: formatTrackerLabel(items.length, title),
+    });
+  }
+  return items.slice(0, 12);
+}
+
 function extractExecutiveSummaryItems(slide, slideIndex) {
   if (!slide?.html || typeof document === 'undefined') return [];
 
   const container = document.createElement('div');
   container.innerHTML = slide.html;
   const itemNodes = [
-    ...container.querySelectorAll('.exec-section, .exec-v-col, .exec-h-row, .summary-cell, .card, li'),
+    ...container.querySelectorAll([
+      '.exec-section',
+      '.exec-v-col',
+      '.exec-h-row',
+      '.agenda-item',
+      '.summary-cell',
+      '.summary-card',
+      '.summary-item',
+      '.takeaway',
+      '.takeaway-card',
+      '.point',
+      '.point-card',
+      '.key-point',
+      '.factor',
+      '.factor-card',
+      '.pillar',
+      '.pillar-card',
+      '.theme',
+      '.theme-card',
+      '.grid-cell',
+      '.card',
+      'li',
+    ].join(', ')),
   ];
 
   const seen = new Set();
-  return itemNodes
+  const extracted = itemNodes
     .map((node, itemIndex) => {
-      const rawTitle = getTextFromElement(node, ['h4', '.exec-v-label', '.exec-h-label', '.summary-title', '.card-title', 'strong']);
-      const title = cleanStructureText(rawTitle);
-      if (!title || title.length < 3) return null;
+      const title = cleanStructureText(extractSummaryItemTitle(node));
+      if (!title || title.length < 3 || isNoiseSummaryLabel(title)) return null;
       const key = normalizeComparableLabel(title);
       if (!key || seen.has(key)) return null;
       seen.add(key);
@@ -598,6 +752,16 @@ function extractExecutiveSummaryItems(slide, slideIndex) {
     })
     .filter(Boolean)
     .slice(0, 12);
+
+  if (extracted.length >= 2) {
+    return extracted.map((item, index) => ({
+      ...item,
+      index,
+      trackerLabel: formatTrackerLabel(index, item.title),
+    }));
+  }
+
+  return extractNumberedSummaryItemsFromText(slide, slideIndex);
 }
 
 export function buildDeckStructure(slides = []) {

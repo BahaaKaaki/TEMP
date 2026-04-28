@@ -7,6 +7,7 @@ import { callWithModelFallback, callRouterWithImages, attachSkillIdToBody } from
 import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { CONTEXT_LEVELS, normalizeContextLevel } from './slideContext.js';
 import { authFetch } from '../authFetch.js';
+import ROUTER_SYSTEM_PROMPT from '../../guides/router-system-prompt.md?raw';
 
 // ============================================
 // RULE-BASED ROUTER (No API call needed)
@@ -912,6 +913,7 @@ export function getRouterOutputSchema() {
 }
 
 export function getRouterSystemPrompt(settings = null) {
+  if (settings?.useLegacyRouterPrompt) {
   const defaultPrompt = `You are a senior consulting partner at Strategy& Middle East, primarily serving clients across the GCC region. You are also the work router and research planner for slide presentations.
 
 Your role is to understand the user's real request and intent, decide the right deck structure, perform or coordinate research when needed, and produce a consultant-grade execution plan.
@@ -1563,6 +1565,10 @@ REMEMBER:
 - In agent mode: YOU choose templates, agent provides content + research only
 - NEVER drop or summarize research — pass the full Instruction + Data Points through to the step instruction
 - SLIDES: You can't see content (only titles) → use contextSlides, reference by position`;
+    return applyPromptOverride(settings, 'router.system', defaultPrompt);
+  }
+
+  const defaultPrompt = ROUTER_SYSTEM_PROMPT.replace('{{CURRENT_DATE}}', currentDateString());
   return applyPromptOverride(settings, 'router.system', defaultPrompt);
 }
 

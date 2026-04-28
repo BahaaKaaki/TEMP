@@ -148,7 +148,9 @@ slide-themes-main/
 │   │   │   ├── freestyle-shell.md          # Shell: canvas dimensions, HTML skeleton, CSS scoping rules
 │   │   │   ├── freestyle-theme.md          # Theme: design tokens, fonts, surface usage, status colors
 │   │   │   ├── freestyle-vibe.md           # Vibe: visual design principles, layout variety, color usage
-│   │   │   └── freestyle-writing.md        # Writing: content rules, layout archetypes, citations, process
+│   │   │   ├── freestyle-writing.md        # Writing: content rules, layout archetypes, citations, process
+│   │   │   ├── router-system-prompt.md     # AI router planning prompt (hierarchy, trackers, output schema)
+│   │   │   └── slide-html-generator-prompt.md # Freestyle HTML generator prompt (fit, tokens, design quality)
 │   │   └── data/
 │   │       └── knowledgeBaseExamples.js # Knowledge base example entries
 │   ├── index.html
@@ -533,7 +535,7 @@ Options: `-SkipBuild` (deploy only), `-SkipDeploy` (build only)
 ### Router Architecture
 
 Two routers operate in tandem:
-1. **AI Router** (`aiRouteRequest`): GPT 5.4 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. Identity: "Strategy& Middle East, GCC region". Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
+1. **AI Router** (`aiRouteRequest`): GPT 5.4 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. The default system prompt lives in `slide-generator/src/guides/router-system-prompt.md` and emphasizes Strategy& Middle East planning, hierarchy-aware tracker audits, explicit layout guidance, and freestyle-by-default content slides. Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
 2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
 
 The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `targetSlides`, `referenceSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level. Triage selects a `contextLevel` (`active_slide`, `reference_slides`, `deck_digest`, `full_text_deck`) so the router receives enough deck context without defaulting to full-deck content on every request. The active page context includes both text digest and full page HTML with CSS stripped (`<style>` blocks and inline `style` attributes removed) so the router can reason about card/pillar/table hierarchy. Rich storyline sync uses the same CSS-stripped full HTML signal for each slide and stores a `contentInventory` so later storyline-aware prompts can see all major pillars, cards, bullets, metrics, labels, and table rows.
@@ -647,6 +649,10 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 45. **Rich storyline full-content sync**: `syncStorylineFromSlidesAI()` now passes each slide's CSS-stripped full HTML plus untruncated text into storyline extraction, and stores a `contentInventory` array per story point so downstream storyline-aware prompts retain all major pillars, cards, bullets, metrics, labels, and table rows.
 
 46. **Clarification card submit scoping**: Multi-round router and agent clarification cards submit answers from the clicked card instead of the first historical card in the chat transcript, so first, second, and later question rounds preserve their own selected options and free-text answers.
+
+47. **Router system prompt refresh**: The default AI router prompt moved to `slide-generator/src/guides/router-system-prompt.md` with dynamic date injection. The prompt now prioritizes hierarchy-aware tracker recalibration, explicit `layoutGuidance`, limited clarification rounds, cover-only default template selection, and freestyle-by-default body slides.
+
+48. **Slide HTML generator prompt refresh**: Freestyle slide generation now uses `slide-generator/src/guides/slide-html-generator-prompt.md` as the default system prompt. It emphasizes scratch-built consulting layouts, strict 904x366 frame fit, scoped CSS, token-only colors, containment, label economy, and visual uplift while retaining PPTX export hints.
 
 ---
 

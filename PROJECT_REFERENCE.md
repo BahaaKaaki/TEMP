@@ -640,7 +640,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 42. **Slide typography floors**: generation prompts, freestyle guides, template fill prompts, layout fitting, CSS/HTML storage normalization, and PPTX export prompts now share a typography contract: no visible text below 10px/10pt, body copy and table cells at 12px/12pt, and section/pillar/card titles at 14px/14pt. `scopeCSS()` normalizes stored custom CSS before per-slide scoping, `SlideContext` normalizes inline HTML font sizes on add/import/update, the layout fitter avoids shrinking or scaling below readable floors, and PPTX export validation rejects generated code with `fontSize < 10`.
 
-43. **Deterministic slide reorder**: Chat prompts with explicit slide sequences (for example `3-4-2-5-6`), plus simple move/swap commands, bypass the AI router and apply a single undoable slide-array reorder. Omitted slides are preserved in their existing relative order, preventing the router from turning reorder requests into create/delete execution plans.
+43. **Deterministic slide reorder**: Chat prompts with explicit slide sequences (for example `3-4-2-5-6`), two-slide reorder phrases (for example `reorder slides 4 and 5`), plus simple move/swap commands, bypass the AI router and apply a single undoable slide-array reorder. Omitted slides are preserved in their existing relative order. Router fallback now has a real `reorder_slides` action and a guardrail that rejects create/delete plans for reorder-like requests.
 
 ---
 

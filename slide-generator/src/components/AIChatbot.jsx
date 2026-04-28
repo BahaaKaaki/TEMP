@@ -150,16 +150,25 @@ function parseSlideReorderRequest(prompt, slides) {
     };
   };
 
-  const swapMatch = text.match(/\bswap\b.*?(?:slide|page)\s*#?\s*(\d+).*?\b(?:and|with)\b.*?(?:slide|page)\s*#?\s*(\d+)/i);
-  if (swapMatch) {
-    const first = Number(swapMatch[1]);
-    const second = Number(swapMatch[2]);
+  const swapSlidesByNumber = (first, second) => {
     if (first < 1 || first > slides.length || second < 1 || second > slides.length) {
       return { error: `Slide numbers must be between 1 and ${slides.length}.` };
     }
+    if (first === second) return { error: 'Source and target slides must be different.' };
+
     const reordered = [...slides];
     [reordered[first - 1], reordered[second - 1]] = [reordered[second - 1], reordered[first - 1]];
     return normalizeMoveResult(reordered);
+  };
+
+  const swapMatch = text.match(/\bswap\b.*?(?:slide|page)\s*#?\s*(\d+).*?\b(?:and|with)\b.*?(?:slide|page)\s*#?\s*(\d+)/i);
+  if (swapMatch) {
+    return swapSlidesByNumber(Number(swapMatch[1]), Number(swapMatch[2]));
+  }
+
+  const reorderPairMatch = text.match(/\b(?:reorder|rearrange|arrange|order)\b.*?(?:slides?|pages?)\s*#?\s*(\d+)\s*(?:and|ane|with|&)\s*#?\s*(\d+)\b/i);
+  if (reorderPairMatch) {
+    return swapSlidesByNumber(Number(reorderPairMatch[1]), Number(reorderPairMatch[2]));
   }
 
   const relativeMoveMatch = text.match(/\bmove\b.*?(?:slide|page)\s*#?\s*(\d+).*?\b(before|after)\b.*?(?:slide|page)\s*#?\s*(\d+)/i);
@@ -211,6 +220,18 @@ function parseSlideReorderRequest(prompt, slides) {
   }
 
   return buildReorderResultFromNumbers(numbers, slides);
+}
+
+function isLikelySlideReorderPrompt(prompt, slideCount = 0) {
+  if (!prompt || slideCount < 2) return false;
+  const text = String(prompt).toLowerCase();
+  return /\b(slides?|pages?|deck)\b/.test(text)
+    && /\b(reorder|rearrange|move|swap)\b/.test(text);
+}
+
+function hasUnsafeReorderPlan(plan = []) {
+  if (!Array.isArray(plan) || plan.length === 0) return false;
+  return plan.some(step => ['create_slide', 'create_from_template', 'delete_slide'].includes(step?.action));
 }
 
 // Parse slide targets from prompt for Edit All mode
@@ -2294,6 +2315,19 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
 
         console.log('[AIChatbot] Route result (full):', JSON.stringify(routeResult, null, 2));
 
+        if (
+          isLikelySlideReorderPrompt(effectivePrompt, freshState.slides.length) &&
+          hasUnsafeReorderPlan(routeResult?.plan)
+        ) {
+          addMessage(
+            'assistant',
+            'I can reorder existing slides, but I will not create or delete slides to do it. Please provide the exact slide order, for example `3-4-2-5-6`, or say `swap slides 4 and 5`.'
+          );
+          setIsLoading(false);
+          setProgress(null);
+          return;
+        }
+
         // ─── Router clarification questions — show same UI as agent questions ───
         if (routeResult?.needsClarification && routeResult.questions?.length > 0) {
           const escHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -2585,6 +2619,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       const createdSlides = [];
       const editedSlides = [];
       const deletedSlides = [];
+      const reorderedSlides = [];
       const parallelBatchSize = settings.parallelSlideGeneration || 3;
 
       // Track outputs per step index: stepOutputs[stepIndex] = { html, slideIndex, title }
@@ -3339,6 +3374,61 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             return null;
           }
 
+          case 'reorder_slides': {
+            const slidesBeforeReorder = freshState.slides;
+            const total = slidesBeforeReorder.length;
+            let nextOrder = null;
+
+            if (Array.isArray(step.orderedSlideIndices) && step.orderedSlideIndices.length > 0) {
+              const requested = step.orderedSlideIndices
+                .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < total);
+              const unique = [...new Set(requested)];
+              if (unique.length !== requested.length || unique.length === 0) {
+                addMessage('assistant', 'I could not safely reorder the slides because the requested order contains invalid or duplicate slide numbers.');
+                return null;
+              }
+
+              if (unique.length === total) {
+                nextOrder = unique;
+              } else {
+                const selected = new Set(unique);
+                const firstSelected = Math.min(...unique);
+                const prefix = Array.from({ length: firstSelected }, (_, idx) => idx)
+                  .filter(idx => !selected.has(idx));
+                const suffix = Array.from({ length: total }, (_, idx) => idx)
+                  .filter(idx => !selected.has(idx) && !prefix.includes(idx));
+                nextOrder = [...prefix, ...unique, ...suffix];
+              }
+            } else if (Number.isInteger(step.fromIndex) && Number.isInteger(step.toIndex)) {
+              const { fromIndex, toIndex } = step;
+              if (fromIndex < 0 || fromIndex >= total || toIndex < 0 || toIndex >= total) {
+                addMessage('assistant', `Slide numbers must be between 1 and ${total}.`);
+                return null;
+              }
+              nextOrder = Array.from({ length: total }, (_, idx) => idx);
+              const [moved] = nextOrder.splice(fromIndex, 1);
+              nextOrder.splice(toIndex, 0, moved);
+            }
+
+            if (!nextOrder) {
+              addMessage('assistant', 'I need the exact slide order to reorder safely, for example `3-4-2-5-6`.');
+              return null;
+            }
+
+            const orderedIds = nextOrder.map(idx => slidesBeforeReorder[idx]?.id);
+            const currentIds = slidesBeforeReorder.map(slide => slide.id);
+            const isNoop = orderedIds.every((id, idx) => id === currentIds[idx]);
+            if (!isNoop) {
+              actions.reorderSlidesById(orderedIds);
+              actions.syncStorylineFromSlides();
+            }
+
+            const displayOrder = nextOrder.map(idx => idx + 1).join(', ');
+            reorderedSlides.push({ index: 'Order', title: displayOrder });
+            stepOutputs[stepIndex] = { slideIndex: nextOrder[0] ?? 0, title: `Order: ${displayOrder}` };
+            return null;
+          }
+
           case 'delete_slide': {
             let slideIdx = step.slideIndex ?? freshState.slides.findIndex(s => s.id === freshState.activeSlideId);
             let slideToDelete = freshState.slides[slideIdx];
@@ -4086,6 +4176,9 @@ Original request: ${userPrompt}`;
       if (deletedSlides.length > 0) {
         summaryParts.push(`Deleted ${deletedSlides.length} slide${deletedSlides.length > 1 ? 's' : ''}`);
       }
+      if (reorderedSlides.length > 0) {
+        summaryParts.push('Reordered slides');
+      }
 
       const summaryMessage = summaryParts.length > 0
         ? summaryParts.join(', ')
@@ -4167,6 +4260,7 @@ Original request: ${userPrompt}`;
         if (createdSlides.length > 0) resultHtml += renderSection('Created', createdSlides, '&#10003;');
         if (editedSlides.length > 0) resultHtml += renderSection('Edited', editedSlides, '&#9998;');
         if (deletedSlides.length > 0) resultHtml += renderSection('Removed', deletedSlides, '&#10007;');
+        if (reorderedSlides.length > 0) resultHtml += renderSection('Reordered', reorderedSlides, '&#8645;');
 
         resultHtml += '</div>';
 

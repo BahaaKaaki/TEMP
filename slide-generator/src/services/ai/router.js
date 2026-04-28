@@ -877,6 +877,9 @@ export function getRouterOutputSchema() {
       subSectionTracker: { type: ['string', 'null'] },
       searchQuery: { type: ['string', 'null'] },
       searchGoal: { type: ['string', 'null'] },
+      fromIndex: { type: ['integer', 'null'] },
+      toIndex: { type: ['integer', 'null'] },
+      orderedSlideIndices: { anyOf: [{ type: 'array', items: { type: 'integer' } }, { type: 'null' }] },
     },
     required: [
       'action', 'slideIndex', 'templateId', 'position',
@@ -885,6 +888,7 @@ export function getRouterOutputSchema() {
       'contextSlides', 'targetSlides', 'referenceSlides', 'contextFromStep',
       'sectionTracker', 'subSectionTracker',
       'searchQuery', 'searchGoal',
+      'fromIndex', 'toIndex', 'orderedSlideIndices',
     ],
     additionalProperties: false,
   };
@@ -1054,9 +1058,16 @@ Keep step instructions minimal: just the Key Message + Data Points if present.
 
 Steps see ONLY: (1) your instruction (which gets replaced with the full stored instruction), (2) contextSlides content if provided.
 
-ACTIONS: create_slide, edit_slide, delete_slide, switch_template, update_trackers, answer_question
+ACTIONS: create_slide, edit_slide, delete_slide, switch_template, update_trackers, reorder_slides, answer_question
 
 CRITICAL: Greetings and small talk (hi, hello, hey, thanks, bye) MUST use answer_question. NEVER create slides for conversational messages.
+
+CRITICAL - REORDERING EXISTING SLIDES:
+- For requests to reorder, rearrange, move, or swap existing slides/pages, use action "reorder_slides".
+- NEVER represent a reorder as create_slide + delete_slide. Reordering changes slide array order only; it must not generate, duplicate, or remove slide content.
+- If the requested order is explicit, set orderedSlideIndices to the desired 0-based slide order. It may be a full deck order or the ordered subset the user named; omitted slides will keep their current relative order.
+- For a single move, you may set fromIndex and toIndex instead.
+- If the request is too ambiguous to derive a safe order, return answer_question asking for the exact slide order.
 
 CRITICAL - TARGET vs REFERENCE SLIDES:
 - targetSlides = slides that will be changed by the request
@@ -1312,7 +1323,7 @@ DECK STRUCTURE & STORYTELLING (think like a senior consulting partner):
 STEP FIELDS — STRUCTURED OUTPUT (CRITICAL):
 Each step may include these separate fields. Do NOT merge them into one combined block.
 
-- action: the operation (create_slide, edit_slide, delete_slide, switch_template, update_trackers, answer_question)
+- action: the operation (create_slide, edit_slide, delete_slide, switch_template, update_trackers, reorder_slides, answer_question)
 - slideIndex: (REQUIRED for edit_slide and delete_slide) 0-based index of the slide to modify. Slide 1 = 0, Slide 7 = 6.
 - templateId: which template to use
 - position: where to place the slide
@@ -1331,6 +1342,8 @@ Each step may include these separate fields. Do NOT merge them into one combined
 - update_trackers steps: set slideIndex plus sectionTracker/subSectionTracker. Keep instruction short and do not request HTML regeneration.
 - searchQuery: precise search query for slide-specific data
 - searchGoal: what the search must retrieve (use alongside searchQuery)
+- fromIndex / toIndex: 0-based indices for a single reorder_slides move. Use null for all other actions.
+- orderedSlideIndices: 0-based desired order for reorder_slides. Use null for all other actions.
 
 Field separation rules:
 - "title" and "subtitle" are SEPARATE from "instruction" — do not embed TITLE:/SUBTITLE: markers in instruction
@@ -2688,6 +2701,9 @@ USER REQUEST: "${routerPrompt}"`;
           sectionTracker: step.sectionTracker || null,
           subSectionTracker: step.subSectionTracker || null,
           layoutGuidance: step.layoutGuidance || null,
+          fromIndex: Number.isInteger(step.fromIndex) ? step.fromIndex : null,
+          toIndex: Number.isInteger(step.toIndex) ? step.toIndex : null,
+          orderedSlideIndices: normalizeSlideIndexArray(step.orderedSlideIndices, slideCount),
         };
       }),
       groups: parsed.groups || null,

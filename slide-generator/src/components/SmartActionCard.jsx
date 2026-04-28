@@ -178,6 +178,7 @@ const ACTION_CONFIG = {
   edit_slide: { icon: '✏️', label: 'Edit', color: '#8E1E1E' },
   delete_slide: { icon: '🗑️', label: 'Delete', color: '#ef4444' },
   switch_template: { icon: '🔄', label: 'Switch', color: '#8E1E1E' },
+  reorder_slides: { icon: '::', label: 'Reorder', color: '#8E1E1E' },
   create_slides_batch: { icon: '📑', label: 'Batch', color: '#8E1E1E' },
   create_from_template: { icon: '✨', label: 'Create', color: '#8E1E1E' },
   generate_storyline: { icon: '📖', label: 'Storyline', color: '#8E1E1E' },
@@ -347,6 +348,15 @@ export default function SmartActionCard({
     }
     if (stepAction === 'edit_slide') return `Editing slide ${(step.slideIndex ?? currentSlideIdx) + 1}`;
     if (stepAction === 'delete_slide') return `Removing slide ${(step.slideIndex ?? currentSlideIdx) + 1}`;
+    if (stepAction === 'reorder_slides') {
+      if (Array.isArray(step.orderedSlideIndices) && step.orderedSlideIndices.length > 0) {
+        return `New order: ${step.orderedSlideIndices.map(idx => idx + 1).join(', ')}`;
+      }
+      if (Number.isInteger(step.fromIndex) && Number.isInteger(step.toIndex)) {
+        return `Move slide ${step.fromIndex + 1} to position ${step.toIndex + 1}`;
+      }
+      return 'Reorder slides';
+    }
     if (stepAction === 'switch_template') {
       const target = `Slide ${(step.slideIndex ?? currentSlideIdx) + 1}`;
       return tmpl ? `${target} \u2192 ${tmpl.title}` : target;

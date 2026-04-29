@@ -483,11 +483,12 @@ async function pickBestLayout(tplZip) {
  *   6. Update [Content_Types].xml to list our slides
  *   7. Return merged ZIP
  */
-export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome = null) {
+export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome = null, options = {}) {
   console.log('[PPTX Template] Starting merge. Generated:', generatedBuf.byteLength, 'bytes, Template:', templateBuf.byteLength, 'bytes');
 
   const tplZip = await JSZip.loadAsync(templateBuf);
   const genZip = await JSZip.loadAsync(generatedBuf);
+  const preserveTemplateChrome = options.preserveTemplateChrome === true;
 
   // ── Step 1: Remove template's existing slides + notesSlides ────────────
   const tplSlideFiles = Object.keys(tplZip.files).filter(
@@ -515,12 +516,12 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
   const targetLayoutPath = `ppt/slideLayouts/slideLayout${targetLayoutNum}.xml`;
   const targetLayoutRelsPath = `ppt/slideLayouts/_rels/slideLayout${targetLayoutNum}.xml.rels`;
-  if (tplZip.files[targetLayoutPath]) {
+  if (!preserveTemplateChrome && tplZip.files[targetLayoutPath]) {
     const layoutXml = await tplZip.files[targetLayoutPath].async('string');
     tplZip.file(targetLayoutPath, stripLayoutChrome(layoutXml));
     console.log('[PPTX Template] Stripped visible chrome from slideLayout' + targetLayoutNum);
   }
-  if (tplZip.files[targetLayoutRelsPath]) {
+  if (!preserveTemplateChrome && tplZip.files[targetLayoutRelsPath]) {
     const layoutRelsXml = await tplZip.files[targetLayoutRelsPath].async('string');
     tplZip.file(targetLayoutRelsPath, stripUnusedLayoutChromeRelationships(layoutRelsXml));
   }
@@ -533,7 +534,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   const LOGO_TARGET = `../media/logo_chrome.${safeLogoExt}`;
   let hasLogo = false;
 
-  if (chrome?.logo?.image) {
+  if (!preserveTemplateChrome && chrome?.logo?.image) {
     try {
       const dataUri = chrome.logo.image;
       const base64 = dataUri.split(',')[1];
@@ -556,7 +557,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
     if (genZip.files[genSlidePath]) {
       let slideXml = await genZip.files[genSlidePath].async('string');
-      slideXml = hideMasterShapes(slideXml);
+      if (!preserveTemplateChrome) slideXml = hideMasterShapes(slideXml);
       slideXml = injectSlideBackground(slideXml);
       if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
       tplZip.file(genSlidePath, slideXml);

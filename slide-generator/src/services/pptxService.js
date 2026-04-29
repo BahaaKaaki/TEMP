@@ -1470,7 +1470,9 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       };
       const merged = activeProfile.id === 'stc'
         ? await applyProfileChromeToGenerated(buf, chrome)
-        : await applyTemplateToGenerated(buf, templateData.data, chrome);
+        : await applyTemplateToGenerated(buf, templateData.data, chrome, {
+          preserveTemplateChrome: activeProfile.id === 'strategy',
+        });
       downloadArrayBuffer(merged, filename);
     } catch (e) {
       console.error('[PPTX] Template merge failed:', e);
@@ -1569,7 +1571,9 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
       };
       const merged = activeProfile.id === 'stc'
         ? await applyProfileChromeToGenerated(buf, chrome)
-        : await applyTemplateToGenerated(buf, templateData.data, chrome);
+        : await applyTemplateToGenerated(buf, templateData.data, chrome, {
+          preserveTemplateChrome: activeProfile.id === 'strategy',
+        });
       downloadArrayBuffer(merged, filename);
     } catch (e) { await pptx.writeFile({ fileName: filename }); }
     } else {

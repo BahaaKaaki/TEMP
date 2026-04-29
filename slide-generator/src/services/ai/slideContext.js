@@ -580,13 +580,9 @@ function normalizeComparableLabel(text) {
     .trim();
 }
 
-function toShortTrackerTitle(title, fallback = 'Section') {
-  const cleaned = cleanStructureText(title) || fallback;
-  return cleaned.split(/\s+/).slice(0, 4).join(' ');
-}
-
 function formatTrackerLabel(index, title) {
-  return `${index + 1}. ${toShortTrackerTitle(title)}`;
+  const cleaned = cleanStructureText(title) || 'Section';
+  return `${index + 1}. ${cleaned}`;
 }
 
 function getVisibleTextLines(root) {

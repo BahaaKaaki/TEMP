@@ -34,11 +34,11 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Template switching strips model-returned `<style>` blocks when template CSS is applied, reducing conflicts between generated CSS and extracted template CSS
 - Cross-slide format matching passes referenced slide HTML plus its unscoped `customCSS`, so "make this like slide N" has the actual visual rules, not just markup
 - Explicit slide reorder prompts such as `3-4-2-5-6` or `reorder slides 4 and 5` are handled deterministically without an AI planning call, preserving omitted slides in their existing relative order; the create/delete guard is scoped to pure reorder requests so broader deck restructuring can still change content
-- Slide typography is normalized on generation/import/update and PPTX export: no visible text below 10px/10pt, body copy targets 12px/12pt, and section/pillar/card titles target 14px/14pt
+- Slide typography is normalized on generation/import/update and PPTX export: compact tags, chips, badges, and tracker labels may use 8px/8pt; normal text stays at least 10px/10pt, body copy targets 12px/12pt, and section/pillar/card titles target 14px/14pt
 - Deck-aware routing uses active-page text, layout mix, section maps, and enriched storyline context for follow-on deck requests
 - Triage now selects context depth (`active_slide`, `reference_slides`, `deck_digest`, or `full_text_deck`) and separates target slides from reference slides for cross-slide edits
 - Section and subsection trackers can be updated as slide metadata without regenerating slide HTML
-- Executive summary trackers are derived from semantic slide text, including freestyle HTML with arbitrary div/span classes, and apply to body slides rather than the executive summary slide
+- Executive summary trackers are derived from recognizable parent-page wording, including freestyle HTML with arbitrary div/span classes, and apply to body slides rather than the executive summary slide
 - Prompt Debug settings expose router, triage, generation, edit, validation, and PPTX prompt overrides plus recent prompt payloads for troubleshooting look and feel
 - Multi-round clarification cards submit answers from the active question card, so follow-up question sets preserve first, second, and later-round user preferences
 - Router context includes the active page's full HTML structure without CSS, so planning can see card/pillar/table hierarchy instead of relying only on text digests

@@ -11,11 +11,13 @@
 
 export const TYPOGRAPHY_FLOORS = Object.freeze({
   absolute: 10,
+  compactLabel: 8,
   body: 12,
   sectionTitle: 14,
 });
 
-const SMALL_TEXT_SELECTOR_RE = /\b(footer|source|footnote|caption|meta|label|badge|chip|axis|tick|legend|unit|note|small)\b/i;
+const COMPACT_LABEL_SELECTOR_RE = /\b(label|badge|chip|tag|tracker|pill|tab|kicker|eyebrow)\b/i;
+const SMALL_TEXT_SELECTOR_RE = /\b(footer|source|footnote|caption|meta|axis|tick|legend|unit|note|small)\b/i;
 const SECTION_TITLE_SELECTOR_RE = /\b(h3|h4|heading|headline|section|pillar|card-title|cell-title|grid-title|dense-title|timeline-title|kp-title)\b/i;
 const BODY_TEXT_SELECTOR_RE = /\b(p|li|td|th|body|text|copy|desc|description|content|insight|takeaway|bullet|cell|card)\b/i;
 
@@ -24,6 +26,7 @@ function formatPx(value) {
 }
 
 function typographyFloorForSelector(selector) {
+  if (COMPACT_LABEL_SELECTOR_RE.test(selector)) return TYPOGRAPHY_FLOORS.compactLabel;
   if (SMALL_TEXT_SELECTOR_RE.test(selector)) return TYPOGRAPHY_FLOORS.absolute;
   if (SECTION_TITLE_SELECTOR_RE.test(selector)) return TYPOGRAPHY_FLOORS.sectionTitle;
   if (BODY_TEXT_SELECTOR_RE.test(selector)) return TYPOGRAPHY_FLOORS.body;

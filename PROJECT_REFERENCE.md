@@ -566,7 +566,7 @@ For structured decks (7+ slides):
 - `subSectionTracker`: "Phase 1", "Phase 2" (grey tab, for multi-slide sections)
 - Executive summary items correspond 1:1 to section tracker groups
 - Router plans can emit `update_trackers` to rename or clear tracker metadata directly, avoiding unnecessary HTML regeneration for tracker-only requests.
-- `buildDeckStructure()` derives a canonical section model from executive summary items and slide tracker metadata; after executive-summary edits, `planTrackerSyncFromDeckStructures()` syncs renamed section points to matching downstream body-slide trackers when the section count still aligns.
+- `buildDeckStructure()` derives a canonical section model from executive summary items and slide tracker metadata; after executive-summary edits, `planTrackerSyncFromDeckStructures()` syncs renamed section points to matching downstream body-slide trackers when the section count still aligns. Tracker labels preserve recognizable parent-page wording and only normalize numbering to `N. Label`.
 
 ---
 
@@ -655,6 +655,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 48. **Slide HTML generator prompt refresh**: Freestyle slide generation now uses `slide-generator/src/guides/slide-html-generator-prompt.md` as the default system prompt. It emphasizes scratch-built consulting layouts, strict 904x366 frame fit, scoped CSS, token-only colors, containment, label economy, and visual uplift while retaining PPTX export hints.
 
 49. **Executive prompt balance refresh**: Router and slide HTML prompts now emphasize regular execution over unnecessary questions, explicit brainstorming mode, tracker continuity, source quality guardrails, balanced slide density, sharp-edged consulting visuals, chart geometry, sequential flow layouts, and reduced repeated structural labels.
+
+50. **Tracker wording and compact tag sizing fix**: Executive-summary-derived trackers now preserve recognizable parent-page wording instead of truncating to four words. Router guidance copies `[TRACKER]` / `[SUB_TRACKER]` tags exactly and avoids synonym rewording. Compact tags, chips, badges, and tracker labels may use 8px/8pt for PPTX fit while normal text retains the 10px/10pt floor.
 
 ---
 

@@ -67,7 +67,7 @@ The `.frame` is exactly **904 x 366 px** with `overflow: hidden`.
 - Cut content before shrinking design: remove weak points, shorten copy, or reduce item count.
 - Prefer 3 strong points with breathing room over 6 cramped points.
 - Use 12px body text and 14px local headings by default.
-- Never use visible text below 10px.
+- Never use normal visible text below 10px; compact tags, chips, badges, and tracker labels may use 8px.
 - Avoid walls of text; slides should feel light and scannable.
 - Mentally check that no element exceeds frame width or height.
 - Avoid many auxiliary boxes above or below the main content.
@@ -161,8 +161,9 @@ Font sizing:
 - Section heads, pillar titles, card titles: 14px bold
 - Body text, bullets, descriptions, table cells: 12px
 - KPI numbers: 28-36px bold
-- Labels, chips, captions, legends, axis ticks: 10px minimum
-- No visible text below 10px
+- Compact tags, chips, badges, tracker labels, and short in-box labels: 8px minimum
+- Captions, legends, axis ticks, source notes: 10px minimum
+- No normal visible text below 10px; no compact tag/tracker text below 8px
 
 ---
 
@@ -398,7 +399,7 @@ Before returning the slide, verify:
 - No base skeleton classes are restyled.
 - No hardcoded colors are used.
 - Every custom class in HTML has a matching CSS rule.
-- No visible text is below 10px.
+- No normal visible text is below 10px, and no compact tag/tracker text is below 8px.
 - The layout fits inside the 904 x 366 px frame.
 - All dark-background containers use `var(--on-accent)` for text.
 - The frame does not create a competing hero message.

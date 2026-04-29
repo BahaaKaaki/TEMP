@@ -60,14 +60,14 @@ const STC_THEME = {
       '--left-x': '15px',
       '--title-y': '28px',
       '--title-w': '931px',
-      '--title-font-size': '28px',
-      '--title-font-weight': '500',
+      '--title-font-size': '24px',
+      '--title-font-weight': '400',
       '--title-line-height': '1.15',
       '--subtitle-y': '105px',
       '--subtitle-w': '931px',
       '--subtitle-color': '#FF375E',
-      '--subtitle-font-size': '16px',
-      '--subtitle-font-weight': '500',
+      '--subtitle-font-size': '18px',
+      '--subtitle-font-weight': '400',
       '--frame-y': '134px',
       '--frame-w': '931px',
       '--frame-h': '340px',
@@ -75,7 +75,7 @@ const STC_THEME = {
       '--footer-y': '494px',
       '--footer-bottom': 'auto',
       '--footer-w': '931px',
-      '--footer-font-size': '9px',
+      '--footer-font-size': '8px',
       '--footer-padding-bottom': '0',
       '--source-x': '15px',
       '--source-y': '494px',
@@ -119,15 +119,15 @@ const STC_LAYOUT_CONTRACT = {
 
 const STC_FREESTYLE_OVERRIDES = {
   shell: `Default to a 16:9 white STC board template on a 960x540 canvas. These STC positions replace any generic shell defaults:
-- h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward medium 28px, color #4F008C.
-- h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward medium 16px, color #FF375E.
+- h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward regular 24px, color #4F008C.
+- h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward regular 18px, color #FF375E.
 - div.frame: left 15px, top 134px, width 933px, height 340px. Design all custom content inside this STC frame, not the generic 904x366 frame.
-- footer: source at bottom-left around x=15 y=494; slide number bottom-right around x=935 y=519.
+- footer: source at bottom-left around x=15 y=494 and slide number bottom-right around x=935 y=519, both STC Forward 8px.
 Use structured content in the middle band and keep the bottom footer band clear. Use the standard content bands exactly unless the user explicitly asks for a cover, divider, appendix, or editorial variant.`,
   theme: `Use STC purple (#4F008C) for titles, structural headers, major bars, and primary emphasis. Use coral (#FF375E) as the subtitle/kicker accent, vivid lavender (#A54EE1 family) only for small markers, pale lilac surfaces (#F2E6FA to #FBF8FE), charcoal body text (#1D252D), and white backgrounds. Do not let the content topic override the brand palette; even ocean/science topics should remain STC purple/coral/lilac rather than blue-led. Do not use Office blue/orange or raw theme yellow/green/cyan as dominant colors. Treat the serif black/red outlook style as an explicit alternate editorial variant, not the default.`,
   vibe: `Board-ready, strategy-consulting, precise, modular, high-clarity, low-decoration. Use strong hierarchy, tight alignment, restrained accents, generous white space in the header, denser structured content in the middle, and tiny unobtrusive footer chrome. Avoid playful UI, consumer-product styling, heavy shadows, and decorative gradients except on approved photo covers.`,
-  writing: `Write conclusion-led titles. Use short analytical subtitles that name the lens, not the takeaway. Keep copy executive, factual, and directive. Use full-clause bullets with selective bold emphasis only for the highest-value words. Avoid slogans, fluff, generic headings, and marketing language.`,
-  css: `Use square-cornered boxes by default, thin 0.75-1.25pt borders, purple header bars, lilac body panels, dark body text, and reversed white text on dark fills. Use chevrons, tabs, trackers, and thin connector lines for structure. Avoid default chart palettes, rounded consumer cards, strong shadows, and gradient fills except on photo covers.`,
+  writing: `Write conclusion-led titles. Use short analytical subtitles that name the lens, not the takeaway. Keep copy executive, factual, and directive. Use selective emphasis only for the highest-value words; do not bold every lead phrase by default. Avoid slogans, fluff, generic headings, and marketing language.`,
+  css: `Use square-cornered boxes by default, thin 0.75-1.25pt borders, purple header bars, lilac body panels, dark body text, and reversed white text on dark fills. STC Forward reads heavy: use font-weight 400 for body copy, 500 for local headings, card titles, stage titles, labels, and subtitles, and reserve 700 for step numbers, KPIs, or rare emphasis only. Use chevrons, tabs, trackers, and thin connector lines for structure. Avoid default chart palettes, rounded consumer cards, strong shadows, and gradient fills except on photo covers.`,
   pptx: `Export with explicit shape positioning, not theme-only assumptions. Preserve title/subtitle/source/page coordinates, keep logo as a real asset, suppress hidden master placeholders unless intentionally used, maintain footer/page chrome on non-cover slides, and do not surface dormant labels such as Confidential, Public, or Back to Main unless the chosen layout specifically requires them.`,
 };
 
@@ -195,7 +195,9 @@ const STC_PROMPT_CONTRACT = `# STC Client Design Contract
 ## Typography
 - Use STC Forward for titles, headings, labels, tables, and body copy. Do not declare Arial or generic fallback families in generated STC HTML/CSS.
 - Do not use Georgia for STC slides.
-- Keep visible text at 10px or larger; body/table text should target 12px and section/card titles 14px+.
+- Content-slide titles use STC Forward 24px regular in purple #4F008C. Subtitles use STC Forward 18px regular in #FF375E. Footer/source and page numbers use STC Forward 8px.
+- Keep visible text at 10px or larger except footer/source, page numbers, trackers, and compact tags may use 8px. Body/table text should target 12px and section/card titles 14px+.
+- STC Forward reads heavy: use 400 for body copy, 500 for local headings/labels/card titles, and 700 only for step numbers, KPIs, or rare emphasis.
 
 ## Layout and chrome
 - STC slides use a 960x540 canvas mapped from 13.33x7.5 in.
@@ -232,10 +234,10 @@ function pxRectToInches(rect, canvas = STC_LAYOUT_CONTRACT.canvas) {
 }
 
 const STC_PPTX_FONTS = {
-  title: { fontFace: 'STC Forward', fontSize: 28, bold: false },
-  subtitle: { fontFace: 'STC Forward', fontSize: 16, bold: false },
+  title: { fontFace: 'STC Forward', fontSize: 24, bold: false },
+  subtitle: { fontFace: 'STC Forward', fontSize: 18, bold: false },
   body: { fontFace: 'STC Forward', fontSize: 12, bold: false },
-  footer: { fontFace: 'STC Forward', fontSize: 9, italic: false, bold: false },
+  footer: { fontFace: 'STC Forward', fontSize: 8, italic: false, bold: false },
   slideNum: { fontFace: 'STC Forward', fontSize: 8, bold: false },
 };
 
@@ -521,11 +523,11 @@ function rewriteFreestyleShellForProfile(shell, profile) {
   return shell
     .replace(
       /\| `h1\.title` \|[^\n]+/,
-      `| \`h1.title\` | top: ${title.y}px, left: ${title.x}px, width: ${title.w}px, height: ${title.h}px -- ${titleFont} semibold 28px, ${titleColor} |`,
+      `| \`h1.title\` | top: ${title.y}px, left: ${title.x}px, width: ${title.w}px, height: ${title.h}px -- ${titleFont} regular 24px, ${titleColor} |`,
     )
     .replace(
       /\| `h2\.subtitle` \|[^\n]+/,
-      `| \`h2.subtitle\` | top: ${subtitle.y}px, left: ${subtitle.x}px, width: ${subtitle.w}px, height: ${subtitle.h}px -- ${subtitleFont} semibold 16px, ${subtitleColor} |`,
+      `| \`h2.subtitle\` | top: ${subtitle.y}px, left: ${subtitle.x}px, width: ${subtitle.w}px, height: ${subtitle.h}px -- ${subtitleFont} regular 18px, ${subtitleColor} |`,
     )
     .replace(
       /\| `div\.frame` \|[^\n]+/,

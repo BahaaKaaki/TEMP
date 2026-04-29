@@ -122,6 +122,10 @@ const STC_FONT_FILES: Record<string, string> = {
   'STCForward-Medium.ttf': 'STCForward-Medium.ttf',
   'STCForward-Bold.ttf': 'STCForward-Bold.ttf',
 };
+const STC_TEMPLATE_ASSETS_DIR = path.join(process.cwd(), 'assets', 'client-templates', 'stc');
+const STC_TEMPLATE_ASSET_FILES: Record<string, string> = {
+  'logo.png': 'logo.png',
+};
 
 app.get('/api/assets/fonts/stc-forward/:fileName', (req, res, next) => {
   const safeFileName = STC_FONT_FILES[req.params.fileName];
@@ -133,6 +137,20 @@ app.get('/api/assets/fonts/stc-forward/:fileName', (req, res, next) => {
   res.setHeader('Content-Type', 'font/ttf');
   res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
   res.sendFile(path.join(STC_FONT_ASSETS_DIR, safeFileName), (err) => {
+    if (err) next(err);
+  });
+});
+
+app.get('/api/assets/client-templates/stc/:fileName', (req, res, next) => {
+  const safeFileName = STC_TEMPLATE_ASSET_FILES[req.params.fileName];
+  if (!safeFileName) {
+    res.status(404).json({ error: 'ASSET_NOT_FOUND' });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'image/png');
+  res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
+  res.sendFile(path.join(STC_TEMPLATE_ASSETS_DIR, safeFileName), (err) => {
     if (err) next(err);
   });
 });

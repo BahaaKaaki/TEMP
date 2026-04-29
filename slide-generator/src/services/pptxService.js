@@ -40,6 +40,39 @@ function getProfilePptxFontFace(profile) {
   return PROFILE_PPTX_FONT_FACE[profile?.id] || null;
 }
 
+function normalizePptxSettingsForProfile(settings = {}, profile = null, templatePositions = null) {
+  const next = {
+    ...(settings || {}),
+  };
+  if (profile?.id && profile.id !== 'strategy') {
+    next.theme = profile.theme || next.theme;
+    next.footerBranding = getClientProfileFooterBranding(next, '');
+  } else if (!next.theme && profile?.theme) {
+    next.theme = profile.theme;
+  }
+  if (templatePositions) next.templatePositions = templatePositions;
+  return next;
+}
+
+function getProfilePptxTypographyGuidance(profile) {
+  if (profile?.id !== 'stc') return '';
+  return '- STC typography: use title 24pt regular, subtitle 18pt regular, body 12pt regular, local labels/card titles 500-equivalent only when bold is needed, and footer/source/page numbers 8pt regular.\n- For STC Forward, avoid bold:true on normal body leads, subtitles, card titles, stage titles, and labels unless the CSS explicitly requires strong emphasis.\n';
+}
+
+function getProfilePptxSystemGuidance(profile) {
+  if (profile?.id !== 'stc') return '';
+  return `
+
+ACTIVE CLIENT PROFILE OVERRIDE -- STC:
+- Ignore the Strategy& example colors as visual colors. Use them only as structural examples.
+- STC colors: title/main #4F008C, body #1D252D, subtitle/kicker #FF375E, pale surface #FBF8FE, alternate surface #EDDCF9, border #DBB8F3, muted #515360.
+- If you define a c palette, use: main:'4F008C', secondary:'1D252D', red:'FF375E', maroon:'4F008C', zone1:'FBF8FE', zone2:'EDDCF9', rose:'EDDCF9', meta:'515360', coal:'1D252D', border:'DBB8F3'.
+- Do not emit Strategy& maroon/red values such as 8E1E1E or A32020 for STC slides.
+- Use STC Forward for every text box. Titles are 24pt regular, subtitles are 18pt regular, source/page chrome is 8pt regular.
+- Avoid bold:true for STC body leads, labels, stage titles, and card titles unless the CSS explicitly calls for strong emphasis.
+`;
+}
+
 function enforcePptxFontFaceForProfile(codeString, profile) {
   const fontFace = getProfilePptxFontFace(profile);
   if (!fontFace || !codeString) return codeString;
@@ -47,6 +80,38 @@ function enforcePptxFontFaceForProfile(codeString, profile) {
     /fontFace\s*:\s*(['"`])[^'"`]+?\1/g,
     `fontFace:'${fontFace}'`
   );
+}
+
+function enforcePptxColorsForProfile(codeString, profile) {
+  if (profile?.id !== 'stc' || !codeString) return codeString;
+  const replacements = new Map([
+    ['111111', '4F008C'],
+    ['222222', '1D252D'],
+    ['A32020', 'FF375E'],
+    ['8E1E1E', '4F008C'],
+    ['F7F9FB', 'FBF8FE'],
+    ['EEF2F6', 'EDDCF9'],
+    ['F8E3E3', 'EDDCF9'],
+    ['4A4F57', '515360'],
+    ['4B4F55', '1D252D'],
+    ['E6E9EE', 'DBB8F3'],
+  ]);
+  let next = String(codeString);
+  for (const [from, to] of replacements) {
+    next = next.replace(new RegExp(from, 'gi'), to);
+  }
+  return next;
+}
+
+function enforcePptxProfileCode(codeString, profile) {
+  return enforcePptxColorsForProfile(
+    enforcePptxFontFaceForProfile(codeString, profile),
+    profile
+  );
+}
+
+function canUseCachedPptxCodeForProfile(profile) {
+  return !profile || profile.id === 'strategy';
 }
 
 /**
@@ -492,6 +557,7 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
 
   const tplPos = buildPositionBlock(settings?.templatePositions) || buildProfilePositionBlock(activeProfile);
   const profileFontFace = getProfilePptxFontFace(activeProfile);
+  const profileTypographyGuidance = getProfilePptxTypographyGuidance(activeProfile);
   const clientProfileBlock = buildClientProfileContext(settings || {}, {
     includeTheme: true,
     includeLayout: true,
@@ -559,11 +625,12 @@ The CSS RULES section above is the RESOLVED stylesheet for this slide -- treat i
 
 MANDATORY -- TYPOGRAPHY FIDELITY AND READABILITY:
 ${profileFontFace ? `- For this client profile, every text box MUST set fontFace:'${profileFontFace}'. Do not use Arial, Georgia, Calibri, Aptos, or generic font fallbacks.\n` : ''}
+${profileTypographyGuidance}
 - Never emit fontSize below 10 for normal text, or below 8 for compact tags, chips, badges, tracker labels, and short in-box labels.
 - Use fontSize 12 or larger for body copy, bullets, descriptions, and table cells.
 - Use fontSize 14 or larger for section titles, pillar titles, card titles, grid-cell titles, and h3/h4 equivalents.
 - Use fontSize 8 only for compact tags, chips, badges, tracker labels, and short in-box labels.
-- Use fontSize 10 only for chart axes, legends, captions, sources, and footer text.
+- Use fontSize 10 only for chart axes, legends, captions, sources, and footer text, except client-profile footer/source/page chrome may use 8 when the active profile specifies it.
 - Do not use fit:'shrink' to push text below those floors. If needed, shorten copied text only when the HTML/CSS already indicates it is a compact label.
 
 OUTPUT FORMAT (return ONLY this, no markdown):
@@ -629,7 +696,7 @@ export function validateGeneratedCode(codeString, slideHtml) {
       errors: [{
         type: 'TypographyFloorError',
         message: `PPTX code uses fontSize below 8 (${[...new Set(tinyFontMatches)].join(', ')})`,
-        details: 'Regenerate with fontSize >= 8 for compact tags/trackers, >= 10 for captions/axes/footer, and >= 12 for normal body text.',
+        details: 'Regenerate with fontSize >= 8 for compact tags/trackers and client-profile footer/page chrome, >= 10 for captions/axes/default footers, and >= 12 for normal body text.',
       }],
     };
   }
@@ -681,8 +748,9 @@ export function validateGeneratedCode(codeString, slideHtml) {
 // ── Core: generate code for one slide with retry loop ────────────────────────
 
 async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials) {
-  const systemPrompt = applyPromptOverride(settings, 'pptx.system', settings?.pptxSystemPrompt?.trim() || DEFAULT_PPTX_SYSTEM_PROMPT);
   const activeProfile = getActiveClientProfile(settings || {});
+  const baseSystemPrompt = `${settings?.pptxSystemPrompt?.trim() || DEFAULT_PPTX_SYSTEM_PROMPT}${getProfilePptxSystemGuidance(activeProfile)}`;
+  const systemPrompt = applyPromptOverride(settings, 'pptx.system', baseSystemPrompt);
   let lastCode = null;
   let lastErrors = [];
 
@@ -705,7 +773,7 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
         attempt: attempt + 1,
       });
       const raw = await callAI(settings, credentials, systemPrompt, userPrompt);
-      const codeString = enforcePptxFontFaceForProfile(extractJSArray(raw), activeProfile);
+      const codeString = enforcePptxProfileCode(extractJSArray(raw), activeProfile);
       lastCode = codeString;
 
       const validation = validateGeneratedCode(codeString, slide.html);
@@ -828,14 +896,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   let templateData = null;
   try { templateData = await loadTemplateFromStorage({ profileId: activeProfile.id }); } catch (e) { /* ignore */ }
   const activeProfilePositions = templateData?.chrome?.positions || activeProfile.chrome?.positions || null;
-  if (activeProfilePositions && settings) {
-    settings = {
-      ...settings,
-      templatePositions: activeProfilePositions,
-      theme: settings.theme || activeProfile.theme,
-      footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
-    };
-  }
+  settings = normalizePptxSettingsForProfile(settings || {}, activeProfile, activeProfilePositions);
 
   const totalSlides = slides.length;
   setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
@@ -874,9 +935,9 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       const slideNum = i + 1;
 
       // Use pre-generated PPTX code if available and valid
-      if (slide.pptxCode) {
+      if (slide.pptxCode && canUseCachedPptxCodeForProfile(activeProfile)) {
         try {
-          const codeString = enforcePptxFontFaceForProfile(slide.pptxCode, activeProfile);
+          const codeString = enforcePptxProfileCode(slide.pptxCode, activeProfile);
           const validation = validateGeneratedCode(codeString, slide.html);
           if (validation.valid && validation.slideFunctions) {
             console.log(`[PPTX] Slide ${slideNum}: using pre-generated code`);
@@ -1035,14 +1096,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   let templateData = null;
   try { templateData = await loadTemplateFromStorage({ profileId: activeProfile.id }); } catch (e) { /* ignore */ }
   const activeProfilePositions = templateData?.chrome?.positions || activeProfile.chrome?.positions || null;
-  if (activeProfilePositions && settings) {
-    settings = {
-      ...settings,
-      templatePositions: activeProfilePositions,
-      theme: settings.theme || activeProfile.theme,
-      footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
-    };
-  }
+  settings = normalizePptxSettingsForProfile(settings || {}, activeProfile, activeProfilePositions);
 
   setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
   setTemplatePositions(activeProfilePositions);
@@ -1116,6 +1170,8 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
  */
 export async function preGeneratePptxCode(slide, slideNum, totalSlides, settings) {
   if (!settings || !hasAnyCredentials(settings)) return null;
+  const activeProfile = getActiveClientProfile(settings || {});
+  settings = normalizePptxSettingsForProfile(settings, activeProfile, activeProfile.chrome?.positions || null);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = getCredentialsForModel(settings, modelRef);
   try {
@@ -1132,6 +1188,8 @@ export async function preGeneratePptxCode(slide, slideNum, totalSlides, settings
 
 export async function testPPTXCodeGeneration(slide, slideNumber, totalSlides, settings) {
   if (!settings || !hasAnyCredentials(settings)) throw new Error('API key required.');
+  const activeProfile = getActiveClientProfile(settings || {});
+  settings = normalizePptxSettingsForProfile(settings, activeProfile, activeProfile.chrome?.positions || null);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = getCredentialsForModel(settings, modelRef);
   const result = await generateSlideWithRetry(slide, slideNumber, totalSlides, settings, credentials);

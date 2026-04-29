@@ -1047,6 +1047,12 @@ function slideReducer(state, action) {
       }
       return {
         ...state,
+        slides: profileChanged
+          ? state.slides.map(slide => ({
+            ...slide,
+            pptxCode: null,
+          }))
+          : state.slides,
         settings: nextSettings,
         theme: profileChanged ? getClientProfileTheme(nextSettings.clientDesignProfileId) : state.theme,
       };

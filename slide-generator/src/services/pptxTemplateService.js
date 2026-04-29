@@ -195,6 +195,7 @@ export async function loadTemplateFromStorage(options = {}) {
   }
 
   const needsReExtract = record.data && (
+    !record.chrome?.logo?.image ||
     !record.chrome?.positions ||
     !record.chrome.positions.slideNum?.font ||
     !record.chrome.positions.footer?.font
@@ -278,6 +279,22 @@ function injectSlideBackground(slideXml) {
 function hideMasterShapes(slideXml) {
   if (/showMasterSp/.test(slideXml)) return slideXml;
   return slideXml.replace(/<p:sld(\s)/, '<p:sld showMasterSp="0"$1');
+}
+
+function stripLayoutChrome(layoutXml) {
+  if (!layoutXml || !/<p:spTree>/.test(layoutXml)) return layoutXml;
+  return layoutXml.replace(/<p:spTree>([\s\S]*?)<\/p:spTree>/, (match, inner) => {
+    const nvGrp = inner.match(/<p:nvGrpSpPr\b[\s\S]*?<\/p:nvGrpSpPr>/)?.[0] || '';
+    const grpSpPr = inner.match(/<p:grpSpPr\b[\s\S]*?<\/p:grpSpPr>/)?.[0] || '';
+    return `<p:spTree>${nvGrp}${grpSpPr}</p:spTree>`;
+  });
+}
+
+function stripUnusedLayoutChromeRelationships(relsXml) {
+  if (!relsXml) return relsXml;
+  return relsXml
+    .replace(/<Relationship[^>]*Type="[^"]*\/image"[^>]*\/>/g, '')
+    .replace(/<Relationship[^>]*Type="[^"]*\/oleObject"[^>]*\/>/g, '');
 }
 
 const EMU_PER_INCH = 914400;
@@ -393,6 +410,18 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   const targetLayoutNum = await pickBestLayout(tplZip);
   console.log('[PPTX Template] Using slideLayout' + targetLayoutNum);
 
+  const targetLayoutPath = `ppt/slideLayouts/slideLayout${targetLayoutNum}.xml`;
+  const targetLayoutRelsPath = `ppt/slideLayouts/_rels/slideLayout${targetLayoutNum}.xml.rels`;
+  if (tplZip.files[targetLayoutPath]) {
+    const layoutXml = await tplZip.files[targetLayoutPath].async('string');
+    tplZip.file(targetLayoutPath, stripLayoutChrome(layoutXml));
+    console.log('[PPTX Template] Stripped visible chrome from slideLayout' + targetLayoutNum);
+  }
+  if (tplZip.files[targetLayoutRelsPath]) {
+    const layoutRelsXml = await tplZip.files[targetLayoutRelsPath].async('string');
+    tplZip.file(targetLayoutRelsPath, stripUnusedLayoutChromeRelationships(layoutRelsXml));
+  }
+
   // ── Step 4a: Write logo media file if chrome provides one ───────────────
   const LOGO_RID = 'rId900';
   const logoMediaExt = String(chrome?.logo?.mediaPath || '').split('.').pop()?.toLowerCase() || 'png';
@@ -424,7 +453,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
     if (genZip.files[genSlidePath]) {
       let slideXml = await genZip.files[genSlidePath].async('string');
-      // slideXml = hideMasterShapes(slideXml);
+      slideXml = hideMasterShapes(slideXml);
       slideXml = injectSlideBackground(slideXml);
       if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
       tplZip.file(genSlidePath, slideXml);

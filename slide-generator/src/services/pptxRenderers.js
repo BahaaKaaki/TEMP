@@ -36,9 +36,9 @@ export const LAYOUT = {
   cardRadius: 0.05,
 };
 
-export function pptxFontSize(size, fallback = 10) {
+export function pptxFontSize(size, fallback = 10, floor = 10) {
   const numeric = Number(size ?? fallback);
-  return Math.max(10, Number.isFinite(numeric) ? numeric : fallback);
+  return Math.max(floor, Number.isFinite(numeric) ? numeric : fallback);
 }
 
 // ── Footer branding ──────────────────────────────────────────────────────────
@@ -75,7 +75,7 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
     w: numPos?.w ?? 1.3,
     h: numPos?.h ?? 0.25,
     fontFace: numFont.fontFace || profileFontFace('Arial'),
-    fontSize: pptxFontSize(numFont.fontSize, 10),
+    fontSize: pptxFontSize(numFont.fontSize, 10, 8),
     bold: numFont.bold || false,
     color: COLORS.meta,
     align: 'right',
@@ -142,7 +142,7 @@ export function addSourceNote(slide, html) {
     w: ftrPos?.w ?? 8.5,
     h: ftrPos?.h ?? 0.25,
     fontFace: ftrFont.fontFace || profileFontFace('Arial'),
-    fontSize: pptxFontSize(ftrFont.fontSize, 10),
+    fontSize: pptxFontSize(ftrFont.fontSize, 10, 8),
     italic: ftrFont.italic ?? true,
     color: COLORS.meta,
     align: 'left',

@@ -6,6 +6,7 @@ import { exportSingleSlideToPPTX, testPPTXCodeGeneration } from '../services/ppt
 import { exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
 import { themeToCSS } from '../utils/themeUtils';
+import { authFetch } from '../services/authFetch';
 import CommentPanel from './CommentPanel';
 
 const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
@@ -28,7 +29,7 @@ function getCategoryIcon(category) {
 }
 
 export default function SlidePreview({ onSwitchToCode }) {
-  const { activeSlide, state, actions } = useSlides();
+  const { activeSlide, state, actions, activeClientProfile } = useSlides();
   const [isEditMode, setIsEditMode] = useState(true); // Always on
   const [isVisualEditMode, setIsVisualEditMode] = useState(true); // Always on
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
@@ -49,6 +50,7 @@ export default function SlidePreview({ onSwitchToCode }) {
   const [pptxTestResult, setPptxTestResult] = useState(null);
   const [isTestingPPTX, setIsTestingPPTX] = useState(false);
   const [showCommentPanel, setShowCommentPanel] = useState(false);
+  const [clientLogoUrl, setClientLogoUrl] = useState(null);
   const downloadMenuRef = useRef(null);
   const commentPanelRef = useRef(null);
 
@@ -75,6 +77,37 @@ export default function SlidePreview({ onSwitchToCode }) {
   useEffect(() => {
     activeSlideIdRef.current = activeSlide?.id;
   }, [activeSlide?.id]);
+
+  useEffect(() => {
+    if (activeClientProfile?.id !== 'stc') {
+      setClientLogoUrl(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    let objectUrl = null;
+
+    authFetch('/api/assets/client-templates/stc/logo.png')
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      })
+      .then(blob => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setClientLogoUrl(objectUrl);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        console.warn('[SlidePreview] STC logo unavailable:', err.message);
+        setClientLogoUrl(null);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [activeClientProfile?.id]);
 
   // Handle Escape key to exit fullscreen
   useEffect(() => {
@@ -427,12 +460,13 @@ export default function SlidePreview({ onSwitchToCode }) {
       if (slideIndex >= 0) {
         html = injectPageNumber(html, slideIndex + 1, state.slides.length);
       }
+      html = injectClientProfileChrome(html, activeClientProfile, clientLogoUrl);
       slideRef.current.innerHTML = html;
       if (isEditMode) {
         makeEditable(slideRef.current);
       }
     }
-  }, [activeSlide?.id, activeSlide?.html, isEditMode, state.darkMode, state.slides]);
+  }, [activeSlide?.id, activeSlide?.html, isEditMode, state.darkMode, state.slides, activeClientProfile, clientLogoUrl]);
 
   // Update dark-mode and section-tracker attributes on the slide DOM element
   useEffect(() => {
@@ -723,6 +757,11 @@ export default function SlidePreview({ onSwitchToCode }) {
     const temp = document.createElement('div');
     temp.innerHTML = html;
 
+    temp.querySelectorAll('.client-chrome').forEach(el => el.remove());
+    temp.querySelectorAll('[data-client-profile]').forEach(el => {
+      el.removeAttribute('data-client-profile');
+    });
+
     // Remove contenteditable attributes
     temp.querySelectorAll('[contenteditable]').forEach(el => {
       el.removeAttribute('contenteditable');
@@ -817,6 +856,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         newHtml = newHtml.replace(/\s*data-slide-id="[^"]*"/g, '');
         newHtml = newHtml.replace(/\s*data-section="[^"]*"/g, '');
         newHtml = newHtml.replace(/\s*data-subsection="[^"]*"/g, '');
+        newHtml = newHtml.replace(/\s*data-client-profile="[^"]*"/g, '');
         newHtml = newHtml.replace(/\s*style="--tracker-offset:\s*\d+px"/g, '');
 
         // Ensure the slide wrapper is preserved
@@ -902,7 +942,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         </button>
 
         {/* Inject CSS */}
-        <style>{getBaseCSS() + '\n' + themeToCSS(state.theme) + '\n' + combinedCSS + '\n' + getEditModeCSS(isEditMode) + '\n' + getVisualEditModeCSS(isVisualEditMode)}</style>
+        <style>{getBaseCSS() + '\n' + getClientChromeCSS() + '\n' + themeToCSS(state.theme) + '\n' + combinedCSS + '\n' + getEditModeCSS(isEditMode) + '\n' + getVisualEditModeCSS(isVisualEditMode)}</style>
 
         {/* Zoomable slide container */}
         <div
@@ -1347,6 +1387,8 @@ export default function SlidePreview({ onSwitchToCode }) {
           currentSlideId={activeSlide?.id}
           theme={state.theme}
           combinedCSS={combinedCSS}
+          activeClientProfile={activeClientProfile}
+          clientLogoUrl={clientLogoUrl}
           onClose={() => setIsFullscreen(false)}
           onNavigate={(slideId) => actions.setActiveSlide(slideId)}
         />
@@ -1479,6 +1521,68 @@ export function getBaseCSS() {
 `;
 }
 
+function getClientChromeCSS() {
+  return `
+.slide[data-client-profile="stc"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="stc"] .client-chrome-stc-logo {
+  left: 14px;
+  top: 2px;
+  width: 35px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.slide[data-client-profile="stc"] .client-chrome-stc-wordmark {
+  left: 14px;
+  top: 2px;
+  width: 35px;
+  height: 18px;
+  font: 700 16px/1 "STC Forward", Arial, sans-serif;
+  color: var(--accent);
+  letter-spacing: -1px;
+}
+`;
+}
+
+function escapeHtmlAttr(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function stripClientProfileChrome(html = '') {
+  return html
+    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-stc-logo\b[^"]*"[^>]*>/gi, '')
+    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-stc-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/\s*data-client-profile="[^"]*"/gi, '');
+}
+
+function injectClientProfileChrome(html, profile, logoUrl) {
+  const cleanedHtml = stripClientProfileChrome(html || '');
+  if (profile?.id !== 'stc' || !cleanedHtml) return cleanedHtml;
+
+  const isSpecialMaster = /\b(master-cover|master-blank|master-emptyPage)\b/i.test(cleanedHtml)
+    || /cover-slide|cover-branding|section-divider-slide|separator-slide/i.test(cleanedHtml);
+  const withProfile = cleanedHtml.replace(
+    /class="slide([^"]*)"/,
+    'class="slide$1" data-client-profile="stc"'
+  );
+  if (isSpecialMaster) return withProfile;
+
+  const logoMarkup = logoUrl
+    ? `<img class="client-chrome client-chrome-stc-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="stc" />`
+    : '<div class="client-chrome client-chrome-stc-wordmark" data-no-edit>stc</div>';
+  return withProfile.replace(/(<div\b[^>]*class="[^"]*\bslide\b[^"]*"[^>]*>)/i, `$1${logoMarkup}`);
+}
+
 
 // Inject data-section attribute for section tracker tab
 function injectSectionToHtml(html, sectionLabel) {
@@ -1517,7 +1621,7 @@ function injectPageNumber(html, pageNumber, totalSlides) {
 }
 
 // Fullscreen Modal Component with proper scaling and navigation
-function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, onNavigate }) {
+function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, activeClientProfile, clientLogoUrl, onClose, onNavigate }) {
   const [scale, setScale] = useState(1);
   const [currentIndex, setCurrentIndex] = useState(() =>
     slides.findIndex(s => s.id === currentSlideId)
@@ -1542,6 +1646,7 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, 
     slideHtml = injectSubSectionToHtml(slideHtml, currentSlide.subSectionLabel, currentSlide.sectionLabel);
   }
   slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length);
+  slideHtml = injectClientProfileChrome(slideHtml, activeClientProfile, clientLogoUrl);
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < slides.length - 1;
 
@@ -1645,7 +1750,7 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, 
       }}
     >
       {/* Inject CSS */}
-      <style>{getBaseCSS() + '\n' + themeToCSS(theme) + '\n' + (currentSlide?.customCSS || '')}</style>
+      <style>{getBaseCSS() + '\n' + getClientChromeCSS() + '\n' + themeToCSS(theme) + '\n' + (currentSlide?.customCSS || '')}</style>
 
       {/* Scaled slide wrapper */}
       <div

@@ -331,74 +331,98 @@ async function extractChrome(zip) {
   return chrome;
 }
 
+function resolveRelationshipTarget(sourcePartPath, target) {
+  if (!target || target.startsWith('/') || /^[a-z]+:/i.test(target)) return target;
+  const sourceDir = sourcePartPath.split('/').slice(0, -1);
+  const parts = [...sourceDir, ...target.split('/')];
+  const normalized = [];
+  for (const part of parts) {
+    if (!part || part === '.') continue;
+    if (part === '..') normalized.pop();
+    else normalized.push(part);
+  }
+  return normalized.join('/');
+}
+
+function relationshipPathForPart(partPath) {
+  const bits = partPath.split('/');
+  const fileName = bits.pop();
+  return `${bits.join('/')}/_rels/${fileName}.rels`;
+}
+
 /**
- * Find the logo image from the slide master.
- * Looks for small image shapes in the header zone (top 1.5" of slide, area < 15% of slide).
+ * Find the visible logo image from slide masters and layouts.
+ * STC stores the real logo on the layout while the master has a tiny hidden EMF,
+ * so reject invisible/vector stubs and prefer usable raster images in the header.
  */
 async function extractLogo(zip) {
-  const masterPath = 'ppt/slideMasters/slideMaster1.xml';
-  const masterRelsPath = 'ppt/slideMasters/_rels/slideMaster1.xml.rels';
-
-  const masterFile = zip.file(masterPath);
-  const relsFile = zip.file(masterRelsPath);
-  if (!masterFile || !relsFile) return null;
-
-  const masterXml = await masterFile.async('string');
-  const relsXml = await relsFile.async('string');
-
-  const rIdToTarget = {};
-  const relMatches = relsXml.matchAll(/Id="(rId\d+)"[^>]*Target="([^"]+)"/g);
-  for (const m of relMatches) {
-    rIdToTarget[m[1]] = m[2];
-  }
+  const partPaths = Object.keys(zip.files)
+    .filter(path => /^ppt\/(slideMasters|slideLayouts)\/[^/]+\.xml$/.test(path))
+    .sort((a, b) => {
+      const aLayout = a.includes('/slideLayouts/');
+      const bLayout = b.includes('/slideLayouts/');
+      if (aLayout !== bLayout) return aLayout ? -1 : 1;
+      return parseInt(a.match(/(\d+)/g)?.pop() || '0', 10) - parseInt(b.match(/(\d+)/g)?.pop() || '0', 10);
+    });
 
   const SLIDE_AREA = 13.333 * 7.5;
-  const spRegex = /<p:sp\b[\s\S]*?<\/p:sp>|<p:pic\b[\s\S]*?<\/p:pic>/g;
-  let match;
+  const spRegex = /<p:pic\b[\s\S]*?<\/p:pic>/g;
   const candidates = [];
 
-  while ((match = spRegex.exec(masterXml)) !== null) {
-    const shapeXml = match[0];
-    const blipMatch = shapeXml.match(/<a:blip[^>]*r:embed="(rId\d+)"/);
-    if (!blipMatch) continue;
+  for (const partPath of partPaths) {
+    const partFile = zip.file(partPath);
+    const relsFile = zip.file(relationshipPathForPart(partPath));
+    if (!partFile || !relsFile) continue;
 
-    const pos = extractShapePosition(shapeXml);
-    if (!pos) continue;
-
-    const area = pos.w * pos.h;
-    const areaRatio = area / SLIDE_AREA;
-    if (areaRatio > 0.15) continue;
-    if (pos.y + pos.h > 2.0) continue;
-
-    const rId = blipMatch[1];
-    let mediaPath = rIdToTarget[rId];
-    if (!mediaPath) continue;
-    if (!mediaPath.startsWith('ppt/')) {
-      mediaPath = 'ppt/slideMasters/' + mediaPath.replace(/^\.\.\//, '');
-      mediaPath = mediaPath.replace('ppt/slideMasters/../', 'ppt/');
+    const partXml = await partFile.async('string');
+    const relsXml = await relsFile.async('string');
+    const rIdToTarget = {};
+    const relMatches = relsXml.matchAll(/Id="(rId\d+)"[^>]*Target="([^"]+)"/g);
+    for (const m of relMatches) {
+      rIdToTarget[m[1]] = resolveRelationshipTarget(partPath, m[2]);
     }
 
-    const mediaFile = zip.file(mediaPath);
-    if (!mediaFile) continue;
+    let match;
+    while ((match = spRegex.exec(partXml)) !== null) {
+      const shapeXml = match[0];
+      const blipMatch = shapeXml.match(/<a:blip[^>]*r:embed="(rId\d+)"/);
+      if (!blipMatch) continue;
 
-    const imageData = await mediaFile.async('base64');
-    const ext = mediaPath.split('.').pop().toLowerCase();
-    const mimeMap = {
-      png: 'image/png',
-      jpg: 'image/jpeg',
-      jpeg: 'image/jpeg',
-      gif: 'image/gif',
-      svg: 'image/svg+xml',
-      emf: 'image/x-emf',
-      wmf: 'image/wmf',
-    };
+      const pos = extractShapePosition(shapeXml);
+      if (!pos) continue;
 
-    candidates.push({
-      image: `data:${mimeMap[ext] || 'image/png'};base64,${imageData}`,
-      mediaPath,
-      ...pos,
-      areaRatio,
-    });
+      const area = pos.w * pos.h;
+      const areaRatio = area / SLIDE_AREA;
+      if (area < 0.01 || areaRatio > 0.15) continue;
+      if (pos.y + pos.h > 2.0) continue;
+
+      const rId = blipMatch[1];
+      const mediaPath = rIdToTarget[rId];
+      if (!mediaPath) continue;
+
+      const ext = mediaPath.split('.').pop().toLowerCase();
+      if (['emf', 'wmf'].includes(ext)) continue;
+
+      const mediaFile = zip.file(mediaPath);
+      if (!mediaFile) continue;
+
+      const imageData = await mediaFile.async('base64');
+      const mimeMap = {
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        svg: 'image/svg+xml',
+      };
+
+      candidates.push({
+        image: `data:${mimeMap[ext] || 'image/png'};base64,${imageData}`,
+        mediaPath,
+        ...pos,
+        areaRatio,
+        sourcePart: partPath,
+      });
+    }
   }
 
   if (candidates.length === 0) return null;

@@ -88,20 +88,20 @@ export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
   if (!sectionLabel && !subSectionLabel) return;
 
   if (sectionLabel) {
-    const sectionW = Math.max(1.0, sectionLabel.length * 0.065 + 0.35);
-    slide.addShape('rect', { x: 0, y: 0, w: sectionW, h: 0.28, fill: { color: COLORS.maroon } });
-    slide.addText(sectionLabel, { x: 0.05, y: 0, w: sectionW - 0.1, h: 0.28, fontFace: profileFontFace('Arial'), fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
+    const sectionW = Math.max(0.85, sectionLabel.length * 0.052 + 0.3);
+    slide.addShape('rect', { x: 0, y: 0, w: sectionW, h: 0.23, fill: { color: COLORS.maroon } });
+    slide.addText(sectionLabel, { x: 0.04, y: 0, w: sectionW - 0.08, h: 0.23, fontFace: profileFontFace('Arial'), fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
 
     if (subSectionLabel) {
-      const subW = Math.max(0.8, subSectionLabel.length * 0.06 + 0.3);
-      const subX = sectionW + 0.04;
-      slide.addShape('rect', { x: subX, y: 0, w: subW, h: 0.25, fill: { color: COLORS.coal } });
-      slide.addText(subSectionLabel, { x: subX + 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: profileFontFace('Arial'), fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
+      const subW = Math.max(0.7, subSectionLabel.length * 0.05 + 0.28);
+      const subX = sectionW + 0.03;
+      slide.addShape('rect', { x: subX, y: 0, w: subW, h: 0.21, fill: { color: COLORS.coal } });
+      slide.addText(subSectionLabel, { x: subX + 0.04, y: 0, w: subW - 0.08, h: 0.21, fontFace: profileFontFace('Arial'), fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
     }
   } else if (subSectionLabel) {
-    const subW = Math.max(0.8, subSectionLabel.length * 0.06 + 0.3);
-    slide.addShape('rect', { x: 0, y: 0, w: subW, h: 0.25, fill: { color: COLORS.coal } });
-    slide.addText(subSectionLabel, { x: 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: profileFontFace('Arial'), fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
+    const subW = Math.max(0.7, subSectionLabel.length * 0.05 + 0.28);
+    slide.addShape('rect', { x: 0, y: 0, w: subW, h: 0.21, fill: { color: COLORS.coal } });
+    slide.addText(subSectionLabel, { x: 0.04, y: 0, w: subW - 0.08, h: 0.21, fontFace: profileFontFace('Arial'), fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
   }
 }
 

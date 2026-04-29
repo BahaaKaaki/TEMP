@@ -4,8 +4,16 @@ import DEFAULT_VIBE from '../../guides/freestyle-vibe.md?raw';
 import DEFAULT_WRITING from '../../guides/freestyle-writing.md?raw';
 import DEFAULT_PPTX_HINTS from '../../guides/freestyle-pptx-hints.md?raw';
 import { appendClientDesignContract, applyClientProfilePromptSections } from '../../utils/clientDesignProfiles.js';
+import DEFAULT_SLIDE_HTML_GENERATOR_PROMPT from '../../guides/slide-html-generator-prompt.md?raw';
 
-export { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, DEFAULT_PPTX_HINTS };
+export {
+  DEFAULT_SHELL,
+  DEFAULT_THEME,
+  DEFAULT_VIBE,
+  DEFAULT_WRITING,
+  DEFAULT_PPTX_HINTS,
+  DEFAULT_SLIDE_HTML_GENERATOR_PROMPT,
+};
 
 export const FREESTYLE_PRESETS = {
   default: {
@@ -115,38 +123,45 @@ export function buildFreestyleSystemPrompt(settings = {}) {
   const themeCustom = !!(settings.freestyleTheme && settings.freestyleTheme.trim());
   const vibeCustom = !!(settings.freestyleVibe && settings.freestyleVibe.trim());
   const writingCustom = !!(settings.freestyleWriting && settings.freestyleWriting.trim());
+  const presetCustom = !!(preset && preset.id !== 'default');
 
   const baseSections = {
-    shell: shellCustom ? settings.freestyleShell : (preset?.shell || DEFAULT_SHELL),
-    theme: themeCustom ? settings.freestyleTheme : (preset?.theme || DEFAULT_THEME),
-    vibe: vibeCustom ? settings.freestyleVibe : (preset?.vibe || DEFAULT_VIBE),
-    writing: writingCustom ? settings.freestyleWriting : (preset?.writing || DEFAULT_WRITING),
+    shell: shellCustom ? settings.freestyleShell : (presetCustom ? preset?.shell : ''),
+    theme: themeCustom ? settings.freestyleTheme : (presetCustom ? preset?.theme : ''),
+    vibe: vibeCustom ? settings.freestyleVibe : (presetCustom ? preset?.vibe : ''),
+    writing: writingCustom ? settings.freestyleWriting : (presetCustom ? preset?.writing : ''),
     hints: DEFAULT_PPTX_HINTS,
   };
   const { shell, theme, vibe, writing, hints } = applyClientProfilePromptSections(baseSections, settings);
 
-  const assembled = appendClientDesignContract([shell, theme, vibe, writing, hints].join('\n\n---\n\n'), settings);
+  const extraSections = [];
+  if (shell) extraSections.push(shell);
+  if (theme) extraSections.push(theme);
+  if (vibe) extraSections.push(vibe);
+  if (writing) extraSections.push(writing);
+
+  const assembled = appendClientDesignContract(
+    [DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, ...extraSections, hints].join('\n\n---\n\n'),
+    settings
+  );
 
   console.groupCollapsed(
-    '[FreestylePrompt] Assembled system prompt (%d chars) — Shell:%s Theme:%s Vibe:%s Writing:%s Hints:default',
+    '[FreestylePrompt] Assembled system prompt (%d chars) — Base:slide-html-generator Preset:%s Shell:%s Theme:%s Vibe:%s Writing:%s Hints:default',
     assembled.length,
+    presetCustom ? preset.id : 'default',
     shellCustom ? 'CUSTOM' : 'default',
     themeCustom ? 'CUSTOM' : 'default',
     vibeCustom ? 'CUSTOM' : 'default',
     writingCustom ? 'CUSTOM' : 'default'
   );
-  console.groupCollapsed('Shell (%d chars)', shell.length);
-  console.log(shell);
+  console.groupCollapsed('Base (%d chars)', DEFAULT_SLIDE_HTML_GENERATOR_PROMPT.length);
+  console.log(DEFAULT_SLIDE_HTML_GENERATOR_PROMPT);
   console.groupEnd();
-  console.groupCollapsed('Theme (%d chars)', theme.length);
-  console.log(theme);
-  console.groupEnd();
-  console.groupCollapsed('Vibe (%d chars)', vibe.length);
-  console.log(vibe);
-  console.groupEnd();
-  console.groupCollapsed('Writing (%d chars)', writing.length);
-  console.log(writing);
-  console.groupEnd();
+  extraSections.forEach((section, index) => {
+    console.groupCollapsed('Extra section %d (%d chars)', index + 1, section.length);
+    console.log(section);
+    console.groupEnd();
+  });
   console.groupCollapsed('Hints (%d chars)', hints.length);
   console.log(hints);
   console.groupEnd();

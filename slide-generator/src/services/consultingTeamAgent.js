@@ -1462,7 +1462,7 @@ Your job is to choose the right template and set up the flow — you do NOT need
 - NEVER use TBD or placeholder values
 - Do NOT overcrowd slides: each slide should have ONE key message + 3-5 supporting points max
 - The executive summary slide is already included in the slide list above — do NOT create an additional one. The router should NOT add any slides except the cover page.
-- For each slide with a [TRACKER: ...] tag, set sectionTracker to that EXACT value. Also set subSectionTracker to the slide's own title within that section.
+- For each slide with a [TRACKER: ...] tag, set sectionTracker to that EXACT value. Only set subSectionTracker when a [SUB_TRACKER: ...] tag is present; never derive it from the slide title.
 - TEMPLATE VARIETY: Slides in the same section MUST use DIFFERENT templates. Do NOT repeat the same template for consecutive slides. Pick the template that best matches each slide's content type and data shape.`;
   }
 

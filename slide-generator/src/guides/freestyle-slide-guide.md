@@ -48,7 +48,7 @@ Use `var(--token)` for all colors. Never hardcode hex, rgb, or named colors.
 | Negative/decline | `var(--danger)` |
 | Negative bg | `var(--danger-soft)` |
 
-Fonts: Georgia serif for display numbers and emphasis. Arial sans-serif for body text (12px minimum), headings / section titles / pillar titles (14-18px bold), and labels / metadata / footnotes (10px minimum). Never go below 10px for any element.
+Fonts: Georgia serif for display numbers and emphasis. Arial sans-serif for body text (12px minimum), headings / section titles / pillar titles (14-18px bold), compact tags / chips / badges / tracker labels (8px minimum), and metadata / footnotes (10px minimum). Never go below 10px for normal text or 8px for compact tags/trackers.
 
 ## Output format
 

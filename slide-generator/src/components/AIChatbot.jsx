@@ -42,6 +42,9 @@ function buildStorylineSummary(storyline) {
     let line = `${i + 1}. ${s.title || 'Untitled'}`;
     if (s.description) line += ` -- ${s.description}`;
     if (s.keyMessage) line += ` | Key: ${s.keyMessage}`;
+    if (Array.isArray(s.contentInventory) && s.contentInventory.length > 0) {
+      line += ` | Content: ${s.contentInventory.join('; ')}`;
+    }
     return line;
   }).join('\n');
 }
@@ -957,8 +960,9 @@ export default function AIChatbot() {
     };
 
     // Collect all selected option cards + free text per question and submit
-    window.__submitClarificationAnswers = () => {
-      const card = document.querySelector('.clarification-card');
+    window.__submitClarificationAnswers = (sourceEl) => {
+      const cards = Array.from(document.querySelectorAll('.clarification-card'));
+      const card = sourceEl?.closest?.('.clarification-card') || cards[cards.length - 1];
       if (!card) return;
       const blocks = card.querySelectorAll('.clarification-question-block');
       const parts = [];
@@ -2414,7 +2418,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
   <div class="clarification-body">
     ${questionBlocksHtml}
     <div class="clarification-submit-row">
-      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers()">Submit Answers</button>
+      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers(this)">Submit Answers</button>
     </div>
   </div>
 </div>`;

@@ -410,7 +410,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         const escaped = activeSlide.subSectionLabel.replace(/"/g, '&quot;');
         // Calculate offset for sub-tracker based on main tracker text length
         const trackerOffset = activeSlide.sectionLabel
-          ? Math.round(activeSlide.sectionLabel.length * 5.7 + 28)
+          ? Math.round(activeSlide.sectionLabel.length * 4.8 + 22)
           : 0;
         html = html.replace(
           /class="slide([^"]*)"/,
@@ -453,7 +453,7 @@ export default function SlidePreview({ onSwitchToCode }) {
           if (activeSlide?.subSectionLabel) {
             slideEl.setAttribute('data-subsection', activeSlide.subSectionLabel);
             if (activeSlide.sectionLabel) {
-              const offset = Math.round(activeSlide.sectionLabel.length * 5.7 + 28);
+              const offset = Math.round(activeSlide.sectionLabel.length * 4.8 + 22);
               slideEl.style.setProperty('--tracker-offset', `${offset}px`);
             }
           } else {
@@ -1497,7 +1497,7 @@ function injectSubSectionToHtml(html, subSectionLabel, sectionLabel) {
   const escaped = subSectionLabel.replace(/"/g, '&quot;');
   const cleanHtml = html.replace(/\s*data-subsection="[^"]*"/g, '');
   // Calculate offset based on main tracker label width
-  const offset = sectionLabel ? Math.round(sectionLabel.length * 5.5 + 29) : 0;
+  const offset = sectionLabel ? Math.round(sectionLabel.length * 4.8 + 22) : 0;
   return cleanHtml.replace(
     /class="slide([^"]*)"/,
     `class="slide$1" data-subsection="${escaped}" style="--tracker-offset: ${offset}px"`

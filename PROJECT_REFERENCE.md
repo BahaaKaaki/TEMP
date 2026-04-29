@@ -150,7 +150,9 @@ slide-themes-main/
 │   │   │   ├── freestyle-shell.md          # Shell: canvas dimensions, HTML skeleton, CSS scoping rules
 │   │   │   ├── freestyle-theme.md          # Theme: design tokens, fonts, surface usage, status colors
 │   │   │   ├── freestyle-vibe.md           # Vibe: visual design principles, layout variety, color usage
-│   │   │   └── freestyle-writing.md        # Writing: content rules, layout archetypes, citations, process
+│   │   │   ├── freestyle-writing.md        # Writing: content rules, layout archetypes, citations, process
+│   │   │   ├── router-system-prompt.md     # AI router planning prompt (hierarchy, trackers, output schema)
+│   │   │   └── slide-html-generator-prompt.md # Freestyle HTML generator prompt (fit, tokens, design quality)
 │   │   └── data/
 │   │       └── knowledgeBaseExamples.js # Knowledge base example entries
 │   ├── index.html
@@ -417,7 +419,7 @@ Core state shape:
   deckName: 'Untitled Deck',
   imageVibe: 'default',         // Vibe for image-based slides (separate from removed deck vibe)
   darkMode: false,
-  storyline: [],                // Array of { id, title, description, slideId, order }
+  storyline: [],                // Array of { id, title, description, keyMessage, contentInventory, slideId, order }
   storylineStatus: 'none',      // none | generated | approved | populated
   availableSkills: [],          // Consulting-skill catalogue metadata from /api/skills (id, name, description, category, order) -- bodies stay server-side
   settings: {
@@ -540,10 +542,10 @@ Options: `-SkipBuild` (deploy only), `-SkipDeploy` (build only)
 ### Router Architecture
 
 Two routers operate in tandem:
-1. **AI Router** (`aiRouteRequest`): GPT 5.4 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. Identity: "Strategy& Middle East, GCC region". Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
+1. **AI Router** (`aiRouteRequest`): GPT 5.4 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. The default system prompt lives in `slide-generator/src/guides/router-system-prompt.md` and emphasizes Strategy& Middle East planning, executive storyline coherence, brainstorming mode, tracker continuity, source quality, and balanced layout guidance. Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
 2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
 
-The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `targetSlides`, `referenceSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level. Triage selects a `contextLevel` (`active_slide`, `reference_slides`, `deck_digest`, `full_text_deck`) so the router receives enough text-only deck context without defaulting to full-deck content on every request.
+The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `targetSlides`, `referenceSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level. Triage selects a `contextLevel` (`active_slide`, `reference_slides`, `deck_digest`, `full_text_deck`) so the router receives enough deck context without defaulting to full-deck content on every request. The active page context includes both text digest and full page HTML with CSS stripped (`<style>` blocks and inline `style` attributes removed) so the router can reason about card/pillar/table hierarchy. Rich storyline sync uses the same CSS-stripped full HTML signal for each slide and stores a `contentInventory` so later storyline-aware prompts can see all major pillars, cards, bullets, metrics, labels, and table rows.
 
 **Consulting-skill injection.** When `settings.selectedSkillId` is set, `aiRouteRequest` copies it onto `routerSettings._skillId`. `apiClient.js` then attaches `_skillId` to the outgoing request body (`buildRequestBody` for text paths, `callRouterWithImages` for multimodal), but only when the call is routed through our PwC proxy (`authType === 'server'` or an `/api/ai/` endpoint). The backend's `applySkillInjection` prepends the skill's markdown + preamble to the system prompt and strips `_skillId` before forwarding. This keeps direct-provider calls unchanged and leaves slide rendering, edits, transforms, and validation paths untouched -- they never set `_skillId`. Clarifying questions stay on the same code path: when the skill's "Inputs the skill needs" section is not covered by the user's prompt, the router returns `intent=clarify` with missing-input questions.
 
@@ -571,7 +573,7 @@ For structured decks (7+ slides):
 - `subSectionTracker`: "Phase 1", "Phase 2" (grey tab, for multi-slide sections)
 - Executive summary items correspond 1:1 to section tracker groups
 - Router plans can emit `update_trackers` to rename or clear tracker metadata directly, avoiding unnecessary HTML regeneration for tracker-only requests.
-- `buildDeckStructure()` derives a canonical section model from executive summary items and slide tracker metadata; after executive-summary edits, `planTrackerSyncFromDeckStructures()` syncs renamed section points to matching downstream body-slide trackers when the section count still aligns.
+- `buildDeckStructure()` derives a canonical section model from executive summary items and slide tracker metadata; after executive-summary edits, `planTrackerSyncFromDeckStructures()` syncs renamed section points to matching downstream body-slide trackers when the section count still aligns. Tracker labels preserve recognizable parent-page wording and only normalize numbering to `N. Label`.
 
 ---
 
@@ -651,9 +653,21 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 44. **Executive summary tracker context**: Deck context extraction now reads semantic text from freestyle HTML even when point labels are rendered with arbitrary div/span classes. Executive summary detection checks template metadata plus HTML subtitle/class hints, router context includes the actual summary item labels, and exact one-summary-item-per-body-slide tracker requests apply deterministically to body slides only.
 
-45. **Client template profile registry**: Replaced the STC V1 prompt preset with a versioned client profile registry. STC now carries semantic theme tokens, footer branding, canonical layout bands, prompt/layout/PPTX contracts, sandbox evidence metadata, and validation rules. Settings exposes active profile assets and profile-bound PPTX status; `SlideContext` keeps durable `clientDesignProfileId` plus profile version; router/generation/edit/image/PPTX paths receive the active profile context; uploaded PPTX masters are stored by profile slot locally while the legacy server slot remains default-profile only.
+45. **Rich storyline full-content sync**: `syncStorylineFromSlidesAI()` now passes each slide's CSS-stripped full HTML plus untruncated text into storyline extraction, and stores a `contentInventory` array per story point so downstream storyline-aware prompts retain all major pillars, cards, bullets, metrics, labels, and table rows.
 
-46. **STC layout and prompt-section overrides**: The STC profile now encodes the GPT-derived purple consulting family as the default variant and the telecom outlook style as an explicit editorial alternate. Profile data includes freestyle shell/theme/vibe/writing/CSS/PPTX override sections, component patterns, PPTX contract rules, dense table/org/process bands, and stricter validation checks. `themeToCSS()` emits profile layout variables for the shared slide shell, so selecting STC moves the preview canvas title/subtitle/content/footer geometry without requiring a PPTX upload. The standard content geometry is aligned to the Board Affairs playbook reference layout (`12_Content slide _ VCS_to use`).
+46. **Clarification card submit scoping**: Multi-round router and agent clarification cards submit answers from the clicked card instead of the first historical card in the chat transcript, so first, second, and later question rounds preserve their own selected options and free-text answers.
+
+47. **Router system prompt refresh**: The default AI router prompt moved to `slide-generator/src/guides/router-system-prompt.md` with dynamic date injection. The prompt now prioritizes hierarchy-aware tracker recalibration, explicit `layoutGuidance`, limited clarification rounds, cover-only default template selection, and freestyle-by-default body slides.
+
+48. **Slide HTML generator prompt refresh**: Freestyle slide generation now uses `slide-generator/src/guides/slide-html-generator-prompt.md` as the default system prompt. It emphasizes scratch-built consulting layouts, strict 904x366 frame fit, scoped CSS, token-only colors, containment, label economy, and visual uplift while retaining PPTX export hints.
+
+49. **Executive prompt balance refresh**: Router and slide HTML prompts now emphasize regular execution over unnecessary questions, explicit brainstorming mode, tracker continuity, source quality guardrails, balanced slide density, sharp-edged consulting visuals, chart geometry, sequential flow layouts, and reduced repeated structural labels.
+
+50. **Tracker wording and compact tag sizing fix**: Executive-summary-derived trackers now preserve recognizable parent-page wording instead of truncating to four words. Router guidance copies `[TRACKER]` / `[SUB_TRACKER]` tags exactly and avoids synonym rewording. Compact tags, chips, badges, and tracker labels may use 8px/8pt for PPTX fit while normal text retains the 10px/10pt floor.
+
+51. **Client template profile registry**: Replaced the STC V1 prompt preset with a versioned client profile registry. STC now carries semantic theme tokens, footer branding, canonical layout bands, prompt/layout/PPTX contracts, sandbox evidence metadata, and validation rules. Settings exposes active profile assets and profile-bound PPTX status; `SlideContext` keeps durable `clientDesignProfileId` plus profile version; router/generation/edit/image/PPTX paths receive the active profile context; uploaded PPTX masters are stored by profile slot locally while the legacy server slot remains default-profile only.
+
+52. **STC layout and prompt-section overrides**: The STC profile now encodes the GPT-derived purple consulting family as the default variant and the telecom outlook style as an explicit editorial alternate. Profile data includes freestyle shell/theme/vibe/writing/CSS/PPTX override sections, component patterns, PPTX contract rules, dense table/org/process bands, and stricter validation checks. `themeToCSS()` emits profile layout variables for the shared slide shell, so selecting STC moves the preview canvas title/subtitle/content/footer geometry without requiring a PPTX upload. The standard content geometry is aligned to the Board Affairs playbook reference layout (`12_Content slide _ VCS_to use`).
 
 ---
 

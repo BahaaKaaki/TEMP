@@ -8,6 +8,7 @@ import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { CONTEXT_LEVELS, normalizeContextLevel } from './slideContext.js';
 import { authFetch } from '../authFetch.js';
 import { buildClientProfileContext } from '../../utils/clientDesignProfiles.js';
+import ROUTER_SYSTEM_PROMPT from '../../guides/router-system-prompt.md?raw';
 
 // ============================================
 // RULE-BASED ROUTER (No API call needed)
@@ -913,6 +914,7 @@ export function getRouterOutputSchema() {
 }
 
 export function getRouterSystemPrompt(settings = null) {
+  if (settings?.useLegacyRouterPrompt) {
   const defaultPrompt = `You are a senior consulting partner at Strategy& Middle East, primarily serving clients across the GCC region. You are also the work router and research planner for slide presentations.
 
 Your role is to understand the user's real request and intent, decide the right deck structure, perform or coordinate research when needed, and produce a consultant-grade execution plan.
@@ -1564,6 +1566,10 @@ REMEMBER:
 - In agent mode: YOU choose templates, agent provides content + research only
 - NEVER drop or summarize research — pass the full Instruction + Data Points through to the step instruction
 - SLIDES: You can't see content (only titles) → use contextSlides, reference by position`;
+    return applyPromptOverride(settings, 'router.system', defaultPrompt);
+  }
+
+  const defaultPrompt = ROUTER_SYSTEM_PROMPT.replace('{{CURRENT_DATE}}', currentDateString());
   return applyPromptOverride(settings, 'router.system', defaultPrompt);
 }
 
@@ -1786,7 +1792,7 @@ export async function triageRequest(userPrompt, context, settings) {
     : 'DECK: Empty (no slides yet)';
 
   const activeDigest = deckContextDigest?.activeSlideContext
-    ? `\nACTIVE SLIDE TEXT:\n${deckContextDigest.activeSlideContext.textSummary || '[Empty slide]'}`
+    ? `\nACTIVE SLIDE TEXT:\n${deckContextDigest.activeSlideContext.textSummary || '[Empty slide]'}${deckContextDigest.activeSlideContext.structuralHtml ? `\nACTIVE SLIDE HTML WITHOUT CSS:\n${deckContextDigest.activeSlideContext.structuralHtml}` : ''}`
     : '';
   const structureDigest = deckContextDigest
     ? `\nDECK DIGEST:\nLayout mix: ${deckContextDigest.layoutSummary || 'none'}\n${deckContextDigest.sectionMap || 'No section trackers set.'}\n${deckContextDigest.storylineSummary ? `Storyline:\n${deckContextDigest.storylineSummary}` : ''}`
@@ -2186,7 +2192,7 @@ SEARCH: Include a searchQuery when real data would strengthen the title — the 
     : '';
 
   const activeSlideBlock = activeSlideContext
-    ? `\nACTIVE PAGE CONTEXT:\n- Slide ${activeSlideContext.index + 1}: "${activeSlideContext.title}" (${activeSlideContext.template || 'custom'})\n${activeSlideContext.sectionLabel ? `- Section: ${activeSlideContext.sectionLabel}\n` : ''}${activeSlideContext.subSectionLabel ? `- Subsection: ${activeSlideContext.subSectionLabel}\n` : ''}${activeSlideContext.previousTitle ? `- Previous: "${activeSlideContext.previousTitle}"\n` : ''}${activeSlideContext.nextTitle ? `- Next: "${activeSlideContext.nextTitle}"\n` : ''}- Text-only content:\n${activeSlideContext.textSummary || '[Empty slide]'}\n`
+    ? `\nACTIVE PAGE CONTEXT:\n- Slide ${activeSlideContext.index + 1}: "${activeSlideContext.title}" (${activeSlideContext.template || 'custom'})\n${activeSlideContext.sectionLabel ? `- Section: ${activeSlideContext.sectionLabel}\n` : ''}${activeSlideContext.subSectionLabel ? `- Subsection: ${activeSlideContext.subSectionLabel}\n` : ''}${activeSlideContext.previousTitle ? `- Previous: "${activeSlideContext.previousTitle}"\n` : ''}${activeSlideContext.nextTitle ? `- Next: "${activeSlideContext.nextTitle}"\n` : ''}- Text-only content:\n${activeSlideContext.textSummary || '[Empty slide]'}\n${activeSlideContext.structuralHtml ? `- Full page HTML without CSS:\n${activeSlideContext.structuralHtml}\n` : ''}`
     : '';
 
   const sectionMapBlock = sectionMap || deckContextDigest?.sectionMap

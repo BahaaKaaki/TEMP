@@ -26,6 +26,8 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Client template profiles can switch generation away from the default Strategy& look; STC ships as the first full profile with semantic theme tokens, layout CSS variables, prompt-section overrides, footer branding, PPTX export hints, evidence metadata, and validation rules
 - Web search via PwC Responses API
 - Router search policy uses GPT 5.4 reasoning by default, but only attaches web search for requests that need current or external evidence; per-step search remains available for factual slides
+- Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md` and emphasizes executive storyline coherence, brainstorming mode, tracker continuity, source quality, and balanced layout guidance
+- Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` and emphasizes sharp, scratch-built consulting layouts, chart geometry, sequential flows, frame fit, token-only colors, and visual uplift
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Complex chart generation uses fixed-coordinate geometry guidance for waterfall/bridge/bar-style exhibits, with inline numeric positioning allowed only for chart marks
 - Template auto-match now attaches the selected template's extracted CSS consistently across create, insert, fill, and switch paths
@@ -33,12 +35,15 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Template switching strips model-returned `<style>` blocks when template CSS is applied, reducing conflicts between generated CSS and extracted template CSS
 - Cross-slide format matching passes referenced slide HTML plus its unscoped `customCSS`, so "make this like slide N" has the actual visual rules, not just markup
 - Explicit slide reorder prompts such as `3-4-2-5-6` or `reorder slides 4 and 5` are handled deterministically without an AI planning call, preserving omitted slides in their existing relative order; the create/delete guard is scoped to pure reorder requests so broader deck restructuring can still change content
-- Slide typography is normalized on generation/import/update and PPTX export: no visible text below 10px/10pt, body copy targets 12px/12pt, and section/pillar/card titles target 14px/14pt
+- Slide typography is normalized on generation/import/update and PPTX export: compact tags, chips, badges, and tracker labels may use 8px/8pt; normal text stays at least 10px/10pt, body copy targets 12px/12pt, and section/pillar/card titles target 14px/14pt
 - Deck-aware routing uses active-page text, layout mix, section maps, and enriched storyline context for follow-on deck requests
 - Triage now selects context depth (`active_slide`, `reference_slides`, `deck_digest`, or `full_text_deck`) and separates target slides from reference slides for cross-slide edits
 - Section and subsection trackers can be updated as slide metadata without regenerating slide HTML
-- Executive summary trackers are derived from semantic slide text, including freestyle HTML with arbitrary div/span classes, and apply to body slides rather than the executive summary slide
+- Executive summary trackers are derived from recognizable parent-page wording, including freestyle HTML with arbitrary div/span classes, and apply to body slides rather than the executive summary slide
 - Prompt Debug settings expose router, triage, generation, edit, validation, and PPTX prompt overrides plus recent prompt payloads for troubleshooting look and feel
+- Multi-round clarification cards submit answers from the active question card, so follow-up question sets preserve first, second, and later-round user preferences
+- Router context includes the active page's full HTML structure without CSS, so planning can see card/pillar/table hierarchy instead of relying only on text digests
+- Rich storyline sync from existing slides also analyzes each slide's full HTML structure without CSS and stores a `contentInventory` for pillars, cards, bullets, metrics, table rows, and labels
 - New slides use compact stable IDs while older UUID-based decks continue to load unchanged
 - Auto-fetch available models from PwC Shared Services `/models` endpoint with grouped vendor display
 - Deck-aware template switching with pillar preservation and optional user guidance

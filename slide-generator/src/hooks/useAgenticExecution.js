@@ -227,7 +227,7 @@ export function useAgenticExecution({
   <div class="clarification-body">
     ${questionBlocksHtml}
     <div class="clarification-submit-row">
-      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers()">Submit Answers</button>
+      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers(this)">Submit Answers</button>
     </div>
   </div>
 </div>`;

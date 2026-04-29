@@ -163,8 +163,9 @@ STANDARD FONTS:
 - Subtitles: Arial 18pt bold, color red
 - Body text, bullets, descriptions, and table cells: Arial 12-14pt, color secondary
 - Section titles, pillar titles, and card titles: Arial 14-16pt bold, color main
-- Labels, badges, chart axes, sources, and footer text: Arial 10pt minimum
-- Never output fontSize below 10. If text does not fit at 10pt+, reduce copy or split boxes; do not use tiny text.
+- Compact tags, chips, badges, tracker labels, and short in-box labels: Arial 8pt minimum
+- Chart axes, sources, captions, and footer text: Arial 10pt minimum
+- Never output fontSize below 10 for normal text, or below 8 for compact tags/trackers. If text does not fit, reduce copy or split boxes; do not use tiny text.
 
 DEFAULT POSITIONS (may be overridden by template positions in the user prompt):
 - Title: x:0.48, y:0.42, w:12.36
@@ -204,7 +205,7 @@ Interpret hints as follows:
 - step-number: keep the number as one prominent line, not multiple lines.
 - tight-box: minimise text margin / inset. Prefer margin:0, wrap:false, and valign:'middle' when that matches the CSS. Use fit:'shrink' only as a last resort to preserve one-line text.
 - align=... / valign=...: prefer that alignment for the hinted element.
-- typography-floor: even when using fit:'shrink', never set fontSize below 10; use 12 for normal body copy and 14 for section/pillar/card titles.
+- typography-floor: even when using fit:'shrink', never set fontSize below 8 for compact tags/trackers or below 10 for normal text; use 12 for normal body copy and 14 for section/pillar/card titles.
 
 If an element has no hint, render it normally from the CSS and HTML.
 
@@ -557,10 +558,12 @@ The CSS RULES section above is the RESOLVED stylesheet for this slide -- treat i
 6. The reference example is just a STRUCTURAL guide. Always use the ACTUAL colors from THIS slide's CSS/HTML.
 
 MANDATORY -- TYPOGRAPHY FIDELITY AND READABILITY:
-${profileFontFace ? `- For this client profile, every text box MUST set fontFace:'${profileFontFace}'. Do not use Arial, Georgia, Calibri, Aptos, or generic font fallbacks.\n` : ''}- Never emit fontSize below 10.
+${profileFontFace ? `- For this client profile, every text box MUST set fontFace:'${profileFontFace}'. Do not use Arial, Georgia, Calibri, Aptos, or generic font fallbacks.\n` : ''}
+- Never emit fontSize below 10 for normal text, or below 8 for compact tags, chips, badges, tracker labels, and short in-box labels.
 - Use fontSize 12 or larger for body copy, bullets, descriptions, and table cells.
 - Use fontSize 14 or larger for section titles, pillar titles, card titles, grid-cell titles, and h3/h4 equivalents.
-- Use fontSize 10 only for labels, badges, chart axes, legends, captions, sources, and footer text.
+- Use fontSize 8 only for compact tags, chips, badges, tracker labels, and short in-box labels.
+- Use fontSize 10 only for chart axes, legends, captions, sources, and footer text.
 - Do not use fit:'shrink' to push text below those floors. If needed, shorten copied text only when the HTML/CSS already indicates it is a compact label.
 
 OUTPUT FORMAT (return ONLY this, no markdown):
@@ -619,14 +622,14 @@ export function validateGeneratedCode(codeString, slideHtml) {
 
   const tinyFontMatches = [...String(codeString).matchAll(/fontSize\s*:\s*([0-9]*\.?[0-9]+)/g)]
     .map(match => Number(match[1]))
-    .filter(size => Number.isFinite(size) && size < 10);
+    .filter(size => Number.isFinite(size) && size < 8);
   if (tinyFontMatches.length > 0) {
     return {
       valid: false,
       errors: [{
         type: 'TypographyFloorError',
-        message: `PPTX code uses fontSize below 10 (${[...new Set(tinyFontMatches)].join(', ')})`,
-        details: 'Regenerate with fontSize >= 10 for labels/footer and >= 12 for normal body text. Never use tiny text to force fit.',
+        message: `PPTX code uses fontSize below 8 (${[...new Set(tinyFontMatches)].join(', ')})`,
+        details: 'Regenerate with fontSize >= 8 for compact tags/trackers, >= 10 for captions/axes/footer, and >= 12 for normal body text.',
       }],
     };
   }

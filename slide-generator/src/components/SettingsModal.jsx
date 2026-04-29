@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { DEFAULT_SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT, PROMPT_OVERRIDE_DEFS, getLastPromptPayloads, setApiMaxConcurrent } from '../services/aiService';
-import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, FREESTYLE_PRESETS } from '../services/ai/freestylePromptBuilder.js';
+import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, FREESTYLE_PRESETS } from '../services/ai/freestylePromptBuilder.js';
 import { getRouterSystemPrompt, TRIAGE_SYSTEM_PROMPT } from '../services/ai/router.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage, downloadArrayBuffer } from '../services/pptxTemplateService';
@@ -1608,7 +1608,7 @@ export default function SettingsModal({ onClose }) {
     const promptOverrideDefaults = {
       'router.system': getRouterSystemPrompt(),
       'triage.system': TRIAGE_SYSTEM_PROMPT,
-      'slideGen.freestyleSystem': `${DEFAULT_SHELL}\n\n${DEFAULT_THEME}\n\n${DEFAULT_VIBE}\n\n${DEFAULT_WRITING}`,
+      'slideGen.freestyleSystem': DEFAULT_SLIDE_HTML_GENERATOR_PROMPT,
       'slideGen.freestyleUser': '',
       'slideGen.templateSystem': DEFAULT_SYSTEM_PROMPT,
       'slideGen.templateUser': '',

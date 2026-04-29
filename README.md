@@ -24,7 +24,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
 - Client template profiles can switch generation away from the default Strategy& look; STC ships as the first full profile with semantic theme tokens, layout CSS variables, prompt-section overrides, footer branding, PPTX export hints, evidence metadata, and validation rules
-- Client-profile geometry is applied at slide creation and PPTX export: active profiles rewrite generic frame/chart guidance, use profile-shaped PPTX examples, normalize exported body objects into the declared content band, sanitize invalid negative shape dimensions, and load bundled masters/assets through profile-driven routes
+- Client-profile geometry and theme state are applied at slide creation and PPTX export: active profiles rewrite generic frame/chart guidance, keep new/cleared decks on the selected profile theme, use profile-shaped PPTX examples, normalize exported body objects into the declared content band, sanitize invalid negative shape dimensions, and load bundled masters/assets through profile-driven routes
 - Web search via PwC Responses API
 - Router search policy uses GPT 5.4 reasoning by default, but only attaches web search for requests that need current or external evidence; per-step search remains available for factual slides
 - Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md` and emphasizes executive storyline coherence, brainstorming mode, tracker continuity, source quality, and balanced layout guidance

@@ -1036,8 +1036,8 @@ function slideReducer(state, action) {
         ...state.settings,
         ...action.payload.settings,
       };
-      const profileChanged = Object.prototype.hasOwnProperty.call(action.payload.settings || {}, 'clientDesignProfileId')
-        && nextSettings.clientDesignProfileId !== state.settings.clientDesignProfileId;
+      const profileProvided = Object.prototype.hasOwnProperty.call(action.payload.settings || {}, 'clientDesignProfileId');
+      const profileChanged = profileProvided && nextSettings.clientDesignProfileId !== state.settings.clientDesignProfileId;
       const activeProfile = profileChanged ? getClientDesignProfile(nextSettings.clientDesignProfileId) : null;
       if (activeProfile) {
         nextSettings.clientProfileVersion = activeProfile.status || String(activeProfile.schemaVersion || '');
@@ -1054,7 +1054,7 @@ function slideReducer(state, action) {
           }))
           : state.slides,
         settings: nextSettings,
-        theme: profileChanged ? getClientProfileTheme(nextSettings.clientDesignProfileId) : state.theme,
+        theme: profileProvided ? getClientProfileTheme(nextSettings.clientDesignProfileId) : state.theme,
       };
     }
 
@@ -1103,6 +1103,7 @@ function slideReducer(state, action) {
       return {
         ...initialState,
         settings: state.settings, // Keep settings
+        theme: getClientProfileTheme(state.settings.clientDesignProfileId || 'strategy'),
         deckVersions: state.deckVersions, // Keep versions
         customTemplates: state.customTemplates, // Keep custom templates
         flows: state.flows || [], // Keep flows
@@ -1169,6 +1170,7 @@ function slideReducer(state, action) {
       return {
         ...initialState,
         settings: state.settings,
+        theme: getClientProfileTheme(state.settings.clientDesignProfileId || 'strategy'),
         deckVersions: autoSaveVersion
           ? [...state.deckVersions, autoSaveVersion]
           : state.deckVersions,

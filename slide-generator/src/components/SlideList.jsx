@@ -4,6 +4,7 @@ import { SLIDE_TEMPLATES, getTemplatesByCategory, getEmptySlideTemplates } from 
 import { generateEmptySlideHTML } from '../utils/slideMasters';
 import { extractRelevantCSS } from '../services/aiService';
 import { unscopeCSS } from '../utils/cssScoping';
+import { themeToCSS } from '../utils/themeUtils';
 import SlideValidationModal from './SlideValidationModal';
 import TemplatePicker from './TemplatePicker';
 
@@ -586,7 +587,7 @@ export default function SlideList() {
 
                     {/* Slide thumbnail with number overlay */}
                     <div className="slide-item-thumbnail">
-                      <SlideThumbnail html={slide.html} customCSS={slide.customCSS} slideId={slide.id} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id || index}-${slide.updatedAt || ''}`} />
+                      <SlideThumbnail html={slide.html} customCSS={slide.customCSS} slideId={slide.id} theme={state.theme} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id || index}-${slide.updatedAt || ''}`} />
                       <span className="slide-number-badge">{index + 1}</span>
                       {/* Comment indicator badge -- hidden, functionality preserved */}
                       {false && (slide.comments || []).filter(c => !c.addressed).length > 0 && (
@@ -661,7 +662,7 @@ export default function SlideList() {
           }}
         >
           <div className="hover-preview-content">
-            <SlideHoverPreview html={hoveredSlide.html} customCSS={hoveredSlide.customCSS} slideId={hoveredSlide.id} darkMode={state.darkMode} sectionLabel={hoveredSlide.sectionLabel} />
+            <SlideHoverPreview html={hoveredSlide.html} customCSS={hoveredSlide.customCSS} slideId={hoveredSlide.id} theme={state.theme} darkMode={state.darkMode} sectionLabel={hoveredSlide.sectionLabel} />
           </div>
           <div className="hover-preview-title">{hoveredSlide.title}</div>
         </div>
@@ -706,7 +707,7 @@ function injectSectionAttribute(html, sectionLabel) {
 }
 
 // Mini thumbnail component -- dynamically scales 960x540 slide to fit container
-function SlideThumbnail({ html, customCSS, slideId, darkMode = false, sectionLabel }) {
+function SlideThumbnail({ html, customCSS, slideId, theme, darkMode = false, sectionLabel }) {
   const wrapperRef = useRef(null);
   const [scale, setScale] = useState(0.13);
 
@@ -731,7 +732,8 @@ function SlideThumbnail({ html, customCSS, slideId, darkMode = false, sectionLab
   if (slideId && previewHtml && !previewHtml.includes('data-slide-id')) {
     previewHtml = previewHtml.replace(/class="slide([^"]*)"/, `class="slide$1" data-slide-id="${slideId}"`);
   }
-  const cssTag = customCSS ? `<style>${customCSS}</style>` : '';
+  const themeCSS = theme ? themeToCSS(theme) : '';
+  const cssTag = `<style>${themeCSS}${customCSS ? `\n${customCSS}` : ''}</style>`;
   return (
     <div className="thumbnail-wrapper" ref={wrapperRef}>
       <div
@@ -744,13 +746,14 @@ function SlideThumbnail({ html, customCSS, slideId, darkMode = false, sectionLab
 }
 
 // Larger hover preview component
-function SlideHoverPreview({ html, customCSS, slideId, darkMode = false, sectionLabel }) {
+function SlideHoverPreview({ html, customCSS, slideId, theme, darkMode = false, sectionLabel }) {
   let previewHtml = injectDarkModeAttribute(html, darkMode);
   previewHtml = injectSectionAttribute(previewHtml, sectionLabel);
   if (slideId && previewHtml && !previewHtml.includes('data-slide-id')) {
     previewHtml = previewHtml.replace(/class="slide([^"]*)"/, `class="slide$1" data-slide-id="${slideId}"`);
   }
-  const cssTag = customCSS ? `<style>${customCSS}</style>` : '';
+  const themeCSS = theme ? themeToCSS(theme) : '';
+  const cssTag = `<style>${themeCSS}${customCSS ? `\n${customCSS}` : ''}</style>`;
   return (
     <div className="hover-slide-wrapper">
       <style>{getPreviewCSS()}</style>

@@ -7,6 +7,7 @@ import { callWithModelFallback, callRouterWithImages, attachSkillIdToBody } from
 import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { CONTEXT_LEVELS, normalizeContextLevel } from './slideContext.js';
 import { authFetch } from '../authFetch.js';
+import { buildClientProfileContext } from '../../utils/clientDesignProfiles.js';
 import ROUTER_SYSTEM_PROMPT from '../../guides/router-system-prompt.md?raw';
 
 // ============================================
@@ -2212,6 +2213,12 @@ ${effectiveDeckStructure.executiveSummary?.items?.length ? `- Executive summary 
     ? `\nREFERENCE SLIDE TEXT CONTEXT:
 ${deckContextDigest.referenceSlideContexts.map(ref => `- Slide ${ref.index + 1}: "${ref.title}" (${ref.template})${ref.sectionLabel ? ` [${ref.sectionLabel}]` : ''}\n${ref.textSummary}`).join('\n\n')}\n`
     : '';
+  const clientProfileBlock = buildClientProfileContext(settings, {
+    includeTheme: false,
+    includeLayout: true,
+    includeValidation: true,
+    includeEvidence: false,
+  });
 
   const contextInfo = `CURRENT STATE:
 - Total slides: ${slideCount}
@@ -2235,7 +2242,7 @@ ${activeFlow ? `\nACTIVE FLOW: "${activeFlow.name}"
 Overall guidance: ${activeFlow.overallGuidance || 'none'}
 Sections:
 ${activeFlow.sections.map((s, i) => `  ${i + 1}. template="${s.templateHint}" | instruction="${s.instruction}"${s.isRepeatable ? ` | REPEATABLE (${s.repeatSource})` : ''}`).join('\n')}
-` : ''}${recentConversation}${settings.userPreferences ? `\nUSER PREFERENCES (apply to all slides unless overridden):\n${settings.userPreferences}\n` : ''}
+` : ''}${clientProfileBlock ? `\n${clientProfileBlock}\n` : ''}${recentConversation}${settings.userPreferences ? `\nUSER PREFERENCES (apply to all slides unless overridden):\n${settings.userPreferences}\n` : ''}
 USER REQUEST: "${routerPrompt}"`;
 
   let routerSearchRawText = '';

@@ -9,6 +9,7 @@ import { generateSlideSummary, buildDeckContext } from './slideContext.js';
 import { currentDateString } from './router.js';
 import { LAYOUT_GUIDANCE_MAP } from './imageGeneration.js';
 import { applyPromptOverride, appendPromptOverride, recordPromptPayload } from './promptOverrides.js';
+import { appendClientDesignContract, buildClientChartGeometryGuide, getActiveClientProfile, getClientProfileFooterBranding, rewritePromptGeometryForClientProfile } from '../../utils/clientDesignProfiles.js';
 
 // ============================================
 // FREESTYLE VALIDATION (brand compliance)
@@ -131,6 +132,7 @@ export async function generateSlides(prompt, settings, slideCount = 3, existingS
     // Template mode: use full examples
     activeSystemPrompt = applyPromptOverride(settings, 'slideGen.templateSystem', DEFAULT_SYSTEM_PROMPT);
   }
+  activeSystemPrompt = appendClientDesignContract(rewritePromptGeometryForClientProfile(activeSystemPrompt, settings), settings);
 
   if (!creds.apiKey) {
     throw new Error('API key is required. Please configure it in Settings.');
@@ -273,6 +275,11 @@ ${layoutGuidanceSpec.instruction}
   }
   // For freestyle: layoutInstruction stays empty — the guide handles layout selection
 
+  const footerBranding = getClientProfileFooterBranding(settings, 'Strategy&');
+  const footerLeftInstruction = footerBranding
+    ? `left: "${footerBranding}"`
+    : 'left: empty string unless a real source or footer label is provided';
+
   // Build user prompt — freestyle gets a clean, minimal prompt; template mode gets the full one
   let userPrompt;
 
@@ -292,6 +299,8 @@ ${layoutPart !== contentPart && layoutPart !== prompt ? `LAYOUT DESCRIPTION: ${l
       ? `\nLAYOUT HINT (from narrative planner): "${routerLayoutGuidance}" — consider this, but choose whatever layout best serves the content. You are not bound to it.`
       : '';
 
+    const chartGeometryGuide = buildClientChartGeometryGuide(settings, CHART_GEOMETRY_GUIDE);
+
     userPrompt = `${freestyleIntro}
 TODAY: ${currentDateString()}
 ${currentSlideContext}${deckOverview}${existingDeckContext}${layoutHint}
@@ -304,7 +313,7 @@ You may lightly adjust word count to fit the 8-12 word format but MUST preserve 
 REQUIREMENTS:
 ${countInstruction}
 ${coverInstruction}
-- Footer: three spans — left: "${settings.footerBranding || 'Strategy&'}", center: <span class="source"> (footnote if citing a source, otherwise empty), right: page number
+- Footer: three spans — ${footerLeftInstruction}, center: <span class="source"> (footnote if citing a source, otherwise empty), right: page number
 ${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "this page", they mean the CURRENT SLIDE REFERENCE shown above' : ''}
 ${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
 ${settings.userPreferences ? `\nUSER PREFERENCES (apply unless contradicted by the specific request above):\n${settings.userPreferences}\n` : ''}
@@ -318,7 +327,7 @@ VISUAL QUALITY:
 
 ${TYPOGRAPHY_SIZE_GUIDE}
 
-${CHART_GEOMETRY_GUIDE}
+${chartGeometryGuide}
 
 CONTENT FIDELITY:
 - TOPIC PROMPT (e.g., "AI trends") → you generate the content. Be professional, specific, data-rich.
@@ -341,6 +350,10 @@ ${layoutPart !== contentPart && layoutPart !== prompt ? `LAYOUT DESCRIPTION: ${l
 Follow the DESIGN PROCESS from the guide: count items, pick layout, check budget, fill. If content exceeds the layout budget, split into multiple slides.`
       : `Generate professional presentation slide(s) about: "${prompt}"`;
 
+    const activeProfile = getActiveClientProfile(settings);
+    const frameHeight = activeProfile?.layoutContract?.standardContent?.body?.h || 366;
+    const chartGeometryGuide = buildClientChartGeometryGuide(settings, CHART_GEOMETRY_GUIDE);
+
     userPrompt = `${promptIntro}
 TODAY: ${currentDateString()}
 ${currentSlideContext}${deckOverview}${existingDeckContext}
@@ -362,10 +375,10 @@ ${coverInstruction}
 - Maintain narrative flow with any existing slides
 ${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
 - SOURCE/CITATION: Any source attribution (e.g., "Source: McKinsey 2024") goes ONLY in the <footer> — NEVER inside <div class="frame"> content area.
-- Footer: three spans — left: "${settings.footerBranding || 'Strategy&'}", center: <span class="source"> (footnote if citing a source, otherwise empty), right: page number
+- Footer: three spans — ${footerLeftInstruction}, center: <span class="source"> (footnote if citing a source, otherwise empty), right: page number
 ${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "this page", they mean the CURRENT SLIDE REFERENCE shown above' : ''}
 
-${CHART_GEOMETRY_GUIDE}
+${chartGeometryGuide}
 
 ${TYPOGRAPHY_SIZE_GUIDE}
 
@@ -383,7 +396,7 @@ Rules for PRECISE content:
 - If the user provides specific data, numbers, percentages, or names, reproduce them EXACTLY.
 - You may lightly restructure for the layout (e.g., split a long sentence across card title + description) but the WORDS must stay the same.
 - ADAPT THE LAYOUT TO THE CONTENT, not the content to the layout. Content is the deliverable — the layout serves it.
-- Only trim content if it physically overflows the 366px frame — and even then, cut the least important parts, don't reword what remains.
+- Only trim content if it physically overflows the ${frameHeight}px frame — and even then, cut the least important parts, don't reword what remains.
 
 Even for PRECISE content, always use CSS components (card-row, split-layout, content-list, grid-2x2, etc.) rather than raw paragraphs or unstyled lists. Structure their content into the layout — each point becomes a card, a list item, a grid cell, etc.
 ${settings.userPreferences ? `\nUSER PREFERENCES (apply unless contradicted by the specific request above):\n${settings.userPreferences}\n` : ''}

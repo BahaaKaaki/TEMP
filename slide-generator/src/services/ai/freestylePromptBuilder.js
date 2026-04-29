@@ -3,6 +3,7 @@ import DEFAULT_THEME from '../../guides/freestyle-theme.md?raw';
 import DEFAULT_VIBE from '../../guides/freestyle-vibe.md?raw';
 import DEFAULT_WRITING from '../../guides/freestyle-writing.md?raw';
 import DEFAULT_PPTX_HINTS from '../../guides/freestyle-pptx-hints.md?raw';
+import { appendClientDesignContract, applyClientProfilePromptSections, rewritePromptGeometryForClientProfile } from '../../utils/clientDesignProfiles.js';
 import DEFAULT_SLIDE_HTML_GENERATOR_PROMPT from '../../guides/slide-html-generator-prompt.md?raw';
 
 export {
@@ -124,15 +125,28 @@ export function buildFreestyleSystemPrompt(settings = {}) {
   const writingCustom = !!(settings.freestyleWriting && settings.freestyleWriting.trim());
   const presetCustom = !!(preset && preset.id !== 'default');
 
-  const extraSections = [];
-  if (presetCustom && preset?.vibe) extraSections.push(preset.vibe);
-  if (shellCustom) extraSections.push(settings.freestyleShell);
-  if (themeCustom) extraSections.push(settings.freestyleTheme);
-  if (vibeCustom) extraSections.push(settings.freestyleVibe);
-  if (writingCustom) extraSections.push(settings.freestyleWriting);
-  const hints = DEFAULT_PPTX_HINTS;
+  const baseSections = {
+    shell: shellCustom ? settings.freestyleShell : (presetCustom ? preset?.shell : ''),
+    theme: themeCustom ? settings.freestyleTheme : (presetCustom ? preset?.theme : ''),
+    vibe: vibeCustom ? settings.freestyleVibe : (presetCustom ? preset?.vibe : ''),
+    writing: writingCustom ? settings.freestyleWriting : (presetCustom ? preset?.writing : ''),
+    hints: DEFAULT_PPTX_HINTS,
+  };
+  const { shell, theme, vibe, writing, hints } = applyClientProfilePromptSections(baseSections, settings, {
+    includeShell: false,
+  });
 
-  const assembled = [DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, ...extraSections, hints].join('\n\n---\n\n');
+  const extraSections = [];
+  if (shell) extraSections.push(shell);
+  if (theme) extraSections.push(theme);
+  if (vibe) extraSections.push(vibe);
+  if (writing) extraSections.push(writing);
+
+  const basePrompt = rewritePromptGeometryForClientProfile(DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, settings);
+  const assembled = appendClientDesignContract(
+    [basePrompt, ...extraSections, hints].join('\n\n---\n\n'),
+    settings
+  );
 
   console.groupCollapsed(
     '[FreestylePrompt] Assembled system prompt (%d chars) — Base:slide-html-generator Preset:%s Shell:%s Theme:%s Vibe:%s Writing:%s Hints:default',
@@ -143,8 +157,8 @@ export function buildFreestyleSystemPrompt(settings = {}) {
     vibeCustom ? 'CUSTOM' : 'default',
     writingCustom ? 'CUSTOM' : 'default'
   );
-  console.groupCollapsed('Base (%d chars)', DEFAULT_SLIDE_HTML_GENERATOR_PROMPT.length);
-  console.log(DEFAULT_SLIDE_HTML_GENERATOR_PROMPT);
+  console.groupCollapsed('Base (%d chars)', basePrompt.length);
+  console.log(basePrompt);
   console.groupEnd();
   extraSections.forEach((section, index) => {
     console.groupCollapsed('Extra section %d (%d chars)', index + 1, section.length);

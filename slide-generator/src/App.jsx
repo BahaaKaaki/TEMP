@@ -14,6 +14,9 @@ import AccessDenied from './components/AccessDenied';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { loadSkills } from './services/skillsService';
 import { authFetch } from './services/authFetch';
+import { loadStcForwardFonts } from './services/stcFontLoader';
+import { loadTemplateFromStorage } from './services/pptxTemplateService';
+import { getActiveClientProfile } from './utils/clientDesignProfiles';
 import PptxLab from './components/PptxLab';
 import 'frontend-comps/styles.css';
 import './styles/app.css';
@@ -44,7 +47,8 @@ function useAutoReload() {
 function EditorContent() {
   useKeyboardShortcuts();
   useAutoReload();
-  const { isPanelOpen, togglePanel, actions } = useSlides();
+  const { state, isPanelOpen, togglePanel, actions } = useSlides();
+  const activeClientDesignProfileId = state.settings?.clientDesignProfileId || 'strategy';
 
   // Hydrate the consulting skills catalogue once when the editor mounts.
   // Bodies stay on the server; only metadata (id, name, category, order)
@@ -64,6 +68,27 @@ function EditorContent() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const profile = getActiveClientProfile({ clientDesignProfileId: activeClientDesignProfileId });
+    const profileId = profile.id || 'strategy';
+    const master = profile.pptxMaster;
+    const shouldWarmMaster = profileId !== 'strategy'
+      && (master?.bundled || master?.serverSync === 'backend-profile-default');
+    if (!shouldWarmMaster) return undefined;
+
+    let cancelled = false;
+    loadTemplateFromStorage({ profileId }).then((template) => {
+      if (cancelled) return;
+      if (template?.data) {
+        console.log('[App] %s PPTX master warmed on startup: %s', profile.name || profileId, template.fileName || 'default');
+      }
+    }).catch((error) => {
+      if (!cancelled) console.warn('[App] %s PPTX master warm-up failed: %s', profile.name || profileId, error.message);
+    });
+
+    return () => { cancelled = true; };
+  }, [activeClientDesignProfileId]);
 
   return (
     <div className="app-container">
@@ -168,6 +193,10 @@ function ProtectedRoute({ children }) {
         sessionStorage.removeItem(AUTH_RETRY_KEY);
         const data = await res.json();
         if (cancelled) return;
+        if (data.allowed) {
+          await loadStcForwardFonts();
+          if (cancelled) return;
+        }
         setBootstrap({
           status: data.allowed ? 'allowed' : 'denied',
           email: data.email || null,

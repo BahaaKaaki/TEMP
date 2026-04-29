@@ -1,5 +1,6 @@
 import JSZip from 'jszip';
 
+import { getClientDesignProfile } from '../utils/clientDesignProfiles';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 
 const EMU_PER_INCH = 914400;
@@ -9,10 +10,11 @@ const EMU_PER_INCH = 914400;
  * from a PPTX file.
  *
  * @param {ArrayBuffer} pptxBuffer - The raw PPTX file bytes
- * @returns {Promise<{theme: object, raw: object, chrome: object}|null>}
+ * @returns {Promise<{theme: object, raw: object, chrome: object, evidence: object}|null>}
  */
-export async function extractBranding(pptxBuffer) {
+export async function extractBranding(pptxBuffer, options = {}) {
   const zip = await JSZip.loadAsync(pptxBuffer);
+  const profile = getClientDesignProfile(options.profileId || 'strategy');
 
   const themeFile = zip.file('ppt/theme/theme1.xml');
   if (!themeFile) return null;
@@ -26,9 +28,23 @@ export async function extractBranding(pptxBuffer) {
 
   if (!colors && !fonts) return null;
 
-  const theme = mapToAppTheme(colors, fonts);
+  const theme = profile.id === 'strategy'
+    ? mapToAppTheme(colors, fonts)
+    : structuredClone(profile.theme || mapToAppTheme(colors, fonts));
   const chrome = await extractChrome(zip);
-  return { theme, raw: { colors, fonts }, chrome };
+  const evidence = await extractTemplateEvidence(zip, { rawColors: colors, rawFonts: fonts, profile });
+  return {
+    theme,
+    raw: {
+      colors,
+      fonts,
+      semanticMapping: profile.id === 'strategy' ? 'raw-theme-slots' : `profile:${profile.id}`,
+    },
+    chrome,
+    evidence,
+    profileId: profile.id,
+    extractionVersion: 'client-profile-v1',
+  };
 }
 
 function extractColors(doc) {
@@ -164,6 +180,99 @@ function isLightColor(hex) {
   return (r * 299 + g * 587 + b * 114) / 1000 > 128;
 }
 
+async function extractTemplateEvidence(zip, { rawColors, rawFonts, profile } = {}) {
+  const paths = Object.keys(zip.files);
+  const slidePaths = paths.filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f));
+  const masterPaths = paths.filter(f => /^ppt\/slideMasters\/slideMaster\d+\.xml$/.test(f));
+  const layoutPaths = paths
+    .filter(f => /^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(f))
+    .sort((a, b) => parseInt(a.match(/(\d+)/g).pop(), 10) - parseInt(b.match(/(\d+)/g).pop(), 10));
+
+  const fontUsage = {};
+  const footerLabels = new Set();
+  const layoutSummaries = [];
+
+  for (const path of layoutPaths) {
+    const xml = await zip.files[path].async('string');
+    collectFontUsage(xml, fontUsage);
+    collectFooterLikeText(xml, footerLabels);
+    layoutSummaries.push({
+      path,
+      name: xml.match(/<p:cSld\s+name="([^"]+)"/)?.[1] || null,
+      type: xml.match(/<p:sldLayout[^>]*type="([^"]+)"/)?.[1] || null,
+      placeholders: summarizePlaceholders(xml),
+      shapeCount: (xml.match(/<p:sp\b/g) || []).length,
+      pictureCount: (xml.match(/<p:pic\b/g) || []).length,
+    });
+  }
+
+  const masterSummaries = [];
+  for (const path of masterPaths) {
+    const xml = await zip.files[path].async('string');
+    collectFontUsage(xml, fontUsage);
+    collectFooterLikeText(xml, footerLabels);
+    masterSummaries.push({
+      path,
+      shapeCount: (xml.match(/<p:sp\b/g) || []).length,
+      pictureCount: (xml.match(/<p:pic\b/g) || []).length,
+    });
+  }
+
+  return {
+    profileId: profile?.id || 'strategy',
+    slideCount: slidePaths.length,
+    masterCount: masterPaths.length,
+    layoutCount: layoutPaths.length,
+    rawThemeColors: rawColors || {},
+    rawThemeFonts: rawFonts || {},
+    semanticTheme: profile?.id && profile.id !== 'strategy'
+      ? 'Profile semantic theme overrides raw OOXML theme slots.'
+      : 'Raw OOXML theme slots mapped to Edwin theme tokens.',
+    fontUsage,
+    footerLabels: Array.from(footerLabels).slice(0, 20),
+    layouts: layoutSummaries,
+    masters: masterSummaries,
+  };
+}
+
+function collectFontUsage(xml, fontUsage) {
+  const matches = xml.matchAll(/<a:latin[^>]*typeface="([^"]+)"/g);
+  for (const match of matches) {
+    const font = match[1];
+    if (!font) continue;
+    fontUsage[font] = (fontUsage[font] || 0) + 1;
+  }
+}
+
+function collectFooterLikeText(xml, footerLabels) {
+  const matches = xml.matchAll(/<a:t>([^<]{1,120})<\/a:t>/g);
+  for (const match of matches) {
+    const text = match[1].trim();
+    if (!text) continue;
+    if (/\b(source|confidential|strategy&|stc|page|copyright|footer)\b/i.test(text)) {
+      footerLabels.add(text);
+    }
+  }
+}
+
+function summarizePlaceholders(xml) {
+  const summaries = [];
+  const spRegex = /<p:sp\b[\s\S]*?<\/p:sp>/g;
+  let match;
+  while ((match = spRegex.exec(xml)) !== null) {
+    const shapeXml = match[0];
+    if (!/<p:ph\b/.test(shapeXml)) continue;
+    const phMatch = shapeXml.match(/<p:ph\b([^>]*)\/?>/);
+    const attrs = phMatch?.[1] || '';
+    summaries.push({
+      type: attrs.match(/\btype="([^"]+)"/)?.[1] || 'body',
+      idx: attrs.match(/\bidx="([^"]+)"/)?.[1] || null,
+      position: extractShapePosition(shapeXml),
+    });
+  }
+  return summaries;
+}
+
 // ── Template Chrome Extraction ──────────────────────────────────────────────
 
 function emuToInch(emu) {
@@ -222,66 +331,98 @@ async function extractChrome(zip) {
   return chrome;
 }
 
+function resolveRelationshipTarget(sourcePartPath, target) {
+  if (!target || target.startsWith('/') || /^[a-z]+:/i.test(target)) return target;
+  const sourceDir = sourcePartPath.split('/').slice(0, -1);
+  const parts = [...sourceDir, ...target.split('/')];
+  const normalized = [];
+  for (const part of parts) {
+    if (!part || part === '.') continue;
+    if (part === '..') normalized.pop();
+    else normalized.push(part);
+  }
+  return normalized.join('/');
+}
+
+function relationshipPathForPart(partPath) {
+  const bits = partPath.split('/');
+  const fileName = bits.pop();
+  return `${bits.join('/')}/_rels/${fileName}.rels`;
+}
+
 /**
- * Find the logo image from the slide master.
- * Looks for small image shapes in the header zone (top 1.5" of slide, area < 15% of slide).
+ * Find the visible logo image from slide masters and layouts.
+ * STC stores the real logo on the layout while the master has a tiny hidden EMF,
+ * so reject invisible/vector stubs and prefer usable raster images in the header.
  */
 async function extractLogo(zip) {
-  const masterPath = 'ppt/slideMasters/slideMaster1.xml';
-  const masterRelsPath = 'ppt/slideMasters/_rels/slideMaster1.xml.rels';
-
-  const masterFile = zip.file(masterPath);
-  const relsFile = zip.file(masterRelsPath);
-  if (!masterFile || !relsFile) return null;
-
-  const masterXml = await masterFile.async('string');
-  const relsXml = await relsFile.async('string');
-
-  const rIdToTarget = {};
-  const relMatches = relsXml.matchAll(/Id="(rId\d+)"[^>]*Target="([^"]+)"/g);
-  for (const m of relMatches) {
-    rIdToTarget[m[1]] = m[2];
-  }
+  const partPaths = Object.keys(zip.files)
+    .filter(path => /^ppt\/(slideMasters|slideLayouts)\/[^/]+\.xml$/.test(path))
+    .sort((a, b) => {
+      const aLayout = a.includes('/slideLayouts/');
+      const bLayout = b.includes('/slideLayouts/');
+      if (aLayout !== bLayout) return aLayout ? -1 : 1;
+      return parseInt(a.match(/(\d+)/g)?.pop() || '0', 10) - parseInt(b.match(/(\d+)/g)?.pop() || '0', 10);
+    });
 
   const SLIDE_AREA = 13.333 * 7.5;
-  const spRegex = /<p:sp\b[\s\S]*?<\/p:sp>|<p:pic\b[\s\S]*?<\/p:pic>/g;
-  let match;
+  const spRegex = /<p:pic\b[\s\S]*?<\/p:pic>/g;
   const candidates = [];
 
-  while ((match = spRegex.exec(masterXml)) !== null) {
-    const shapeXml = match[0];
-    const blipMatch = shapeXml.match(/<a:blip[^>]*r:embed="(rId\d+)"/);
-    if (!blipMatch) continue;
+  for (const partPath of partPaths) {
+    const partFile = zip.file(partPath);
+    const relsFile = zip.file(relationshipPathForPart(partPath));
+    if (!partFile || !relsFile) continue;
 
-    const pos = extractShapePosition(shapeXml);
-    if (!pos) continue;
-
-    const area = pos.w * pos.h;
-    const areaRatio = area / SLIDE_AREA;
-    if (areaRatio > 0.15) continue;
-    if (pos.y + pos.h > 2.0) continue;
-
-    const rId = blipMatch[1];
-    let mediaPath = rIdToTarget[rId];
-    if (!mediaPath) continue;
-    if (!mediaPath.startsWith('ppt/')) {
-      mediaPath = 'ppt/slideMasters/' + mediaPath.replace(/^\.\.\//, '');
-      mediaPath = mediaPath.replace('ppt/slideMasters/../', 'ppt/');
+    const partXml = await partFile.async('string');
+    const relsXml = await relsFile.async('string');
+    const rIdToTarget = {};
+    const relMatches = relsXml.matchAll(/Id="(rId\d+)"[^>]*Target="([^"]+)"/g);
+    for (const m of relMatches) {
+      rIdToTarget[m[1]] = resolveRelationshipTarget(partPath, m[2]);
     }
 
-    const mediaFile = zip.file(mediaPath);
-    if (!mediaFile) continue;
+    let match;
+    while ((match = spRegex.exec(partXml)) !== null) {
+      const shapeXml = match[0];
+      const blipMatch = shapeXml.match(/<a:blip[^>]*r:embed="(rId\d+)"/);
+      if (!blipMatch) continue;
 
-    const imageData = await mediaFile.async('base64');
-    const ext = mediaPath.split('.').pop().toLowerCase();
-    const mimeMap = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', gif: 'image/gif', svg: 'image/svg+xml' };
+      const pos = extractShapePosition(shapeXml);
+      if (!pos) continue;
 
-    candidates.push({
-      image: `data:${mimeMap[ext] || 'image/png'};base64,${imageData}`,
-      mediaPath,
-      ...pos,
-      areaRatio,
-    });
+      const area = pos.w * pos.h;
+      const areaRatio = area / SLIDE_AREA;
+      if (area < 0.01 || areaRatio > 0.15) continue;
+      if (pos.y + pos.h > 2.0) continue;
+
+      const rId = blipMatch[1];
+      const mediaPath = rIdToTarget[rId];
+      if (!mediaPath) continue;
+
+      const ext = mediaPath.split('.').pop().toLowerCase();
+      if (['emf', 'wmf'].includes(ext)) continue;
+
+      const mediaFile = zip.file(mediaPath);
+      if (!mediaFile) continue;
+
+      const imageData = await mediaFile.async('base64');
+      const mimeMap = {
+        png: 'image/png',
+        jpg: 'image/jpeg',
+        jpeg: 'image/jpeg',
+        gif: 'image/gif',
+        svg: 'image/svg+xml',
+      };
+
+      candidates.push({
+        image: `data:${mimeMap[ext] || 'image/png'};base64,${imageData}`,
+        mediaPath,
+        ...pos,
+        areaRatio,
+        sourcePart: partPath,
+      });
+    }
   }
 
   if (candidates.length === 0) return null;
@@ -333,20 +474,29 @@ async function extractLayoutInfo(zip) {
     if (!/<p:ph\b/.test(shapeXml)) continue;
 
     const phTypeMatch = shapeXml.match(/<p:ph[^>]*type="([^"]+)"/);
-    const phType = phTypeMatch ? phTypeMatch[1] : 'body';
+    const phType = phTypeMatch ? phTypeMatch[1] : null;
     const pos = extractShapePosition(shapeXml);
     if (!pos) continue;
+    const shapeText = [...shapeXml.matchAll(/<a:t>([^<]+)<\/a:t>/g)]
+      .map(m => m[1].trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    const lowerText = shapeText.toLowerCase();
+    const isUntyped = !phTypeMatch;
+    const isFooterLike = phType === 'ftr'
+      || /\bsource\b/.test(lowerText)
+      || (pos.y > 6.5 && pos.h < 0.5);
 
-    if (phType === 'title' || phType === 'ctrTitle') {
-      result.positions.title = pos;
-    } else if (phType === 'subTitle') {
-      result.positions.subtitle = pos;
-    } else if (phType === 'body' || (!phTypeMatch && !result.positions.body)) {
-      result.positions.body = pos;
-    } else if (phType === 'ftr') {
+    if (isFooterLike) {
       result.positions.footer = pos;
-      const textMatch = shapeXml.match(/<a:t>([^<]+)<\/a:t>/);
-      if (textMatch) result.footerText = textMatch[1].trim();
+      if (shapeText) result.footerText = shapeText;
+    } else if (phType === 'title' || phType === 'ctrTitle' || (isUntyped && /\bheadline\b/.test(lowerText))) {
+      result.positions.title = pos;
+    } else if (phType === 'subTitle' || (isUntyped && /\bsubtitle\b/.test(lowerText))) {
+      result.positions.subtitle = pos;
+    } else if (phType === 'body') {
+      result.positions.body = pos;
     } else if (phType === 'sldNum') {
       result.positions.slideNum = pos;
     } else if (phType === 'dt') {

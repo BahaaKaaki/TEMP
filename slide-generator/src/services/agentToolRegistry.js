@@ -19,6 +19,7 @@
 
 import { generateSlides, improveSlide, generateStoryline, agentChat, fillTemplateWithAI, fillTemplatesBulkWithAI, aiRouteRequest, extractTitleFromHTML, researchWithSearch, reEvaluateTemplateForData, generateImageSlide, extractImageDataUri, detectSlideLayout } from './aiService';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
+import { getClientProfileFooterBranding } from '../utils/clientDesignProfiles';
 import { ragRetrieve, formatRAGContext } from './knowledgeBaseRAG';
 
 /**
@@ -515,7 +516,7 @@ Return JSON:
                 const imageResult = await generateImageSlide(generationInstruction, settings, imageMode, {
                   layoutGuidance: effectiveLayoutGuidance,
                   vibe: state.imageVibe,
-                  footerBranding: settings.footerBranding || 'Strategy&',
+                  footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                   slideNumber: state.slides.length + 1,
                 });
                 if (imageResult?.html) {
@@ -793,7 +794,7 @@ Return JSON:
                   const imageResult = await generateImageSlide(genInstruction, settings, imageMode, {
                     layoutGuidance: effectiveLayoutGuidance,
                     vibe: state.imageVibe,
-                    footerBranding: settings.footerBranding || 'Strategy&',
+                    footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                     slideNumber: state.slides.length + i + 1,
                   });
                   if (imageResult?.html) {
@@ -1213,7 +1214,7 @@ Return JSON:
                   const imageResult = await generateImageSlide(p.instruction, settings, imageMode, {
                     layoutGuidance: p.layoutGuidance || null,
                     vibe: state.imageVibe,
-                    footerBranding: settings.footerBranding || 'Strategy&',
+                    footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                     slideNumber: state.slides.length + p.stepIdx + 1,
                   });
                   imageResults.push({ ...p, html: imageResult?.html || null, genData: imageResult });
@@ -1417,7 +1418,7 @@ Return JSON:
             const imageResult = await generateImageSlide(instruction, settings, imageMode, {
               layoutGuidance: instruction,
               vibe: state.imageVibe,
-              footerBranding: settings.footerBranding || 'Strategy&',
+              footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
               slideNumber: slideIndex + 1,
               totalSlides: state.slides.length,
               existingImageDataUri: existingImage,

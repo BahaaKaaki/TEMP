@@ -1,5 +1,43 @@
 /* ===== MINIMAL SHARED SLIDE CSS ===== */
 
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward"),
+    local("STC Forward Regular"),
+    local("stc Forward"),
+    local("stc Forward Regular"),
+    local("STCForward"),
+    local("STCForward-Regular");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward Medium"),
+    local("stc Forward Medium"),
+    local("STCForward-Medium"),
+    local("STC Forward"),
+    local("stc Forward");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward Bold"),
+    local("stc Forward Bold"),
+    local("STCForward-Bold");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 .slide {
   /* Layout */
   --slide-w: 960px;
@@ -11,6 +49,28 @@
   --subtitle-y: 95px;
   --frame-y: 127px;
   --frame-w: 904px;
+  --frame-h: 366px;
+  --footer-x: var(--left-x);
+  --footer-y: 516px;
+  --footer-bottom: auto;
+  --footer-w: var(--frame-w);
+  --footer-padding-bottom: 0;
+  --footer-font-size: 10px;
+  --source-x: var(--footer-x);
+  --source-y: var(--footer-y);
+  --source-w: calc(var(--footer-w) - 32px);
+  --source-h: 16px;
+  --slide-num-x: calc(var(--footer-x) + var(--footer-w) - 16px);
+  --slide-num-y: var(--footer-y);
+  --slide-num-w: 16px;
+  --slide-num-h: 16px;
+  --title-font-size: 28px;
+  --title-font-weight: 400;
+  --title-line-height: 1.2;
+  --subtitle-font-size: 18px;
+  --subtitle-font-weight: 700;
+  --subtitle-line-height: 1.2;
+  --subtitle-color: var(--accent);
   --gH: 16px;
   --radius: 10px;
 
@@ -52,7 +112,8 @@
   background: var(--page);
   overflow: hidden;
   box-sizing: border-box;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-body, Arial, sans-serif);
+  font-synthesis: none;
   color: var(--body);
 }
 
@@ -63,7 +124,7 @@
   top: var(--title-y);
   width: var(--title-w);
   margin: 0;
-  font: 400 28px/1.2 Georgia, serif;
+  font: var(--title-font-weight) var(--title-font-size)/var(--title-line-height) var(--font-title, Georgia, serif);
   color: var(--heading);
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -72,7 +133,7 @@
 /* Prevent bolded inline title text */
 .slide .title strong,
 .slide .title b {
-  font-weight: 400 !important;
+  font-weight: var(--title-font-weight) !important;
 }
 
 /* Subtitle */
@@ -82,8 +143,8 @@
   top: var(--subtitle-y);
   width: var(--subtitle-w);
   margin: 0;
-  font: 700 18px/1.2 Arial, sans-serif;
-  color: var(--accent);
+  font: var(--subtitle-font-weight) var(--subtitle-font-size)/var(--subtitle-line-height) var(--font-heading, Arial, sans-serif);
+  color: var(--subtitle-color);
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -94,7 +155,7 @@
   left: var(--left-x);
   top: var(--frame-y);
   width: var(--frame-w);
-  height: 366px;
+  height: var(--frame-h);
   overflow: hidden;
   box-sizing: border-box;
 }
@@ -137,16 +198,38 @@
 /* Footer */
 .slide footer.footer {
   position: absolute;
-  left: var(--left-x);
-  bottom: 0;
-  width: var(--frame-w);
-  padding-bottom: 14px;
+  left: var(--footer-x);
+  top: var(--footer-y);
+  bottom: var(--footer-bottom);
+  width: var(--footer-w);
+  height: var(--source-h);
+  padding-bottom: var(--footer-padding-bottom);
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font: 10px/1 Arial, sans-serif;
+  font: var(--footer-font-size)/1 var(--font-body, Arial, sans-serif);
   color: var(--muted);
   box-sizing: border-box;
+}
+
+.slide footer.footer > span:first-child {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  text-align: left;
+  color: var(--muted);
+}
+
+.slide footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: var(--muted);
 }
 
 .slide footer.footer .source {

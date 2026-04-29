@@ -23,6 +23,7 @@ import KnowledgeBaseManager from './KnowledgeBaseManager';
 import SkillsPicker from './SkillsPicker';
 import { loadSkills } from '../services/skillsService';
 import { friendlyChatError } from '../utils/errorNotify';
+import { getClientProfileFooterBranding } from '../utils/clientDesignProfiles';
 
 // Detect vibe from user prompt for image-based mode
 // Returns a vibe ID or 'default' if no strong signal
@@ -3163,7 +3164,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 const imageResult = await generateImageSlide(enrichedStepPrompt, stepSettings, imageMode, {
                   layoutGuidance: step.layoutGuidance,
                   vibe: imageVibe,
-                  footerBranding: settings.footerBranding || 'Strategy&',
+                  footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                   slideNumber: freshState.slides.length + 1,
                   totalSlides: freshState.slides.length + totalSteps,
                 });
@@ -3191,7 +3192,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 .replace('[01]', dividerNum)
                 .replace('[Section Title]', dividerTitle)
                 .replace('[What this section covers]', dividerSubtitle)
-                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('[Company]', getClientProfileFooterBranding(settings, 'Strategy&'))
                 .replace('1 / 1', '');
 
               pendingSlides.push({
@@ -3371,7 +3372,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 const imageResult = await generateImageSlide(editContext, executionSettings, imageMode, {
                   layoutGuidance: step.layoutGuidance || step.instruction,
                   vibe: imageVibe,
-                  footerBranding: settings.footerBranding || 'Strategy&',
+                  footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                   slideNumber: slideIdx + 1,
                   totalSlides: freshState.slides.length,
                   existingImageDataUri: existingImage,
@@ -3738,7 +3739,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 const result = await generateImageSlide(b.enrichedPrompt, b.settings || executionSettings, imageMode, {
                   layoutGuidance: b.step.layoutGuidance,
                   vibe: imageVibe,
-                  footerBranding: settings.footerBranding || 'Strategy&',
+                  footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                   slideNumber: getFreshState().slides.length + 1,
                 });
                 if (result?.html) {
@@ -3817,7 +3818,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const coverHtml = SLIDE_TEMPLATES.cover.html
                 .replace('[CATEGORY]', coverCategory || (coverSubtitle ? coverSubtitle.toUpperCase() : ''))
                 .replace('[Presentation Title]', coverTitle)
-                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('[Company]', getClientProfileFooterBranding(settings, 'Strategy&'))
                 .replace('[Date]', new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }));
               slideData = {
                 title: coverTitle,
@@ -3834,7 +3835,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 .replace('[01]', divNum)
                 .replace('[Section Title]', divTitle)
                 .replace('[What this section covers]', divSubtitle)
-                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('[Company]', getClientProfileFooterBranding(settings, 'Strategy&'))
                 .replace('1 / 1', '');
               slideData = {
                 title: divTitle,
@@ -4919,7 +4920,7 @@ Original request: ${userPrompt}`;
                     const imageResult = await generateImageSlide(fullPrompt, createSlideState.settings, imageMode, {
                       layoutGuidance: step.params?.layoutGuidance,
                       vibe: imageVibe,
-                      footerBranding: createSlideState.settings.footerBranding || 'Strategy&',
+                      footerBranding: getClientProfileFooterBranding(createSlideState.settings, 'Strategy&'),
                       slideNumber: createSlideState.slides.length + 1,
                     });
                     if (isAborted()) break;
@@ -4940,7 +4941,7 @@ Original request: ${userPrompt}`;
                     .replace('[01]', divNum)
                     .replace('[Section Title]', divTitle)
                     .replace('[What this section covers]', divSubtitle)
-                    .replace('[Company]', createSlideState.settings.footerBranding || 'Strategy&')
+                    .replace('[Company]', getClientProfileFooterBranding(createSlideState.settings, 'Strategy&'))
                     .replace('1 / 1', '');
                   newSlides = [{
                     title: divTitle,
@@ -5183,7 +5184,7 @@ Original request: ${userPrompt}`;
                     const imageResult = await generateImageSlide(fullPrompt, insertState.settings, imageMode, {
                       layoutGuidance: step.params?.layoutGuidance,
                       vibe: imageVibe,
-                      footerBranding: insertState.settings.footerBranding || 'Strategy&',
+                      footerBranding: getClientProfileFooterBranding(insertState.settings, 'Strategy&'),
                       slideNumber: (typeof position === 'number' && position >= 0) ? position + 1 : insertState.slides.length + 1,
                     });
                     if (isAborted()) break;

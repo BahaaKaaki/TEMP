@@ -36,39 +36,53 @@ export const LAYOUT = {
   cardRadius: 0.05,
 };
 
-export function pptxFontSize(size, fallback = 10) {
+export function pptxFontSize(size, fallback = 10, floor = 10) {
   const numeric = Number(size ?? fallback);
-  return Math.max(10, Number.isFinite(numeric) ? numeric : fallback);
+  return Math.max(floor, Number.isFinite(numeric) ? numeric : fallback);
 }
 
 // ── Footer branding ──────────────────────────────────────────────────────────
 
 let _footerBranding = 'Strategy&';
 let _tplPositions = null;
+let _profileFontFace = null;
 
 export function setFooterBranding(branding) {
-  _footerBranding = branding || 'Strategy&';
+  _footerBranding = branding ?? 'Strategy&';
 }
 
 export function setTemplatePositions(positions) {
   _tplPositions = positions || null;
 }
 
+export function setPptxFontFace(fontFace) {
+  _profileFontFace = fontFace || null;
+}
+
+function profileFontFace(fallback) {
+  return _profileFontFace || fallback;
+}
+
+function profilePositions() {
+  return _tplPositions || null;
+}
+
 export function addFooter(slide, slideNum, totalSlides, slideType) {
   if (!slide || !slideNum) return;
   if (slideType === 'cover') return;
 
-  const numPos = _tplPositions?.slideNum;
+  const positions = profilePositions();
+  const numPos = positions?.slideNum;
   const numFont = numPos?.font || {};
   slide.addText(String(slideNum), {
     x: numPos?.x ?? 11.5,
     y: numPos?.y ?? 7.05,
     w: numPos?.w ?? 1.3,
     h: numPos?.h ?? 0.25,
-    fontFace: numFont.fontFace || 'Arial',
-    fontSize: pptxFontSize(numFont.fontSize, 10),
+    fontFace: numFont.fontFace || profileFontFace('Arial'),
+    fontSize: pptxFontSize(numFont.fontSize, 10, 8),
     bold: numFont.bold || false,
-    color: COLORS.meta,
+    color: numFont.color || COLORS.meta,
     align: 'right',
   });
 }
@@ -81,29 +95,29 @@ export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
   if (sectionLabel) {
     const sectionW = Math.max(0.85, sectionLabel.length * 0.052 + 0.3);
     slide.addShape('rect', { x: 0, y: 0, w: sectionW, h: 0.23, fill: { color: COLORS.maroon } });
-    slide.addText(sectionLabel, { x: 0.04, y: 0, w: sectionW - 0.08, h: 0.23, fontFace: 'Arial', fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
+    slide.addText(sectionLabel, { x: 0.04, y: 0, w: sectionW - 0.08, h: 0.23, fontFace: profileFontFace('Arial'), fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
 
     if (subSectionLabel) {
       const subW = Math.max(0.7, subSectionLabel.length * 0.05 + 0.28);
       const subX = sectionW + 0.03;
       slide.addShape('rect', { x: subX, y: 0, w: subW, h: 0.21, fill: { color: COLORS.coal } });
-      slide.addText(subSectionLabel, { x: subX + 0.04, y: 0, w: subW - 0.08, h: 0.21, fontFace: 'Arial', fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
+      slide.addText(subSectionLabel, { x: subX + 0.04, y: 0, w: subW - 0.08, h: 0.21, fontFace: profileFontFace('Arial'), fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
     }
   } else if (subSectionLabel) {
     const subW = Math.max(0.7, subSectionLabel.length * 0.05 + 0.28);
     slide.addShape('rect', { x: 0, y: 0, w: subW, h: 0.21, fill: { color: COLORS.coal } });
-    slide.addText(subSectionLabel, { x: 0.04, y: 0, w: subW - 0.08, h: 0.21, fontFace: 'Arial', fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
+    slide.addText(subSectionLabel, { x: 0.04, y: 0, w: subW - 0.08, h: 0.21, fontFace: profileFontFace('Arial'), fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
   }
 }
 
 // ── Title / subtitle helpers ─────────────────────────────────────────────────
 
 export function addTitle(slide, text) {
-  slide.addText(text, { x: LAYOUT.titleX, y: LAYOUT.titleY, w: LAYOUT.titleW, h: 0.8, fontFace: 'Georgia', fontSize: 28, color: COLORS.main });
+  slide.addText(text, { x: LAYOUT.titleX, y: LAYOUT.titleY, w: LAYOUT.titleW, h: 0.8, fontFace: profileFontFace('Georgia'), fontSize: 28, color: COLORS.main });
 }
 
 export function addSubtitle(slide, text) {
-  slide.addText(text, { x: LAYOUT.subtitleX, y: LAYOUT.subtitleY, w: LAYOUT.subtitleW, h: 0.4, fontFace: 'Arial', fontSize: 18, color: COLORS.red, bold: true });
+  slide.addText(text, { x: LAYOUT.subtitleX, y: LAYOUT.subtitleY, w: LAYOUT.subtitleW, h: 0.4, fontFace: profileFontFace('Arial'), fontSize: 18, color: COLORS.red, bold: true });
 }
 
 // ── Source note ──────────────────────────────────────────────────────────────
@@ -125,17 +139,18 @@ export function addSourceNote(slide, html) {
     });
   }
   if (texts.length === 0) return;
-  const ftrPos = _tplPositions?.footer;
+  const positions = profilePositions();
+  const ftrPos = positions?.footer;
   const ftrFont = ftrPos?.font || {};
   slide.addText(texts.join(' | '), {
     x: ftrPos?.x ?? 2.5,
     y: ftrPos?.y ?? 7.05,
     w: ftrPos?.w ?? 8.5,
     h: ftrPos?.h ?? 0.25,
-    fontFace: ftrFont.fontFace || 'Arial',
-    fontSize: pptxFontSize(ftrFont.fontSize, 10),
+    fontFace: ftrFont.fontFace || profileFontFace('Arial'),
+    fontSize: pptxFontSize(ftrFont.fontSize, 10, 8),
     italic: ftrFont.italic ?? true,
-    color: COLORS.meta,
+    color: ftrFont.color || COLORS.meta,
     align: 'left',
   });
 }

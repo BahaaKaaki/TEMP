@@ -9,6 +9,7 @@ import { buildFreestyleSystemPrompt } from './freestylePromptBuilder.js';
 import { extractSingleSlide, flattenNestedFrames, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
 import { applyPromptOverride, appendPromptOverride, recordPromptPayload } from './promptOverrides.js';
+import { appendClientDesignContract } from '../../utils/clientDesignProfiles.js';
 
 // Helper to get master-specific instructions for template generation
 export function getMasterInstructions(master) {
@@ -912,7 +913,10 @@ Return ONLY the filled HTML, no explanations.`;
 
   try {
     let content;
-    const templateSystemPrompt = applyPromptOverride(settings, 'slideGen.templateSystem', DEFAULT_SYSTEM_PROMPT);
+    const templateSystemPrompt = appendClientDesignContract(
+      applyPromptOverride(settings, 'slideGen.templateSystem', DEFAULT_SYSTEM_PROMPT),
+      settings
+    );
 
     console.log('[fillTemplateWithAI] Calling model:', settings.model, 'template:', template.id);
     recordPromptPayload('slideGen.templateSystem', {
@@ -1188,7 +1192,10 @@ Return ONLY the HTML slides separated by <!-- SLIDE_SEPARATOR -->, no explanatio
 
   try {
     let content;
-    const templateSystemPrompt = applyPromptOverride(settings, 'slideGen.templateSystem', DEFAULT_SYSTEM_PROMPT);
+    const templateSystemPrompt = appendClientDesignContract(
+      applyPromptOverride(settings, 'slideGen.templateSystem', DEFAULT_SYSTEM_PROMPT),
+      settings
+    );
 
     console.log('[fillTemplatesBulk] Calling model:', settings.model, 'slides:', slideSpecs.length);
     recordPromptPayload('slideGen.templateSystem', {

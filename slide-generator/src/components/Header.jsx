@@ -335,18 +335,19 @@ ${previewParts.join('\n\n')}`;
     setExportProgress({ phase: 'starting', title: 'Exporting to PowerPoint', message: 'Preparing export...' });
 
     try {
-      // Pass settings for AI-powered generation if any API key is configured
+      // Always pass settings so profile-specific template/font/export behavior
+      // still applies when the user chooses the basic non-AI fallback export.
       // Include custom templates so their pptxRendererCode can be used as examples
       // Include sharedCSS so AI can match exact styling
       // Include vibe for vibe-specific PPTX styling
-      const exportSettings = hasCredentials ? {
+      const exportSettings = {
         ...state.settings,
         customTemplates: state.customTemplates || [],
         sharedCSS: state.sharedCSS || '',
         theme: state.theme,
-      } : null;
+      };
 
-      console.log('[PPTX Export] Export settings:', exportSettings ? 'AI-enabled' : 'basic fallback');
+      console.log('[PPTX Export] Export settings:', hasCredentials ? 'AI-enabled' : 'basic fallback with profile settings');
 
       // Use file naming nomenclature if enabled
       const filename = generateFileName(state.deckName, 'pptx', {

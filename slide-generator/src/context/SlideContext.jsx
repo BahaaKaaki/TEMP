@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
 import { preGeneratePptxCode, hasAnyCredentials } from '../services/pptxService';
 import { DEFAULT_THEME } from '../utils/themeUtils';
+import { getClientDesignProfile, getClientProfileTheme } from '../utils/clientDesignProfiles';
 import { normalizeSlideTypographyHTML, scopeCSS, unscopeCSS } from '../utils/cssScoping';
 import { generateSlideId } from '../utils/slideIds';
 // Import full CSS as raw string so it's available in state for AI and exports
@@ -16,7 +17,7 @@ const DEFAULT_SHARED_CSS = SLIDES_CSS;
 // Model assignments are code-managed (always sourced from initialState, never
 // from localStorage) so model changes no longer require a version bump.
 // Reserve SETTINGS_VERSION for structural migrations only (new fields, format changes).
-const SETTINGS_VERSION = 13;
+const SETTINGS_VERSION = 14;
 
 // Initial state
 const initialState = {
@@ -190,6 +191,8 @@ const initialState = {
     promptOverrides: {},
     // User preferences -- persistent free-text guidance injected into all LLM prompts
     userPreferences: '',
+    clientDesignProfileId: 'strategy',
+    clientProfileVersion: 'default',
     // Branding
     footerBranding: 'Strategy&', // Footer left text (firm name | topic). E.g., "Strategy&", "PwC | Digital Transformation"
     _settingsVersion: SETTINGS_VERSION,
@@ -408,6 +411,14 @@ function loadState() {
       // One-time rollout: v10 sets default tier to Premium for everyone who still had v9 or older (typically Fast)
       if (prevSettingsVersion < 10) {
         loadedState.settings.speedMode = 'premium';
+      }
+      if (loadedState.settings.clientDesignProfileId && loadedState.settings.clientDesignProfileId !== 'strategy') {
+        const activeProfile = getClientDesignProfile(loadedState.settings.clientDesignProfileId);
+        loadedState.theme = activeProfile.theme;
+        loadedState.settings.clientProfileVersion = activeProfile.status || String(activeProfile.schemaVersion || '');
+        if (activeProfile.id === 'stc' && loadedState.settings.footerBranding === 'stc') {
+          loadedState.settings.footerBranding = '';
+        }
       }
       return loadedState;
     }
@@ -1021,12 +1032,29 @@ function slideReducer(state, action) {
     }
 
     case ACTIONS.UPDATE_SETTINGS: {
+      const nextSettings = {
+        ...state.settings,
+        ...action.payload.settings,
+      };
+      const profileProvided = Object.prototype.hasOwnProperty.call(action.payload.settings || {}, 'clientDesignProfileId');
+      const profileChanged = profileProvided && nextSettings.clientDesignProfileId !== state.settings.clientDesignProfileId;
+      const activeProfile = profileChanged ? getClientDesignProfile(nextSettings.clientDesignProfileId) : null;
+      if (activeProfile) {
+        nextSettings.clientProfileVersion = activeProfile.status || String(activeProfile.schemaVersion || '');
+        if (Object.prototype.hasOwnProperty.call(activeProfile, 'footerBranding')) {
+          nextSettings.footerBranding = activeProfile.footerBranding ?? '';
+        }
+      }
       return {
         ...state,
-        settings: {
-          ...state.settings,
-          ...action.payload.settings,
-        },
+        slides: profileChanged
+          ? state.slides.map(slide => ({
+            ...slide,
+            pptxCode: null,
+          }))
+          : state.slides,
+        settings: nextSettings,
+        theme: profileProvided ? getClientProfileTheme(nextSettings.clientDesignProfileId) : state.theme,
       };
     }
 
@@ -1075,6 +1103,7 @@ function slideReducer(state, action) {
       return {
         ...initialState,
         settings: state.settings, // Keep settings
+        theme: getClientProfileTheme(state.settings.clientDesignProfileId || 'strategy'),
         deckVersions: state.deckVersions, // Keep versions
         customTemplates: state.customTemplates, // Keep custom templates
         flows: state.flows || [], // Keep flows
@@ -1141,6 +1170,7 @@ function slideReducer(state, action) {
       return {
         ...initialState,
         settings: state.settings,
+        theme: getClientProfileTheme(state.settings.clientDesignProfileId || 'strategy'),
         deckVersions: autoSaveVersion
           ? [...state.deckVersions, autoSaveVersion]
           : state.deckVersions,
@@ -2126,8 +2156,10 @@ export function SlideProvider({ children }) {
     futureLength: futureRef.current.length,
   };
 
+  const activeClientProfile = getClientDesignProfile(state.settings.clientDesignProfileId || 'strategy');
+
   return (
-    <SlideContext.Provider value={{ state, actions, activeSlide, historyState, isPanelOpen, togglePanel }}>
+    <SlideContext.Provider value={{ state, actions, activeSlide, activeClientProfile, historyState, isPanelOpen, togglePanel }}>
       {children}
     </SlideContext.Provider>
   );

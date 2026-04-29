@@ -5,6 +5,7 @@ import { parseModelRef, findProvider, getCredentials, buildProviderHeaders, buil
 import { callWithModelFallback, getFallbackModels } from './apiClient.js';
 import { TITLE_HEADER_RULES } from './constants.js';
 import { authFetch } from '../authFetch.js';
+import { buildClientProfileContext, getActiveClientProfile } from '../../utils/clientDesignProfiles.js';
 
 // ============================================
 // IMAGE GENERATION
@@ -432,6 +433,16 @@ export async function generateImageSlide(instruction, settings, mode = 'content'
 
   // Only inject vibe variation for non-base vibes — base vibe is the default consulting style
   const vibeContext = (vibe && !isBaseVibe(vibe)) ? getVibePromptContext(vibe) : '';
+  const activeProfile = getActiveClientProfile(settings);
+  const clientProfileContext = buildClientProfileContext(settings, {
+    includeTheme: true,
+    includeLayout: false,
+    includeValidation: true,
+    includeEvidence: false,
+    includePromptSections: false,
+    includeComponents: true,
+    includePptx: false,
+  });
 
   // Clean instruction for IMAGE prompt: strip all metadata (vibe tags, search hints, context blocks)
   // These should NOT appear in the image or be rendered as text
@@ -487,7 +498,7 @@ export async function generateImageSlide(instruction, settings, mode = 'content'
   }
 
   // Build the image prompt — reframe as "raw content image", NOT a slide
-  const imagePrompt = `You are generating a CONTENT IMAGE for a strategy consulting slide (Strategy&/McKinsey/BCG style). This is NOT a slide — it is a raw visual that will be embedded inside an existing HTML slide that already has its own title, subtitle, and footer. Your job is ONLY to produce the visual content itself.
+  const imagePrompt = `You are generating a CONTENT IMAGE for a strategy consulting slide (${activeProfile.name || 'Strategy&'} style). This is NOT a slide — it is a raw visual that will be embedded inside an existing HTML slide that already has its own title, subtitle, and footer. Your job is ONLY to produce the visual content itself.
 
 DO NOT INCLUDE ANY OF THESE — they already exist in the HTML around this image:
 • NO title, heading, or header text of any kind
@@ -506,7 +517,7 @@ VISUAL TO GENERATE: ${visualDirective}
 ${contentContext}
 VERTICAL LOGIC: This image will appear below a title (h1) that states a "so what" insight. Your visual must SUPPORT that claim with evidence, structure, or a framework. The reader should look at the title, then the image, and think "yes, the data/structure proves the title's point." Do NOT generate a generic illustration — generate a specific analytical visual that substantiates the argument. Use the REAL content (names, numbers, entities) from the instruction — not generic placeholders.
 
-CONSULTING VISUAL STYLE — Think like a Strategy& or McKinsey slide designer:
+CONSULTING VISUAL STYLE — Think like a top-tier consulting slide designer:
 Use structured consulting frameworks, NOT generic infographics. Examples of what to generate:
 - Value chains (horizontal flow of connected stages with labels)
 - Chevron arrows (sequential process steps, left to right)
@@ -538,13 +549,14 @@ TEXT LABELS:
 - Every label must have strong contrast: dark text on light fills, white text on dark fills
 
 VISUAL STYLE:
-- Primary accent color: deep maroon/burgundy for key shapes, highlights, and emphasis
+- Primary accent color: use the active client profile's primary accent color for key shapes, highlights, and emphasis
 - Body text: near-black on white or light backgrounds
-- Shape fills: very light grey or pale rose for cards and surfaces
+- Shape fills: use the active client profile's pale surface colors for cards and surfaces
 - Borders and dividers: light grey, thin lines
 - Positive indicators: green. Negative: red. Caution: amber. Info: blue.
 - Background: plain white, edge to edge
 - Do NOT invent bright or neon colors — keep the palette muted and professional
+${clientProfileContext ? `\nACTIVE CLIENT PROFILE GUIDANCE:\n${clientProfileContext}\n` : ''}
 ${vibeContext ? `STYLE VARIATION: ${vibeContext}\n` : ''}${existingImageDataUri ? 'EDIT MODE: A reference image is provided. Modify it according to the instructions above while preserving its overall structure and style.\n' : ''}Content must fill the entire image area edge-to-edge with no margins or padding.`;
 
   console.log(`[generateImageSlide] mode=${mode}, instruction="${instruction.slice(0, 100)}...", layoutGuidance="${layoutGuidance || 'none'}", hasExistingImage=${!!existingImageDataUri}`);

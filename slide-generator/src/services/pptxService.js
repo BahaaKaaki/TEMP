@@ -14,14 +14,21 @@ import {
   addSourceNote,
   addSectionTracker,
   setFooterBranding,
+  setPptxFontFace,
   setTemplatePositions,
 } from './pptxRenderers';
-import { applyTemplateToGenerated, loadTemplateFromStorage, downloadArrayBuffer } from './pptxTemplateService';
+import {
+  applyProfileChromeToGenerated,
+  applyTemplateToGenerated,
+  loadTemplateFromStorage,
+  downloadArrayBuffer,
+} from './pptxTemplateService';
 import { extractRelevantCSS } from './aiService';
 import { resolveCustomProperties } from './ai/cssExtraction';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
+import { buildClientProfileContext, getActiveClientProfile, getClientProfileFooterBranding } from '../utils/clientDesignProfiles.js';
 import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
 import { authFetch } from './authFetch.js';
 import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
@@ -30,6 +37,177 @@ import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.j
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
 const DEFAULT_PPTX_MODEL = 'pwc:bedrock.anthropic.claude-opus-4-7';
+const PROFILE_PPTX_FONT_FACE = {
+  stc: 'STC Forward',
+};
+
+function getProfilePptxFontFace(profile) {
+  return PROFILE_PPTX_FONT_FACE[profile?.id] || null;
+}
+
+function getProfileTextColor(profile, token, fallback) {
+  const value = profile?.theme?.colors?.[token];
+  return value ? value.replace('#', '').toUpperCase() : fallback;
+}
+
+function resolvePptxPositionsForProfile(profile = null, extractedPositions = null) {
+  const profilePositions = profile?.chrome?.positions || null;
+  let resolved = null;
+  if (profile?.id && profile.id !== 'strategy' && profilePositions) {
+    resolved = {
+      ...(extractedPositions || {}),
+      ...(profilePositions || {}),
+    };
+  } else {
+    resolved = extractedPositions || profilePositions || null;
+  }
+  if (profile?.id && profile.id !== 'strategy' && resolved) {
+    console.log('[PPTX] Resolved %s profile positions: %s', profile.name || profile.id, JSON.stringify({
+      title: resolved.title,
+      subtitle: resolved.subtitle,
+      body: resolved.body,
+      footer: resolved.footer,
+      slideNum: resolved.slideNum,
+    }));
+  }
+  return resolved;
+}
+
+function normalizePptxSettingsForProfile(settings = {}, profile = null, templatePositions = null) {
+  const next = {
+    ...(settings || {}),
+  };
+  if (profile?.id && profile.id !== 'strategy') {
+    next.theme = profile.theme || next.theme;
+    next.footerBranding = getClientProfileFooterBranding(next, '');
+  } else if (!next.theme && profile?.theme) {
+    next.theme = profile.theme;
+  }
+  if (templatePositions) next.templatePositions = templatePositions;
+  return next;
+}
+
+function getProfilePptxTypographyGuidance(profile) {
+  if (profile?.id !== 'stc') return '';
+  return '- STC typography: use title 24pt regular, subtitle 18pt regular, body 12pt regular, local labels/card titles 500-equivalent only when bold is needed, and footer/source/page numbers 8pt regular.\n- For STC Forward, avoid bold:true on normal body leads, subtitles, card titles, stage titles, and labels unless the CSS explicitly requires strong emphasis.\n';
+}
+
+function getProfilePptxSystemGuidance(profile) {
+  if (profile?.id !== 'stc') return '';
+  return `
+
+ACTIVE CLIENT PROFILE OVERRIDE -- STC:
+- Ignore the Strategy& example colors as visual colors. Use them only as structural examples.
+- STC colors: title/main #4F008C, body #1D252D, subtitle/kicker #FF375E, pale surface #FBF8FE, alternate surface #EDDCF9, border #DBB8F3, muted #515360.
+- If you define a c palette, use: main:'4F008C', secondary:'1D252D', red:'FF375E', maroon:'4F008C', zone1:'FBF8FE', zone2:'EDDCF9', rose:'EDDCF9', meta:'515360', coal:'1D252D', border:'DBB8F3'.
+- Do not emit Strategy& maroon/red values such as 8E1E1E or A32020 for STC slides.
+- Use STC Forward for every text box. Titles are 24pt regular, subtitles are 18pt regular, source/page chrome is 8pt regular.
+- Avoid bold:true for STC body leads, labels, stage titles, and card titles unless the CSS explicitly calls for strong emphasis.
+- Do not use emoji or decorative pictographic symbols in STC PPTX output; replace them with plain text labels.
+`;
+}
+
+function shouldUseTemplateRendererForProfile(profile, decision) {
+  if (!decision?.pptxRendererCode) return false;
+  if (!profile || profile.id === 'strategy') return true;
+  return decision.compatibleProfiles?.includes?.(profile.id) || decision.profileId === profile.id;
+}
+
+function buildProfileReferenceExampleCode(profile, fallbackCode) {
+  const positions = profile?.chrome?.positions;
+  if (!profile || profile.id === 'strategy' || !positions?.title || !positions?.body) return fallbackCode;
+
+  const fontFace = getProfilePptxFontFace(profile) || profile.theme?.fonts?.body?.replace(/["']/g, '') || 'Arial';
+  const colors = {
+    main: getProfileTextColor(profile, 'heading', '111111'),
+    secondary: getProfileTextColor(profile, 'body', '222222'),
+    accent: getProfileTextColor(profile, 'accent', '8E1E1E'),
+    subtitle: getProfileTextColor(profile, 'kicker', getProfileTextColor(profile, 'danger', 'A32020')),
+    surface: getProfileTextColor(profile, 'surface', 'F7F9FB'),
+    surfaceAlt: getProfileTextColor(profile, 'surfaceAlt', 'F8E3E3'),
+    border: getProfileTextColor(profile, 'border', 'E6E9EE'),
+  };
+  const title = positions.title;
+  const subtitle = positions.subtitle || title;
+  const body = positions.body;
+  const cardGap = 0.18;
+  const cardW = Number(((body.w - (cardGap * 2)) / 3).toFixed(3));
+  const cardH = Number((body.h - 0.08).toFixed(3));
+  const cardY = Number((body.y + 0.04).toFixed(3));
+
+  return `function(pptx, slideNum, totalSlides) {
+  const slide = pptx.addSlide();
+  const c = ${JSON.stringify(colors)};
+  slide.addText("Client-profile title uses the exact master band", {x:${title.x}, y:${title.y}, w:${title.w}, h:${title.h}, fontFace:'${fontFace}', fontSize:${title.font?.fontSize ?? 24}, bold:${title.font?.bold ? 'true' : 'false'}, color:c.main, valign:'top'});
+  slide.addText("Client profile subtitle", {x:${subtitle.x}, y:${subtitle.y}, w:${subtitle.w}, h:${subtitle.h}, fontFace:'${fontFace}', fontSize:${subtitle.font?.fontSize ?? 18}, bold:${subtitle.font?.bold ? 'true' : 'false'}, color:c.subtitle, valign:'top'});
+  const body = {x:${body.x}, y:${body.y}, w:${body.w}, h:${body.h}};
+  const items = [
+    {num:'01', title:'First module', body:'Keep every body object inside the profile body rectangle.'},
+    {num:'02', title:'Second module', body:'Use compact spacing and profile colors instead of generic example geometry.'},
+    {num:'03', title:'Third module', body:'If content does not fit, reduce the number of modules or split slides.'}
+  ];
+  items.forEach((d, i) => {
+    const x = Number((body.x + i * (${cardW} + ${cardGap})).toFixed(3));
+    slide.addShape('rect', {x, y:${cardY}, w:${cardW}, h:${cardH}, fill:{color:c.surface}, line:{color:c.border, width:0.75}});
+    slide.addShape('rect', {x, y:${cardY}, w:${cardW}, h:0.18, fill:{color:c.accent}, line:{color:c.accent, transparency:100}});
+    slide.addText(d.num, {x:x+0.16, y:${cardY}+0.35, w:0.65, h:0.35, fontFace:'${fontFace}', fontSize:18, bold:true, color:c.accent});
+    slide.addText(d.title, {x:x+0.9, y:${cardY}+0.36, w:${Number((cardW - 1.06).toFixed(3))}, h:0.32, fontFace:'${fontFace}', fontSize:14, bold:false, color:c.main});
+    slide.addText(d.body, {x:x+0.16, y:${cardY}+0.86, w:${Number((cardW - 0.32).toFixed(3))}, h:${Number((cardH - 1.05).toFixed(3))}, fontFace:'${fontFace}', fontSize:12, color:c.secondary, valign:'top', breakLine:false});
+  });
+  addFooter(slide, slideNum, totalSlides);
+}`;
+}
+
+function enforcePptxFontFaceForProfile(codeString, profile) {
+  const fontFace = getProfilePptxFontFace(profile);
+  if (!fontFace || !codeString) return codeString;
+  return String(codeString).replace(
+    /fontFace\s*:\s*(['"`])[^'"`]+?\1/g,
+    `fontFace:'${fontFace}'`
+  );
+}
+
+function enforcePptxColorsForProfile(codeString, profile) {
+  if (profile?.id !== 'stc' || !codeString) return codeString;
+  const replacements = new Map([
+    ['111111', '4F008C'],
+    ['222222', '1D252D'],
+    ['A32020', 'FF375E'],
+    ['8E1E1E', '4F008C'],
+    ['F7F9FB', 'FBF8FE'],
+    ['EEF2F6', 'EDDCF9'],
+    ['F8E3E3', 'EDDCF9'],
+    ['4A4F57', '515360'],
+    ['4B4F55', '1D252D'],
+    ['E6E9EE', 'DBB8F3'],
+  ]);
+  let next = String(codeString);
+  for (const [from, to] of replacements) {
+    next = next.replace(new RegExp(from, 'gi'), to);
+  }
+  return next;
+}
+
+function sanitizePptxTextForProfile(codeString, profile) {
+  if (profile?.id !== 'stc' || !codeString) return codeString;
+  return String(codeString)
+    .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, '')
+    .replace(/([`'"])\s+(\1)/g, '$1$2');
+}
+
+function enforcePptxProfileCode(codeString, profile) {
+  return sanitizePptxTextForProfile(
+    enforcePptxColorsForProfile(
+      enforcePptxFontFaceForProfile(codeString, profile),
+      profile
+    ),
+    profile
+  );
+}
+
+function canUseCachedPptxCodeForProfile(profile) {
+  return !profile || profile.id === 'strategy';
+}
 
 /**
  * Convert a theme object into the PPTX color palette snippet and hint.
@@ -412,8 +590,36 @@ function buildPositionBlock(tplPositions) {
   return lines.join('\n');
 }
 
+function pxRectToInches(rect, canvas) {
+  if (!rect || !canvas?.widthPx || !canvas?.widthIn) return null;
+  const scale = canvas.widthIn / canvas.widthPx;
+  const round = value => Number((value * scale).toFixed(3));
+  return {
+    x: round(rect.x),
+    y: round(rect.y),
+    w: round(rect.w),
+    h: round(rect.h),
+  };
+}
+
+function buildProfilePositionBlock(profile) {
+  const layout = profile?.layoutContract;
+  const standard = layout?.standardContent;
+  if (!standard) return null;
+  const positions = {
+    title: pxRectToInches(standard.title, layout.canvas),
+    subtitle: pxRectToInches(standard.subtitle, layout.canvas),
+    body: pxRectToInches(standard.body, layout.canvas),
+    footer: pxRectToInches(standard.source, layout.canvas),
+    slideNum: pxRectToInches(standard.slideNumber, layout.canvas),
+  };
+  const block = buildPositionBlock(positions);
+  return block ? block.replace('(from uploaded client template)', `(from active ${profile.name} profile layout contract)`) : null;
+}
+
 export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
   const palette = themeToPptxPalette(settings?.theme);
+  const activeProfile = getActiveClientProfile(settings || {});
 
   const rawBaseCSS = extractRelevantCSS(slide.html, slide.customCSS || '');
   const resolvedBaseCSS = resolveCustomProperties(rawBaseCSS, settings?.theme);
@@ -430,7 +636,15 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
   const html = slide.html || '';
   if (html.includes('cover-slide') || html.includes('cover-title')) exampleCode = COVER_TRANSLATION_EXAMPLE.code;
   else if (html.includes('kpi-block') || html.includes('two-col')) exampleCode = KPI_TRANSLATION_EXAMPLE.code;
-  if (decision.useTemplate && decision.pptxRendererCode) exampleCode = decision.pptxRendererCode;
+  if (decision.useTemplate && shouldUseTemplateRendererForProfile(activeProfile, decision)) {
+    exampleCode = decision.pptxRendererCode;
+  } else if (decision.useTemplate && activeProfile?.id !== 'strategy') {
+    console.info('[PPTX] Skipping template renderer for client profile %s; using profile-safe reference geometry instead.', activeProfile.id);
+  }
+  exampleCode = enforcePptxFontFaceForProfile(
+    buildProfileReferenceExampleCode(activeProfile, exampleCode),
+    activeProfile
+  );
 
   const hints = parsePptxHints(html);
   const hintsBlock = formatHintsForPrompt(hints);
@@ -443,7 +657,18 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
       .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"')
   );
 
-  const tplPos = buildPositionBlock(settings?.templatePositions);
+  const tplPos = buildPositionBlock(settings?.templatePositions) || buildProfilePositionBlock(activeProfile);
+  const profileFontFace = getProfilePptxFontFace(activeProfile);
+  const profileTypographyGuidance = getProfilePptxTypographyGuidance(activeProfile);
+  const clientProfileBlock = buildClientProfileContext(settings || {}, {
+    includeTheme: true,
+    includeLayout: true,
+    includeValidation: true,
+    includeEvidence: false,
+    includePromptSections: false,
+    includeComponents: true,
+    includePptx: true,
+  });
 
   let prompt = `TASK: Convert this HTML slide to a PptxGenJS function.
 
@@ -466,6 +691,7 @@ When CSS specifies pixel values for position or size, convert them:
 
 All content inside .frame maps to the PPTX region starting at the Frame position above.
 Position elements WITHIN that region relatively.
+${activeProfile?.id !== 'strategy' ? 'For the active client profile, never use generic Strategy& positions from old examples when profile positions are listed above. Keep all non-chrome content inside the profile Body/Frame rectangle.' : ''}
 
 ========== COLOR PALETTE ==========
 ${palette.colorCode}
@@ -475,6 +701,7 @@ ${palette.hint}
 - Accent: ${palette.colors.accent}
 - Card backgrounds: ${palette.colors.cardBg}
 - Borders: ${palette.colors.border}
+${clientProfileBlock ? `\n========== ACTIVE CLIENT PROFILE ==========\n${clientProfileBlock}\n` : ''}
 
 ========== REFERENCE EXAMPLE ==========
 ${exampleCode}
@@ -500,11 +727,13 @@ The CSS RULES section above is the RESOLVED stylesheet for this slide -- treat i
 6. The reference example is just a STRUCTURAL guide. Always use the ACTUAL colors from THIS slide's CSS/HTML.
 
 MANDATORY -- TYPOGRAPHY FIDELITY AND READABILITY:
+${profileFontFace ? `- For this client profile, every text box MUST set fontFace:'${profileFontFace}'. Do not use Arial, Georgia, Calibri, Aptos, or generic font fallbacks.\n` : ''}
+${profileTypographyGuidance}
 - Never emit fontSize below 10 for normal text, or below 8 for compact tags, chips, badges, tracker labels, and short in-box labels.
 - Use fontSize 12 or larger for body copy, bullets, descriptions, and table cells.
 - Use fontSize 14 or larger for section titles, pillar titles, card titles, grid-cell titles, and h3/h4 equivalents.
 - Use fontSize 8 only for compact tags, chips, badges, tracker labels, and short in-box labels.
-- Use fontSize 10 only for chart axes, legends, captions, sources, and footer text.
+- Use fontSize 10 only for chart axes, legends, captions, sources, and footer text, except client-profile footer/source/page chrome may use 8 when the active profile specifies it.
 - Do not use fit:'shrink' to push text below those floors. If needed, shorten copied text only when the HTML/CSS already indicates it is a compact label.
 
 OUTPUT FORMAT (return ONLY this, no markdown):
@@ -570,7 +799,7 @@ export function validateGeneratedCode(codeString, slideHtml) {
       errors: [{
         type: 'TypographyFloorError',
         message: `PPTX code uses fontSize below 8 (${[...new Set(tinyFontMatches)].join(', ')})`,
-        details: 'Regenerate with fontSize >= 8 for compact tags/trackers, >= 10 for captions/axes/footer, and >= 12 for normal body text.',
+        details: 'Regenerate with fontSize >= 8 for compact tags/trackers and client-profile footer/page chrome, >= 10 for captions/axes/default footers, and >= 12 for normal body text.',
       }],
     };
   }
@@ -622,7 +851,9 @@ export function validateGeneratedCode(codeString, slideHtml) {
 // ── Core: generate code for one slide with retry loop ────────────────────────
 
 async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials) {
-  const systemPrompt = applyPromptOverride(settings, 'pptx.system', settings?.pptxSystemPrompt?.trim() || DEFAULT_PPTX_SYSTEM_PROMPT);
+  const activeProfile = getActiveClientProfile(settings || {});
+  const baseSystemPrompt = `${settings?.pptxSystemPrompt?.trim() || DEFAULT_PPTX_SYSTEM_PROMPT}${getProfilePptxSystemGuidance(activeProfile)}`;
+  const systemPrompt = applyPromptOverride(settings, 'pptx.system', baseSystemPrompt);
   let lastCode = null;
   let lastErrors = [];
 
@@ -645,7 +876,7 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
         attempt: attempt + 1,
       });
       const raw = await callAI(settings, credentials, systemPrompt, userPrompt);
-      const codeString = extractJSArray(raw);
+      const codeString = enforcePptxProfileCode(extractJSArray(raw), activeProfile);
       lastCode = codeString;
 
       const validation = validateGeneratedCode(codeString, slide.html);
@@ -679,9 +910,20 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
 function parseHTML(html) { return new DOMParser().parseFromString(html, 'text/html'); }
 function getText(doc, sel) { const el = doc.querySelector(sel); return el ? el.textContent.trim() : ''; }
 
-function generateFallbackSlide(pptx, slide, slideNum, totalSlides) {
+function generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile = null) {
   const pptxSlide = pptx.addSlide();
   const doc = parseHTML(slide.html || '<div></div>');
+  const isStc = activeProfile?.id === 'stc';
+  const profilePositions = activeProfile?.chrome?.positions || {};
+  const fontFace = getProfilePptxFontFace(activeProfile);
+  const titleFont = fontFace || 'Georgia';
+  const bodyFont = fontFace || 'Arial';
+  const titlePos = profilePositions.title || { x: 0.48, y: 0.42, w: 12.36, h: 0.8 };
+  const subtitlePos = profilePositions.subtitle || { x: 0.48, y: 1.40, w: 12.36, h: 0.4 };
+  const bodyPos = profilePositions.body || { x: 0.48, y: 2.0, w: 12.36, h: 4.9 };
+  const colors = isStc
+    ? { main: '4F008C', secondary: '1D252D', accent: '4F008C', subtitle: 'FF375E', surface: 'FBF8FE', border: 'DBB8F3', meta: '515360' }
+    : { main: COLORS.main, secondary: COLORS.secondary, accent: COLORS.maroon, subtitle: COLORS.red, surface: COLORS.zone1, border: COLORS.border, meta: COLORS.meta };
 
   const isCover = (slide.html || '').includes('cover-slide') || (slide.html || '').includes('master-cover');
   const isDivider = (slide.html || '').includes('section-divider');
@@ -690,55 +932,345 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides) {
     pptxSlide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: 'FFFFFF' } });
     const cat = getText(doc, '.cover-category');
     const title = getText(doc, '.cover-title') || getText(doc, '.title') || 'Presentation';
-    if (cat) pptxSlide.addText(cat.toUpperCase(), { x: 0.48, y: 1.94, w: 12.36, h: 0.5, fontFace: 'Arial', fontSize: 18, color: COLORS.red, bold: true });
-    pptxSlide.addText(title, { x: 0.48, y: 2.64, w: 9.7, h: 2.0, fontFace: 'Georgia', fontSize: 42, color: COLORS.main, valign: 'top' });
+    if (cat) pptxSlide.addText(cat.toUpperCase(), { x: 0.48, y: 1.94, w: 12.36, h: 0.5, fontFace: bodyFont, fontSize: 18, color: colors.subtitle, bold: true });
+    pptxSlide.addText(title, { x: 0.48, y: 2.64, w: 9.7, h: 2.0, fontFace: titleFont, fontSize: 42, color: colors.main, valign: 'top' });
     // Cover branding and date — no footer row
     const branding = getText(doc, '.cover-branding');
     const date = getText(doc, '.cover-date');
-    if (branding) pptxSlide.addText(branding, { x: 0.48, y: 6.50, w: 4.0, h: 0.3, fontFace: 'Arial', fontSize: 16, bold: true, color: COLORS.meta });
-    if (date) pptxSlide.addText(date, { x: 9.5, y: 6.50, w: 3.3, h: 0.3, fontFace: 'Arial', fontSize: 13, color: COLORS.meta, align: 'right' });
+    if (branding) pptxSlide.addText(branding, { x: 0.48, y: 6.50, w: 4.0, h: 0.3, fontFace: bodyFont, fontSize: 16, bold: true, color: colors.meta });
+    if (date) pptxSlide.addText(date, { x: 9.5, y: 6.50, w: 3.3, h: 0.3, fontFace: bodyFont, fontSize: 13, color: colors.meta, align: 'right' });
     return;
   }
   if (isDivider) {
     pptxSlide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: 'FFFFFF' } });
-    pptxSlide.addShape('rect', { x: 0, y: 0, w: 0.33, h: 7.5, fill: { color: COLORS.maroon } });
+    pptxSlide.addShape('rect', { x: 0, y: 0, w: 0.33, h: 7.5, fill: { color: colors.accent } });
     const title = getText(doc, '.section-divider-title, .divider-title') || getText(doc, '.title') || 'Section';
-    pptxSlide.addText(title, { x: 1.1, y: 2.5, w: 10, h: 1.5, fontFace: 'Georgia', fontSize: 36, color: COLORS.main, bold: true });
+    pptxSlide.addText(title, { x: 1.1, y: 2.5, w: 10, h: 1.5, fontFace: titleFont, fontSize: 36, color: colors.main, bold: true });
     addFooter(pptxSlide, slideNum, totalSlides);
     return;
   }
 
   const title = getText(doc, '.title, h1, .cover-title');
   const subtitle = getText(doc, '.subtitle, h2');
-  if (title) pptxSlide.addText(title, { x: 0.48, y: 0.42, w: 12.36, h: 0.8, fontFace: 'Georgia', fontSize: 28, color: COLORS.main });
-  if (subtitle) pptxSlide.addText(subtitle, { x: 0.48, y: 1.40, w: 12.36, h: 0.4, fontFace: 'Arial', fontSize: 18, color: COLORS.red, bold: true });
+  if (title) pptxSlide.addText(title, { x: titlePos.x, y: titlePos.y, w: titlePos.w, h: titlePos.h, fontFace: titleFont, fontSize: titlePos.font?.fontSize || 28, color: colors.main });
+  if (subtitle) pptxSlide.addText(subtitle, { x: subtitlePos.x, y: subtitlePos.y, w: subtitlePos.w, h: subtitlePos.h, fontFace: bodyFont, fontSize: subtitlePos.font?.fontSize || 18, color: colors.subtitle, bold: subtitlePos.font?.bold ?? true });
 
-  const contentY = 2.0;
+  const contentY = bodyPos.y;
   const cards = doc.querySelectorAll('.card, .grid-cell, .kpi-block, .stat-box');
   if (cards.length > 0) {
-    const cardW = 12.36 / Math.min(cards.length, 4) - 0.2;
+    const cardW = bodyPos.w / Math.min(cards.length, 4) - 0.2;
     cards.forEach((card, i) => {
       if (i >= 4) return;
-      const x = 0.48 + i * (cardW + 0.2);
-      pptxSlide.addShape('rect', { x, y: contentY, w: cardW, h: 4.0, fill: { color: COLORS.zone1 }, line: { color: COLORS.border, width: 0.5 } });
-      pptxSlide.addShape('rect', { x, y: contentY, w: cardW, h: 0.06, fill: { color: COLORS.maroon } });
+      const x = bodyPos.x + i * (cardW + 0.2);
+      pptxSlide.addShape('rect', { x, y: contentY, w: cardW, h: Math.min(4.0, bodyPos.h), fill: { color: colors.surface }, line: { color: colors.border, width: 0.5 } });
+      pptxSlide.addShape('rect', { x, y: contentY, w: cardW, h: 0.06, fill: { color: colors.accent } });
       const cardTitle = card.querySelector('h3, h4, strong, .card-title');
-      if (cardTitle) pptxSlide.addText(cardTitle.textContent.trim(), { x: x + 0.15, y: contentY + 0.85, w: cardW - 0.3, h: 0.4, fontFace: 'Arial', fontSize: 14, color: COLORS.main, bold: true });
+      if (cardTitle) pptxSlide.addText(cardTitle.textContent.trim(), { x: x + 0.15, y: contentY + 0.85, w: cardW - 0.3, h: 0.4, fontFace: bodyFont, fontSize: 14, color: colors.main, bold: true });
       let body = '';
       card.querySelectorAll('p').forEach(p => { const t = p.textContent.trim(); if (t) body += (body ? '\n\n' : '') + t; });
-      if (body) pptxSlide.addText(body.substring(0, 400), { x: x + 0.15, y: contentY + 1.35, w: cardW - 0.3, h: 2.2, fontFace: 'Arial', fontSize: 12, color: COLORS.secondary, valign: 'top' });
+      if (body) pptxSlide.addText(body.substring(0, 400), { x: x + 0.15, y: contentY + 1.35, w: cardW - 0.3, h: 2.2, fontFace: bodyFont, fontSize: 12, color: colors.secondary, valign: 'top' });
     });
   } else {
     const bullets = doc.querySelectorAll('li');
     if (bullets.length > 0) {
-      bullets.forEach((b, i) => { if (i >= 8) return; pptxSlide.addText(b.textContent.trim().substring(0, 200), { x: 0.75, y: contentY + i * 0.6, w: 11.5, h: 0.5, fontFace: 'Arial', fontSize: 14, color: COLORS.main, bullet: true }); });
+      bullets.forEach((b, i) => { if (i >= 8) return; pptxSlide.addText(b.textContent.trim().substring(0, 200), { x: bodyPos.x + 0.25, y: contentY + i * 0.6, w: bodyPos.w - 0.5, h: 0.5, fontFace: bodyFont, fontSize: 14, color: colors.main, bullet: true }); });
     } else {
         let yPos = contentY;
-      doc.querySelectorAll('p').forEach((p, i) => { if (i >= 6 || yPos > 6.5) return; const t = p.textContent.trim(); if (t && t.length > 5) { pptxSlide.addText(t.substring(0, 400), { x: 0.48, y: yPos, w: 12.36, h: 0.8, fontFace: 'Arial', fontSize: 13, color: COLORS.secondary, valign: 'top' }); yPos += 0.85; } });
+      doc.querySelectorAll('p').forEach((p, i) => { if (i >= 6 || yPos > 6.5) return; const t = p.textContent.trim(); if (t && t.length > 5) { pptxSlide.addText(t.substring(0, 400), { x: bodyPos.x, y: yPos, w: bodyPos.w, h: 0.8, fontFace: bodyFont, fontSize: 13, color: colors.secondary, valign: 'top' }); yPos += 0.85; } });
     }
   }
   addSourceNote(pptxSlide, slide.html);
   addFooter(pptxSlide, slideNum, totalSlides);
+}
+
+function normalizeText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim();
+}
+
+function getSlideObjectText(obj) {
+  if (!obj) return '';
+  if (typeof obj.text === 'string') return normalizeText(obj.text);
+  if (Array.isArray(obj.text)) {
+    return normalizeText(obj.text.map(run => {
+      if (typeof run === 'string') return run;
+      return run?.text || '';
+    }).join(' '));
+  }
+  return '';
+}
+
+function getSourceTextsFromHtml(html) {
+  if (!html) return [];
+  const doc = parseHTML(html);
+  const selectors = [
+    'footer .source', '.graph-source', '.exhibit-source', '.chart-source',
+    '.chart-commentary-source', '.benefit-sources', '.source-note',
+    '.exec-takeaway-source', '.stat-source',
+  ];
+  const texts = [];
+  for (const sel of selectors) {
+    doc.querySelectorAll(sel).forEach(el => {
+      const text = normalizeText(el.textContent);
+      if (text && !texts.includes(text)) texts.push(text);
+    });
+  }
+  return texts;
+}
+
+function applyObjectOptions(obj, nextOptions) {
+  if (!obj || !nextOptions) return;
+  obj.options = {
+    ...(obj.options || {}),
+    ...nextOptions,
+  };
+  normalizeObjectGeometryOptions(obj.options);
+  if (Array.isArray(obj.text)) {
+    obj.text = obj.text.map(run => {
+      if (!run || typeof run === 'string') return run;
+      const runOptions = {
+        ...(run.options || {}),
+        ...nextOptions,
+      };
+      normalizeObjectGeometryOptions(runOptions);
+      return {
+        ...run,
+        options: runOptions,
+      };
+    });
+  }
+}
+
+function normalizeObjectGeometryOptions(options) {
+  if (!options) return;
+  if (Number.isFinite(options.w) && options.w < 0) {
+    if (Number.isFinite(options.x)) options.x += options.w;
+    options.w = Math.abs(options.w);
+  }
+  if (Number.isFinite(options.h) && options.h < 0) {
+    if (Number.isFinite(options.y)) options.y += options.h;
+    options.h = Math.abs(options.h);
+  }
+}
+
+function sanitizeSlideObjectGeometry(pptxSlide) {
+  if (!pptxSlide?._slideObjects) return;
+  for (const obj of pptxSlide._slideObjects) {
+    normalizeObjectGeometryOptions(obj.options);
+    if (!Array.isArray(obj.text)) continue;
+    for (const run of obj.text) {
+      if (run && typeof run !== 'string') normalizeObjectGeometryOptions(run.options);
+    }
+  }
+}
+
+function sanitizeSlideObjectTextForProfile(pptxSlide, profile) {
+  if (profile?.id !== 'stc' || !pptxSlide?._slideObjects) return;
+  const sanitize = value => String(value || '')
+    .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  for (const obj of pptxSlide._slideObjects) {
+    if (typeof obj.text === 'string') {
+      obj.text = sanitize(obj.text);
+      continue;
+    }
+    if (!Array.isArray(obj.text)) continue;
+    obj.text = obj.text.map(run => {
+      if (typeof run === 'string') return sanitize(run);
+      if (!run?.text) return run;
+      return { ...run, text: sanitize(run.text) };
+    });
+  }
+}
+
+function objectBounds(obj) {
+  const opts = obj?.options || {};
+  if (!Number.isFinite(opts.x) || !Number.isFinite(opts.y)) return null;
+  const w = Number.isFinite(opts.w) ? opts.w : 0;
+  const h = Number.isFinite(opts.h) ? opts.h : 0;
+  return {
+    x1: Math.min(opts.x, opts.x + w),
+    y1: Math.min(opts.y, opts.y + h),
+    x2: Math.max(opts.x, opts.x + w),
+    y2: Math.max(opts.y, opts.y + h),
+  };
+}
+
+function collectBounds(objects) {
+  const bounds = objects.map(objectBounds).filter(Boolean);
+  if (!bounds.length) return null;
+  const x1 = Math.min(...bounds.map(b => b.x1));
+  const y1 = Math.min(...bounds.map(b => b.y1));
+  const x2 = Math.max(...bounds.map(b => b.x2));
+  const y2 = Math.max(...bounds.map(b => b.y2));
+  return {
+    x: x1,
+    y: y1,
+    w: x2 - x1,
+    h: y2 - y1,
+    right: x2,
+    bottom: y2,
+  };
+}
+
+function clamp(value, min, max) {
+  if (max < min) return min;
+  return Math.min(max, Math.max(min, value));
+}
+
+function bodyCandidateObjects(objects, chromeObjects, bodyPos, footerPos) {
+  const topGuard = Math.max(0, bodyPos.y - 0.45);
+  const bottomGuard = footerPos?.y ? Math.min(footerPos.y - 0.08, bodyPos.y + bodyPos.h + 0.65) : bodyPos.y + bodyPos.h + 0.65;
+  return objects.filter(obj => {
+    if (chromeObjects.has(obj)) return false;
+    const bounds = objectBounds(obj);
+    if (!bounds) return false;
+    if (bounds.y1 < bodyPos.y - 0.14) return false;
+    if (bounds.y2 < topGuard || bounds.y1 > bottomGuard) return false;
+    if (bounds.x2 < bodyPos.x - 0.8 || bounds.x1 > bodyPos.x + bodyPos.w + 0.8) return false;
+    return true;
+  });
+}
+
+function fitObjectsIntoRect(objects, target, padding = 0.02) {
+  const bounds = collectBounds(objects);
+  if (!bounds || !target?.w || !target?.h) return false;
+
+  const targetRect = {
+    x: target.x + padding,
+    y: target.y + padding,
+    w: Math.max(0.01, target.w - padding * 2),
+    h: Math.max(0.01, target.h - padding * 2),
+  };
+  const overflows =
+    bounds.x < targetRect.x
+    || bounds.y < targetRect.y
+    || bounds.right > targetRect.x + targetRect.w
+    || bounds.bottom > targetRect.y + targetRect.h;
+  if (!overflows) return false;
+
+  const scaleX = bounds.w > targetRect.w ? targetRect.w / bounds.w : 1;
+  const scaleY = bounds.h > targetRect.h ? targetRect.h / bounds.h : 1;
+  const mappedW = bounds.w * scaleX;
+  const mappedH = bounds.h * scaleY;
+  const targetX = bounds.w > targetRect.w
+    ? targetRect.x
+    : clamp(bounds.x, targetRect.x, targetRect.x + targetRect.w - mappedW);
+  const targetY = bounds.h > targetRect.h
+    ? targetRect.y
+    : clamp(bounds.y, targetRect.y, targetRect.y + targetRect.h - mappedH);
+
+  for (const obj of objects) {
+    const opts = obj.options || {};
+    const next = {
+      x: targetX + ((opts.x - bounds.x) * scaleX),
+      y: targetY + ((opts.y - bounds.y) * scaleY),
+    };
+    if (Number.isFinite(opts.w)) next.w = opts.w * scaleX;
+    if (Number.isFinite(opts.h)) next.h = opts.h * scaleY;
+    applyObjectOptions(obj, next);
+  }
+  return true;
+}
+
+function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, profile, positions) {
+  sanitizeSlideObjectGeometry(pptxSlide);
+  if (profile?.id !== 'stc' || !pptxSlide?._slideObjects || !positions) return;
+
+  sanitizeSlideObjectTextForProfile(pptxSlide, profile);
+
+  const isCover = /\b(cover-slide|master-cover)\b/.test(sourceSlide?.html || '');
+  if (isCover) return;
+
+  const doc = parseHTML(sourceSlide?.html || '<div></div>');
+  const title = normalizeText(getText(doc, '.title, h1, .cover-title'));
+  const subtitle = normalizeText(getText(doc, '.subtitle, h2'));
+  const sourceTexts = getSourceTextsFromHtml(sourceSlide?.html || '');
+  const sourceNeedles = new Set(sourceTexts.map(normalizeText));
+  const bodyPos = positions.body;
+  const titlePos = positions.title;
+  const subtitlePos = positions.subtitle;
+  const footerPos = positions.footer;
+  const slideNumPos = positions.slideNum;
+  const fontFace = getProfilePptxFontFace(profile) || 'STC Forward';
+
+  const objects = pptxSlide._slideObjects;
+  const findTextObjects = predicate => objects.filter(obj => predicate(getSlideObjectText(obj), obj));
+  const titleObjects = title ? findTextObjects(text => text === title) : [];
+  const subtitleObjects = subtitle ? findTextObjects(text => text === subtitle) : [];
+  const sourceObjects = findTextObjects(text => text.startsWith('Source:') || sourceNeedles.has(text));
+  const slideNumObjects = findTextObjects((text, obj) =>
+    text === String(slideNum)
+    && ((obj.options?.y ?? 0) > 6.8 || (obj.options?.x ?? 0) > 11.5)
+  );
+  const chromeObjects = new Set([...titleObjects, ...subtitleObjects, ...sourceObjects, ...slideNumObjects]);
+
+  for (const obj of titleObjects) {
+    if (!titlePos) continue;
+    applyObjectOptions(obj, {
+      x: titlePos.x,
+      y: titlePos.y,
+      w: titlePos.w,
+      h: titlePos.h,
+      fontFace,
+      fontSize: titlePos.font?.fontSize ?? 24,
+      bold: false,
+      color: '4F008C',
+      valign: 'top',
+    });
+  }
+  for (const obj of subtitleObjects) {
+    if (!subtitlePos) continue;
+    applyObjectOptions(obj, {
+      x: subtitlePos.x,
+      y: subtitlePos.y,
+      w: subtitlePos.w,
+      h: subtitlePos.h,
+      fontFace,
+      fontSize: subtitlePos.font?.fontSize ?? 18,
+      bold: false,
+      color: 'FF375E',
+      valign: 'top',
+    });
+  }
+  for (const obj of sourceObjects) {
+    if (!footerPos) continue;
+    applyObjectOptions(obj, {
+      x: footerPos.x,
+      y: footerPos.y,
+      w: footerPos.w,
+      h: footerPos.h,
+      fontFace,
+      fontSize: footerPos.font?.fontSize ?? 8,
+      bold: false,
+      italic: footerPos.font?.italic ?? false,
+      color: '515360',
+      align: 'left',
+      valign: 'top',
+    });
+  }
+  for (const obj of slideNumObjects) {
+    if (!slideNumPos) continue;
+    applyObjectOptions(obj, {
+      x: slideNumPos.x,
+      y: slideNumPos.y,
+      w: slideNumPos.w,
+      h: slideNumPos.h,
+      fontFace,
+      fontSize: slideNumPos.font?.fontSize ?? 8,
+      bold: false,
+      color: '515360',
+      align: 'right',
+    });
+  }
+
+  if (!bodyPos) return;
+
+  const candidates = bodyCandidateObjects(objects, chromeObjects, bodyPos, footerPos);
+  if (fitObjectsIntoRect(candidates, bodyPos)) {
+    console.info('[PPTX] Normalized %d body object(s) into STC body band on slide %d.', candidates.length, slideNum);
+  }
+  sanitizeSlideObjectGeometry(pptxSlide);
 }
 
 // ── Main export: full deck ───────────────────────────────────────────────────
@@ -753,15 +1285,16 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
+  const activeProfile = getActiveClientProfile(settings || {});
   let templateData = null;
-  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
-  if (templateData?.chrome?.positions && settings) {
-    settings = { ...settings, templatePositions: templateData.chrome.positions };
-  }
+  try { templateData = await loadTemplateFromStorage({ profileId: activeProfile.id }); } catch (e) { /* ignore */ }
+  const activeProfilePositions = resolvePptxPositionsForProfile(activeProfile, templateData?.chrome?.positions || null);
+  settings = normalizePptxSettingsForProfile(settings || {}, activeProfile, activeProfilePositions);
 
   const totalSlides = slides.length;
-  setFooterBranding(settings?.footerBranding || 'Strategy&');
-  setTemplatePositions(templateData?.chrome?.positions || null);
+  setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
+  setTemplatePositions(activeProfilePositions);
+  setPptxFontFace(getProfilePptxFontFace(activeProfile));
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
@@ -795,12 +1328,13 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       const slideNum = i + 1;
 
       // Use pre-generated PPTX code if available and valid
-      if (slide.pptxCode) {
+      if (slide.pptxCode && canUseCachedPptxCodeForProfile(activeProfile)) {
         try {
-          const validation = validateGeneratedCode(slide.pptxCode, slide.html);
+          const codeString = enforcePptxProfileCode(slide.pptxCode, activeProfile);
+          const validation = validateGeneratedCode(codeString, slide.html);
           if (validation.valid && validation.slideFunctions) {
             console.log(`[PPTX] Slide ${slideNum}: using pre-generated code`);
-            aiResults[i] = { success: true, slideFunctions: validation.slideFunctions, code: slide.pptxCode, cached: true };
+            aiResults[i] = { success: true, slideFunctions: validation.slideFunctions, code: codeString, cached: true };
             completed++;
             if (onProgress) onProgress({ phase: 'rendering', processed: completed, total: totalSlides, message: `Slide ${completed}/${totalSlides} (pre-generated)` });
             return;
@@ -857,7 +1391,10 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
           rendered = true;
           if (!result.cached && result.code) slide.pptxCode = result.code;
           const lastSlide = pptx.slides?.[pptx.slides.length - 1];
-          if (lastSlide) addSourceNote(lastSlide, slide.html);
+          if (lastSlide) {
+            addSourceNote(lastSlide, slide.html);
+            normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+          }
           if (result.cached) console.log(`[PPTX] Slide ${slideNum}: rendered from cache`);
           else if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
         } catch (execErr) {
@@ -868,7 +1405,9 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       }
 
       if (!rendered) {
-        generateFallbackSlide(pptx, slide, slideNum, totalSlides);
+        generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile);
+        const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+        if (lastSlide) normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
       }
 
       if (slide.sectionLabel || slide.subSectionLabel) {
@@ -893,7 +1432,10 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
             result.slideFunctions[0](pptx, slideNum, totalSlides);
         rendered = true;
             const lastSlide = pptx.slides?.[pptx.slides.length - 1];
-            if (lastSlide) addSourceNote(lastSlide, slide.html);
+            if (lastSlide) {
+              addSourceNote(lastSlide, slide.html);
+              normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+            }
             if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
           } else {
             recordFailure(slide, slideNum, result?.error || 'AI generation failed');
@@ -905,7 +1447,9 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
     }
 
     if (!rendered) {
-        generateFallbackSlide(pptx, slide, slideNum, totalSlides);
+        generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile);
+        const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+        if (lastSlide) normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
       }
 
     if (slide.sectionLabel || slide.subSectionLabel) {
@@ -920,7 +1464,13 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   if (templateData?.data) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
-      const merged = await applyTemplateToGenerated(buf, templateData.data, templateData.chrome || null);
+      const chrome = {
+        ...(templateData.chrome || {}),
+        positions: activeProfilePositions || templateData.chrome?.positions || null,
+      };
+      const merged = activeProfile.id === 'stc'
+        ? await applyProfileChromeToGenerated(buf, chrome)
+        : await applyTemplateToGenerated(buf, templateData.data, chrome);
       downloadArrayBuffer(merged, filename);
     } catch (e) {
       console.error('[PPTX] Template merge failed:', e);
@@ -951,14 +1501,15 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
+  const activeProfile = getActiveClientProfile(settings || {});
   let templateData = null;
-  try { templateData = await loadTemplateFromStorage(); } catch (e) { /* ignore */ }
-  if (templateData?.chrome?.positions && settings) {
-    settings = { ...settings, templatePositions: templateData.chrome.positions };
-  }
+  try { templateData = await loadTemplateFromStorage({ profileId: activeProfile.id }); } catch (e) { /* ignore */ }
+  const activeProfilePositions = resolvePptxPositionsForProfile(activeProfile, templateData?.chrome?.positions || null);
+  settings = normalizePptxSettingsForProfile(settings || {}, activeProfile, activeProfilePositions);
 
-  setFooterBranding(settings?.footerBranding || 'Strategy&');
-  setTemplatePositions(templateData?.chrome?.positions || null);
+  setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
+  setTemplatePositions(activeProfilePositions);
+  setPptxFontFace(getProfilePptxFontFace(activeProfile));
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
@@ -983,7 +1534,10 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
         result.slideFunctions[0](pptx, slideNumber, totalSlides);
           rendered = true;
         const lastSlide = pptx.slides?.[pptx.slides.length - 1];
-        if (lastSlide) addSourceNote(lastSlide, slide.html);
+        if (lastSlide) {
+          addSourceNote(lastSlide, slide.html);
+          normalizeGeneratedSlideForProfile(lastSlide, slide, slideNumber, activeProfile, activeProfilePositions);
+        }
       } else {
         recordFailure(result?.error || 'AI generation failed');
       }
@@ -993,7 +1547,11 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
       }
     }
 
-  if (!rendered) generateFallbackSlide(pptx, slide, slideNumber, totalSlides);
+  if (!rendered) {
+    generateFallbackSlide(pptx, slide, slideNumber, totalSlides, activeProfile);
+    const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+    if (lastSlide) normalizeGeneratedSlideForProfile(lastSlide, slide, slideNumber, activeProfile, activeProfilePositions);
+  }
 
     if (slide.sectionLabel || slide.subSectionLabel) {
     const s = pptx.slides;
@@ -1005,7 +1563,13 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   if (templateData?.data) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
-      const merged = await applyTemplateToGenerated(buf, templateData.data, templateData.chrome || null);
+      const chrome = {
+        ...(templateData.chrome || {}),
+        positions: activeProfilePositions || templateData.chrome?.positions || null,
+      };
+      const merged = activeProfile.id === 'stc'
+        ? await applyProfileChromeToGenerated(buf, chrome)
+        : await applyTemplateToGenerated(buf, templateData.data, chrome);
       downloadArrayBuffer(merged, filename);
     } catch (e) { await pptx.writeFile({ fileName: filename }); }
     } else {
@@ -1028,6 +1592,8 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
  */
 export async function preGeneratePptxCode(slide, slideNum, totalSlides, settings) {
   if (!settings || !hasAnyCredentials(settings)) return null;
+  const activeProfile = getActiveClientProfile(settings || {});
+  settings = normalizePptxSettingsForProfile(settings, activeProfile, activeProfile.chrome?.positions || null);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = getCredentialsForModel(settings, modelRef);
   try {
@@ -1044,6 +1610,8 @@ export async function preGeneratePptxCode(slide, slideNum, totalSlides, settings
 
 export async function testPPTXCodeGeneration(slide, slideNumber, totalSlides, settings) {
   if (!settings || !hasAnyCredentials(settings)) throw new Error('API key required.');
+  const activeProfile = getActiveClientProfile(settings || {});
+  settings = normalizePptxSettingsForProfile(settings, activeProfile, activeProfile.chrome?.positions || null);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
   const credentials = getCredentialsForModel(settings, modelRef);
   const result = await generateSlideWithRetry(slide, slideNumber, totalSlides, settings, credentials);

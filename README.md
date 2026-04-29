@@ -23,6 +23,8 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - PowerPoint (.pptx) export via PptxGenJS with template-aware merging (logo injection, master shape isolation, smart layout selection, template position awareness)
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
+- Client template profiles can switch generation away from the default Strategy& look; STC ships as the first full profile with semantic theme tokens, layout CSS variables, prompt-section overrides, footer branding, PPTX export hints, evidence metadata, and validation rules
+- Client-profile geometry and theme state are applied at slide creation and PPTX export: active profiles rewrite generic frame/chart guidance, keep new/cleared decks on the selected profile theme, use profile-shaped PPTX examples, normalize exported body objects into the declared content band, sanitize invalid negative shape dimensions, and load bundled masters/assets through profile-driven routes
 - Web search via PwC Responses API
 - Router search policy uses GPT 5.4 reasoning by default, but only attaches web search for requests that need current or external evidence; per-step search remains available for factual slides
 - Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md` and emphasizes executive storyline coherence, brainstorming mode, tracker continuity, source quality, and balanced layout guidance
@@ -196,6 +198,14 @@ Model assignments are server-controlled. The Settings modal shows which model is
 ## Linting
 
 The frontend ESLint config keeps undefined symbols and parse-level issues as blocking errors, while legacy cleanup categories such as unused helpers, React Compiler migration warnings, and Fast Refresh export warnings are reported as warnings so `npm run lint` remains usable during active development.
+
+## Client Design Profiles
+
+Settings includes a **Client Design Profile** selector. The default remains Strategy&, while the built-in STC profile applies STC semantic theme tokens, footer branding, layout bands, prompt-section guidance, and PPTX export positioning derived from the STC sandbox evidence plus the Board Affairs playbook standard content layout. Selecting STC is enough to test the profile; the preview canvas receives STC title/subtitle/content/footer positions through theme CSS variables and render-time STC logo chrome.
+
+Uploaded PPTX masters are now stored by profile/template slot in IndexedDB, so an STC upload does not overwrite the default Strategy& template. The backend `/api/templates/pptx-master` endpoint serves the legacy Strategy& default and the built-in STC Playbook master through `?profileId=stc`; a user-uploaded STC template remains a local profile-bound override. Client demo checks are available through `clientProfileValidation.js` for STC color/font/footer/layout readiness.
+
+STC leaves the footer/source text blank by default; sources should appear only when a real citation exists. The backend stores `STC Forward` regular, medium, and bold fonts under `backend/assets/fonts/stc-forward/` and the extracted STC logo under `backend/assets/client-templates/stc/logo.png`; the frontend loads them through authenticated `/api/assets/...` routes. When STC is the active profile, the app warms the bundled STC PPTX master/chrome on editor startup so users do not need to open Settings to restore stale or deleted local template metadata. STC canvas typography follows the master notes: content titles are 24px regular, subtitles are 18px regular, and footer/source/page numbers are 8px. PPTX export forces the active STC profile theme, clears/skips stale cached PPTX code, enforces `fontFace: 'STC Forward'`, normalizes generated title/subtitle/body/source/page geometry to the STC contract, strips emoji artifacts, and applies controlled logo chrome without copying the fragile full STC template shell into generated decks.
 
 ## Azure Deployment
 

@@ -474,20 +474,29 @@ async function extractLayoutInfo(zip) {
     if (!/<p:ph\b/.test(shapeXml)) continue;
 
     const phTypeMatch = shapeXml.match(/<p:ph[^>]*type="([^"]+)"/);
-    const phType = phTypeMatch ? phTypeMatch[1] : 'body';
+    const phType = phTypeMatch ? phTypeMatch[1] : null;
     const pos = extractShapePosition(shapeXml);
     if (!pos) continue;
+    const shapeText = [...shapeXml.matchAll(/<a:t>([^<]+)<\/a:t>/g)]
+      .map(m => m[1].trim())
+      .filter(Boolean)
+      .join(' ')
+      .trim();
+    const lowerText = shapeText.toLowerCase();
+    const isUntyped = !phTypeMatch;
+    const isFooterLike = phType === 'ftr'
+      || /\bsource\b/.test(lowerText)
+      || (pos.y > 6.5 && pos.h < 0.5);
 
-    if (phType === 'title' || phType === 'ctrTitle') {
-      result.positions.title = pos;
-    } else if (phType === 'subTitle') {
-      result.positions.subtitle = pos;
-    } else if (phType === 'body' || (!phTypeMatch && !result.positions.body)) {
-      result.positions.body = pos;
-    } else if (phType === 'ftr') {
+    if (isFooterLike) {
       result.positions.footer = pos;
-      const textMatch = shapeXml.match(/<a:t>([^<]+)<\/a:t>/);
-      if (textMatch) result.footerText = textMatch[1].trim();
+      if (shapeText) result.footerText = shapeText;
+    } else if (phType === 'title' || phType === 'ctrTitle' || (isUntyped && /\bheadline\b/.test(lowerText))) {
+      result.positions.title = pos;
+    } else if (phType === 'subTitle' || (isUntyped && /\bsubtitle\b/.test(lowerText))) {
+      result.positions.subtitle = pos;
+    } else if (phType === 'body') {
+      result.positions.body = pos;
     } else if (phType === 'sldNum') {
       result.positions.slideNum = pos;
     } else if (phType === 'dt') {

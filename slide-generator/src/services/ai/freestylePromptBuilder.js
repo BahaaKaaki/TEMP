@@ -3,7 +3,7 @@ import DEFAULT_THEME from '../../guides/freestyle-theme.md?raw';
 import DEFAULT_VIBE from '../../guides/freestyle-vibe.md?raw';
 import DEFAULT_WRITING from '../../guides/freestyle-writing.md?raw';
 import DEFAULT_PPTX_HINTS from '../../guides/freestyle-pptx-hints.md?raw';
-import { appendClientDesignContract, applyClientProfilePromptSections } from '../../utils/clientDesignProfiles.js';
+import { appendClientDesignContract, applyClientProfilePromptSections, rewritePromptGeometryForClientProfile } from '../../utils/clientDesignProfiles.js';
 import DEFAULT_SLIDE_HTML_GENERATOR_PROMPT from '../../guides/slide-html-generator-prompt.md?raw';
 
 export {
@@ -132,7 +132,9 @@ export function buildFreestyleSystemPrompt(settings = {}) {
     writing: writingCustom ? settings.freestyleWriting : (presetCustom ? preset?.writing : ''),
     hints: DEFAULT_PPTX_HINTS,
   };
-  const { shell, theme, vibe, writing, hints } = applyClientProfilePromptSections(baseSections, settings);
+  const { shell, theme, vibe, writing, hints } = applyClientProfilePromptSections(baseSections, settings, {
+    includeShell: false,
+  });
 
   const extraSections = [];
   if (shell) extraSections.push(shell);
@@ -140,8 +142,9 @@ export function buildFreestyleSystemPrompt(settings = {}) {
   if (vibe) extraSections.push(vibe);
   if (writing) extraSections.push(writing);
 
+  const basePrompt = rewritePromptGeometryForClientProfile(DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, settings);
   const assembled = appendClientDesignContract(
-    [DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, ...extraSections, hints].join('\n\n---\n\n'),
+    [basePrompt, ...extraSections, hints].join('\n\n---\n\n'),
     settings
   );
 
@@ -154,8 +157,8 @@ export function buildFreestyleSystemPrompt(settings = {}) {
     vibeCustom ? 'CUSTOM' : 'default',
     writingCustom ? 'CUSTOM' : 'default'
   );
-  console.groupCollapsed('Base (%d chars)', DEFAULT_SLIDE_HTML_GENERATOR_PROMPT.length);
-  console.log(DEFAULT_SLIDE_HTML_GENERATOR_PROMPT);
+  console.groupCollapsed('Base (%d chars)', basePrompt.length);
+  console.log(basePrompt);
   console.groupEnd();
   extraSections.forEach((section, index) => {
     console.groupCollapsed('Extra section %d (%d chars)', index + 1, section.length);

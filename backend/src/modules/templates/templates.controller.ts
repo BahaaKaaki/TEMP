@@ -10,12 +10,19 @@ const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
 const PPTX_MASTER_PATH = path.join(UPLOADS_DIR, 'pptx-master.pptx');
 const PPTX_META_PATH = path.join(UPLOADS_DIR, 'pptx-master.meta.json');
 const DEFAULT_PPTX_PATH = path.join(process.cwd(), 'assets', 'S&_Template 1.pptx');
-const PROFILE_DEFAULT_PPTX: Record<string, { path: string; displayName: string }> = {
-  stc: {
-    path: path.join(process.cwd(), 'assets', 'client-templates', 'stc', 'default-master.pptx'),
-    displayName: 'STC Board Affairs Playbook master.pptx',
-  },
+const PROFILE_DEFAULT_DISPLAY_NAMES: Record<string, string> = {
+  stc: 'STC Board Affairs Playbook master.pptx',
 };
+
+function getProfileDefaultPptx(profileId: string): { path: string; displayName: string } | null {
+  if (profileId === 'strategy' || !/^[a-z0-9_-]+$/i.test(profileId)) return null;
+  const profilePath = path.join(process.cwd(), 'assets', 'client-templates', profileId, 'default-master.pptx');
+  if (!fs.existsSync(profilePath)) return null;
+  return {
+    path: profilePath,
+    displayName: PROFILE_DEFAULT_DISPLAY_NAMES[profileId] || `${profileId.toUpperCase()} master.pptx`,
+  };
+}
 
 type MulterRequest = Request & { file?: Express.Multer.File };
 
@@ -39,7 +46,7 @@ export function uploadPptxMaster(req: Request, res: Response, next: NextFunction
 export function downloadPptxMaster(req: Request, res: Response, next: NextFunction): void {
   try {
     const profileId = typeof req.query.profileId === 'string' ? req.query.profileId : 'strategy';
-    const profileDefault = profileId === 'strategy' ? null : PROFILE_DEFAULT_PPTX[profileId];
+    const profileDefault = getProfileDefaultPptx(profileId);
     const hasUploaded = fs.existsSync(PPTX_MASTER_PATH);
     const resolvedPath = profileDefault?.path || (hasUploaded ? PPTX_MASTER_PATH : DEFAULT_PPTX_PATH);
 

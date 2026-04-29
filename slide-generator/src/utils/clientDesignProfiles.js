@@ -99,7 +99,7 @@ const STC_LAYOUT_CONTRACT = {
   standardContent: {
     title: { x: 15, y: 28, w: 931, h: 71 },
     subtitle: { x: 15, y: 105, w: 931, h: 19 },
-    body: { x: 15, y: 134, w: 933, h: 340 },
+    body: { x: 15, y: 134, w: 931, h: 340 },
     source: { x: 15, y: 494, w: 465, h: 19 },
     slideNumber: { x: 935, y: 519, w: 14, h: 10 },
   },
@@ -121,7 +121,7 @@ const STC_FREESTYLE_OVERRIDES = {
   shell: `Default to a 16:9 white STC board template on a 960x540 canvas. These STC positions replace any generic shell defaults:
 - h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward regular 24px, color #4F008C.
 - h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward regular 18px, color #FF375E.
-- div.frame: left 15px, top 134px, width 933px, height 340px. Design all custom content inside this STC frame, not the generic 904x366 frame.
+- div.frame: left 15px, top 134px, width 931px, height 340px. Design all custom content inside this STC frame, not the generic 904x366 frame.
 - footer: source at bottom-left around x=15 y=494 and slide number bottom-right around x=935 y=519, both STC Forward 8px.
 Use structured content in the middle band and keep the bottom footer band clear. Use the standard content bands exactly unless the user explicitly asks for a cover, divider, appendix, or editorial variant.`,
   theme: `Use STC purple (#4F008C) for titles, structural headers, major bars, and primary emphasis. Use coral (#FF375E) as the subtitle/kicker accent, vivid lavender (#A54EE1 family) only for small markers, pale lilac surfaces (#F2E6FA to #FBF8FE), charcoal body text (#1D252D), and white backgrounds. Do not let the content topic override the brand palette; even ocean/science topics should remain STC purple/coral/lilac rather than blue-led. Do not use Office blue/orange or raw theme yellow/green/cyan as dominant colors. Treat the serif black/red outlook style as an explicit alternate editorial variant, not the default.`,
@@ -237,8 +237,8 @@ const STC_PPTX_FONTS = {
   title: { fontFace: 'STC Forward', fontSize: 24, bold: false },
   subtitle: { fontFace: 'STC Forward', fontSize: 18, bold: false },
   body: { fontFace: 'STC Forward', fontSize: 12, bold: false },
-  footer: { fontFace: 'STC Forward', fontSize: 8, italic: false, bold: false },
-  slideNum: { fontFace: 'STC Forward', fontSize: 8, bold: false },
+  footer: { fontFace: 'STC Forward', fontSize: 8, italic: false, bold: false, color: '515360' },
+  slideNum: { fontFace: 'STC Forward', fontSize: 8, bold: false, color: '515360' },
 };
 
 const stcStandardInches = {
@@ -531,25 +531,87 @@ function rewriteFreestyleShellForProfile(shell, profile) {
     )
     .replace(
       /\| `div\.frame` \|[^\n]+/,
-      `| \`div.frame\` | top: ${body.y}px, left: ${body.x}px, **${body.w} x ${body.h} px** -- STC content canvas |`,
+      `| \`div.frame\` | top: ${body.y}px, left: ${body.x}px, **${body.w} x ${body.h} px** -- ${profile.name} content canvas |`,
     )
     .replace(
       /\| `footer` \|[^\n]+/,
       `| \`footer\` | source bottom-left around x=${source.x}, y=${source.y}; slide number bottom-right around x=${slideNumber.x}, y=${slideNumber.y} |`,
     )
     .replace(/904 x 366/g, `${body.w} x ${body.h}`)
+    .replace(/904x366/g, `${body.w}x${body.h}`)
     .replace(/904 x 366 px/g, `${body.w} x ${body.h} px`)
     .replace(/366 px height or 904 px width/g, `${body.h} px height or ${body.w} px width`)
     .replace(/Size in pixels relative to the \*\*904 x 366\*\* frame/g, `Size in pixels relative to the **${body.w} x ${body.h}** frame`);
 }
 
-export function applyClientProfilePromptSections(sections = {}, settings = {}) {
+export function rewritePromptGeometryForClientProfile(prompt, settings = {}) {
+  const profile = getActiveClientProfile(settings);
+  if (!prompt || !profile?.layoutContract?.standardContent || profile.id === 'strategy') return prompt || '';
+
+  const standard = profile.layoutContract.standardContent;
+  const title = standard.title;
+  const subtitle = standard.subtitle;
+  const body = standard.body;
+  const source = standard.source;
+  const slideNumber = standard.slideNumber;
+  const fontTitle = profile.theme?.fonts?.title || 'Arial, sans-serif';
+  const fontHeading = profile.theme?.fonts?.heading || 'Arial, sans-serif';
+  const headingColor = profile.theme?.colors?.heading || profile.theme?.colors?.accent || '#111111';
+  const subtitleColor = profile.theme?.colors?.kicker || profile.theme?.colors?.accent || '#A32020';
+
+  return rewriteFreestyleShellForProfile(prompt, profile)
+    .replace(
+      /- `h1\.title`: top 24px, left 28px, width 904px, Georgia 28px/g,
+      `- \`h1.title\`: top ${title.y}px, left ${title.x}px, width ${title.w}px, ${fontTitle} 24px regular, ${headingColor}`
+    )
+    .replace(
+      /- `h2\.subtitle`: top 95px, left 28px, width 904px, Arial bold 18px/g,
+      `- \`h2.subtitle\`: top ${subtitle.y}px, left ${subtitle.x}px, width ${subtitle.w}px, ${fontHeading} 18px regular, ${subtitleColor}`
+    )
+    .replace(
+      /- `\.frame`: top 127px, left 28px, size \*\*904 x 366 px\*\*/g,
+      `- \`.frame\`: top ${body.y}px, left ${body.x}px, size **${body.w} x ${body.h} px**`
+    )
+    .replace(/The `\.frame` is exactly \*\*904 x 366 px\*\*/g, `The \`.frame\` is exactly **${body.w} x ${body.h} px**`)
+    .replace(/Design everything to fit inside 904 x 366 px/g, `Design everything to fit inside ${body.w} x ${body.h} px`)
+    .replace(/pixel-based sizing relative to the 904 x 366 px frame/g, `pixel-based sizing relative to the ${body.w} x ${body.h} px frame`)
+    .replace(/fits inside the 904 x 366 px frame/g, `fits inside the ${body.w} x ${body.h} px frame`)
+    .replace(/904 x 366 px/g, `${body.w} x ${body.h} px`)
+    .replace(/904 x 366/g, `${body.w} x ${body.h}`)
+    .replace(/904x366/g, `${body.w}x${body.h}`)
+    .replace(/904px width/g, `${body.w}px width`)
+    .replace(/366px frame/g, `${body.h}px frame`)
+    .replace(/366px/g, `${body.h}px`);
+}
+
+export function buildClientChartGeometryGuide(settings = {}, baseGuide = '') {
+  const profile = getActiveClientProfile(settings);
+  const body = profile?.layoutContract?.standardContent?.body;
+  if (!baseGuide || !body || profile.id === 'strategy') return baseGuide || '';
+
+  return `${baseGuide
+    .replace(/viewBox="0 0 904 366"/g, `viewBox="0 0 ${body.w} ${body.h}"`)
+    .replace(/904 x 366/g, `${body.w} x ${body.h}`)
+    .replace(/904x366/g, `${body.w}x${body.h}`)
+    .replace(/366px frame/g, `${body.h}px frame`)
+    .replace(/904px width/g, `${body.w}px width`)}
+
+CLIENT PROFILE CHART GEOMETRY:
+- The active ${profile.name} content band is ${body.w}x${body.h}px at x=${body.x}, y=${body.y}; all chart marks, axes, labels, legends, and callouts must stay inside that band.
+- If a chart needs more space than ${body.w}x${body.h}px, simplify the exhibit or split content across slides instead of letting it spill into the footer or margins.`;
+}
+
+export function applyClientProfilePromptSections(sections = {}, settings = {}, options = {}) {
   const profile = getActiveClientProfile(settings);
   if (!profile || profile.id === 'strategy' || !profile.freestyleOverrides) return sections;
 
+  const includeShell = options.includeShell !== false;
   const next = { ...sections };
-  next.shell = rewriteFreestyleShellForProfile(next.shell, profile);
+  if (includeShell) {
+    next.shell = rewriteFreestyleShellForProfile(next.shell, profile);
+  }
   for (const sectionName of ['shell', 'theme', 'vibe', 'writing', 'hints']) {
+    if (sectionName === 'shell' && !includeShell) continue;
     const profileSection = sectionName === 'hints'
       ? profile.freestyleOverrides.pptx
       : profile.freestyleOverrides[sectionName];

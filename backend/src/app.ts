@@ -122,9 +122,11 @@ const STC_FONT_FILES: Record<string, string> = {
   'STCForward-Medium.ttf': 'STCForward-Medium.ttf',
   'STCForward-Bold.ttf': 'STCForward-Bold.ttf',
 };
-const STC_TEMPLATE_ASSETS_DIR = path.join(process.cwd(), 'assets', 'client-templates', 'stc');
-const STC_TEMPLATE_ASSET_FILES: Record<string, string> = {
-  'logo.png': 'logo.png',
+const CLIENT_TEMPLATE_IMAGE_TYPES: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.svg': 'image/svg+xml',
 };
 
 app.get('/api/assets/fonts/stc-forward/:fileName', (req, res, next) => {
@@ -141,16 +143,18 @@ app.get('/api/assets/fonts/stc-forward/:fileName', (req, res, next) => {
   });
 });
 
-app.get('/api/assets/client-templates/stc/:fileName', (req, res, next) => {
-  const safeFileName = STC_TEMPLATE_ASSET_FILES[req.params.fileName];
-  if (!safeFileName) {
+app.get('/api/assets/client-templates/:profileId/:fileName', (req, res, next) => {
+  const { profileId, fileName } = req.params;
+  const ext = path.extname(fileName).toLowerCase();
+  if (!/^[a-z0-9_-]+$/i.test(profileId) || !/^[a-z0-9_.-]+$/i.test(fileName) || !CLIENT_TEMPLATE_IMAGE_TYPES[ext]) {
     res.status(404).json({ error: 'ASSET_NOT_FOUND' });
     return;
   }
 
-  res.setHeader('Content-Type', 'image/png');
+  const assetPath = path.join(process.cwd(), 'assets', 'client-templates', profileId, fileName);
+  res.setHeader('Content-Type', CLIENT_TEMPLATE_IMAGE_TYPES[ext]);
   res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
-  res.sendFile(path.join(STC_TEMPLATE_ASSETS_DIR, safeFileName), (err) => {
+  res.sendFile(assetPath, (err) => {
     if (err) next(err);
   });
 });

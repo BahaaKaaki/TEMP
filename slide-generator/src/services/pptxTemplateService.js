@@ -5,7 +5,7 @@
 import JSZip from 'jszip';
 import { extractBranding } from './brandingExtractor';
 import { authFetch } from './authFetch.js';
-import { getClientProfileTemplateStorageKey } from '../utils/clientDesignProfiles.js';
+import { getClientDesignProfile, getClientProfileTemplateStorageKey } from '../utils/clientDesignProfiles.js';
 
 /**
  * Store for the loaded template data.
@@ -28,6 +28,14 @@ function normalizeTemplateOptions(options = {}) {
 function templateStorageKey(options = {}) {
   const normalized = normalizeTemplateOptions(options);
   return getClientProfileTemplateStorageKey(normalized.profileId, normalized.templateId);
+}
+
+function canUseServerDefaultTemplate(profileId, templateId) {
+  if (templateId !== 'default') return false;
+  if (profileId === 'strategy') return true;
+  const profile = getClientDesignProfile(profileId);
+  const master = profile?.pptxMaster;
+  return master?.serverSync === 'backend-profile-default' || master?.bundled === true;
 }
 
 // ── Server sync (persists across browsers when backend is available) ─────────
@@ -139,7 +147,7 @@ export async function saveTemplateToStorage(arrayBuffer, fileName, chrome = null
 export async function loadTemplateFromStorage(options = {}) {
   const normalized = normalizeTemplateOptions(options);
   const key = templateStorageKey(normalized);
-  const canUseServerDefault = ['strategy', 'stc'].includes(normalized.profileId) && normalized.templateId === 'default';
+  const canUseServerDefault = canUseServerDefaultTemplate(normalized.profileId, normalized.templateId);
   const canUseLegacyLocal = normalized.profileId === 'strategy' && normalized.templateId === 'default';
   let serverData = null;
   if (canUseServerDefault) {
@@ -299,6 +307,55 @@ function stripUnusedLayoutChromeRelationships(relsXml) {
 
 const EMU_PER_INCH = 914400;
 
+function logoMediaConfig(logo) {
+  const logoMediaExt = String(logo?.mediaPath || '').split('.').pop()?.toLowerCase() || 'png';
+  const safeLogoExt = ['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(logoMediaExt) ? logoMediaExt : 'png';
+  return {
+    mediaPath: `ppt/media/logo_chrome.${safeLogoExt}`,
+    relTarget: `../media/logo_chrome.${safeLogoExt}`,
+    ext: safeLogoExt,
+  };
+}
+
+function writeLogoMedia(zip, logo, mediaPath) {
+  if (!logo?.image) return false;
+  try {
+    const base64 = String(logo.image).split(',')[1];
+    if (!base64) return false;
+    const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    zip.file(mediaPath, binary);
+    console.log('[PPTX Template] Wrote logo media file (%d bytes)', binary.length);
+    return true;
+  } catch (e) {
+    console.warn('[PPTX Template] Logo media write failed:', e.message);
+    return false;
+  }
+}
+
+function addLogoRelationship(relsXml, rId, relTarget) {
+  const withoutExisting = relsXml.replace(
+    new RegExp(`<Relationship[^>]*Id="${rId}"[^>]*/>`, 'g'),
+    ''
+  );
+  return withoutExisting.replace(
+    '</Relationships>',
+    `<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${relTarget}"/></Relationships>`
+  );
+}
+
+function ensureMediaContentType(contentTypesXml, ext) {
+  if (!contentTypesXml || !ext) return contentTypesXml;
+  if (new RegExp(`<Default[^>]*Extension="${ext}"`).test(contentTypesXml)) return contentTypesXml;
+  const contentType = ext === 'svg'
+    ? 'image/svg+xml'
+    : ext === 'jpg' || ext === 'jpeg'
+      ? 'image/jpeg'
+      : ext === 'gif'
+        ? 'image/gif'
+        : 'image/png';
+  return contentTypesXml.replace('</Types>', `<Default Extension="${ext}" ContentType="${contentType}"/></Types>`);
+}
+
 /**
  * Inject a `<p:pic>` shape for the logo into slide XML before `</p:spTree>`.
  */
@@ -312,6 +369,52 @@ function injectLogoPic(slideXml, logo, rId) {
   const pic = `<p:pic><p:nvPicPr><p:cNvPr id="9990" name="TemplateLogo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
 
   return slideXml.replace('</p:spTree>', pic + '</p:spTree>');
+}
+
+export async function applyProfileChromeToGenerated(generatedBuf, chrome = null) {
+  console.log('[PPTX Template] Applying controlled profile chrome. Generated:', generatedBuf.byteLength, 'bytes');
+  const genZip = await JSZip.loadAsync(generatedBuf);
+  const LOGO_RID = 'rId900';
+  const logoConfig = logoMediaConfig(chrome?.logo);
+  const hasLogo = writeLogoMedia(genZip, chrome?.logo, logoConfig.mediaPath);
+
+  const genSlideFiles = Object.keys(genZip.files)
+    .filter(f => f.match(/^ppt\/slides\/slide\d+\.xml$/))
+    .sort((a, b) => {
+      const na = parseInt(a.match(/slide(\d+)/)[1], 10);
+      const nb = parseInt(b.match(/slide(\d+)/)[1], 10);
+      return na - nb;
+    });
+
+  for (const genSlidePath of genSlideFiles) {
+    const slideNum = parseInt(genSlidePath.match(/slide(\d+)/)[1], 10);
+    const genSlideRelsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
+    let slideXml = await genZip.files[genSlidePath].async('string');
+    slideXml = hideMasterShapes(injectSlideBackground(slideXml));
+    if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
+    genZip.file(genSlidePath, slideXml);
+
+    if (!hasLogo) continue;
+    if (genZip.files[genSlideRelsPath]) {
+      const relsXml = await genZip.files[genSlideRelsPath].async('string');
+      genZip.file(genSlideRelsPath, addLogoRelationship(relsXml, LOGO_RID, logoConfig.relTarget));
+    } else {
+      genZip.file(genSlideRelsPath, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${logoConfig.relTarget}"/>
+</Relationships>`);
+    }
+  }
+
+  const ctPath = '[Content_Types].xml';
+  if (hasLogo && genZip.files[ctPath]) {
+    const contentTypesXml = await genZip.files[ctPath].async('string');
+    genZip.file(ctPath, ensureMediaContentType(contentTypesXml, logoConfig.ext));
+  }
+
+  const result = await genZip.generateAsync({ type: 'arraybuffer' });
+  console.log('[PPTX Template] Controlled profile chrome complete. Output:', result.byteLength, 'bytes');
+  return result;
 }
 
 /**

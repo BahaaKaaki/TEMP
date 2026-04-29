@@ -39,7 +39,7 @@ function isOurBackend(url) {
   return url.startsWith('/api/');
 }
 
-async function getIdToken() {
+async function getIdToken({ forceRefresh = false } = {}) {
   if (!_msalInstance) return null;
   const account =
     _msalInstance.getActiveAccount() ||
@@ -50,6 +50,7 @@ async function getIdToken() {
     const result = await _msalInstance.acquireTokenSilent({
       ..._loginRequest,
       account,
+      forceRefresh,
     });
     return result?.idToken || null;
   } catch (err) {
@@ -75,5 +76,17 @@ export async function authFetch(url, options = {}) {
   if (idToken && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${idToken}`);
   }
-  return fetch(url, { ...options, headers });
+  const response = await fetch(url, { ...options, headers });
+  if (response.status !== 401) {
+    return response;
+  }
+
+  const refreshedToken = await getIdToken({ forceRefresh: true });
+  if (!refreshedToken || refreshedToken === idToken) {
+    return response;
+  }
+
+  const retryHeaders = new Headers(options.headers || {});
+  retryHeaders.set('Authorization', `Bearer ${refreshedToken}`);
+  return fetch(url, { ...options, headers: retryHeaders });
 }

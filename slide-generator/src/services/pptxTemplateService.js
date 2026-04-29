@@ -3,7 +3,7 @@
 // to a PptxGenJS-generated presentation via JSZip XML manipulation.
 
 import JSZip from 'jszip';
-import { extractBranding } from './brandingExtractor';
+import { extractBranding } from './brandingExtractor.js';
 import { authFetch } from './authFetch.js';
 import { getClientDesignProfile, getClientProfileTemplateStorageKey } from '../utils/clientDesignProfiles.js';
 
@@ -356,6 +356,91 @@ function ensureMediaContentType(contentTypesXml, ext) {
   return contentTypesXml.replace('</Types>', `<Default Extension="${ext}" ContentType="${contentType}"/></Types>`);
 }
 
+function normalizeHexColor(value) {
+  const raw = String(value || '').trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(raw)) {
+    return raw.split('').map(ch => ch + ch).join('').toUpperCase();
+  }
+  if (/^[0-9a-f]{6}$/i.test(raw)) return raw.toUpperCase();
+  return null;
+}
+
+function replaceThemeColorSlot(themeXml, slot, color) {
+  const hex = normalizeHexColor(color);
+  if (!hex) return themeXml;
+  const replacement = `<a:${slot}><a:srgbClr val="${hex}"/></a:${slot}>`;
+  const pattern = new RegExp(`<a:${slot}>[\\s\\S]*?</a:${slot}>`);
+  return pattern.test(themeXml)
+    ? themeXml.replace(pattern, replacement)
+    : themeXml;
+}
+
+function cleanFontFace(fontFace) {
+  return String(fontFace || '')
+    .split(',')[0]
+    .replace(/["']/g, '')
+    .trim();
+}
+
+function escapeXmlAttr(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function patchThemeFonts(themeXml, fontFace) {
+  const clean = cleanFontFace(fontFace);
+  if (!clean) return themeXml;
+  const escaped = escapeXmlAttr(clean);
+  return themeXml
+    .replace(/(<a:majorFont>[\s\S]*?<a:latin\b[^>]*typeface=")[^"]*(")/, `$1${escaped}$2`)
+    .replace(/(<a:minorFont>[\s\S]*?<a:latin\b[^>]*typeface=")[^"]*(")/, `$1${escaped}$2`);
+}
+
+async function copyTemplateThemeToGenerated(zip, templateBuf) {
+  if (!templateBuf) return false;
+  try {
+    const tplZip = await JSZip.loadAsync(templateBuf);
+    const themePath = 'ppt/theme/theme1.xml';
+    if (!tplZip.files[themePath]) return false;
+    const themeXml = await tplZip.files[themePath].async('string');
+    zip.file(themePath, themeXml);
+    console.log('[PPTX Template] Copied theme palette from template master');
+    return true;
+  } catch (e) {
+    console.warn('[PPTX Template] Template theme copy failed:', e.message);
+    return false;
+  }
+}
+
+async function applyProfileThemeToGenerated(zip, profile) {
+  const theme = profile?.theme;
+  const colors = theme?.colors;
+  const themePath = 'ppt/theme/theme1.xml';
+  if (!colors || !zip.files[themePath]) return;
+
+  let themeXml = await zip.files[themePath].async('string');
+  const schemeName = escapeXmlAttr(theme?.name || profile.name || profile.id || 'Client Profile');
+  themeXml = themeXml.replace(/(<a:clrScheme\b[^>]*name=")[^"]*(")/, `$1${schemeName}$2`);
+  themeXml = replaceThemeColorSlot(themeXml, 'dk1', colors.body || colors.heading || '#1D252D');
+  themeXml = replaceThemeColorSlot(themeXml, 'lt1', colors.page || '#FFFFFF');
+  themeXml = replaceThemeColorSlot(themeXml, 'dk2', colors.muted || colors.body || '#515360');
+  themeXml = replaceThemeColorSlot(themeXml, 'lt2', colors.surface || colors.accentSoft || '#FBF8FE');
+  themeXml = replaceThemeColorSlot(themeXml, 'accent1', colors.accent || colors.heading);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent2', colors.accentHover || colors.kicker || colors.danger);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent3', colors.success);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent4', colors.warning);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent5', colors.danger || colors.kicker);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent6', colors.neutral || colors.info || colors.border);
+  themeXml = replaceThemeColorSlot(themeXml, 'hlink', colors.info || colors.accentHover || colors.accent);
+  themeXml = replaceThemeColorSlot(themeXml, 'folHlink', colors.kicker || colors.danger || colors.accentHover);
+  themeXml = patchThemeFonts(themeXml, theme.fonts?.body || theme.fonts?.heading || theme.fonts?.title);
+  zip.file(themePath, themeXml);
+  console.log('[PPTX Template] Applied profile theme palette:', profile.id || theme.name);
+}
+
 /**
  * Inject a `<p:pic>` shape for the logo into slide XML before `</p:spTree>`.
  */
@@ -371,9 +456,12 @@ function injectLogoPic(slideXml, logo, rId) {
   return slideXml.replace('</p:spTree>', pic + '</p:spTree>');
 }
 
-export async function applyProfileChromeToGenerated(generatedBuf, chrome = null) {
+export async function applyProfileChromeToGenerated(generatedBuf, chrome = null, options = {}) {
   console.log('[PPTX Template] Applying controlled profile chrome. Generated:', generatedBuf.byteLength, 'bytes');
   const genZip = await JSZip.loadAsync(generatedBuf);
+  const profile = options.profile || (options.profileId ? getClientDesignProfile(options.profileId) : null);
+  await copyTemplateThemeToGenerated(genZip, options.templateData);
+  await applyProfileThemeToGenerated(genZip, profile);
   const LOGO_RID = 'rId900';
   const logoConfig = logoMediaConfig(chrome?.logo);
   const hasLogo = writeLogoMedia(genZip, chrome?.logo, logoConfig.mediaPath);

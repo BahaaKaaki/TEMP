@@ -3,13 +3,13 @@ import { createHandoff, consumeHandoff } from './handoffs.service';
 import { env } from '../../config/env';
 
 export function create(req: Request, res: Response) {
-  const { question, answer, citations, tables, suggestedPrompt, source } = req.body;
+  const { question, answer, citations, tables, conversation, brief, suggestedPrompt, source } = req.body;
 
   if (!question || !answer) {
     return res.status(400).json({ error: 'question and answer are required' });
   }
 
-  const { id } = createHandoff({ question, answer, citations, tables, suggestedPrompt, source });
+  const { id } = createHandoff({ question, answer, citations, tables, conversation, brief, suggestedPrompt, source });
   const url = `${env.FRONTEND_URL}/?handoff=${id}`;
 
   res.status(201).json({ id, url });

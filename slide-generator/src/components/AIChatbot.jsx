@@ -636,13 +636,13 @@ export default function AIChatbot({ initialHandoff = null }) {
     // Disable web search to preserve the handed-off data as-is
     setSlideSearchEnabled(false);
 
-    // Reset chat to only the handoff context
+    // Build handoff context message with full answer (never truncated)
     const source = initialHandoff.source || 'External app';
     const parts = [`**Handoff from ${source}**\n`];
     if (initialHandoff.question) parts.push(`**Question:** ${initialHandoff.question}\n`);
     if (initialHandoff.answer) parts.push(`**Analysis:**\n${initialHandoff.answer}\n`);
     if (initialHandoff.citations?.length) {
-      parts.push(`**Sources:** ${initialHandoff.citations.join(', ')}`);
+      parts.push(`\n**Sources:** ${initialHandoff.citations.join(', ')}`);
     }
 
     setMessages([

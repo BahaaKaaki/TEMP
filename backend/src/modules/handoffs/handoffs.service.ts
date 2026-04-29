@@ -6,6 +6,8 @@ export interface HandoffPayload {
   answer: string;
   citations?: string[];
   tables?: string[];
+  conversation?: { role: string; content: string }[];
+  brief?: string;
   suggestedPrompt?: string;
   source?: string;
 }

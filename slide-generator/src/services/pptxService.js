@@ -1469,7 +1469,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         positions: activeProfilePositions || templateData.chrome?.positions || null,
       };
       const merged = activeProfile.id === 'stc'
-        ? await applyProfileChromeToGenerated(buf, chrome)
+        ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
           preserveTemplateChrome: activeProfile.id === 'strategy',
         });
@@ -1570,7 +1570,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
         positions: activeProfilePositions || templateData.chrome?.positions || null,
       };
       const merged = activeProfile.id === 'stc'
-        ? await applyProfileChromeToGenerated(buf, chrome)
+        ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
           preserveTemplateChrome: activeProfile.id === 'strategy',
         });

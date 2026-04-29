@@ -35,8 +35,9 @@ FONTS:
 - Subtitles: Arial, sans-serif - 18px bold, color: var(--accent)
 - Section headings, pillar titles, card titles (h3, h4): Arial, sans-serif - 14px bold, color: var(--heading)
 - Body text, paragraphs, bullets, table cells: Arial, sans-serif - 12px, color: var(--body)
-- Small labels, chips, badges, chart axes, captions, footer/source text: Arial, sans-serif - 10px minimum, color: var(--muted)
-- Never use font-size below 10px for any element. If text will not fit at these sizes, cut words/items rather than shrinking.
+- Compact tags, chips, badges, tracker labels, and short in-box labels: Arial, sans-serif - 8px minimum, color: var(--muted)
+- Chart axes, captions, footer/source text: Arial, sans-serif - 10px minimum, color: var(--muted)
+- Never use font-size below 10px for normal text, or below 8px for compact tags/trackers. If text will not fit, cut words/items rather than shrinking.
 
 SLIDE SKELETON (handled by base CSS -- do NOT restyle):
 - .slide: 960 x 540 px container
@@ -50,10 +51,11 @@ SLIDE SKELETON (handled by base CSS -- do NOT restyle):
 export const TYPOGRAPHY_SIZE_GUIDE = `
 === TYPOGRAPHY SIZE CONTRACT ===
 
-- Absolute minimum for every visible text element: 10px in HTML/CSS and 10pt in PPTX.
+- Absolute minimum for normal visible text: 10px in HTML/CSS and 10pt in PPTX.
 - Body copy, bullets, descriptions, and table cells: 12px/12pt typical minimum.
 - Section titles, pillar titles, card titles, grid cell titles, and h3/h4: 14px/14pt typical minimum.
-- Labels, badges, chips, axis ticks, legends, captions, sources, and footer text may use 10px/10pt.
+- Compact tags, chips, badges, tracker labels, and short in-box labels may use 8px/8pt.
+- Axis ticks, legends, captions, sources, and footer text may use 10px/10pt.
 - Do NOT solve overflow by shrinking below these floors. Cut content, reduce item count, tighten spacing, or split across slides instead.
 
 === END TYPOGRAPHY SIZE CONTRACT ===`;
@@ -299,7 +301,7 @@ FRAME FIT — CRITICAL:
 - Content MUST fit within .frame (904 x 366 px) with overflow: hidden. Anything beyond is clipped.
 - If content is too much, CUT content first — remove weakest points, shorten descriptions, reduce item count.
 - A slide with 3 strong points and breathing room beats 6 cramped points.
-- Never shrink fonts below 10px. Never pack text into a wall.
+- Never shrink normal text below 10px, or compact tag/tracker text below 8px. Never pack text into a wall.
 
 CONTENT GUIDELINES:
 - Use specific data, percentages, and metrics — executives want facts

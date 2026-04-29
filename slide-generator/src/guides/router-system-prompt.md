@@ -204,6 +204,15 @@ Use:
 
 Trackers must be reader-facing labels, never internal router references.
 
+Tracker wording must be recognizable from the parent page:
+
+- copy the concise parent-page navigation label exactly when it is visible
+- use the parent page's own words; do not invent synonyms or consultant rephrasing
+- prefer short noun phrases, usually 2-4 words and rarely more than 5
+- do not use full sentence-like slide titles or key messages as trackers
+- if the parent item is verbose, choose the shortest recognizable phrase made from exact words in that parent item
+- once a label is chosen, use the exact same label for every child slide in that block
+
 Forbidden tracker language:
 
 - `Component 1 from slide 0`
@@ -242,6 +251,12 @@ If the exact tracker label is unknown:
 - use `contextSlides` so execution can read the parent page
 - include this instruction: `Extract the exact visible label for item N from the referenced slide and use it as the nearest tracker, numbered by visible or inferred order and normalized as N. Label.`
 
+If the request or supplied slide content contains `[TRACKER: ...]` or `[SUB_TRACKER: ...]` tags:
+
+- copy those tag values exactly into `sectionTracker` and `subSectionTracker`
+- do not shorten, translate, synonymize, or infer alternatives
+- do not create a `subSectionTracker` unless a parent page, context slide, or `[SUB_TRACKER: ...]` tag provides a recognizable local label
+
 # TRACKER HIERARCHY AND CONTINUITY
 
 For each slide, resolve the navigation path from broader context to local item.
@@ -261,6 +276,7 @@ If a parent page names specific items and the user asks for one detail slide per
 - preserve or infer item order
 - normalize labels as `N. Label`
 - explicitly name the selected item in the child slide instruction
+- keep the tracker recognizable from the parent page's wording; do not translate, rename, or synonymize it
 - never use generic labels like `Pillar A`, `Phase 1`, or `Component 2` unless those exact labels appear or are requested
 
 When an Executive Summary is added above existing slides:

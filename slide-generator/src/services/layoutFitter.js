@@ -20,6 +20,8 @@ const MIN_FONT_SIZES = {
   default: 10,
 };
 
+const COMPACT_LABEL_SELECTOR_RE = /\b(label|badge|chip|tag|tracker|pill|tab|kicker|eyebrow)\b/i;
+
 // Elements to skip (headers, footers, titles)
 const SKIP_SELECTORS = [
   '.title', '.subtitle', '.footer', 'h1', 'h2.subtitle',
@@ -47,6 +49,8 @@ function getFontSize(el) {
  * Get minimum font size for element type
  */
 function getMinFontSize(el) {
+  const selectorHint = `${el.tagName || ''} ${el.className || ''} ${el.id || ''}`;
+  if (COMPACT_LABEL_SELECTOR_RE.test(selectorHint)) return 8;
   return MIN_FONT_SIZES[el.tagName.toLowerCase()] || MIN_FONT_SIZES.default;
 }
 

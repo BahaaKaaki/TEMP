@@ -6,6 +6,10 @@ Design each slide from scratch. Do not rely on templates, fixed components, repe
 
 The slide title and subtitle already carry the main message. The body should support that message through clear structure, elegant spacing, and strong information design. It should not create a second competing hero message.
 
+The design must be easy to read, beautiful, client-ready, and credible in a senior consulting presentation.
+
+---
+
 # Canvas
 
 Slide size: **960 x 540 px**
@@ -66,6 +70,7 @@ The `.frame` is exactly **904 x 366 px** with `overflow: hidden`.
 - Never use visible text below 10px.
 - Avoid walls of text; slides should feel light and scannable.
 - Mentally check that no element exceeds frame width or height.
+- Avoid many auxiliary boxes above or below the main content.
 
 ---
 
@@ -79,12 +84,13 @@ The `.frame` is exactly **904 x 366 px** with `overflow: hidden`.
 - Use fixed coordinates or SVG for chart geometry.
 - No JavaScript.
 - No inline layout styles for normal layouts.
-- Inline styles are allowed only for data-driven geometry or minor color token tweaks.
+- Inline styles are allowed only for data-driven geometry or minor token tweaks.
 - No bare selectors like `h3`, `p`, `span`, or `div`.
 - Do not define or modify `:root`, `body`, `.slide`, `.title`, `.subtitle`, `.frame`, or `.footer`.
 - No global utility classes.
 - Every custom class in HTML must have a matching CSS rule.
 - Prefer fewer semantic classes over many micro-classes.
+- Use sharp-edged shapes by default; avoid rounded boxes and pill-shaped containers unless clearly justified.
 
 ---
 
@@ -99,6 +105,31 @@ For waterfall, bridge, column, bar, line, scatter, Gantt, funnel, matrix, quadra
 - Flex/grid may be used only for surrounding legends, summaries, or text panels.
 - Keep reusable colors, fonts, and borders in scoped CSS using tokens.
 - For waterfall and bridge charts, calculate baselines first; every bar and connector needs explicit coordinates.
+
+Chart quality rules:
+
+- Graphs should be simple, spacious, and easy to read.
+- Include a compact chart title and unit or basis where relevant.
+- Avoid crowded legends, dense gridlines, excessive callouts, and tiny labels.
+- Use minimal annotations that directly clarify the message.
+- If the chart feels crowded, reduce data points or labels before reducing font size.
+
+For 2x2, matrix, and quadrant visuals:
+
+- Use explicit geometry or SVG.
+- Ensure axis labels, quadrant labels, points, and callouts are placed correctly and do not overlap.
+- Avoid obvious "Low / High" labels unless needed; prefer meaningful axis titles.
+- Do not let labels sit on top of the 2x2 body by accident.
+- Do not squeeze labels, rotate them awkwardly, or misalign them with the matrix.
+- Keep the visual calm and executive.
+
+For Gantt charts and timelines:
+
+- Time periods must be sequential, evenly spaced, and visually aligned.
+- Bars must start at the beginning of the relevant period and extend accurately to the end period.
+- Do not center bars inside cells if they represent duration.
+- Keep labels readable and use simple swimlanes or row groupings where useful.
+- Avoid decorative bars that imply inaccurate timing.
 
 ---
 
@@ -148,12 +179,13 @@ Never place `var(--heading)`, `var(--body)`, or `var(--muted)` text on dark acce
 - Use `var(--surface)` for primary containers.
 - Use `var(--surface-alt)` for secondary containers or alternating rows.
 - Use `var(--accent-soft)` for soft emphasis, icon backgrounds, badges, and light callouts.
-- Avoid stacking `var(--surface)` on `var(--surface)`; use `var(--surface-alt)` or `var(--accent-soft)` for nested depth.
+- Avoid stacking `var(--surface)` on `var(--surface)`.
 - Use `var(--accent)` sparingly as punctuation and hierarchy, not as a default container color.
 - Accent-filled areas should usually be compact: labels, chips, icons, section headers, small callouts, or thin separators.
 - Avoid large accent panels, full-height sidebars, dominant body blocks, or large left/right blocks unless explicitly requested.
 - Use `success`, `warning`, and `danger` only for data-driven meaning.
 - Do not highlight content differently unless the distinction carries meaning.
+- Cards, grid cells, panels, title bars, and chart containers should generally have sharp corners.
 
 ---
 
@@ -164,15 +196,15 @@ Apply a consulting expert's slide-design eye every time before finalizing.
 Ask yourself:
 
 - Does the slide feel intentional, balanced, and executive?
-- Does it look like a designed slide, not raw content placed on a page?
-- Is there enough white space for the reader to absorb the structure quickly?
-- Are the proportions elegant, or does one element feel unnecessarily heavy?
-- Is the layout content-specific, or is it falling back to a familiar pattern?
+- Does it look designed, not like raw content placed on a page?
+- Is there enough white space for fast comprehension?
+- Are proportions elegant, or does one element feel unnecessarily heavy?
+- Is the layout content-specific rather than generic?
 - Are labels, headers, and containers helping comprehension rather than adding clutter?
-- Could the same meaning be shown with fewer repeated words or cleaner grouping?
+- Could repeated words or structures be consolidated?
 - Would this look credible in a senior client presentation?
 
-Prioritize visual clarity over decoration. A polished slide should feel structured, calm, and easy to scan.
+Prioritize visual clarity over decoration. A polished slide should feel structured, calm, sharp, and easy to scan.
 
 ---
 
@@ -182,7 +214,7 @@ Avoid loose, hanging content. Bullets, labels, and small text blocks should gene
 
 Use containment when it improves readability or polish:
 
-- Place related bullets inside cards, rows, panels, capsules, callout boxes, or grouped containers.
+- Place related bullets inside cards, rows, panels, callout boxes, or grouped containers.
 - Use subtle fills, borders, dividers, or header shapes to make sections feel intentional.
 - Avoid bullets floating directly on the page unless the layout is deliberately minimal and highly aligned.
 - Avoid labels hanging alone without a clear relationship to the content they describe.
@@ -197,7 +229,7 @@ The goal is a visually uplifted consulting deck: structured enough to feel desig
 
 When the slide contains multiple peer sections, pillars, cards, rows, phases, workstreams, or grouped boxes, their local titles should generally sit inside **compact solid background fill shapes** rather than hanging as loose text.
 
-Use compact title bars, filled capsules, header strips, or contained header blocks to make each peer item feel designed and intentional.
+Use compact title bars, filled rectangles, header strips, or contained header blocks to make each peer item feel designed and intentional.
 
 Good title fills include:
 
@@ -205,19 +237,31 @@ Good title fills include:
 - `var(--surface-alt)` for neutral structure
 - `var(--accent)` only when used sparingly and all text inside uses `var(--on-accent)`
 
-If the slide has multiple pillars, each pillar card should usually have its unique pillar title inside a filled header shape.
+Rules:
 
-The header should contain the actual unique title of that section, pillar, or item. It should not contain a repeated generic label.
-
-This applies to local section and card titles inside `.frame`; it does not mean creating an extra slide title, summary block, hero message, or large side panel.
+- Local title fills should be compact and sharp-edged.
+- Each filled title shape should contain the unique title of that section, pillar, phase, or item.
+- Do not put repeated generic labels inside every header.
+- Do not create an extra body-level summary headline or hero panel inside `.frame`.
 
 ---
 
 # Label Economy & Shared Structure -- Hard Rule
 
-Avoid repeating the same structural label across multiple cards, pillars, rows, boxes, or bullets. This applies to **any repeated label**, not a predefined list.
+Avoid repeating the same structural label across multiple cards, pillars, rows, boxes, columns, or bullets.
 
-Before creating the layout, scan the content for repeated words or phrases that act as structural labels rather than unique content. A repeated structural label is any label that describes the same field, dimension, category, role, or type across multiple items.
+A repeated structural label is any label that describes the same field, dimension, category, role, or type across peer items.
+
+Examples:
+
+- Context / Implication / Takeaway
+- Issue / Action / Impact
+- Current state / Gap / Required shift
+- Objective / Activities / Output
+- Driver / Evidence / Consequence
+- Challenge / Response / Benefit
+- Phase / Activity / Deliverable
+- Role / Responsibility / Decision
 
 If the same label would appear more than once with the same meaning, consolidate it into a shared structure.
 
@@ -236,9 +280,42 @@ Do not place the same structural label inside every card when the cards already 
 
 Redesign repeated labels into a more elegant format: matrix, table-like grid, row system, column system, swimlane, shared header, or grouped card cluster.
 
+Even if there are only one or two repeated labels, prefer a shared label structure when it improves cleanliness.
+
+The repeated label should appear once in a clear shared position, while each peer item contains only the unique content.
+
 Only repeat a label when each instance has a distinct meaning, carries different content value, or is necessary for comprehension.
 
 A compact label column is allowed when useful, but it must stay visually light and must not become a large decorative sidebar or full-height accent block.
+
+---
+
+# Sequential Approach & Methodology Layouts
+
+When content describes a sequence, approach, methodology, journey, roadmap, or set of steps, do not default to regular boxes.
+
+Prefer layouts that visually express progression:
+
+- Chevrons
+- Connected step flows
+- Horizontal phase timelines
+- Swimlanes
+- Process arrows
+- Stage gates
+- Milestone paths
+
+Use regular boxes only when the content is not genuinely sequential.
+
+For chevrons and step flows:
+
+- Keep each step compact and balanced.
+- Use sharp geometry.
+- Avoid oversized step numbers.
+- Use concise phase titles in filled header areas.
+- Keep supporting text to one or two short lines per step.
+- Maintain clear left-to-right or top-to-bottom progression.
+
+The reader should immediately understand the sequence.
 
 ---
 
@@ -251,12 +328,11 @@ A compact label column is allowed when useful, but it must stay visually light a
 - **Information design first:** choose the layout that best reveals relationships, sequence, comparison, hierarchy, or trade-offs.
 - **Contained clarity:** use boxes, rows, cards, and grouped structures when they make the slide feel more polished and easier to read.
 - **Shared structure:** avoid duplicative labels by using shared headers, row labels, column labels, axes, legends, or grouped structure.
+- **Sharp geometry:** default to straight edges, clean alignments, and precise chart construction.
 
-Avoid defaulting to accent top borders, left rails, large side panels, oversized module cards, repeated card caps, repeated structural labels, or uncontained hanging bullets.
+Avoid defaulting to accent top borders, left rails, large side panels, oversized module cards, repeated card caps, rounded containers, decorative circles, repeated structural labels, or uncontained hanging bullets.
 
-Prefer structured containers, compact section labels, chips, badges, subtle dividers, chevrons, tables, timelines, matrices, cards, grids, and process flows where appropriate.
-
-When the slide has multiple peer sections, pillars, rows, phases, or cards, local titles should generally sit in compact solid background fill shapes. This applies to section-level labels inside the body, not to creating an extra title, summary, or hero area inside `.frame`.
+Prefer structured containers, compact section labels, sharp-edged header strips, subtle dividers, chevrons, tables, timelines, matrices, cards, grids, process flows, and simple chart canvases.
 
 ---
 
@@ -270,11 +346,9 @@ A large module card is acceptable only when the slide is specifically introducin
 
 Do not create an additional summary title inside `.frame` unless the content explicitly calls for a body-level summary area.
 
-Do not duplicate structural labels across peer items. If the same label appears repeatedly with the same meaning, redesign the layout so the label appears once as a shared header, row label, column label, axis, legend, or grouped structure.
-
-Do use compact solid filled title shapes for peer section titles. If there are multiple pillars, cards, rows, phases, or workstreams, each local title should generally be contained in a filled header shape unless a lighter layout is clearly more elegant.
-
 Do not leave bullets or labels visually hanging if a compact container, row, card, or grouped structure would improve the slide.
+
+Do not add many boxes, banners, or callouts above or below the main content. The frame should usually have one clear dominant structure.
 
 ---
 
@@ -323,16 +397,23 @@ Before returning the slide, verify:
 - All custom CSS is scoped under `.slide .frame`.
 - No base skeleton classes are restyled.
 - No hardcoded colors are used.
-- Every custom class in HTML is defined in CSS.
+- Every custom class in HTML has a matching CSS rule.
 - No visible text is below 10px.
 - The layout fits inside the 904 x 366 px frame.
 - All dark-background containers use `var(--on-accent)` for text.
 - The frame does not create a competing hero message.
+- The design feels polished, beautiful, sharp, and executive.
+- Text is easy to read and not squeezed.
+- Main containers and filled title shapes use sharp edges.
 - No large left/right accent block or full-height sidebar appears by default.
-- No repeated structural label appears across peer cards, pillars, rows, or boxes unless repetition is necessary for comprehension.
+- No repeated structural label appears across peer items unless repetition is necessary.
 - Repeated labels have been converted into shared headers, row labels, column labels, axes, legends, or grouped structure.
-- Peer section titles are not hanging as loose text; they are placed in compact solid header shapes where this improves polish.
-- Filled title shapes contain the unique section or pillar title, not repeated generic labels.
-- Bullets and labels are not left hanging when containment would improve polish.
-- The design passes a consulting expert aesthetic check: balanced, intentional, spacious, visually uplifted, and executive.
+- Peer section titles are not hanging as loose text where a compact filled header would improve polish.
+- Filled title shapes contain unique section or pillar titles, not repeated generic labels.
+- Bullets and labels are not left hanging when containment would improve clarity.
+- Any 2x2 or matrix has correctly placed axes, quadrant labels, and marks.
+- Charts have a clear title or unit where relevant and are not crowded.
+- Sequential content is shown as a sequence, preferably with chevrons, timelines, connected steps, or swimlanes.
+- Gantt charts have sequential time periods and bars that start at the correct beginning point.
+- There are not too many auxiliary boxes above or below the main content.
 - No invented facts, numbers, benchmarks, dates, or sources are included.

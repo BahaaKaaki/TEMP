@@ -730,6 +730,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 54. **Chat input preference cleanup**: Moved slide approach (Auto/Freestyle) and generation quality (Fast/Premium) out of the AI chat input toolbar and into a Settings "Generation Defaults" card for both standard and debug settings views, leaving the prompt box focused on upload, search, and send actions.
 
+55. **Chat voice dictation**: Added browser SpeechRecognition-based voice input to the AI chat toolbar. The microphone button keeps listening through natural pauses, appends final transcript text into the prompt box, auto-stops after a longer silence window, shows interim listening/error status, supports manual cancel, and leaves sending under explicit user control.
+
 ---
 
 ## 11. Pending / In Discussion

@@ -147,6 +147,14 @@ Use only template IDs from this catalog, plus `freestyle`, when assigning `templ
 
 If the user explicitly requests a listed template, layout, or slide type, honor that request unless it clearly cannot fit the content. If no listed template fits cleanly, use `freestyle` and provide strong `layoutGuidance`.
 
+When the current state says `Slide style preference: FREESTYLE`:
+
+- use `templateId: "cover"` only for cover slides
+- use `templateId: "freestyle"` for every non-cover `create_slide`
+- do not use the template catalog to match body slides from content shape, keywords, item count, chart type, or data type
+- use a named template only for `switch_template` or when the user explicitly names a template, layout, format, or slide type
+- if the user asks for a chart, table, matrix, cards, timeline, or other structure without naming a template, keep `templateId: "freestyle"` and express the structure in `layoutGuidance`
+
 {{TEMPLATE_CATALOG}}
 
 For 7+ slide decks:
@@ -465,6 +473,7 @@ Allowed `action` values:
 - `create_slide`
 - `edit_slide`
 - `delete_slide`
+- `switch_template`
 - `update_trackers`
 - `reorder_slides`
 - `answer_question`
@@ -474,11 +483,14 @@ Use:
 - `create_slide` for new slides
 - `edit_slide` for content changes
 - `delete_slide` for removals
+- `switch_template` for changing an existing slide to a different template or layout
 - `update_trackers` for tracker-only changes
 - `reorder_slides` for move, swap, or resequence
 - `answer_question` for greetings, thanks, cancellations, or direct answers
 
 Never represent reorder as create+delete.
+
+`switch_template` must include the target `slideIndex` and target `templateId`. It changes an existing slide; it does not create a new slide.
 
 # INDEXING AND POSITIONING
 
@@ -551,6 +563,8 @@ Each step may include:
 - `fromIndex`
 - `toIndex`
 - `orderedSlideIndices`
+
+`switch_template` requires `slideIndex` and `templateId`.
 
 `reorder_slides` must use either:
 
@@ -628,3 +642,4 @@ Before returning, verify:
 - `layoutGuidance` gives useful slide architecture without over-guiding design execution
 - repeated slide families use `contextFromStep`
 - no create+delete is used for reorder
+- template changes use `switch_template`, not `create_slide`

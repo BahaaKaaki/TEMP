@@ -212,7 +212,8 @@
   box-sizing: border-box;
 }
 
-.slide footer.footer > span:first-child {
+/* Two-span footer: first span is brand OR sole source line; last span is page number. */
+.slide footer.footer:not(:has(span.source)) > span:first-child {
   position: absolute;
   left: calc(var(--source-x) - var(--footer-x));
   top: calc(var(--source-y) - var(--footer-y));
@@ -222,7 +223,7 @@
   color: var(--muted);
 }
 
-.slide footer.footer > span:last-child {
+.slide footer.footer:not(:has(span.source)) > span:last-child {
   position: absolute;
   left: calc(var(--slide-num-x) - var(--footer-x));
   top: calc(var(--slide-num-y) - var(--footer-y));
@@ -232,12 +233,54 @@
   color: var(--muted);
 }
 
+/* Three-span footer (generation prompt): brand | .source | page — avoid placing brand in the source band */
+.slide footer.footer:has(span.source) {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  column-gap: 10px;
+  align-items: baseline;
+}
+
+.slide footer.footer:has(span.source) > span:first-child {
+  position: static;
+  left: auto;
+  top: auto;
+  width: auto;
+  max-width: 34%;
+  height: auto;
+  text-align: left;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.slide footer.footer:has(span.source) > span:last-child {
+  position: static;
+  left: auto;
+  top: auto;
+  width: auto;
+  min-width: var(--slide-num-w);
+  height: auto;
+  text-align: right;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .slide footer.footer .source {
-  flex: 1;
-  padding: 0 12px;
   font-style: italic;
   opacity: 0.8;
   text-align: left;
+}
+
+.slide footer.footer:has(span.source) .source {
+  min-width: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slide footer.footer:not(:has(span.source)) .source {
+  flex: 1;
+  padding: 0 12px;
 }
 
 /* ===== MASTER OVERRIDES ===== */

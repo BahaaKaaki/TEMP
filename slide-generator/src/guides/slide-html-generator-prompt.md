@@ -375,7 +375,15 @@ Content rules:
 
 # Source Footer
 
-When the slide references data, statistics, research findings, or external evidence, replace the brand footer with a short source attribution:
+When the slide references data, statistics, research findings, or external evidence, add a short source attribution in the footer.
+
+**Preferred when the brand should stay visible** (Strategy&, client name, etc.): use **three spans** — brand left, source in the middle with `class="source"`, page number right:
+
+~~~html
+<footer class="footer"><span>Strategy&amp;</span><span class="source">Source: NOAA Ocean Service; USGS Water Science School</span><span>[Page#]</span></footer>
+~~~
+
+**When the source replaces the brand** (no separate brand text): use two spans:
 
 ~~~html
 <footer class="footer"><span>Source: BloombergNEF, 2025</span><span>[Page#]</span></footer>
@@ -385,8 +393,8 @@ Rules:
 
 - Keep source text to 5-15 words.
 - Do not fabricate sources.
-- If the user provides data without a named source, keep the brand name.
-- If no external data or research is cited, keep the brand name.
+- If the user provides data without a named source, keep the brand name only (no invented source).
+- If no external data or research is cited, keep the brand name (two-span footer is fine).
 
 ---
 

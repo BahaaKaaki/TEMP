@@ -346,7 +346,7 @@ Slides in state (HTML + CSS)
 
 Slide CSS is organized into three layers:
 
-1. **Shell** (`slides.css`) -- structural CSS for `.slide`, `.title`, `.subtitle`, `.frame`, `.footer` with canvas dimensions (960x540), absolute positions, and overflow rules. Includes master-specific overrides (`master-blank`, `master-titleOnly`, `master-cover`, `master-emptyPage`). Never modified by LLM or user.
+1. **Shell** (`slides.css`) -- structural CSS for `.slide`, `.title`, `.subtitle`, `.frame`, `.footer` with canvas dimensions (960x540), absolute positions, and overflow rules. Footer: two-span (brand/source + page) keeps the legacy absolute left band for the first span; three-span `(brand)(span.source)(page)` switches the footer to a grid so Strategy& branding and citation source do not overlap. Includes master-specific overrides (`master-blank`, `master-titleOnly`, `master-cover`, `master-emptyPage`). Never modified by LLM or user.
 2. **Theme** (`state.theme` -> CSS custom properties via `themeToCSS()`) -- JSON config mapping semantic tokens to concrete values (colors, fonts). Injected at render and export time. Changing the theme recolors all slides instantly. Populated from `DEFAULT_THEME`, built-in client design profiles via `clientDesignProfiles.js`, or extracted from uploaded PPTX templates via `brandingExtractor.js`.
 3. **Content CSS** (per-slide `customCSS`) -- LLM-generated `<style>` blocks with scoped layout classes. Uses `var(--token)` for all colors so themes propagate automatically. Built-in templates carry pre-extracted component CSS (from `templateStyles.js`, sourced from `slides-legacy.css`).
 

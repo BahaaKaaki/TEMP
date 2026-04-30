@@ -425,6 +425,7 @@ Core state shape:
   settings: {
     // User-controlled (persisted to localStorage)
     speedMode: 'premium',        // 'fast' | 'premium'
+    slideStylePreference: 'freestyle', // 'auto' | 'freestyle'; edited from Settings generation defaults
     freestyleShell: '',           // Override for Shell prompt section (empty = code default)
     freestyleTheme: '',           // Override for Theme prompt section (empty = code default)
     freestyleVibe: '',            // Override for Vibe prompt section (empty = code default)
@@ -726,6 +727,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 52. **STC layout and prompt-section overrides**: The STC profile now encodes the GPT-derived purple consulting family as the default variant and the telecom outlook style as an explicit editorial alternate. Profile data includes freestyle shell/theme/vibe/writing/CSS/PPTX override sections, component patterns, PPTX contract rules, dense table/org/process bands, and stricter validation checks. `themeToCSS()` emits profile layout variables for the shared slide shell, so selecting STC moves the preview canvas title/subtitle/content/footer geometry without requiring a PPTX upload. The standard content geometry is aligned to the Board Affairs playbook reference layout (`12_Content slide _ VCS_to use`).
 
 53. **STC canvas/export fidelity pass**: The STC profile now aligns canvas typography with the Board Affairs master notes: content titles use STC Forward 24px regular, subtitles use 18px regular, and footer/source/page numbers use 8px. The STC logo extracted from the bundled playbook master is served from `backend/assets/client-templates/stc/logo.png` through the generic `/api/assets/client-templates/:profileId/:fileName` profile asset route and injected as render-time canvas chrome in `SlidePreview` without persisting into slide HTML. When a non-default profile declares a bundled/backend master, `App` warms that PPTX master/chrome on editor startup so Settings is not required to repair stale or deleted local template metadata. Client-profile geometry now rewrites generic frame/chart guidance during slide creation, keeps new/cleared decks on the selected profile theme, preserves Strategy& master chrome during template merge, refreshes stale API tokens once before falling back to local templates, keeps STC prompt/PPTX guidance away from over-bold weights, uses profile-shaped PPTX reference examples, carries the client master `ppt/theme/theme1.xml` into controlled exports and normalizes it with profile colors/fonts, normalizes exported body objects into the declared profile body band, strips emoji artifacts, sanitizes invalid negative shape dimensions before writing PPTX XML, and applies controlled logo chrome without copying the fragile full STC template shell into generated decks.
+
+54. **Chat input preference cleanup**: Moved slide approach (Auto/Freestyle) and generation quality (Fast/Premium) out of the AI chat input toolbar and into a Settings "Generation Defaults" card for both standard and debug settings views, leaving the prompt box focused on upload, search, and send actions.
 
 ---
 

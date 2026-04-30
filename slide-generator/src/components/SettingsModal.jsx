@@ -771,6 +771,89 @@ export default function SettingsModal({ onClose }) {
   // ─── Toggle helper for collapsible sections ───────────────────────────────
   const toggle = (key) => setExpandedAdvanced(s => ({ ...s, [key]: !s[key] }));
 
+  const renderPreferenceSegment = ({ label, description, value, options, onChange }) => (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
+          <div style={{ fontSize: 11, color: 'var(--meta, #888)', lineHeight: 1.35, marginTop: 2 }}>{description}</div>
+        </div>
+      </div>
+      <div role="radiogroup" aria-label={label} style={{ display: 'grid', gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`, gap: 8 }}>
+        {options.map(option => {
+          const selected = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              style={{
+                padding: '11px 12px',
+                borderRadius: 8,
+                border: selected ? '2px solid var(--accent, #8E1E1E)' : '1px solid var(--border, #e2e8f0)',
+                background: selected ? 'var(--accent-soft, #fdf6f6)' : 'var(--page, #fff)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxShadow: selected ? '0 6px 18px rgba(142, 30, 30, 0.08)' : 'none',
+                transition: 'border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{option.label}</span>
+                {option.badge && (
+                  <span style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.3,
+                    color: selected ? 'var(--accent, #8E1E1E)' : 'var(--text-muted, #94a3b8)',
+                  }}>
+                    {option.badge}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--meta, #888)', lineHeight: 1.35, marginTop: 4 }}>{option.description}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderGenerationDefaults = () => (
+    <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: 'var(--text-primary)' }}>Generation Defaults</div>
+      <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 16 }}>
+        These defaults apply to new chat requests.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {renderPreferenceSegment({
+          label: 'Slide approach',
+          description: 'Choose how Edwin decides between template-led and freeform consulting layouts.',
+          value: settings.slideStylePreference || 'freestyle',
+          options: [
+            { value: 'auto', label: 'Auto', badge: 'Balanced', description: 'Let the planner choose the best layout for each request.' },
+            { value: 'freestyle', label: 'Freestyle', badge: 'Default', description: 'Favor custom HTML slides with sharper visual storytelling.' },
+          ],
+          onChange: (slideStylePreference) => setSettings({ ...settings, slideStylePreference }),
+        })}
+        {renderPreferenceSegment({
+          label: 'Generation quality',
+          description: 'Pick the default model tier used for creating or editing slides.',
+          value: settings.speedMode || 'premium',
+          options: [
+            { value: 'fast', label: 'Fast', description: 'Quicker drafts when speed matters more than polish.' },
+            { value: 'premium', label: 'Premium', badge: 'Recommended', description: 'Higher-quality slide writing, layout, and reasoning.' },
+          ],
+          onChange: (speedMode) => setSettings({ ...settings, speedMode }),
+        })}
+      </div>
+    </div>
+  );
+
   // ═══════════════════════════════════════════════════════════════════════════
   // ─── SECTION 1: Providers ──────────────────────────────────────────────
   // ═══════════════════════════════════════════════════════════════════════════
@@ -1790,6 +1873,10 @@ export default function SettingsModal({ onClose }) {
 
   const renderEssential = () => (
     <>
+      {renderGenerationDefaults()}
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
       {renderProviders()}
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
@@ -1877,6 +1964,8 @@ export default function SettingsModal({ onClose }) {
   // ─── Simplified settings for non-debug users ──────────────────────────────
   const renderSimplifiedSettings = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {renderGenerationDefaults()}
+
       {/* User Preferences */}
       <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Preferences</div>

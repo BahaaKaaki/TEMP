@@ -6932,80 +6932,39 @@ Original request: ${userPrompt}`;
             onChange={handleFileUpload}
             style={{ display: 'none' }}
           />
-          {/* Bottom toggles: style + speed mode */}
-          <div className="chatbot-input-actions">
-            <div className="chatbot-action-group chatbot-mode-group">
-              <div className="pill-toggle" role="group" aria-label="Slide style">
+          {state.settings.enableAgenticMode && (
+            <div className="chatbot-input-actions">
+              <div className="chatbot-action-group chatbot-mode-group">
                 <button
                   type="button"
-                  className={`pill-toggle-btn${state.settings.slideStylePreference === 'auto' ? ' active' : ''}`}
-                  onClick={() => actions.updateSettings({ slideStylePreference: 'auto' })}
-                  aria-pressed={state.settings.slideStylePreference === 'auto'}
+                  className={`chatbot-mode-btn ${useAgenticMode && !useReportMode ? 'active' : ''}`}
+                  onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(false); }}
+                  disabled={isLoading}
+                  title="Deep Deck - Research-powered slide presentation"
                 >
-                  Auto
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                  Deep Deck
                 </button>
                 <button
                   type="button"
-                  className={`pill-toggle-btn${state.settings.slideStylePreference === 'freestyle' ? ' active' : ''}`}
-                  onClick={() => actions.updateSettings({ slideStylePreference: 'freestyle' })}
-                  title="Freestyle HTML slides"
-                  aria-pressed={state.settings.slideStylePreference === 'freestyle'}
+                  className={`chatbot-mode-btn chatbot-report-mode ${useReportMode ? 'active' : ''}`}
+                  onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(true); }}
+                  disabled={isLoading}
+                  title="Deep Report - Research-powered interactive dashboard"
                 >
-                  Freestyle
-                </button>
-              </div>
-              {/* Fast / Premium pill slider */}
-              <div className="pill-toggle" role="group" aria-label="Speed mode">
-                <button
-                  type="button"
-                  className={`pill-toggle-btn ${state.settings.speedMode === 'fast' ? 'active' : ''}`}
-                  onClick={() => actions.updateSettings({ speedMode: 'fast' })}
-                  title="Faster generation with balanced quality"
-                >
-                  Fast
-                </button>
-                <button
-                  type="button"
-                  className={`pill-toggle-btn ${state.settings.speedMode === 'premium' ? 'active' : ''}`}
-                  onClick={() => actions.updateSettings({ speedMode: 'premium' })}
-                  title="Higher quality generation using the premium model"
-                >
-                  Premium
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M3 3v18h18" />
+                    <path d="M18 9l-5 5-4-4-3 3" />
+                  </svg>
+                  Deep Report
                 </button>
               </div>
-              {state.settings.enableAgenticMode && (
-                <>
-                  <button
-                    type="button"
-                    className={`chatbot-mode-btn ${useAgenticMode && !useReportMode ? 'active' : ''}`}
-                    onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(false); }}
-                    disabled={isLoading}
-                    title="Deep Deck - Research-powered slide presentation"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                      <line x1="8" y1="21" x2="16" y2="21" />
-                      <line x1="12" y1="17" x2="12" y2="21" />
-                    </svg>
-                    Deep Deck
-                  </button>
-                  <button
-                    type="button"
-                    className={`chatbot-mode-btn chatbot-report-mode ${useReportMode ? 'active' : ''}`}
-                    onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(true); }}
-                    disabled={isLoading}
-                    title="Deep Report - Research-powered interactive dashboard"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M3 3v18h18" />
-                      <path d="M18 9l-5 5-4-4-3 3" />
-                    </svg>
-                    Deep Report
-                  </button>
-                </>
-              )}
             </div>
-          </div>
+          )}
           {(() => {
             const smartActionExecuting = isLoading && !!pendingSmartAction;
             const inputDisabled = (isLoading && !agenticExecution.isRunning && !smartActionExecuting);

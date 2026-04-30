@@ -515,6 +515,9 @@ export default function AIChatbot() {
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [showSlideTemplatePicker, setShowSlideTemplatePicker] = useState(false);
   const [showSkillsPopover, setShowSkillsPopover] = useState(false);
+  const [isVoiceListening, setIsVoiceListening] = useState(false);
+  const [voiceInterimTranscript, setVoiceInterimTranscript] = useState('');
+  const [voiceError, setVoiceError] = useState('');
   // Tracks whether a skills fetch is currently in flight so the button's
   // lazy-retry doesn't fire parallel requests on rapid clicks. The "loading"
   // flag is kept as a re-render trigger for the picker's placeholder.
@@ -563,6 +566,8 @@ export default function AIChatbot() {
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [useKnowledgeContext, setUseKnowledgeContext] = useState(false); // Include knowledge base in AI context
   const fileInputRef = useRef(null);
+  const speechRecognitionRef = useRef(null);
+  const voiceSilenceTimerRef = useRef(null);
 
   // Chat messages state - must be defined before functions that use setMessages
   const [messages, setMessages] = useState([
@@ -618,6 +623,117 @@ export default function AIChatbot() {
   const addMessage = (type, content, options = {}) => {
     const { aiIO = null, isHTML = false } = options;
     setMessages((prev) => [...prev, { type, content, timestamp: new Date(), aiIO, isHTML }]);
+  };
+
+  const getSpeechRecognitionCtor = () => {
+    if (typeof window === 'undefined') return null;
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  };
+
+  const appendVoiceTranscript = (text) => {
+    const transcript = text.trim();
+    if (!transcript) return;
+    setPrompt(prev => {
+      const current = prev.trimEnd();
+      return current ? `${current} ${transcript}` : transcript;
+    });
+  };
+
+  const clearVoiceSilenceTimer = () => {
+    if (voiceSilenceTimerRef.current) {
+      window.clearTimeout(voiceSilenceTimerRef.current);
+      voiceSilenceTimerRef.current = null;
+    }
+  };
+
+  const scheduleVoiceAutoStop = (delayMs = 6000) => {
+    clearVoiceSilenceTimer();
+    voiceSilenceTimerRef.current = window.setTimeout(() => {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+    }, delayMs);
+  };
+
+  const stopVoiceInput = () => {
+    clearVoiceSilenceTimer();
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+    }
+  };
+
+  const startVoiceInput = () => {
+    const SpeechRecognition = getSpeechRecognitionCtor();
+    if (!SpeechRecognition) {
+      setVoiceError('Voice input is not supported in this browser.');
+      return;
+    }
+
+    setVoiceError('');
+    setVoiceInterimTranscript('');
+
+    const recognition = new SpeechRecognition();
+    speechRecognitionRef.current = recognition;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || 'en-US';
+
+    recognition.onstart = () => {
+      setIsVoiceListening(true);
+      setVoiceError('');
+      scheduleVoiceAutoStop(12000);
+    };
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result[0]?.transcript || '';
+        if (result.isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript || interimTranscript) {
+        scheduleVoiceAutoStop(6000);
+      }
+      if (finalTranscript) {
+        appendVoiceTranscript(finalTranscript);
+      }
+      setVoiceInterimTranscript(interimTranscript.trim());
+    };
+
+    recognition.onerror = (event) => {
+      const message = event.error === 'not-allowed'
+        ? 'Microphone access was blocked.'
+        : event.error === 'no-speech'
+          ? 'No speech detected. Try again when ready.'
+          : 'Voice input stopped unexpectedly.';
+      setVoiceError(message);
+      setVoiceInterimTranscript('');
+      clearVoiceSilenceTimer();
+    };
+
+    recognition.onend = () => {
+      setIsVoiceListening(false);
+      setVoiceInterimTranscript('');
+      clearVoiceSilenceTimer();
+      speechRecognitionRef.current = null;
+    };
+
+    recognition.start();
+  };
+
+  const toggleVoiceInput = () => {
+    if (isVoiceListening) {
+      stopVoiceInput();
+      return;
+    }
+    startVoiceInput();
   };
 
   // Wrapper for addMessage that matches the agentic system's expected format
@@ -1003,6 +1119,16 @@ export default function AIChatbot() {
       }
     }
   }, [prompt]);
+
+  useEffect(() => {
+    return () => {
+      clearVoiceSilenceTimer();
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.abort();
+        speechRecognitionRef.current = null;
+      }
+    };
+  }, []);
 
   // Handle flow selection from Flow Studio
   const handleFlowSelect = (flow) => {
@@ -1465,6 +1591,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!prompt.trim()) return;
+    if (isVoiceListening) stopVoiceInput();
 
     // ─── Live input: if agent is running, push message to its input queue ───
     // This enables chatting with the agent while it works (like Claude Code).
@@ -6969,6 +7096,7 @@ Original request: ${userPrompt}`;
             const smartActionExecuting = isLoading && !!pendingSmartAction;
             const inputDisabled = (isLoading && !agenticExecution.isRunning && !smartActionExecuting);
             const noSlidesYet = state.slides.length === 0;
+            const voiceSupported = !!getSpeechRecognitionCtor();
             const placeholder = noSlidesYet
               ? 'Describe your presentation to get started...'
               : smartActionExecuting
@@ -6988,34 +7116,57 @@ Original request: ${userPrompt}`;
                   disabled={inputDisabled}
                   placeholder={placeholder}
                 />
+                {(isVoiceListening || voiceInterimTranscript || voiceError) && (
+                  <div className={`chatbot-voice-status${voiceError ? ' error' : ''}`} aria-live="polite">
+                    {voiceError || (voiceInterimTranscript ? `Listening: ${voiceInterimTranscript}` : 'Listening... pause when done')}
+                  </div>
+                )}
                 <div className="chatbot-input-toolbar">
-                  <button
-                    type="button"
-                    className="panel-attach-btn"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={inputDisabled || isUploadingFiles}
-                    title="Upload documents (PDF, Word, Excel, PPTX, Images)"
-                  >
-                    {isUploadingFiles ? (
-                      <span className="upload-spinner"></span>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  <div className="chatbot-input-tools">
+                    <button
+                      type="button"
+                      className="panel-attach-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={inputDisabled || isUploadingFiles}
+                      title="Upload documents (PDF, Word, Excel, PPTX, Images)"
+                    >
+                      {isUploadingFiles ? (
+                        <span className="upload-spinner"></span>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className={`panel-voice-toggle-btn ${isVoiceListening ? 'active' : ''}`}
+                      onClick={toggleVoiceInput}
+                      disabled={inputDisabled || isUploadingFiles || !voiceSupported}
+                      title={voiceSupported ? (isVoiceListening ? 'Stop voice input' : 'Dictate prompt; pauses are allowed') : 'Voice input is not supported in this browser'}
+                      aria-pressed={isVoiceListening}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="21" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
                       </svg>
-                    )}
-                  </button>
-                  {/* Search toggle */}
-                  <button
-                    type="button"
-                    className={`panel-search-toggle-btn ${state.settings.searchEnabled ? 'active' : ''}`}
-                    onClick={() => actions.updateSettings({ searchEnabled: !state.settings.searchEnabled })}
-                    title={state.settings.searchEnabled ? 'Web search enabled — router uses it only when needed; step searches can be toggled in the plan' : 'Web search disabled — router and slide execution will avoid web search'}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                  </button>
+                    </button>
+                  </div>
+                  <div className="chatbot-input-search">
+                    <button
+                      type="button"
+                      className={`panel-search-toggle-btn ${state.settings.searchEnabled ? 'active' : ''}`}
+                      onClick={() => actions.updateSettings({ searchEnabled: !state.settings.searchEnabled })}
+                      title={state.settings.searchEnabled ? 'Web search enabled — router uses it only when needed; step searches can be toggled in the plan' : 'Web search disabled — router and slide execution will avoid web search'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                    </button>
+                  </div>
                   <button type="submit" className="chatbot-send-btn" disabled={inputDisabled || isUploadingFiles || !prompt.trim()}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <line x1="22" y1="2" x2="11" y2="13" />

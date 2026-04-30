@@ -233,15 +233,15 @@
   color: var(--muted);
 }
 
-/* Three-span footer (generation prompt): brand | .source | page — avoid placing brand in the source band */
-.slide footer.footer:has(span.source) {
+/* Three-span footer (Strategy& / default): brand | .source | page — grid keeps brand out of the wide source band */
+.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   column-gap: 10px;
   align-items: baseline;
 }
 
-.slide footer.footer:has(span.source) > span:first-child {
+.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) > span:first-child {
   position: static;
   left: auto;
   top: auto;
@@ -253,7 +253,7 @@
   white-space: nowrap;
 }
 
-.slide footer.footer:has(span.source) > span:last-child {
+.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) > span:last-child {
   position: static;
   left: auto;
   top: auto;
@@ -271,11 +271,64 @@
   text-align: left;
 }
 
-.slide footer.footer:has(span.source) .source {
+.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) .source {
   min-width: 0;
   padding: 0 4px;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* STC profile: keep master geometry from theme layout vars; do not use Strategy& grid or italic source */
+.slide[data-client-profile="stc"] footer.footer:has(span.source) {
+  display: block;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) > span:first-child:not(:empty) {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  max-width: 120px;
+  height: auto;
+  text-align: left;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source):has(> span:first-child:not(:empty)) .source {
+  left: calc(var(--source-x) - var(--footer-x) + 124px);
+  width: calc(var(--source-w) - 124px);
 }
 
 .slide footer.footer:not(:has(span.source)) .source {

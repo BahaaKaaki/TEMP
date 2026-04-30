@@ -395,6 +395,7 @@ Rules:
 - Do not fabricate sources.
 - If the user provides data without a named source, keep the brand name only (no invented source).
 - If no external data or research is cited, keep the brand name (two-span footer is fine).
+- **Active STC/client profile** (when the CLIENT DESIGN PROFILE in context is STC): the **left span must stay empty** unless the profile supplies an explicit footer label; never put Strategy&amp; there. Sources use the same `span.source` + three-span shape; preview CSS follows that profile footer band.
 
 ---
 

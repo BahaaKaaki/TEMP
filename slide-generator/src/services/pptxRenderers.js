@@ -90,37 +90,14 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
 // ── Section tracker ──────────────────────────────────────────────────────────
 
 function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) {
-  const marker = tracker?.marker || { x: 0.792, y: 0.139, w: 0.556, h: 0.111 };
-  const textPos = tracker?.text || { x: 1.375, y: 0.139, w: 2.778, h: 0.139 };
+  const textPos = tracker?.text || { x: 0.792, y: 0.139, w: 2.778, h: 0.139 };
   const colors = tracker?.colors || {};
-  const markerFill = colors.marker || 'EDD5FF';
-  const whiteFill = colors.white || COLORS.white;
   const textColor = colors.text || '9E21FF';
   const subTextColor = colors.subText || COLORS.meta;
   const font = textPos.font || {};
   const fontSize = pptxFontSize(font.fontSize, 5.5, 5);
   const estimateTextWidth = label => Math.max(0.55, String(label || '').length * 0.045 + 0.18);
   if (!sectionLabel && !subSectionLabel) return;
-
-  const pieceW = marker.w * 0.28;
-  const step = marker.w * 0.21;
-  const pieces = [
-    { shape: 'pentagon', fill: markerFill },
-    { shape: 'chevron', fill: whiteFill },
-    { shape: 'chevron', fill: markerFill },
-    { shape: 'chevron', fill: markerFill },
-  ];
-
-  pieces.forEach((piece, index) => {
-    slide.addShape(piece.shape, {
-      x: marker.x + (index * step),
-      y: marker.y,
-      w: pieceW,
-      h: marker.h,
-      fill: { color: piece.fill },
-      line: { color: piece.fill, transparency: 100 },
-    });
-  });
 
   if (sectionLabel) {
     const sectionW = estimateTextWidth(sectionLabel);

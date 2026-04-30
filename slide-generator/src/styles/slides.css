@@ -445,19 +445,15 @@
   border-radius: 0 0 4px 0;
 }
 
-/* STC reference decks reserve the top-left logo space and render section
-   trackers as a small breadcrumb strip after the logo, not as a filled tab. */
+/* STC slides reserve the top-left logo space and render section trackers as
+   quiet text-only chrome after the logo, not as filled tabs. */
 .slide[data-client-profile="stc"][data-section]::before {
   top: 10px;
   left: 57px;
   min-width: 160px;
   height: 8px;
-  padding: 0 0 0 42px;
+  padding: 0;
   background-color: transparent;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='8' viewBox='0 0 40 8'%3E%3Cpath d='M0 0h10l4 4-4 4H0l4-4z' fill='%23EDD5FF'/%3E%3Cpath d='M13 0h10l4 4-4 4H13l4-4z' fill='%23FFFFFF'/%3E%3Cpath d='M26 0h10l4 4-4 4H26l4-4z' fill='%23EDD5FF'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: left center;
-  background-size: 40px 8px;
   color: #9E21FF;
   font: 700 7px/8px "STC Forward", Arial, sans-serif;
   letter-spacing: 0.1px;
@@ -470,7 +466,7 @@
 
 .slide[data-client-profile="stc"][data-section][data-subsection]::after {
   top: 10px;
-  left: calc(99px + var(--tracker-offset, 80px) - 18px);
+  left: calc(57px + var(--tracker-offset, 80px) - 18px);
   height: 8px;
   padding: 0;
   background: transparent;

@@ -103,8 +103,7 @@ const STC_LAYOUT_CONTRACT = {
     source: { x: 15, y: 494, w: 465, h: 19 },
     slideNumber: { x: 935, y: 519, w: 14, h: 10 },
     sectionTracker: {
-      marker: { x: 57, y: 10, w: 40, h: 8 },
-      text: { x: 99, y: 10, w: 200, h: 10 },
+      text: { x: 57, y: 10, w: 242, h: 10 },
     },
   },
   cover: {
@@ -123,13 +122,13 @@ const STC_LAYOUT_CONTRACT = {
 
 const STC_FREESTYLE_OVERRIDES = {
   shell: `Default to a 16:9 white STC board template on a 960x540 canvas. These STC positions replace any generic shell defaults:
-- Section tracker/breadcrumb: keep the STC logo clear. Use the reference breadcrumb at top y=10px, marker x=57px, tracker text x=99px, text color #9E21FF, pale marker #EDD5FF.
+- Section tracker: keep the STC logo clear. Use text-only tracker chrome at top y=10px, x=57px, text color #9E21FF. Do not use arrow or chevron markers.
 - h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward regular 24px, color #4F008C.
 - h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward regular 18px, color #FF375E.
 - div.frame: left 15px, top 134px, width 931px, height 340px. Design all custom content inside this STC frame, not the generic 904x366 frame.
 - footer: source at bottom-left around x=15 y=494 and slide number bottom-right around x=935 y=519, both STC Forward 8px.
 Use structured content in the middle band and keep the bottom footer band clear. Use the standard content bands exactly unless the user explicitly asks for a cover, divider, appendix, or editorial variant.`,
-  theme: `Use STC purple (#4F008C) for titles, structural headers, major bars, and primary emphasis. Use tracker lavender (#9E21FF) and pale marker lilac (#EDD5FF) for breadcrumb/section tracker chrome. Use coral (#FF375E) as the subtitle/kicker accent, vivid lavender (#A54EE1 family) only for small markers, pale lilac surfaces (#EDD5FF to #FBF8FE), charcoal body text (#1D252D), and white backgrounds. Do not let the content topic override the brand palette; even ocean/science topics should remain STC purple/coral/lilac rather than blue-led. Do not use Office blue/orange or raw theme yellow/green/cyan as dominant colors. Treat the serif black/red outlook style as an explicit alternate editorial variant, not the default.`,
+  theme: `Use STC purple (#4F008C) for titles, structural headers, major bars, and primary emphasis. Use tracker lavender (#9E21FF) for section tracker chrome without arrow or chevron markers. Use coral (#FF375E) as the subtitle/kicker accent, vivid lavender (#A54EE1 family) only for small markers, pale lilac surfaces (#EDD5FF to #FBF8FE), charcoal body text (#1D252D), and white backgrounds. Do not let the content topic override the brand palette; even ocean/science topics should remain STC purple/coral/lilac rather than blue-led. Do not use Office blue/orange or raw theme yellow/green/cyan as dominant colors. Treat the serif black/red outlook style as an explicit alternate editorial variant, not the default.`,
   vibe: `Board-ready, strategy-consulting, precise, modular, high-clarity, low-decoration. Use strong hierarchy, tight alignment, restrained accents, generous white space in the header, denser structured content in the middle, and tiny unobtrusive footer chrome. Avoid playful UI, consumer-product styling, heavy shadows, and decorative gradients except on approved photo covers.`,
   writing: `Write conclusion-led titles. Use short analytical subtitles that name the lens, not the takeaway. Keep copy executive, factual, and directive. Use selective emphasis only for the highest-value words; do not bold every lead phrase by default. Avoid slogans, fluff, generic headings, and marketing language.`,
   css: `Use square-cornered boxes by default, thin 0.75-1.25pt borders, purple header bars, lilac body panels, dark body text, and reversed white text on dark fills. STC Forward reads heavy: use font-weight 400 for body copy, 500 for local headings, card titles, stage titles, labels, and subtitles, and reserve 700 for step numbers, KPIs, or rare emphasis only. Use chevrons, tabs, trackers, and thin connector lines for structure. Avoid default chart palettes, rounded consumer cards, strong shadows, and gradient fills except on photo covers.`,
@@ -207,7 +206,7 @@ const STC_PROMPT_CONTRACT = `# STC Client Design Contract
 ## Layout and chrome
 - STC slides use a 960x540 canvas mapped from 13.33x7.5 in.
 - Content-slide title band: title around x=15, y=29, w=931, h=71.
-- Section tracker/breadcrumb band: logo-safe marker around x=57, y=10, w=40, h=8, then tracker text around x=99, y=10, color #9E21FF. Never place tracker chrome at x=0 over the logo.
+- Section tracker band: logo-safe text-only tracker around x=57, y=10, color #9E21FF. Never place tracker chrome at x=0 over the logo, and do not add arrow/chevron markers.
 - Subtitle band: around x=15, y=105, w=931, h=19.
 - Main content band: around x=15, y=134, w=931, h=340.
 - Source/footer band: bottom-left around x=15, y=495; slide number bottom-right around x=935, y=519.
@@ -255,12 +254,11 @@ const stcStandardInches = {
   slideNum: { ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.slideNumber), font: STC_PPTX_FONTS.slideNum },
   sectionTracker: {
     variant: 'stcBreadcrumb',
-    marker: pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.sectionTracker.marker),
     text: {
       ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.sectionTracker.text),
       font: { fontFace: 'STC Forward', fontSize: 5.5, bold: true, color: '9E21FF' },
     },
-    colors: { marker: 'EDD5FF', text: '9E21FF', subText: '515360', white: 'FFFFFF' },
+    colors: { text: '9E21FF', subText: '515360' },
   },
 };
 

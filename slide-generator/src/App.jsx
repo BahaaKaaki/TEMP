@@ -20,10 +20,15 @@ import './styles/app.css';
 import './styles/slides.css';
 
 // Capture handoff ID at module level so it survives React StrictMode double-mount.
+// When a handoff is detected, clear persisted slide state so the previous deck
+// doesn't flash before clearAll() runs in the React effect.
 const _pendingHandoffId = (() => {
   const params = new URLSearchParams(window.location.search);
   const id = params.get('handoff');
-  if (id) window.history.replaceState({}, '', window.location.pathname);
+  if (id) {
+    window.history.replaceState({}, '', window.location.pathname);
+    try { localStorage.removeItem('slideGeneratorState'); } catch { /* noop */ }
+  }
   return id;
 })();
 

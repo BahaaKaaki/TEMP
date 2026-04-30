@@ -537,6 +537,62 @@ Options: `-SkipBuild` (deploy only), `-SkipDeploy` (build only)
 
 ---
 
+## 7b. Access Control (Staff Allowlist)
+
+### Current State
+
+`ALLOWLIST_MODE=enforce` is active on Azure. The Express middleware (`backend/src/common/middleware/entra-allowlist.middleware.ts`) verifies Entra ID JWTs and checks the user's email against `config/allowlist.txt`. Non-listed users get 403 ACCESS_DENIED.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `backend/src/common/middleware/entra-allowlist.middleware.ts` | JWT verification + allowlist check middleware |
+| `backend/scripts/build-allowlist.py` | Generates `allowlist.txt` from HR XLSX; contains `MANUAL_EXTRAS` for manually approved users |
+| `backend/config/allowlist.txt` | Deployed email list (gitignored, never committed) |
+| `docs/runbooks/allowlist-path-b-runbook.md` | Full runbook for mode changes, rollback, troubleshooting |
+| `docs/auth-allowlist-experiment-2026-04-23.md` | Post-mortem of Path A (Easy Auth), motivation for Path B |
+
+### Quick-Add Procedure (Adding a User)
+
+When someone reports no access, follow all four steps:
+
+1. **Add to `MANUAL_EXTRAS`** in `backend/scripts/build-allowlist.py` -- ensures future XLSX rebuilds never drop them. Commit and push.
+2. **Download the live allowlist** from Azure via Kudu, append the email, re-upload:
+   ```bash
+   SCM_TOKEN=$(az account get-access-token --resource https://management.azure.com --query accessToken -o tsv)
+   SCM=https://app-edwin-slides.scm.azurewebsites.net
+   # Download
+   curl -sS -H "Authorization: Bearer $SCM_TOKEN" "$SCM/api/vfs/site/wwwroot/config/allowlist.txt" > /tmp/allowlist.txt
+   # Append (the email must be lowercased)
+   echo "someone@pwc.com" >> /tmp/allowlist.txt
+   # Upload
+   curl -sS -X PUT -H "Authorization: Bearer $SCM_TOKEN" -H "If-Match: *" -H "Content-Type: application/octet-stream" --data-binary @/tmp/allowlist.txt "$SCM/api/vfs/site/wwwroot/config/allowlist.txt"
+   ```
+3. **Hard-restart** so the middleware reloads: `az webapp restart --resource-group rg-edwin-slides --name app-edwin-slides`
+4. **Verify** the email is in the live file via Kudu GET + grep.
+
+Also save the updated file locally to `backend/config/allowlist.txt` so the next `deploy.sh` run ships it.
+
+### Full Rebuild (from HR XLSX)
+
+```bash
+python3 backend/scripts/build-allowlist.py \
+  --input '/Users/bkaaki001/Downloads/Active staff list.xlsx' \
+  --output backend/config/allowlist.txt
+./deploy.sh
+```
+
+### Rollback
+
+```bash
+# Disable enforcement (immediate, no redeploy)
+az webapp config appsettings set -g rg-edwin-slides -n app-edwin-slides --settings ALLOWLIST_MODE='off' --output none
+az webapp restart -g rg-edwin-slides -n app-edwin-slides
+```
+
+---
+
 ## 8. Key Patterns and Conventions
 
 ### Router Architecture

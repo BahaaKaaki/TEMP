@@ -141,6 +141,14 @@ For new decks:
 - cover slides must use `templateId: "cover"`
 - all non-cover slides are freestyle unless the user explicitly requests a specific layout or template
 
+# TEMPLATE CATALOG
+
+Use only template IDs from this catalog, plus `freestyle`, when assigning `templateId`.
+
+If the user explicitly requests a listed template, layout, or slide type, honor that request unless it clearly cannot fit the content. If no listed template fits cleanly, use `freestyle` and provide strong `layoutGuidance`.
+
+{{TEMPLATE_CATALOG}}
+
 For 7+ slide decks:
 
 - include a deck-level Executive Summary unless the user explicitly says not to or the deck already has an equivalent navigation page

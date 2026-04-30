@@ -1569,7 +1569,9 @@ REMEMBER:
     return applyPromptOverride(settings, 'router.system', defaultPrompt);
   }
 
-  const defaultPrompt = ROUTER_SYSTEM_PROMPT.replace('{{CURRENT_DATE}}', currentDateString());
+  const defaultPrompt = ROUTER_SYSTEM_PROMPT
+    .replace('{{CURRENT_DATE}}', currentDateString())
+    .replace('{{TEMPLATE_CATALOG}}', AI_ROUTER_TEMPLATES);
   return applyPromptOverride(settings, 'router.system', defaultPrompt);
 }
 
@@ -2231,7 +2233,7 @@ ${deckContextDigest.referenceSlideContexts.map(ref => `- Slide ${ref.index + 1}:
 - Max parallel steps per group: ${parallelBatchSize}
 - Web search available to slide execution: ${searchAvailable ? 'YES — add "searchQuery" to steps that need real-time or specific data' : 'NO — do not add searchQuery'}
 - Router inline search policy: ${canUseInlineSearch ? `ENABLED (${routerSearchPolicy.reason})` : `DISABLED (${routerSearchPolicy.reason})`}
-- Slide style preference: ${settings.slideStylePreference === 'freestyle' ? 'FREESTYLE — always use templateId "freestyle" for create_slide steps (except cover/sectionDivider)' : settings.slideStylePreference === 'templates' ? 'TEMPLATES — always use a named template for create_slide steps, never "freestyle"' : 'AUTO — choose the best template or freestyle based on content'}
+- Slide style preference: ${settings.slideStylePreference === 'freestyle' ? 'FREESTYLE — default to templateId "freestyle" for create_slide steps (except cover/sectionDivider), but explicit user-requested named templates/layouts still win' : settings.slideStylePreference === 'templates' ? 'TEMPLATES — always use a named template for create_slide steps, never "freestyle"' : 'AUTO — choose the best template or freestyle based on content'}
 - Context mode: ${contextMode === 'slide' ? 'THIS SLIDE — user is focused on editing the current slide. Prefer edit_slide for the current slide unless the prompt clearly asks to create new slides.' : 'DECK — user is working on the full deck. Free to create, edit, delete, or batch-operate across slides.'}
 ${layoutSummary ? `- LAYOUTS ALREADY IN DECK: ${layoutSummary} — DO NOT repeat the most-used layouts. Pick different templates and content shapes for new slides.` : ''}
 ${activeSlideBlock}${sectionMapBlock}${deckStructureBlock}${referenceContextBlock}${agentModeNote}${imageModeNote}${documentSection}

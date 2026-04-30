@@ -390,56 +390,64 @@ export default function SmartActionCard({
 
     return (
       <div key={i} className="sac-plan-step">
-        {/* Header row: number + badge + controls + template — all inline */}
+        {/* Header row: number + action + tracker, with controls isolated on the right */}
         <div className="sac-step-header">
-          <span className="sac-step-num">{i + 1}</span>
-          <span className="sac-step-action-badge" style={{ background: cfg.color }}>
-            {cfg.icon} {cfg.label}
-          </span>
-          {step.sectionTracker && (
-            <span className="sac-section-badge">{step.sectionTracker}{step.subSectionTracker ? ` > ${step.subSectionTracker}` : ''}</span>
-          )}
+          <div className="sac-step-meta">
+            <span className="sac-step-num">{i + 1}</span>
+            <span className="sac-step-action-badge" style={{ background: cfg.color }}>
+              {cfg.icon} {cfg.label}
+            </span>
+            {step.sectionTracker && (
+              <span
+                className="sac-section-badge"
+                title={step.sectionTracker + (step.subSectionTracker ? ` > ${step.subSectionTracker}` : '')}
+              >
+                {step.sectionTracker}{step.subSectionTracker ? ` > ${step.subSectionTracker}` : ''}
+              </span>
+            )}
+          </div>
           <div className="sac-step-controls">
             <button className="sac-step-ctrl" onClick={() => moveStepUp(i)} disabled={i === 0} title="Move up">&#9650;</button>
             <button className="sac-step-ctrl" onClick={() => moveStepDown(i)} disabled={i === plan.length - 1} title="Move down">&#9660;</button>
             <button className="sac-step-ctrl sac-step-ctrl-del" onClick={() => deleteStep(i)} disabled={plan.length <= 1} title="Remove step">&times;</button>
           </div>
-          <div className="sac-step-main">
-            {isCreateAction ? (
-              <>
-                <TemplatePicker
-                  selectedTemplate={step.templateId || null}
-                  onSelect={(templateId) => {
-                    updatePlanStep(i, { templateId: templateId || 'freestyle' });
-                  }}
-                  showFreestyle={true}
-                  compact={true}
-                />
-                {positionLabel && (
-                  <span className="sac-step-position">{positionLabel}</span>
-                )}
-              </>
-            ) : stepAction === 'edit_slide' ? (
+        </div>
+
+        <div className="sac-step-main">
+          {isCreateAction ? (
+            <>
+              <TemplatePicker
+                selectedTemplate={step.templateId || null}
+                onSelect={(templateId) => {
+                  updatePlanStep(i, { templateId: templateId || 'freestyle' });
+                }}
+                showFreestyle={true}
+                compact={true}
+              />
+              {positionLabel && (
+                <span className="sac-step-position">{positionLabel}</span>
+              )}
+            </>
+          ) : stepAction === 'edit_slide' ? (
+            <span className="sac-step-target-label">
+              Page {(step.slideIndex ?? currentSlideIdx) + 1}
+            </span>
+          ) : stepAction === 'delete_slide' ? (
+            <span className="sac-step-target-label sac-step-target-delete">
+              Page {(step.slideIndex ?? currentSlideIdx) + 1}
+            </span>
+          ) : stepAction === 'switch_template' ? (
+            <>
               <span className="sac-step-target-label">
                 Page {(step.slideIndex ?? currentSlideIdx) + 1}
               </span>
-            ) : stepAction === 'delete_slide' ? (
-              <span className="sac-step-target-label sac-step-target-delete">
-                Page {(step.slideIndex ?? currentSlideIdx) + 1}
-              </span>
-            ) : stepAction === 'switch_template' ? (
-              <>
-                <span className="sac-step-target-label">
-                  Page {(step.slideIndex ?? currentSlideIdx) + 1}
-                </span>
-                {step.templateId && (
-                  <span className="sac-step-template-name">{'\u2192'} {SLIDE_TEMPLATES[step.templateId]?.title || step.templateId}</span>
-                )}
-              </>
-            ) : (
-              <span>{stepAction}</span>
-            )}
-          </div>
+              {step.templateId && (
+                <span className="sac-step-template-name">{'\u2192'} {SLIDE_TEMPLATES[step.templateId]?.title || step.templateId}</span>
+              )}
+            </>
+          ) : (
+            <span>{stepAction}</span>
+          )}
         </div>
 
         {/* Body: full-width fields below the header */}
@@ -1223,6 +1231,7 @@ export default function SmartActionCard({
           background: #fafbfc;
           border-bottom: 1px solid #e2e8f0;
           overflow: hidden;
+          min-width: 0;
         }
 
         .sac-plan-header {
@@ -1294,6 +1303,7 @@ export default function SmartActionCard({
           display: flex;
           flex-direction: column;
           gap: 6px;
+          min-width: 0;
         }
 
         .sac-plan-step {
@@ -1307,6 +1317,7 @@ export default function SmartActionCard({
           box-shadow: 0 1px 3px rgba(0,0,0,0.04);
           transition: all 0.2s ease;
           overflow: hidden;
+          min-width: 0;
         }
 
         .sac-plan-step:hover {
@@ -1398,7 +1409,6 @@ export default function SmartActionCard({
         .sac-step-controls {
           display: flex;
           gap: 2px;
-          margin-left: auto;
           flex-shrink: 0;
         }
         .sac-step-ctrl {
@@ -1450,24 +1460,37 @@ export default function SmartActionCard({
         }
 
         .sac-section-badge {
-          display: inline-flex;
-          align-items: center;
+          display: block;
+          min-width: 0;
+          max-width: 100%;
           padding: 2px 8px;
           background: #f1f5f9;
           color: #64748b;
           border-radius: 4px;
           font-size: 10px;
           font-weight: 500;
-          flex-shrink: 0;
           border: 1px solid #e2e8f0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .sac-step-header {
           display: flex;
           align-items: center;
+          justify-content: space-between;
           gap: 8px;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
           min-width: 0;
+        }
+
+        .sac-step-meta {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          min-width: 0;
+          flex: 1;
+          overflow: hidden;
         }
 
         .sac-step-body {
@@ -1486,7 +1509,25 @@ export default function SmartActionCard({
           color: #334155;
           flex-wrap: wrap;
           min-width: 0;
-          flex: 1;
+          width: 100%;
+        }
+
+        .sac-step-main .template-picker-compact {
+          min-width: 0;
+          max-width: min(100%, 260px);
+          flex: 1 1 180px;
+        }
+
+        .sac-step-main .template-picker-trigger {
+          min-width: 0;
+          max-width: 100%;
+        }
+
+        .sac-step-main .trigger-label {
+          min-width: 0;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
         }
 
         .sac-step-target-label {
@@ -1501,6 +1542,8 @@ export default function SmartActionCard({
         .sac-step-template-name {
           color: #6366f1;
           font-weight: 500;
+          min-width: 0;
+          overflow-wrap: anywhere;
         }
 
         .sac-step-template-btn {
@@ -1540,6 +1583,9 @@ export default function SmartActionCard({
           background: #f1f5f9;
           padding: 2px 8px;
           border-radius: 6px;
+          flex: 0 0 auto;
+          max-width: 100%;
+          overflow-wrap: anywhere;
         }
 
         /* Layout Guidance text input for freestyle steps (own line in review mode) */
@@ -1641,6 +1687,8 @@ export default function SmartActionCard({
           font-family: inherit;
           transition: border-color 0.15s, box-shadow 0.15s;
           box-sizing: border-box;
+          min-width: 0;
+          overflow-wrap: break-word;
         }
 
         .sac-step-instruction-input:hover {
@@ -1705,6 +1753,7 @@ export default function SmartActionCard({
           display: flex;
           align-items: center;
           gap: 6px;
+          min-width: 0;
           padding: 4px 8px;
           background: #ecfdf5;
           border: 1px solid #a7f3d0;
@@ -1727,6 +1776,7 @@ export default function SmartActionCard({
           color: #6b7280;
           font-style: italic;
           margin-left: auto;
+          min-width: 0;
           max-width: 200px;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -1759,6 +1809,7 @@ export default function SmartActionCard({
           flex-direction: column;
           gap: 4px;
           width: 100%;
+          min-width: 0;
         }
 
         .sac-step-dep {
@@ -1830,6 +1881,7 @@ export default function SmartActionCard({
           align-items: center;
           gap: 6px;
           width: 100%;
+          min-width: 0;
           padding: 0;
         }
 

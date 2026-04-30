@@ -98,10 +98,9 @@ function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) 
   const textColor = colors.text || '9E21FF';
   const subTextColor = colors.subText || COLORS.meta;
   const font = textPos.font || {};
-  const label = sectionLabel
-    ? `${sectionLabel}${subSectionLabel ? `  >  ${subSectionLabel}` : ''}`
-    : subSectionLabel;
-  if (!label) return;
+  const fontSize = pptxFontSize(font.fontSize, 5.5, 5);
+  const estimateTextWidth = label => Math.max(0.55, String(label || '').length * 0.045 + 0.18);
+  if (!sectionLabel && !subSectionLabel) return;
 
   const pieceW = marker.w * 0.28;
   const step = marker.w * 0.21;
@@ -123,20 +122,52 @@ function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) 
     });
   });
 
-  const estimatedW = label.length * 0.066 + 0.18;
-  slide.addText(label, {
-    x: textPos.x,
-    y: textPos.y - 0.004,
-    w: Math.max(textPos.w || 0, estimatedW),
-    h: Math.max(textPos.h || 0.12, 0.12),
-    fontFace: font.fontFace || profileFontFace('STC Forward'),
-    fontSize: pptxFontSize(font.fontSize, 7.5, 6),
-    bold: font.bold ?? true,
-    color: sectionLabel ? textColor : subTextColor,
-    margin: 0,
-    valign: 'mid',
-    fit: 'shrink',
-  });
+  if (sectionLabel) {
+    const sectionW = estimateTextWidth(sectionLabel);
+    slide.addText(sectionLabel, {
+      x: textPos.x,
+      y: textPos.y - 0.004,
+      w: sectionW,
+      h: Math.max(textPos.h || 0.12, 0.12),
+      fontFace: font.fontFace || profileFontFace('STC Forward'),
+      fontSize,
+      bold: font.bold ?? true,
+      color: textColor,
+      margin: 0,
+      valign: 'mid',
+      fit: 'shrink',
+    });
+
+    if (subSectionLabel) {
+      slide.addText(subSectionLabel, {
+        x: textPos.x + sectionW + 0.14,
+        y: textPos.y - 0.004,
+        w: estimateTextWidth(subSectionLabel),
+        h: Math.max(textPos.h || 0.12, 0.12),
+        fontFace: font.fontFace || profileFontFace('STC Forward'),
+        fontSize,
+        bold: false,
+        color: subTextColor,
+        margin: 0,
+        valign: 'mid',
+        fit: 'shrink',
+      });
+    }
+  } else if (subSectionLabel) {
+    slide.addText(subSectionLabel, {
+      x: textPos.x,
+      y: textPos.y - 0.004,
+      w: estimateTextWidth(subSectionLabel),
+      h: Math.max(textPos.h || 0.12, 0.12),
+      fontFace: font.fontFace || profileFontFace('STC Forward'),
+      fontSize,
+      bold: false,
+      color: subTextColor,
+      margin: 0,
+      valign: 'mid',
+      fit: 'shrink',
+    });
+  }
 }
 
 export function addSectionTracker(slide, sectionLabel, subSectionLabel) {

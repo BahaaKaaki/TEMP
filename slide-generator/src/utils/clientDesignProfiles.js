@@ -258,7 +258,7 @@ const stcStandardInches = {
     marker: pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.sectionTracker.marker),
     text: {
       ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.sectionTracker.text),
-      font: { fontFace: 'STC Forward', fontSize: 7.5, bold: true, color: '9E21FF' },
+      font: { fontFace: 'STC Forward', fontSize: 5.5, bold: true, color: '9E21FF' },
     },
     colors: { marker: 'EDD5FF', text: '9E21FF', subText: '515360', white: 'FFFFFF' },
   },

@@ -103,7 +103,7 @@ ACTIVE CLIENT PROFILE OVERRIDE -- STC:
 - If you define a c palette, use: main:'4F008C', secondary:'1D252D', red:'FF375E', maroon:'4F008C', zone1:'FBF8FE', zone2:'EDD5FF', rose:'EDD5FF', tracker:'9E21FF', trackerSoft:'EDD5FF', meta:'515360', coal:'1D252D', border:'DBB8F3'.
 - Do not emit Strategy& maroon/red values such as 8E1E1E or A32020 for STC slides.
 - Use STC Forward for every text box. Titles are 24pt regular, subtitles are 18pt regular, source/page chrome is 8pt regular.
-- If adding section tracker chrome in generated code, use the STC breadcrumb geometry: marker x 0.798in y 0.142in w 0.556in h 0.111in, tracker text x 1.375in y 0.139in, text #9E21FF. Never place tracker chrome at x=0 over the logo.
+- Do not add section tracker or breadcrumb chrome in generated code. Export adds the active slide's tracker once after rendering, using STC reference geometry that stays clear of the logo.
 - Avoid bold:true for STC body leads, labels, stage titles, and card titles unless the CSS explicitly calls for strong emphasis.
 - Do not use emoji or decorative pictographic symbols in STC PPTX output; replace them with plain text labels.
 `;

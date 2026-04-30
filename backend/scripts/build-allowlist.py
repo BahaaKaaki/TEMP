@@ -33,6 +33,7 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # silently drops these people. Review and prune this list whenever the HR
 # xlsx is refreshed.
 MANUAL_EXTRAS: frozenset[str] = frozenset({
+    "amr.shalaby@pwc.com",
     "mounir.d.doumani@pwc.com",
     "tarek.sultanem@pwc.com",
 })

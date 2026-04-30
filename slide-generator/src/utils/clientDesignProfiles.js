@@ -36,7 +36,7 @@ const STC_THEME = {
     muted: '#515360',
     page: '#FFFFFF',
     surface: '#FBF8FE',
-    surfaceAlt: '#EDDCF9',
+    surfaceAlt: '#EDD5FF',
     border: '#DBB8F3',
     success: '#00C48C',
     successSoft: '#D9F7EE',
@@ -102,6 +102,9 @@ const STC_LAYOUT_CONTRACT = {
     body: { x: 15, y: 134, w: 931, h: 340 },
     source: { x: 15, y: 494, w: 465, h: 19 },
     slideNumber: { x: 935, y: 519, w: 14, h: 10 },
+    sectionTracker: {
+      text: { x: 57, y: 10, w: 242, h: 10 },
+    },
   },
   cover: {
     title: { x: 35, y: 292, w: 671, h: 178 },
@@ -119,12 +122,13 @@ const STC_LAYOUT_CONTRACT = {
 
 const STC_FREESTYLE_OVERRIDES = {
   shell: `Default to a 16:9 white STC board template on a 960x540 canvas. These STC positions replace any generic shell defaults:
+- Section tracker: keep the STC logo clear. Use text-only tracker chrome at top y=10px, x=57px, text color #9E21FF. Do not use arrow or chevron markers.
 - h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward regular 24px, color #4F008C.
 - h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward regular 18px, color #FF375E.
 - div.frame: left 15px, top 134px, width 931px, height 340px. Design all custom content inside this STC frame, not the generic 904x366 frame.
 - footer: source at bottom-left around x=15 y=494 and slide number bottom-right around x=935 y=519, both STC Forward 8px.
 Use structured content in the middle band and keep the bottom footer band clear. Use the standard content bands exactly unless the user explicitly asks for a cover, divider, appendix, or editorial variant.`,
-  theme: `Use STC purple (#4F008C) for titles, structural headers, major bars, and primary emphasis. Use coral (#FF375E) as the subtitle/kicker accent, vivid lavender (#A54EE1 family) only for small markers, pale lilac surfaces (#F2E6FA to #FBF8FE), charcoal body text (#1D252D), and white backgrounds. Do not let the content topic override the brand palette; even ocean/science topics should remain STC purple/coral/lilac rather than blue-led. Do not use Office blue/orange or raw theme yellow/green/cyan as dominant colors. Treat the serif black/red outlook style as an explicit alternate editorial variant, not the default.`,
+  theme: `Use STC purple (#4F008C) for titles, structural headers, major bars, and primary emphasis. Use tracker lavender (#9E21FF) for section tracker chrome without arrow or chevron markers. Use coral (#FF375E) as the subtitle/kicker accent, vivid lavender (#A54EE1 family) only for small markers, pale lilac surfaces (#EDD5FF to #FBF8FE), charcoal body text (#1D252D), and white backgrounds. Do not let the content topic override the brand palette; even ocean/science topics should remain STC purple/coral/lilac rather than blue-led. Do not use Office blue/orange or raw theme yellow/green/cyan as dominant colors. Treat the serif black/red outlook style as an explicit alternate editorial variant, not the default.`,
   vibe: `Board-ready, strategy-consulting, precise, modular, high-clarity, low-decoration. Use strong hierarchy, tight alignment, restrained accents, generous white space in the header, denser structured content in the middle, and tiny unobtrusive footer chrome. Avoid playful UI, consumer-product styling, heavy shadows, and decorative gradients except on approved photo covers.`,
   writing: `Write conclusion-led titles. Use short analytical subtitles that name the lens, not the takeaway. Keep copy executive, factual, and directive. Use selective emphasis only for the highest-value words; do not bold every lead phrase by default. Avoid slogans, fluff, generic headings, and marketing language.`,
   css: `Use square-cornered boxes by default, thin 0.75-1.25pt borders, purple header bars, lilac body panels, dark body text, and reversed white text on dark fills. STC Forward reads heavy: use font-weight 400 for body copy, 500 for local headings, card titles, stage titles, labels, and subtitles, and reserve 700 for step numbers, KPIs, or rare emphasis only. Use chevrons, tabs, trackers, and thin connector lines for structure. Avoid default chart palettes, rounded consumer cards, strong shadows, and gradient fills except on photo covers.`,
@@ -186,7 +190,7 @@ const STC_PROMPT_CONTRACT = `# STC Client Design Contract
 
 ## Theme
 - Use STC purple (#4F008C) as the primary accent. Do NOT treat PowerPoint accent1 yellow as the primary brand accent.
-- Use white backgrounds for content slides, with pale violet surfaces (#FBF8FE / #EDDCF9) and thin violet borders (#DBB8F3) for grouping.
+- Use white backgrounds for content slides, with pale violet surfaces (#FBF8FE / #EDD5FF) and thin violet borders (#DBB8F3) for grouping.
 - Use dark navy (#1D252D) for titles and body text.
 - Use red/pink (#FF375E) for subtitles, warning emphasis, and selected labels.
 - Use green (#00C48C) for recommendations, positive options, or approved status.
@@ -202,6 +206,7 @@ const STC_PROMPT_CONTRACT = `# STC Client Design Contract
 ## Layout and chrome
 - STC slides use a 960x540 canvas mapped from 13.33x7.5 in.
 - Content-slide title band: title around x=15, y=29, w=931, h=71.
+- Section tracker band: logo-safe text-only tracker around x=57, y=10, color #9E21FF. Never place tracker chrome at x=0 over the logo, and do not add arrow/chevron markers.
 - Subtitle band: around x=15, y=105, w=931, h=19.
 - Main content band: around x=15, y=134, w=931, h=340.
 - Source/footer band: bottom-left around x=15, y=495; slide number bottom-right around x=935, y=519.
@@ -247,6 +252,14 @@ const stcStandardInches = {
   body: { ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.body), font: STC_PPTX_FONTS.body },
   footer: { ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.source), font: STC_PPTX_FONTS.footer },
   slideNum: { ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.slideNumber), font: STC_PPTX_FONTS.slideNum },
+  sectionTracker: {
+    variant: 'stcBreadcrumb',
+    text: {
+      ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.sectionTracker.text),
+      font: { fontFace: 'STC Forward', fontSize: 5.5, bold: true, color: '9E21FF' },
+    },
+    colors: { text: '9E21FF', subText: '515360' },
+  },
 };
 
 export const CLIENT_DESIGN_PROFILES = {
@@ -367,7 +380,7 @@ export const CLIENT_DESIGN_PROFILES = {
     },
     validationRules: {
       requiredColors: ['#4F008C', '#FF375E', '#1D252D', '#FFFFFF'],
-      preferredSurfaceColors: ['#F2E6FA', '#F5EDFB', '#EDDCF9', '#FBF8FE', '#DBB8F3'],
+      preferredSurfaceColors: ['#EDD5FF', '#F5EDFB', '#FBF8FE', '#DBB8F3'],
       disallowedColors: ['#8E1E1E', '#A32020', '#4472C4', '#ED7D31'],
       forbiddenDominantColors: ['#4472C4', '#ED7D31', '#FFDD40', '#00C48C', '#1BCED8'],
       disallowedFonts: ['Georgia', 'Calibri', 'Aptos'],

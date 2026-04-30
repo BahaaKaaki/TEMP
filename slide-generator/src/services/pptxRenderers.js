@@ -89,8 +89,72 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
 
 // ── Section tracker ──────────────────────────────────────────────────────────
 
+function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) {
+  const textPos = tracker?.text || { x: 0.792, y: 0.139, w: 2.778, h: 0.139 };
+  const colors = tracker?.colors || {};
+  const textColor = colors.text || '9E21FF';
+  const subTextColor = colors.subText || COLORS.meta;
+  const font = textPos.font || {};
+  const fontSize = pptxFontSize(font.fontSize, 5.5, 5);
+  const estimateTextWidth = label => Math.max(0.55, String(label || '').length * 0.045 + 0.18);
+  if (!sectionLabel && !subSectionLabel) return;
+
+  if (sectionLabel) {
+    const sectionW = estimateTextWidth(sectionLabel);
+    slide.addText(sectionLabel, {
+      x: textPos.x,
+      y: textPos.y - 0.004,
+      w: sectionW,
+      h: Math.max(textPos.h || 0.12, 0.12),
+      fontFace: font.fontFace || profileFontFace('STC Forward'),
+      fontSize,
+      bold: font.bold ?? true,
+      color: textColor,
+      margin: 0,
+      valign: 'mid',
+      fit: 'shrink',
+    });
+
+    if (subSectionLabel) {
+      slide.addText(subSectionLabel, {
+        x: textPos.x + sectionW + 0.14,
+        y: textPos.y - 0.004,
+        w: estimateTextWidth(subSectionLabel),
+        h: Math.max(textPos.h || 0.12, 0.12),
+        fontFace: font.fontFace || profileFontFace('STC Forward'),
+        fontSize,
+        bold: false,
+        color: subTextColor,
+        margin: 0,
+        valign: 'mid',
+        fit: 'shrink',
+      });
+    }
+  } else if (subSectionLabel) {
+    slide.addText(subSectionLabel, {
+      x: textPos.x,
+      y: textPos.y - 0.004,
+      w: estimateTextWidth(subSectionLabel),
+      h: Math.max(textPos.h || 0.12, 0.12),
+      fontFace: font.fontFace || profileFontFace('STC Forward'),
+      fontSize,
+      bold: false,
+      color: subTextColor,
+      margin: 0,
+      valign: 'mid',
+      fit: 'shrink',
+    });
+  }
+}
+
 export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
   if (!sectionLabel && !subSectionLabel) return;
+
+  const positions = profilePositions();
+  if (positions?.sectionTracker?.variant === 'stcBreadcrumb') {
+    addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, positions.sectionTracker);
+    return;
+  }
 
   if (sectionLabel) {
     const sectionW = Math.max(0.85, sectionLabel.length * 0.052 + 0.3);

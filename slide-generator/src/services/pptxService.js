@@ -68,6 +68,7 @@ function resolvePptxPositionsForProfile(profile = null, extractedPositions = nul
       body: resolved.body,
       footer: resolved.footer,
       slideNum: resolved.slideNum,
+      sectionTracker: resolved.sectionTracker,
     }));
   }
   return resolved;
@@ -98,10 +99,11 @@ function getProfilePptxSystemGuidance(profile) {
 
 ACTIVE CLIENT PROFILE OVERRIDE -- STC:
 - Ignore the Strategy& example colors as visual colors. Use them only as structural examples.
-- STC colors: title/main #4F008C, body #1D252D, subtitle/kicker #FF375E, pale surface #FBF8FE, alternate surface #EDDCF9, border #DBB8F3, muted #515360.
-- If you define a c palette, use: main:'4F008C', secondary:'1D252D', red:'FF375E', maroon:'4F008C', zone1:'FBF8FE', zone2:'EDDCF9', rose:'EDDCF9', meta:'515360', coal:'1D252D', border:'DBB8F3'.
+- STC colors: title/main #4F008C, body #1D252D, subtitle/kicker #FF375E, tracker text #9E21FF, tracker marker #EDD5FF, pale surface #FBF8FE, alternate surface #EDD5FF, border #DBB8F3, muted #515360.
+- If you define a c palette, use: main:'4F008C', secondary:'1D252D', red:'FF375E', maroon:'4F008C', zone1:'FBF8FE', zone2:'EDD5FF', rose:'EDD5FF', tracker:'9E21FF', trackerSoft:'EDD5FF', meta:'515360', coal:'1D252D', border:'DBB8F3'.
 - Do not emit Strategy& maroon/red values such as 8E1E1E or A32020 for STC slides.
 - Use STC Forward for every text box. Titles are 24pt regular, subtitles are 18pt regular, source/page chrome is 8pt regular.
+- If adding section tracker chrome in generated code, use the STC breadcrumb geometry: marker x 0.798in y 0.142in w 0.556in h 0.111in, tracker text x 1.375in y 0.139in, text #9E21FF. Never place tracker chrome at x=0 over the logo.
 - Avoid bold:true for STC body leads, labels, stage titles, and card titles unless the CSS explicitly calls for strong emphasis.
 - Do not use emoji or decorative pictographic symbols in STC PPTX output; replace them with plain text labels.
 `;
@@ -175,8 +177,8 @@ function enforcePptxColorsForProfile(codeString, profile) {
     ['A32020', 'FF375E'],
     ['8E1E1E', '4F008C'],
     ['F7F9FB', 'FBF8FE'],
-    ['EEF2F6', 'EDDCF9'],
-    ['F8E3E3', 'EDDCF9'],
+    ['EEF2F6', 'EDD5FF'],
+    ['F8E3E3', 'EDD5FF'],
     ['4A4F57', '515360'],
     ['4B4F55', '1D252D'],
     ['E6E9EE', 'DBB8F3'],

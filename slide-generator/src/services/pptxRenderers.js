@@ -89,8 +89,64 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
 
 // ── Section tracker ──────────────────────────────────────────────────────────
 
+function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) {
+  const marker = tracker?.marker || { x: 0.792, y: 0.139, w: 0.556, h: 0.111 };
+  const textPos = tracker?.text || { x: 1.375, y: 0.139, w: 2.778, h: 0.139 };
+  const colors = tracker?.colors || {};
+  const markerFill = colors.marker || 'EDD5FF';
+  const whiteFill = colors.white || COLORS.white;
+  const textColor = colors.text || '9E21FF';
+  const subTextColor = colors.subText || COLORS.meta;
+  const font = textPos.font || {};
+  const label = sectionLabel
+    ? `${sectionLabel}${subSectionLabel ? `  >  ${subSectionLabel}` : ''}`
+    : subSectionLabel;
+  if (!label) return;
+
+  const pieceW = marker.w * 0.28;
+  const step = marker.w * 0.21;
+  const pieces = [
+    { shape: 'pentagon', fill: markerFill },
+    { shape: 'chevron', fill: whiteFill },
+    { shape: 'chevron', fill: markerFill },
+    { shape: 'chevron', fill: markerFill },
+  ];
+
+  pieces.forEach((piece, index) => {
+    slide.addShape(piece.shape, {
+      x: marker.x + (index * step),
+      y: marker.y,
+      w: pieceW,
+      h: marker.h,
+      fill: { color: piece.fill },
+      line: { color: piece.fill, transparency: 100 },
+    });
+  });
+
+  const estimatedW = label.length * 0.066 + 0.18;
+  slide.addText(label, {
+    x: textPos.x,
+    y: textPos.y - 0.004,
+    w: Math.max(textPos.w || 0, estimatedW),
+    h: Math.max(textPos.h || 0.12, 0.12),
+    fontFace: font.fontFace || profileFontFace('STC Forward'),
+    fontSize: pptxFontSize(font.fontSize, 7.5, 6),
+    bold: font.bold ?? true,
+    color: sectionLabel ? textColor : subTextColor,
+    margin: 0,
+    valign: 'mid',
+    fit: 'shrink',
+  });
+}
+
 export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
   if (!sectionLabel && !subSectionLabel) return;
+
+  const positions = profilePositions();
+  if (positions?.sectionTracker?.variant === 'stcBreadcrumb') {
+    addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, positions.sectionTracker);
+    return;
+  }
 
   if (sectionLabel) {
     const sectionW = Math.max(0.85, sectionLabel.length * 0.052 + 0.3);

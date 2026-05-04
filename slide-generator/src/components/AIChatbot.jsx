@@ -2956,6 +2956,48 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             instruction: userPrompt,
           }];
 
+      const normalizeStepDependencyIndex = (step) => {
+        if (step?.contextFromStep === null || step?.contextFromStep === undefined) return null;
+        const dependency = Number(step.contextFromStep);
+        return Number.isInteger(dependency) ? dependency : NaN;
+      };
+      const outputProducingActions = new Set([
+        'analyze_content',
+        'create_slide',
+        'create_from_template',
+        'edit_slide',
+        'switch_template',
+        'update_trackers',
+        'update_tracker',
+      ]);
+      const dependencyIssues = [];
+      for (let idx = 0; idx < planSteps.length; idx++) {
+        const step = planSteps[idx];
+        const dependency = normalizeStepDependencyIndex(step);
+        if (dependency === null) continue;
+        if (!Number.isInteger(dependency)) {
+          dependencyIssues.push(`Step ${idx} has an invalid contextFromStep value: ${step.contextFromStep}`);
+          continue;
+        }
+        if (dependency < 0 || dependency >= planSteps.length) {
+          dependencyIssues.push(`Step ${idx} depends on missing step ${dependency}`);
+          continue;
+        }
+        if (dependency >= idx) {
+          dependencyIssues.push(`Step ${idx} depends on step ${dependency}, which has not run yet`);
+          continue;
+        }
+        const parentAction = planSteps[dependency]?.action;
+        if (!outputProducingActions.has(parentAction)) {
+          dependencyIssues.push(`Step ${idx} depends on step ${dependency}, but "${parentAction || 'unknown'}" does not produce reusable output`);
+        } else {
+          step.contextFromStep = dependency;
+        }
+      }
+      if (dependencyIssues.length > 0) {
+        throw new Error(`The generated plan has invalid step dependencies:\n${dependencyIssues.join('\n')}`);
+      }
+
       console.log('[SmartAction] Context indices for execution:', detectedContext);
 
       const totalSteps = planSteps.length;
@@ -2976,11 +3018,19 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       const freshState = getFreshState();
       let capturedDeckName = freshState.deckName;
 
-      // Pre-search key facts from router — threaded into every slide for grounding
-      const searchRawContext = routeResult.searchRawContext || '';
+      // Pre-search key facts from router — threaded into every slide for grounding.
+      // evidencePack is the structured contract; searchRawContext remains for
+      // backwards compatibility with older route results.
+      const evidencePack = routeResult.evidencePack || null;
+      const searchRawContext = evidencePack?.rawText || routeResult.searchRawContext || '';
       if (searchRawContext) {
         console.log('[SmartAction] Router search context available for all slides:', searchRawContext.length, 'chars');
       }
+      const stepSearchCache = new Map();
+      let stepSearchesRun = 0;
+      const maxStepSearchesPerPlan = Number.isFinite(Number(settings.maxStepSearchesPerPlan))
+        ? Math.max(0, Number(settings.maxStepSearchesPerPlan))
+        : 4;
 
       console.log('[SmartAction] Executing plan with', totalSteps, 'steps, parallel batch size:', parallelBatchSize, planSteps);
       console.log('[SmartAction] Captured deck:', capturedDeckName);
@@ -3092,7 +3142,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       // would be 100% duplicated. Only inject the global block for:
       //   - Path B (presearch): global raw text is genuinely different from step facts
       //   - Path A steps WITHOUT their own facts (cover, dividers): fallback grounding
-      const searchSource = routeResult.searchSource || 'none';
+      const searchSource = evidencePack?.source || routeResult.searchSource || 'none';
       const hasRouterSearchFacts = searchSource === 'inline' || searchSource === 'presearch';
       const buildSearchFactsBlock = (step) => {
         if (!searchRawContext) return '';
@@ -3175,8 +3225,11 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         }
 
         // Add context from a previous step's output
-        if (step.contextFromStep !== null && step.contextFromStep !== undefined && stepOutputs[step.contextFromStep]) {
+        if (step.contextFromStep !== null && step.contextFromStep !== undefined) {
           const prevOutput = stepOutputs[step.contextFromStep];
+          if (!prevOutput) {
+            throw new Error(`Step depends on previous step ${step.contextFromStep}, but that step did not produce reusable output.`);
+          }
           const prevStep = planSteps[step.contextFromStep];
 
           // Check if the previous step was an analyze_content step
@@ -3422,7 +3475,20 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
               console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${effectiveSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
               try {
-                const searchResult = await webSearch(datedQuery, settings, searchOpts);
+                const searchCacheKey = `${effectiveSearchQuery}::${step.searchGoal || ''}`;
+                let searchResult;
+                if (stepSearchCache.has(searchCacheKey)) {
+                  searchResult = stepSearchCache.get(searchCacheKey);
+                  console.log(`[SmartAction] Step ${stepIndex}: reused cached search result for "${effectiveSearchQuery}"`);
+                } else if (stepSearchesRun >= maxStepSearchesPerPlan) {
+                  console.warn(`[SmartAction] Step ${stepIndex}: skipped search for "${effectiveSearchQuery}" because plan search budget (${maxStepSearchesPerPlan}) was exhausted`);
+                  searchResult = null;
+                  stepSearchCache.set(searchCacheKey, null);
+                } else {
+                  stepSearchesRun++;
+                  searchResult = await webSearch(datedQuery, settings, searchOpts);
+                  stepSearchCache.set(searchCacheKey, searchResult || null);
+                }
                 if (searchResult) {
                   enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
@@ -3577,14 +3643,22 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
 
             // Build context including contextFromStep if present
             let editContext = stepPrompt;
-            if (step.contextFromStep !== null && step.contextFromStep !== undefined && stepOutputs[step.contextFromStep]) {
+            if (step.contextFromStep !== null && step.contextFromStep !== undefined) {
               const prevOutput = stepOutputs[step.contextFromStep];
+              if (!prevOutput) {
+                throw new Error(`Step depends on previous step ${step.contextFromStep}, but that step did not produce reusable output.`);
+              }
               const prevStep = planSteps[step.contextFromStep];
 
               if (prevStep?.action === 'analyze_content') {
                 editContext = `${stepPrompt}\n\n=== CONTENT ANALYSIS (Use this to guide the edit) ===\n${prevOutput.analysis || prevOutput.html}\n=== END ANALYSIS ===`;
               } else {
-                editContext = `${stepPrompt}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevOutput.html}]`;
+                let prevContext = prevOutput.html;
+                if (prevOutput.customCSS) {
+                  const cleanCSS = cleanSlideCSSForAI(prevOutput.customCSS);
+                  prevContext = `<style>\n${cleanCSS}\n</style>\n${prevOutput.html}`;
+                }
+                editContext = `${stepPrompt}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]`;
               }
             }
 
@@ -3600,7 +3674,20 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
               console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${editSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
               try {
-                const searchResult = await webSearch(datedQuery, settings, searchOpts);
+                const searchCacheKey = `${editSearchQuery}::${step.searchGoal || ''}`;
+                let searchResult;
+                if (stepSearchCache.has(searchCacheKey)) {
+                  searchResult = stepSearchCache.get(searchCacheKey);
+                  console.log(`[SmartAction] edit_slide step ${stepIndex}: reused cached search result for "${editSearchQuery}"`);
+                } else if (stepSearchesRun >= maxStepSearchesPerPlan) {
+                  console.warn(`[SmartAction] edit_slide step ${stepIndex}: skipped search for "${editSearchQuery}" because plan search budget (${maxStepSearchesPerPlan}) was exhausted`);
+                  searchResult = null;
+                  stepSearchCache.set(searchCacheKey, null);
+                } else {
+                  stepSearchesRun++;
+                  searchResult = await webSearch(datedQuery, settings, searchOpts);
+                  stepSearchCache.set(searchCacheKey, searchResult || null);
+                }
                 if (searchResult) {
                   editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] edit_slide step ${stepIndex}: search returned ${searchResult.length} chars`);
@@ -4285,7 +4372,20 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
               console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${effectiveBatchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
               try {
-                const searchResult = await webSearch(datedQuery, settings, searchOpts);
+                const searchCacheKey = `${effectiveBatchQuery}::${step.searchGoal || ''}`;
+                let searchResult;
+                if (stepSearchCache.has(searchCacheKey)) {
+                  searchResult = stepSearchCache.get(searchCacheKey);
+                  console.log(`[SmartAction] Step ${actualIndex}: reused cached search result for "${effectiveBatchQuery}"`);
+                } else if (stepSearchesRun >= maxStepSearchesPerPlan) {
+                  console.warn(`[SmartAction] Step ${actualIndex}: skipped search for "${effectiveBatchQuery}" because plan search budget (${maxStepSearchesPerPlan}) was exhausted`);
+                  searchResult = null;
+                  stepSearchCache.set(searchCacheKey, null);
+                } else {
+                  stepSearchesRun++;
+                  searchResult = await webSearch(datedQuery, settings, searchOpts);
+                  stepSearchCache.set(searchCacheKey, searchResult || null);
+                }
                 if (searchResult) {
                   enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
@@ -4340,7 +4440,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const idx = s?.slideIndex ?? (capturedSlideId ? current.slides.findIndex(sl => sl.id === capturedSlideId) : capturedSlideIdx);
               return current.slides[idx]?.id || `idx:${idx}`;
             };
-            const isIndependentEdit = (s) => (s.action === 'edit_slide' || s.action === 'switch_template' || s.action === 'update_trackers' || s.action === 'update_tracker') && s.contextFromStep === undefined;
+            const isIndependentEdit = (s) => (s.action === 'edit_slide' || s.action === 'switch_template' || s.action === 'update_trackers' || s.action === 'update_tracker') && s.contextFromStep == null;
             if (isIndependentEdit(step)) {
               const editBatch = [{ step, actualIndex, si }];
               const editTargets = new Set([getStepTargetId(step)]);

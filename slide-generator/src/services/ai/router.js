@@ -2304,125 +2304,131 @@ USER REQUEST: "${routerPrompt}"`;
     // Single call with Structured Outputs. The web search tool is attached only
     // when the search policy says this request needs external/current evidence.
     if (canUseRouterResponsesAPI && !hasImages) {
-      console.log('[Router Search] Using Responses API%s',
-        canUseInlineSearch ? ' with inline web_search_preview' : ' without search tools');
+      try {
+        console.log('[Router Search] Using Responses API%s',
+          canUseInlineSearch ? ' with inline web_search_preview' : ' without search tools');
 
-      const responsesEndpoint = (settings.searchEndpoint || '').startsWith('/api/')
-        ? settings.searchEndpoint
-        : '/api/ai/responses';
-      const isServerProxy = (settings.searchApiKey === 'server-managed') || responsesEndpoint.startsWith('/api/');
-      const responsesBody = {
-        model: routerModelName,
-        instructions: routerSystemPrompt,
-        input: contextInfo,
-        max_output_tokens: effectiveMaxTokens,
-        text: {
-          format: {
-            type: 'json_schema',
-            name: 'slide_plan',
-            strict: true,
-            schema: getRouterOutputSchema(),
+        const responsesEndpoint = (settings.searchEndpoint || '').startsWith('/api/')
+          ? settings.searchEndpoint
+          : '/api/ai/responses';
+        const isServerProxy = (settings.searchApiKey === 'server-managed') || responsesEndpoint.startsWith('/api/');
+        const responsesBody = {
+          model: routerModelName,
+          instructions: routerSystemPrompt,
+          input: contextInfo,
+          max_output_tokens: effectiveMaxTokens,
+          text: {
+            format: {
+              type: 'json_schema',
+              name: 'slide_plan',
+              strict: true,
+              schema: getRouterOutputSchema(),
+            },
           },
-        },
-      };
-      if (canUseInlineSearch) {
-        responsesBody.tools = [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }];
-      }
-      if (effectiveReasoningEffort && effectiveReasoningEffort !== 'none') {
-        responsesBody.reasoning = { effort: effectiveReasoningEffort };
-      }
-
-      // The inline Responses-API path bypasses buildRequestBody, so we have to
-      // wire `_skillId` onto the body ourselves. `_skillId` was placed on
-      // `routerSettings` (not `settings`) by aiRouteRequest above, so we pass
-      // that one. The helper is a no-op unless the call is going through our
-      // PwC proxy.
-      attachSkillIdToBody(responsesBody, routerSettings, {
-        authType: isServerProxy ? 'server' : 'user',
-        apiEndpoint: responsesEndpoint,
-      });
-      if (responsesBody._skillId) {
-        console.log('[skills] router Responses API body carries skillId=%s endpoint=%s', responsesBody._skillId, responsesEndpoint);
-      } else if (routerSettings._skillId) {
-        console.warn('[skills] router selected skillId=%s but body did not receive _skillId (endpoint=%s) — check attachSkillIdToBody gate', routerSettings._skillId, responsesEndpoint);
-      }
-
-      const responsesHeaders = { 'Content-Type': 'application/json' };
-      if (!isServerProxy) {
-        responsesHeaders[settings.searchAuthHeader === 'bearer' ? 'Authorization' : 'api-key'] =
-          settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;
-      }
-
-      let resp = await authFetch(responsesEndpoint, {
-        method: 'POST', headers: responsesHeaders, body: JSON.stringify(responsesBody),
-      });
-
-      // Fallback: if the proxy rejects text.format, retry without it
-      if (!resp.ok) {
-        const errData = await resp.json().catch(() => ({}));
-        const errMsg = errData.error?.message || `Responses API error: ${resp.status}`;
-        const isFormatError = errMsg.includes('text') || errMsg.includes('format') || errMsg.includes('json_schema') || resp.status === 400;
-        if (isFormatError && responsesBody.text) {
-          console.warn('[Router Search] Structured output rejected by proxy, retrying without text.format:', errMsg);
-          delete responsesBody.text;
-          resp = await authFetch(responsesEndpoint, {
-            method: 'POST', headers: responsesHeaders, body: JSON.stringify(responsesBody),
-          });
+        };
+        if (canUseInlineSearch) {
+          responsesBody.tools = [{ type: 'web_search_preview', search_context_size: settings.searchContextSize || 'medium' }];
         }
+        if (effectiveReasoningEffort && effectiveReasoningEffort !== 'none') {
+          responsesBody.reasoning = { effort: effectiveReasoningEffort };
+        }
+
+        // The inline Responses-API path bypasses buildRequestBody, so we have to
+        // wire `_skillId` onto the body ourselves. `_skillId` was placed on
+        // `routerSettings` (not `settings`) by aiRouteRequest above, so we pass
+        // that one. The helper is a no-op unless the call is going through our
+        // PwC proxy.
+        attachSkillIdToBody(responsesBody, routerSettings, {
+          authType: isServerProxy ? 'server' : 'user',
+          apiEndpoint: responsesEndpoint,
+        });
+        if (responsesBody._skillId) {
+          console.log('[skills] router Responses API body carries skillId=%s endpoint=%s', responsesBody._skillId, responsesEndpoint);
+        } else if (routerSettings._skillId) {
+          console.warn('[skills] router selected skillId=%s but body did not receive _skillId (endpoint=%s) — check attachSkillIdToBody gate', routerSettings._skillId, responsesEndpoint);
+        }
+
+        const responsesHeaders = { 'Content-Type': 'application/json' };
+        if (!isServerProxy) {
+          responsesHeaders[settings.searchAuthHeader === 'bearer' ? 'Authorization' : 'api-key'] =
+            settings.searchAuthHeader === 'bearer' ? `Bearer ${settings.searchApiKey}` : settings.searchApiKey;
+        }
+
+        let resp = await authFetch(responsesEndpoint, {
+          method: 'POST', headers: responsesHeaders, body: JSON.stringify(responsesBody),
+        });
+
         if (!resp.ok) {
-          const finalErr = isFormatError
-            ? await resp.json().catch(() => ({}))
-            : errData;
-          const finalMsg = finalErr.error?.message || errMsg;
-          console.warn('[Router Search] Responses API failed, falling back to Chat Completions:', finalMsg);
-          throw new Error(finalMsg);
+          const errData = await resp.json().catch(() => ({}));
+          const errMsg = errData.error?.message || `Responses API error: ${resp.status}`;
+          const isFormatError = errMsg.includes('text') || errMsg.includes('format') || errMsg.includes('json_schema') || resp.status === 400;
+          if (isFormatError && responsesBody.text) {
+            console.warn('[Router Search] Structured output rejected by proxy, retrying without text.format:', errMsg);
+            delete responsesBody.text;
+            resp = await authFetch(responsesEndpoint, {
+              method: 'POST', headers: responsesHeaders, body: JSON.stringify(responsesBody),
+            });
+          }
+          if (!resp.ok) {
+            const finalErr = isFormatError
+              ? await resp.json().catch(() => ({}))
+              : errData;
+            const finalMsg = finalErr.error?.message || errMsg;
+            throw new Error(finalMsg);
+          }
         }
-      }
 
-      const data = await resp.json();
-      let planText = '';
-      let searchCallCount = 0;
-      const searchQueries = [];
+        const data = await resp.json();
+        let planText = '';
+        let searchCallCount = 0;
+        const searchQueries = [];
 
-      if (data.output && Array.isArray(data.output)) {
-        for (const item of data.output) {
-          if (item.type === 'web_search_call') {
-            searchCallCount++;
-            const action = item.action || {};
-            if (action.query) searchQueries.push(action.query);
-            if (Array.isArray(action.queries)) searchQueries.push(...action.queries);
-          } else if (item.type === 'message' && item.content) {
-            for (const c of item.content) {
-              if (c.type === 'output_text' && c.text) {
-                planText += c.text;
+        if (data.output && Array.isArray(data.output)) {
+          for (const item of data.output) {
+            if (item.type === 'web_search_call') {
+              searchCallCount++;
+              const action = item.action || {};
+              if (action.query) searchQueries.push(action.query);
+              if (Array.isArray(action.queries)) searchQueries.push(...action.queries);
+            } else if (item.type === 'message' && item.content) {
+              for (const c of item.content) {
+                if (c.type === 'output_text' && c.text) {
+                  planText += c.text;
+                }
               }
             }
           }
         }
+        routerSearchCallCount = searchCallCount;
+        routerSearchQueries = [...new Set(searchQueries)].slice(0, 12);
+
+        console.log('[Router Search] Responses API: %d search call(s), plan %d chars', searchCallCount, planText.length);
+
+        if (!planText.trim()) {
+          throw new Error('Responses API returned empty plan text');
+        }
+
+        response = planText.trim();
+        // Don't populate searchRawContext from the plan text -- the Responses API
+        // doesn't expose raw search results separately. The router's plan instructions
+        // already incorporate search data, and per-step searchQuery handles grounding.
+
+        console.log('[AI Router] Full response:', response);
+      } catch (responsesErr) {
+        console.warn('[Router Search] Responses API failed, falling back to Chat Completions:', responsesErr.message);
+        response = '';
+        routerSearchCallCount = 0;
+        routerSearchQueries = [];
       }
-      routerSearchCallCount = searchCallCount;
-      routerSearchQueries = [...new Set(searchQueries)].slice(0, 12);
 
-      console.log('[Router Search] Responses API: %d search call(s), plan %d chars', searchCallCount, planText.length);
-
-      if (!planText.trim()) {
-        throw new Error('Responses API returned empty plan text');
-      }
-
-      response = planText.trim();
-      // Don't populate searchRawContext from the plan text -- the Responses API
-      // doesn't expose raw search results separately. The router's plan instructions
-      // already incorporate search data, and per-step searchQuery handles grounding.
-
-      console.log('[AI Router] Full response:', response);
-
-    } else {
+    }
+    if (!response) {
       // ── PATH B: Legacy two-step (pre-search + Chat Completions) ──
       // Used for non-GPT models, agent mode, or image-based routing.
       let routerSearchContext = '';
 
       const searchConfigured = searchAvailable && coerceBooleanSetting(settings.searchEnabled, true) && settings.searchEndpoint && settings.searchModel && !agentMode && routerSearchPolicy.allowSearch;
-      if (searchConfigured && (!canUseRouterResponsesAPI || hasImages)) {
+      if (searchConfigured) {
         try {
           const searchQuery = `${routerPrompt} latest ${currentDateString()}`;
           console.log('[Router Search] Pre-searching for router context:', searchQuery);
@@ -2836,6 +2842,34 @@ USER REQUEST: "${routerPrompt}"`;
       result.searchRawContext = routerSearchRawText;
       console.log('[Router Search] Attached searchRawContext to route result:', result.searchRawContext.length, 'chars');
     }
+
+    const evidenceFacts = [];
+    const evidenceSources = [];
+    const stepSearchRequests = [];
+    for (const [stepIndex, step] of (result.plan || []).entries()) {
+      if (Array.isArray(step.facts)) {
+        evidenceFacts.push(...step.facts.map(fact => ({ stepIndex, fact })));
+      }
+      if (Array.isArray(step.sources)) {
+        evidenceSources.push(...step.sources.map(source => ({ stepIndex, source })));
+      }
+      if (step.searchQuery) {
+        stepSearchRequests.push({
+          stepIndex,
+          query: step.searchQuery,
+          goal: step.searchGoal || null,
+        });
+      }
+    }
+    result.evidencePack = {
+      source: result.searchSource,
+      freshnessDate: currentDateString(),
+      rawText: routerSearchRawText || '',
+      searchQueries: routerSearchQueries,
+      facts: evidenceFacts,
+      sources: evidenceSources,
+      stepSearchRequests,
+    };
 
     const searchSteps = result.plan?.filter(s => s.searchQuery) || [];
     if (searchSteps.length > 0) {

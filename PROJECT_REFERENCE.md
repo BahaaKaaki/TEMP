@@ -758,6 +758,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 66. **Inline sentence flow guidance**: Slide HTML generation now explicitly instructs sentence-like `<div>` text with nested `<strong>` / `<span>` elements to set inline flow on the container so labels, separators, and descriptions render as one continuous sentence.
 
+67. **Freshness-first search grounding**: Latest/current deck requests now tell the router to verify newest names per entity before planning, and slide execution treats per-step web search results as fresher than router facts when model/product names, dates, pricing, benchmarks, or availability conflict.
+
 ---
 
 ## 11. Pending / In Discussion

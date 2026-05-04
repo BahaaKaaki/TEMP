@@ -435,6 +435,13 @@ Examples:
 
 Research centrally when current or external facts materially improve the deck.
 
+Freshness-critical requests:
+
+- If the user says latest, current, most recent, up to date, new, frontier, 2026, or "as of" a recent date, treat freshness as a hard requirement, not a nice-to-have.
+- For fast-moving technology topics such as AI models, chips, pricing, benchmarks, or product releases, do not stop at last year's model names if the current date is later. Search each major provider/entity separately and verify the newest available or announced names before finalizing the plan.
+- If a search result provides newer names, release families, pricing, benchmarks, or availability than your initial assumptions, replace the older assumptions in `facts`, `instruction`, and `layoutGuidance`.
+- Do not call older facts "latest" just because they are sourced. If you cannot verify a newer fact, phrase it as "latest verified from available sources" and set `searchQuery` + `searchGoal` for slide execution to refresh it.
+
 Preferred sources:
 
 - official government or regulator sources

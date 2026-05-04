@@ -32,4 +32,4 @@ Keep sources to **5-15 words maximum**. Examples: "Source: Bloomberg NEF", "McKi
 
 ## Tables
 
-When the user asks for a table, KPI input sheet, matrix, rubric, or row/column comparison, use real HTML table markup. Keep headers short, wrap only body copy, and avoid simulating tables with unrelated divs unless the visual is a non-tabular matrix or chart.
+When the user asks for a table, KPI input sheet, matrix, rubric, or row/column comparison, use real HTML table markup. Keep headers short, wrap only body copy, and avoid simulating tables with unrelated divs unless the visual is a non-tabular matrix or chart. For scorecard dots, RAG markers, checks, or status symbols, place the marker as text inside the relevant `<td>` so it remains part of the table in PowerPoint.

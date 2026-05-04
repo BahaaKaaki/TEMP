@@ -67,8 +67,9 @@ Keep reasoning under 20 words.`;
   try {
     let content;
 
+    const analysisModel = settings.classifierModel || settings.chatRouterModel || settings.routerModel || settings.model;
     content = await callWithModelFallback(
-      { ...settings, temperature: 0.1, maxTokens: 200 },
+      { ...settings, model: analysisModel, temperature: 0.1, maxTokens: 600, reasoningEffort: 'low' },
       'You analyze editing instructions. Respond only in JSON.',
       analysisPrompt
     );

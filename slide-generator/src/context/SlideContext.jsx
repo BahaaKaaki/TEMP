@@ -55,6 +55,7 @@ const initialState = {
         models: [
           'bedrock.anthropic.claude-opus-4-7',
           'bedrock.anthropic.claude-sonnet-4-6',
+          'openai.gpt-5.5',
           'openai.gpt-5.4',
           'openai.gpt-5.4-mini',
           'openai.gpt-5.4-nano',
@@ -62,6 +63,8 @@ const initialState = {
           'vertex_ai.gemini-3.1-pro-preview',
           'vertex_ai.gemini-3-pro-image-preview',
           'vertex_ai.anthropic.claude-opus-4-7',
+          'azure.gpt-5.5',
+          'azure.gpt-5.5-2026-04-24',
           'azure.gpt-4.1',
         ],
         azurePrefix: false,
@@ -78,13 +81,13 @@ const initialState = {
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',             // Tier 1 quick classifier (always fast)
     // Router / planner
-    routerModel: 'pwc:openai.gpt-5.4',                      // Tier 2 full planner
+    routerModel: 'pwc:openai.gpt-5.5',                      // Tier 2 full planner
     routerReasoningEffort: 'low',
     routerMaxTokens: 65536,
     routerSearchMode: 'auto', // 'auto' | 'always' | 'off' -- auto gates search on evidence need
     routerSearchEnabled: false,
     // Legacy chatbot-router fields (kept for backward compat, mirrors routerModel)
-    chatRouterModel: 'pwc:openai.gpt-5.4',
+    chatRouterModel: 'pwc:openai.gpt-5.5',
     chatRouterReasoningEffort: 'low',
     chatRouterMaxTokens: 65536,
     chatRouterSearchMode: 'auto',

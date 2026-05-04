@@ -1958,7 +1958,7 @@ export async function aiRouteRequest(userPrompt, context, settings) {
   const normalizedTargetSlides = normalizeSlideIndexArray(targetSlides, slideCount);
 
   // Get router model - use big model if requested, otherwise unified routerModel
-  const defaultRouterModel = 'pwc:openai.gpt-5.4';
+  const defaultRouterModel = 'pwc:openai.gpt-5.5';
   const bigModel = settings.model || 'pwc:bedrock.anthropic.claude-opus-4-7';
 
   // Unified router: single model for all routing (chatRouterModel kept for backward compat)

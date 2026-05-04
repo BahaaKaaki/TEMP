@@ -7,9 +7,9 @@
 //   <div class="d-swatch">TURQUOISE</div>
 //
 // These hints are lightweight export guidance for elements that often drift in
-// PowerPoint (chips, badges, step numbers, tight one-line labels). The HTML and
-// CSS remain the primary source of layout and styling; these comments simply
-// tell the exporter what must not break.
+// PowerPoint (chips, badges, step numbers, tight one-line labels, native
+// tables). The HTML and CSS remain the primary source of layout and styling;
+// these comments simply tell the exporter what must not break.
 //
 // The module exposes three helpers consumed by pptxService.js:
 //
@@ -19,7 +19,7 @@
 
 const HINT_COMMENT_RE = /<!--\s*pptx\b([\s\S]*?)-->/g;
 const NEXT_OPEN_TAG_RE = /<([a-zA-Z][\w-]*)\b([^>]*)>/;
-const KNOWN_FLAGS = ['chip', 'badge', 'nowrap', 'exact-text', 'step-number', 'tight-box'];
+const KNOWN_FLAGS = ['chip', 'badge', 'nowrap', 'exact-text', 'step-number', 'tight-box', 'table', 'native-table'];
 const H_ALIGN = ['left', 'center', 'right'];
 const V_ALIGN = ['top', 'middle', 'bottom'];
 
@@ -148,6 +148,7 @@ export function formatHintsForPrompt(hints) {
     '  exact-text    -> preserve the visible text exactly',
     '  step-number   -> keep the number as one prominent line',
     '  tight-box     -> minimise text margin / inset; use shrink only as a last resort',
+    '  table/native-table -> prefer slide.addTable over simulated shape grids',
     '  align=...     -> prefer this horizontal alignment if the label is small',
     '  valign=...    -> prefer this vertical alignment if the label is small',
     '',

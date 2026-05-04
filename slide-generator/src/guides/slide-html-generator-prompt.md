@@ -90,6 +90,7 @@ The `.frame` is exactly **904 x 366 px** with `overflow: hidden`.
 - No global utility classes.
 - Every custom class in HTML must have a matching CSS rule.
 - Prefer fewer semantic classes over many micro-classes.
+- When the user asks for a table or the content is clearly rows and columns, use semantic `<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th>`, and `<td>` markup instead of simulating a table with unrelated divs.
 - Use sharp-edged shapes by default; avoid rounded boxes and pill-shaped containers unless clearly justified.
 
 ---

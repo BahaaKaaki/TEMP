@@ -330,6 +330,7 @@ The agent uses a budget system, supports live user input during execution, and c
 Slides in state (HTML + CSS)
   ├── PPTX: pptxService.js
   │   ├── AI generates PptxGenJS code from HTML
+  │   ├── Table-intent HTML/hints are prompted and retried toward native slide.addTable output
   │   ├── PptxGenJS renders .pptx file
   │   └── Batch processing with parallel API calls
   ├── PDF: jsPDF + html2canvas
@@ -746,6 +747,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 60. **Cross-slide visual reference and GPT 5.5 defaults**: AIChatbot now classifies slide/page mentions as targets versus visual references so requests like "make this slide like slide 3" keep the current slide as the edit target while passing slide 3 as reference HTML plus unscoped `customCSS`; the SmartAction target label and executed `slideIndex` are forced to stay aligned. Main slide generation and PPTX export defaults now use `pwc:openai.gpt-5.5`, including the PPTX service fallback for reset/empty settings.
 
 61. **Opus model rollback for generation/export**: Main premium slide generation and PPTX export defaults now use `pwc:bedrock.anthropic.claude-opus-4-7` while router/search/classifier defaults remain unchanged, restoring the previous quality-first generation/export path pending prompt fixes.
+
+62. **Native table export guidance**: Table requests now steer slide HTML generation toward semantic `<table>` markup, PPTX export hints support `table` / `native-table`, and PPTX validation retries table-intent slides once when generated code omits native `slide.addTable`.
 
 ---
 

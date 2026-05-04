@@ -3191,7 +3191,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const cleanCSS = cleanSlideCSSForAI(prevOutput.customCSS);
               prevContext = `<style>\n${cleanCSS}\n</style>\n${prevOutput.html}`;
             }
-            contextForAI = `${contextForAI}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]`;
+            contextForAI = `${contextForAI}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]\n\nIf this slide extends or compares the same entities as the previous slide, reuse the same entity names, labels, and ordering unless the instruction explicitly says to change them.`;
           }
         }
 
@@ -4196,6 +4196,12 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
 
         let createBatch = []; // Accumulates create_slide steps
 
+        const getStepDependencyIndex = (step) => {
+          if (step?.contextFromStep === null || step?.contextFromStep === undefined) return null;
+          const dependency = Number(step.contextFromStep);
+          return Number.isInteger(dependency) ? dependency : null;
+        };
+
         for (let si = 0; si < group.length; si++) {
           if (abortControllerRef.current?.signal.aborted) break;
 
@@ -4210,6 +4216,15 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           const isCreateStep = step.action === 'create_slide' || step.action === 'create_from_template';
 
           if (isCreateStep) {
+            const dependencyIndex = getStepDependencyIndex(step);
+            const dependencyPendingInBatch = dependencyIndex !== null &&
+              createBatch.some(batchItem => batchItem.stepIndex === dependencyIndex);
+            if (dependencyPendingInBatch) {
+              console.log(`[SmartAction] Flushing ${createBatch.length} create step(s) before dependent step ${stepIndex} (contextFromStep=${dependencyIndex})`);
+              await flushCreateBatch(createBatch);
+              createBatch = [];
+            }
+
             // Prepare this step for batching
             const freshState = getFreshState();
             let stepPromptLocal = step.instruction || userPrompt;

@@ -754,6 +754,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 64. **Native table marker safeguards**: Scorecard/status table generation now asks for dot/check/RAG markers as glyph text inside `<td>` cells, and PPTX validation retries native-table exports that still draw ellipse/circle marker overlays above the table.
 
+65. **Create-step dependency ordering**: SmartAction create-slide batching now flushes pending create steps before a later step with `contextFromStep` depends on them, so dependent slides receive the generated HTML/CSS context and can reuse the same entity roster/order.
+
 ---
 
 ## 11. Pending / In Discussion

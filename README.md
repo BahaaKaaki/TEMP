@@ -15,7 +15,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 
 ## Features
 
-- AI slide generation via PwC Shared Services (model: `vertex_ai.gemini-3.1-pro-preview`)
+- AI slide generation via PwC Shared Services (premium model: `bedrock.anthropic.claude-opus-4-7`)
 - Backend AI proxy -- API key stays server-side, never exposed to browser
 - Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
@@ -189,13 +189,13 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 
 | Role | Model |
 |---|---|
-| Thinking (main generation) | `openai.gpt-5.5` |
+| Thinking (main generation) | `bedrock.anthropic.claude-opus-4-7` |
 | Fast generation | `vertex_ai.gemini-3.1-flash-lite-preview` |
 | Classifier | `openai.gpt-5.4-mini` |
 | Router | `openai.gpt-5.5` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
-| PPTX (export) | `openai.gpt-5.5` |
+| PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
 
 Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 

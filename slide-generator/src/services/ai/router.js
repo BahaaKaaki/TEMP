@@ -630,12 +630,21 @@ export function routeRequest(userPrompt, context) {
     result.action = 'edit_slide';
     result.understanding = 'Editing slide';
     const refs = parseSlideReferences(userPrompt, slideCount);
-    result.params.slideIndex = refs[0] ?? currentSlideIndex;
+    const existingContextSlides = Array.isArray(result.contextNeeded?.slideIndices)
+      ? result.contextNeeded.slideIndices
+      : [];
+    const targetCandidates = refs.filter(idx => !existingContextSlides.includes(idx));
+    result.params.slideIndex = targetCandidates[0] ?? currentSlideIndex;
+    const referenceSlides = existingContextSlides.filter(idx => idx !== result.params.slideIndex);
     result.contextNeeded = {
       type: 'slide_html',
-      slideIndices: [result.params.slideIndex >= 0 ? result.params.slideIndex : currentSlideIndex],
-      reason: 'need current slide HTML for editing',
+      slideIndices: referenceSlides,
+      reason: referenceSlides.length > 0
+        ? 'need reference slide HTML for style matching'
+        : 'target slide is edited directly',
     };
+    result.targetSlides = result.params.slideIndex >= 0 ? [result.params.slideIndex] : [];
+    result.referenceSlides = referenceSlides;
     return result;
   }
 
@@ -2057,10 +2066,14 @@ ${documentContent}
 === END DOCUMENTS ===\n`
     : '\nDOCUMENTS ATTACHED: NO\n';
 
-  // Build referenced slides section - tells router which slides user mentioned
+  // Build referenced slides section - tells router which mentioned slides are targets vs references.
   const referencedSlidesSection = referencedSlides && referencedSlides.length > 0
-    ? `\nREFERENCED SLIDES (user mentioned these - you MUST include their indices in contextSlides):
-${referencedSlides.map(r => `  - Index ${r.index} = Page ${r.index + 1}: "${r.title || 'untitled'}"`).join('\n')}
+    ? `\nSLIDE MENTIONS (role-aware):
+${referencedSlides.map(r => `  - Index ${r.index} = Page ${r.index + 1}: "${r.title || 'untitled'}" role=${r.role || 'ambiguous'}`).join('\n')}
+Rules:
+- role=target slides are changed by the request; do not treat them as visual references.
+- role=reference slides must appear in referenceSlides and contextSlides so execution reads their full HTML/CSS.
+- role=ambiguous slides may be used as context only if needed.
 `
     : '';
 
@@ -2681,22 +2694,35 @@ USER REQUEST: "${routerPrompt}"`;
         }
 
         let resolvedSlideIndex = step.slideIndex ?? null;
+        if (step.action === 'edit_slide' && normalizedTargetSlides.length === 1 && (
+          resolvedSlideIndex == null || normalizedReferenceSlides.includes(resolvedSlideIndex)
+        )) {
+          resolvedSlideIndex = normalizedTargetSlides[0];
+        }
         if (resolvedSlideIndex == null && step.action === 'edit_slide') {
           const refsFromInstruction = parseSlideReferences(step.instruction || '', slideCount);
-          if (refsFromInstruction.length > 0) {
-            resolvedSlideIndex = refsFromInstruction[0];
+          const targetCandidates = refsFromInstruction.filter(idx => !normalizedReferenceSlides.includes(idx));
+          if (targetCandidates.length > 0) {
+            resolvedSlideIndex = targetCandidates[0];
+          } else if (currentSlideIndex >= 0) {
+            resolvedSlideIndex = currentSlideIndex;
           }
         }
 
-        const stepReferenceSlides = normalizeSlideIndexArray(step.referenceSlides, slideCount);
+        const stepReferenceSlides = normalizeSlideIndexArray([
+          ...(step.referenceSlides || []),
+          ...normalizedReferenceSlides,
+        ], slideCount).filter(idx => resolvedSlideIndex == null || idx !== resolvedSlideIndex);
         const stepContextSlides = normalizeSlideIndexArray([
           ...(step.contextSlides || []),
           ...stepReferenceSlides,
         ], slideCount);
-        const stepTargetSlides = normalizeSlideIndexArray(
-          step.targetSlides || (resolvedSlideIndex != null ? [resolvedSlideIndex] : []),
-          slideCount
-        );
+        const stepTargetSlides = step.action === 'edit_slide' && normalizedTargetSlides.length > 0
+          ? normalizedTargetSlides
+          : normalizeSlideIndexArray(
+              step.targetSlides || (resolvedSlideIndex != null ? [resolvedSlideIndex] : []),
+              slideCount
+            );
 
         return {
           action: step.action,
@@ -2737,10 +2763,12 @@ USER REQUEST: "${routerPrompt}"`;
       },
       params: {
         slideIndex: (() => {
+          if (normalizedTargetSlides.length === 1) return normalizedTargetSlides[0];
           if (firstStep.slideIndex != null) return firstStep.slideIndex;
           if (firstStep.action === 'edit_slide' || firstStep.action === 'delete_slide') {
             const refs = parseSlideReferences(firstStep.instruction || userPrompt, slideCount);
-            if (refs.length > 0) return refs[0];
+            const targetCandidates = refs.filter(idx => !normalizedReferenceSlides.includes(idx));
+            if (targetCandidates.length > 0) return targetCandidates[0];
           }
           return currentSlideIndex;
         })(),

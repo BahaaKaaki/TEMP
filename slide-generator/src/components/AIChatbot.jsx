@@ -60,56 +60,185 @@ function formatReferenceSlideForAI(slide, index, purpose = 'style/reference') {
   return `[Page ${index + 1}] "${slide.title || 'Untitled'}" (${slide.type || slide.templateId || 'custom'}) — use for ${purpose}:\n${cssBlock}${slide.html || ''}`;
 }
 
+function uniqueValidIndices(indices, slideCount) {
+  return [...new Set(indices)]
+    .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < slideCount);
+}
+
 function parseSlideReferences(prompt, slides, currentSlideIndex) {
-  const references = [];
-  let cleanedPrompt = prompt;
+  const text = String(prompt || '');
+  const lower = text.toLowerCase();
+  const mentions = [];
+  const addMention = ({ type, index, start = -1, end = -1, text: mentionText = '' }) => {
+    if (!Number.isInteger(index) || index < 0 || index >= slides.length) return;
+    mentions.push({ type, index, slide: slides[index], start, end, text: mentionText });
+  };
 
   // Match patterns like "slide 5", "slide #5", "the 5th slide", "page 5", "page #5"
   const slideNumberPattern = /(?:(?:slide|page)\s*#?\s*(\d+)|the\s+(\d+)(?:st|nd|rd|th)\s+(?:slide|page)|in\s+(?:slide|page)\s*(\d+))/gi;
   let match;
-  while ((match = slideNumberPattern.exec(prompt)) !== null) {
-    const num = parseInt(match[1] || match[2] || match[3]);
-    if (num > 0 && num <= slides.length) {
-      references.push({ type: 'number', index: num - 1, slide: slides[num - 1] });
+  while ((match = slideNumberPattern.exec(text)) !== null) {
+    const num = parseInt(match[1] || match[2] || match[3], 10);
+    addMention({
+      type: 'number',
+      index: num - 1,
+      start: match.index,
+      end: match.index + match[0].length,
+      text: match[0],
+    });
+  }
+
+  const addKeywordMention = (pattern, type, index) => {
+    const keywordMatch = text.match(pattern);
+    if (keywordMatch) {
+      addMention({
+        type,
+        index,
+        start: keywordMatch.index,
+        end: keywordMatch.index + keywordMatch[0].length,
+        text: keywordMatch[0],
+      });
     }
+  };
+
+  if (currentSlideIndex >= 0) {
+    addKeywordMention(/\b(this|current)\s+(slide|page)\b/i, 'current', currentSlideIndex);
+  }
+  if (currentSlideIndex > 0) {
+    addKeywordMention(/\b(previous|preceding|prior)\s+(slide|page)\b/i, 'previous', currentSlideIndex - 1);
+  }
+  if (currentSlideIndex >= 0 && currentSlideIndex < slides.length - 1) {
+    addKeywordMention(/\bnext\s+(slide|page)\b/i, 'next', currentSlideIndex + 1);
+  }
+  if (slides.length > 0) {
+    addKeywordMention(/\bfirst\s+(slide|page)\b/i, 'first', 0);
+    addKeywordMention(/\blast\s+(slide|page)\b/i, 'last', slides.length - 1);
   }
 
-  // Match "this slide", "current slide", "this page"
-  if (/\b(this|current)\s+(slide|page)\b/i.test(prompt) && currentSlideIndex >= 0) {
-    references.push({ type: 'current', index: currentSlideIndex, slide: slides[currentSlideIndex] });
-  }
+  const visualReferenceLanguage = /\b(like|similar\s+to|same\s+as|match(?:ing)?|copy|based\s+on|look\s+and\s+feel|format|layout|style)\b/i.test(text);
+  const targetBeforePattern = /\b(?:make|edit|change|update|modify|revise|rewrite|regenerate|fix|improve|transform|convert|apply(?:\s+(?:to|on))?)\s*(?:the\s*)?$/i;
+  const referenceBeforePattern = /\b(?:like|similar\s+to|same\s+as|match(?:ing)?|copy(?:\s+(?:the\s+)?(?:format|layout|style))?\s+from|based\s+on|from|reference|style\s+of|format\s+of|layout\s+of|look\s+and\s+feel\s+(?:of|from|as)|use|using)\s*(?:the\s*)?$/i;
+  const targetAfterPattern = /^\s*(?:to|and)?\s*(?:should|with|into|so it|for)\b/i;
+  const referenceAfterPattern = /^\s*(?:as\s+(?:a\s+)?reference|for\s+reference|as\s+the\s+(?:style|layout|format)\s+reference|\bstyle\b|\blayout\b|\bformat\b|\blook\s+and\s+feel\b)/i;
 
-  // Match "previous slide/page", "the slide/page before"
-  if (/\b(previous|preceding|prior)\s+(slide|page)\b/i.test(prompt) && currentSlideIndex > 0) {
-    references.push({ type: 'previous', index: currentSlideIndex - 1, slide: slides[currentSlideIndex - 1] });
-  }
+  const classified = mentions.map((mention) => {
+    const before = lower.slice(Math.max(0, mention.start - 90), mention.start);
+    const after = lower.slice(mention.end, Math.min(lower.length, mention.end + 90));
+    let role = 'ambiguous';
 
-  // Match "next slide/page", "the slide/page after"
-  if (/\bnext\s+(slide|page)\b/i.test(prompt) && currentSlideIndex < slides.length - 1) {
-    references.push({ type: 'next', index: currentSlideIndex + 1, slide: slides[currentSlideIndex + 1] });
-  }
-
-  // Match "first slide/page"
-  if (/\bfirst\s+(slide|page)\b/i.test(prompt) && slides.length > 0) {
-    references.push({ type: 'first', index: 0, slide: slides[0] });
-  }
-
-  // Match "last slide/page" (but not "last" used for "previous")
-  if (/\blast\s+(slide|page)\b/i.test(prompt) && slides.length > 0) {
-    references.push({ type: 'last', index: slides.length - 1, slide: slides[slides.length - 1] });
-  }
-
-  // Deduplicate by index
-  const uniqueRefs = [];
-  const seenIndices = new Set();
-  for (const ref of references) {
-    if (!seenIndices.has(ref.index)) {
-      seenIndices.add(ref.index);
-      uniqueRefs.push(ref);
+    if (mention.type === 'current') {
+      role = visualReferenceLanguage || targetBeforePattern.test(before) || targetAfterPattern.test(after)
+        ? 'current-target'
+        : 'ambiguous';
+    } else if (referenceBeforePattern.test(before) || referenceAfterPattern.test(after)) {
+      role = 'reference';
+    } else if (targetBeforePattern.test(before) || targetAfterPattern.test(after)) {
+      role = 'target';
     }
+
+    return { ...mention, role };
+  });
+
+  let targetSlides = uniqueValidIndices(classified.filter(ref => ref.role === 'target' || ref.role === 'current-target').map(ref => ref.index), slides.length);
+  let referenceSlides = uniqueValidIndices(classified.filter(ref => ref.role === 'reference').map(ref => ref.index), slides.length);
+  const isCreateIntent = /\b(?:create|add|insert|generate|draft|build)\b[^.?!\n]{0,60}\b(?:new\s+)?(?:slide|page|deck|presentation)\b/i.test(text)
+    || /\bmake\s+(?:a|an|one|new)\s+(?:new\s+)?(?:slide|page|deck|presentation)\b/i.test(text);
+
+  // Visual clone requests usually omit an explicit target because "this slide" is implied.
+  // Treat the active slide as the target and keep numbered mentions as references.
+  if (!isCreateIntent && visualReferenceLanguage && referenceSlides.length > 0 && targetSlides.length === 0 && currentSlideIndex >= 0) {
+    targetSlides = [currentSlideIndex];
   }
 
-  return { referencedSlides: uniqueRefs, cleanedPrompt };
+  referenceSlides = referenceSlides.filter(idx => !targetSlides.includes(idx));
+  const ambiguousSlides = uniqueValidIndices(classified.filter(ref => ref.role === 'ambiguous').map(ref => ref.index), slides.length)
+    .filter(idx => !targetSlides.includes(idx) && !referenceSlides.includes(idx));
+  const referencedSlides = classified.map(ref => ({
+    ...ref,
+    role: ref.role === 'current-target' ? 'target' : ref.role,
+  }));
+
+  return {
+    referencedSlides,
+    referenceSlides,
+    targetSlides,
+    ambiguousSlides,
+    cleanedPrompt: prompt,
+  };
+}
+
+function applySlideReferenceIntent(routeResult, slideReferenceIntent, currentSlideIndex, slideCount) {
+  if (!routeResult || !slideReferenceIntent) return routeResult;
+
+  const referenceSlides = uniqueValidIndices(slideReferenceIntent.referenceSlides || [], slideCount);
+  const targetSlides = uniqueValidIndices(slideReferenceIntent.targetSlides || [], slideCount);
+  const contextSlides = uniqueValidIndices([
+    ...(routeResult.contextNeeded?.slideIndices || []),
+    ...(routeResult.referenceSlides || []),
+    ...referenceSlides,
+  ], slideCount);
+
+  const guardStep = (step = {}) => {
+    const stepReferenceSlides = uniqueValidIndices([
+      ...(step.referenceSlides || []),
+      ...referenceSlides,
+    ], slideCount).filter(idx => !targetSlides.includes(idx));
+    const stepContextSlides = uniqueValidIndices([
+      ...(step.contextSlides || []),
+      ...stepReferenceSlides,
+    ], slideCount);
+    let slideIndex = step.slideIndex ?? null;
+
+    if (step.action === 'edit_slide') {
+      const hasReferenceAsTarget = slideIndex != null && stepReferenceSlides.includes(slideIndex);
+      if (targetSlides.length === 1 && (slideIndex == null || hasReferenceAsTarget)) {
+        slideIndex = targetSlides[0];
+      } else if (slideIndex == null && currentSlideIndex >= 0 && referenceSlides.length > 0) {
+        slideIndex = currentSlideIndex;
+      }
+    }
+
+    const stepTargetSlides = step.action === 'edit_slide' && targetSlides.length > 0
+      ? targetSlides
+      : uniqueValidIndices(step.targetSlides || (slideIndex != null ? [slideIndex] : []), slideCount);
+
+    return {
+      ...step,
+      slideIndex,
+      contextSlides: stepContextSlides,
+      referenceSlides: stepReferenceSlides,
+      targetSlides: stepTargetSlides,
+    };
+  };
+
+  const plan = Array.isArray(routeResult.plan)
+    ? routeResult.plan.map(guardStep)
+    : routeResult.plan;
+
+  const paramsSlideIndex = (() => {
+    const existing = routeResult.params?.slideIndex;
+    if (targetSlides.length === 1 && (existing == null || referenceSlides.includes(existing))) {
+      return targetSlides[0];
+    }
+    return existing ?? currentSlideIndex;
+  })();
+
+  return {
+    ...routeResult,
+    plan,
+    referenceSlides: uniqueValidIndices([...(routeResult.referenceSlides || []), ...referenceSlides], slideCount),
+    targetSlides: targetSlides.length > 0
+      ? targetSlides
+      : uniqueValidIndices(routeResult.targetSlides || [], slideCount),
+    contextNeeded: {
+      ...routeResult.contextNeeded,
+      slideIndices: contextSlides,
+    },
+    params: {
+      ...(routeResult.params || {}),
+      slideIndex: paramsSlideIndex,
+    },
+  };
 }
 
 function buildReorderResultFromNumbers(numbers, slides) {
@@ -1484,12 +1613,14 @@ export default function AIChatbot() {
     }
 
     let referenceContext = '';
-    const slideRefMatch = prompt.match(/(?:like|from|match|copy|same as)\s+slide\s+(\d+)/i);
-    if (slideRefMatch) {
-      const refIdx = parseInt(slideRefMatch[1], 10) - 1;
-      const refSlide = currentState.slides[refIdx];
-      if (refSlide) {
-        referenceContext = `\n\n=== REFERENCE SLIDES (match their style/design) ===\n${formatReferenceSlideForAI(refSlide, refIdx, 'visual format, CSS, spacing, and structure')}\n=== END REFERENCE ===`;
+    const referenceIndices = uniqueValidIndices(triage.referenceSlides || [], currentState.slides.length);
+    if (referenceIndices.length > 0) {
+      const referenceSlidesBlock = referenceIndices
+        .map(refIdx => formatReferenceSlideForAI(currentState.slides[refIdx], refIdx, 'visual format, CSS, spacing, and structure'))
+        .filter(Boolean)
+        .join('\n\n---\n\n');
+      if (referenceSlidesBlock) {
+        referenceContext = `\n\n=== REFERENCE SLIDES (match their style/design) ===\n${referenceSlidesBlock}\n=== END REFERENCE ===`;
       }
     }
 
@@ -1553,7 +1684,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       const template = isRealTemplate ? SLIDE_TEMPLATES[templateId] : null;
 
       if (template) {
-        const filledHtml = await fillTemplateWithAI(template, enrichedPrompt + deckContext, slideSettings, [], { agentMode: false });
+        const filledHtml = await fillTemplateWithAI(template, enrichedPrompt + referenceContext + deckContext, slideSettings, [], { agentMode: false });
         if (filledHtml) {
           return {
             action: 'filled',
@@ -1565,7 +1696,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         }
       }
 
-      const slides = await generateSlides(enrichedPrompt + deckContext, slideSettings, 1);
+      const slides = await generateSlides(enrichedPrompt + referenceContext + deckContext, slideSettings, 1);
       if (slides && slides.length > 0) {
         const s = slides[0];
         return {
@@ -1809,7 +1940,8 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       : -1;
     // Default to first slide (0) when no slide is selected — never pass -1 to the router
     const currentSlideIndex = rawSlideIdx >= 0 ? rawSlideIdx : (currentState.slides.length > 0 ? 0 : -1);
-    const { referencedSlides } = parseSlideReferences(userPrompt, currentState.slides, currentSlideIndex);
+    const slideReferenceIntent = parseSlideReferences(effectivePrompt, currentState.slides, currentSlideIndex);
+    const { referencedSlides } = slideReferenceIntent;
     let deckContextDigest = buildDeckContextDigest(currentState.slides, {
       activeSlideIndex: currentSlideIndex,
       storyline: currentState.storyline,
@@ -1865,18 +1997,32 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       triage.scope = 'plan';
     }
 
-    const promptReferenceIndices = referencedSlides.map(r => r.index);
-    const triageReferenceIndices = [...new Set([...(triage.referenceSlides || []), ...promptReferenceIndices])]
+    const promptReferenceIndices = slideReferenceIntent.referenceSlides || [];
+    const promptAmbiguousIndices = slideReferenceIntent.ambiguousSlides || [];
+    const promptTargetIndices = slideReferenceIntent.targetSlides || [];
+    const triageTargetIndices = uniqueValidIndices([...(triage.targetSlides || []), ...promptTargetIndices], currentState.slides.length);
+    const triageReferenceIndices = uniqueValidIndices([
+      ...(triage.referenceSlides || []),
+      ...promptReferenceIndices,
+      ...promptAmbiguousIndices,
+    ], currentState.slides.length)
+      .filter(idx => !triageTargetIndices.includes(idx));
+    triage = {
+      ...triage,
+      targetSlides: triageTargetIndices,
+      referenceSlides: triageReferenceIndices,
+    };
+    const triageReferenceContextIndices = [...new Set([...triageReferenceIndices, ...promptAmbiguousIndices])]
       .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < currentState.slides.length);
     const triageContextLevel = normalizeContextLevel(
       triage.contextLevel,
-      triageReferenceIndices.length > 0 ? CONTEXT_LEVELS.REFERENCE_SLIDES : CONTEXT_LEVELS.DECK_DIGEST
+      triageReferenceContextIndices.length > 0 ? CONTEXT_LEVELS.REFERENCE_SLIDES : CONTEXT_LEVELS.DECK_DIGEST
     );
     deckContextDigest = buildDeckContextDigest(currentState.slides, {
       activeSlideIndex: currentSlideIndex,
       storyline: currentState.storyline,
       contextLevel: triageContextLevel,
-      referenceSlides: triageReferenceIndices,
+      referenceSlides: triageReferenceContextIndices,
     });
 
     // ─── Q&A: direct response, no slide changes ───
@@ -1909,12 +2055,14 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
     // ─── DIRECT EXECUTION: single-slide actions via shared helper ───
     if (triage.scope === 'direct' && activeSlide) {
       try {
+        const directTargetIdx = triageTargetIndices.length === 1 ? triageTargetIndices[0] : currentSlideIndex;
+        const directSlide = currentState.slides[directTargetIdx] || activeSlide;
         const fullKnowledge = buildKnowledgeContextForPrompt(effectivePrompt, { fullContent: true });
-        const result = await performDirectSlideEdit(activeSlide, effectivePrompt, triage, { knowledgeContext: fullKnowledge });
+        const result = await performDirectSlideEdit(directSlide, effectivePrompt, triage, { knowledgeContext: fullKnowledge });
         if (result) {
           const beforeDeckStructure = buildDeckStructure(currentState.slides);
           const projectedSlides = currentState.slides.map((slide) =>
-            slide.id === activeSlide.id
+            slide.id === directSlide.id
               ? { ...slide, ...result.updateData }
               : slide
           );
@@ -1922,9 +2070,9 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             beforeDeckStructure,
             buildDeckStructure(projectedSlides)
           );
-          actions.updateSlide(activeSlide.id, result.updateData);
+          actions.updateSlide(directSlide.id, result.updateData);
           trackerSyncUpdates.forEach(sync => {
-            if (sync.slideId !== activeSlide.id) {
+            if (sync.slideId !== directSlide.id) {
               actions.updateSlide(sync.slideId, { sectionLabel: sync.newSectionLabel });
             }
           });
@@ -2433,10 +2581,11 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           referencedSlides: referencedSlides.length > 0 ? referencedSlides.map(r => ({
             index: r.index,
             type: r.type,
+            role: r.role,
             title: r.slide?.title,
           })) : null,
           referenceSlides: triageReferenceIndices,
-          targetSlides: triage.targetSlides || [],
+          targetSlides: triageTargetIndices,
           triageNeedsSearch: !!triage.needsSearch,
           triageSearchQuery: triage.searchQuery || null,
           // Agent mode flag — affects router settings and audit log
@@ -2502,6 +2651,8 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           // INSTANT RULE-BASED ROUTING (use effectivePrompt without vibe instruction)
           routeResult = routeRequest(effectivePrompt, context);
         }
+
+        routeResult = applySlideReferenceIntent(routeResult, slideReferenceIntent, currentSlideIdx, freshState.slides.length);
 
         console.log('[AIChatbot] Route result (full):', JSON.stringify(routeResult, null, 2));
 
@@ -2572,15 +2723,18 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         const planContextIndices = routeResult.plan?.flatMap(step => step.contextSlides || []) || [];
         const planReferenceIndices = routeResult.plan?.flatMap(step => step.referenceSlides || []) || [];
 
-        // Include explicitly referenced slides from the prompt (e.g., "slide 3", "page 5")
-        const referencedSlideIndices = referencedSlides.map(r => r.index);
+        // Include reference/context slides from the prompt, but do not treat targets as context.
+        const referencedSlideIndices = uniqueValidIndices([
+          ...(slideReferenceIntent.referenceSlides || []),
+          ...(slideReferenceIntent.ambiguousSlides || []),
+        ], freshState.slides.length);
 
         // Combine all detected context indices
         let detectedContextIndices = [...new Set([...contextIndices, ...planContextIndices, ...planReferenceIndices, ...(routeResult.referenceSlides || []), ...referencedSlideIndices])];
 
         // Log when slides are detected from references
         if (referencedSlideIndices.length > 0) {
-          console.log('[SmartAction] Slides referenced in prompt:', referencedSlides.map(r => `Page ${r.index + 1} (${r.type})`).join(', '));
+          console.log('[SmartAction] Reference slides in prompt:', referencedSlides.map(r => `Page ${r.index + 1} (${r.role})`).join(', '));
         }
 
         // Fallback: if no context specified but prompt references current slide patterns, include current
@@ -3477,15 +3631,17 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               editContext += `\n\n=== DECK CONTEXT ===\n${posLine}${neighborLine ? '\n' + neighborLine : ''}${storylineLine ? '\n' + storylineLine : ''}\n=== END DECK CONTEXT ===`;
             }
 
-            // Inject referenced slides' HTML for match-design requests (Item 8)
-            const ctxSlideIndices = step.contextSlides || [];
+            // Inject referenced slides' HTML and CSS for match-design requests.
+            const ctxSlideIndices = uniqueValidIndices(
+              (step.referenceSlides?.length > 0 ? step.referenceSlides : step.contextSlides) || [],
+              freshState.slides.length
+            ).filter(idx => idx !== slideIdx);
             if (ctxSlideIndices.length > 0) {
-              const refSlides = ctxSlideIndices.slice(0, 2).map(idx => freshState.slides[idx]).filter(Boolean);
+              const refSlides = ctxSlideIndices.slice(0, 5).map(idx => ({ idx, slide: freshState.slides[idx] })).filter(item => item.slide);
               if (refSlides.length > 0) {
-                const refBlock = refSlides.map((rs, ri) => {
-                  const refIdx = ctxSlideIndices[ri];
-                  return `[Slide ${refIdx + 1}] "${rs.title}" (${rs.templateId || rs.type || 'custom'}):\n${rs.html}`;
-                }).join('\n\n---\n\n');
+                const refBlock = refSlides
+                  .map(({ idx, slide: rs }) => formatReferenceSlideForAI(rs, idx, 'visual format, CSS, spacing, and structure'))
+                  .join('\n\n---\n\n');
                 editContext += `\n\n=== REFERENCE SLIDES (match their style/design) ===\n${refBlock}\n=== END REFERENCE ===`;
               }
             }

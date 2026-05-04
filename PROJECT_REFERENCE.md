@@ -756,6 +756,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 65. **Create-step dependency ordering**: SmartAction create-slide batching now flushes pending create steps before a later step with `contextFromStep` depends on them, so dependent slides receive the generated HTML/CSS context and can reuse the same entity roster/order.
 
+66. **Inline sentence flow guidance**: Slide HTML generation now explicitly instructs sentence-like `<div>` text with nested `<strong>` / `<span>` elements to set inline flow on the container so labels, separators, and descriptions render as one continuous sentence.
+
 ---
 
 ## 11. Pending / In Discussion

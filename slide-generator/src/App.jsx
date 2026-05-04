@@ -142,26 +142,19 @@ const AUTH_RETRY_KEY = 'edwinAuthRetryAt';
 const LOGIN_SCOPES = ['openid', 'profile', 'email'];
 
 function SessionExpiredPrompt({ compact = false, message, onSignIn, isSigningIn = false }) {
+  const title = 'Your session expired';
+  const defaultMessage = 'Please sign in again to continue using Edwin.';
   const content = (
     <>
-      <div style={{ fontWeight: 700, color: '#2d2d2d', marginBottom: 4 }}>Session expired</div>
-      <div style={{ color: '#666', fontSize: 14, lineHeight: 1.45, marginBottom: 12 }}>
-        {message || 'Your Microsoft sign-in session needs to be refreshed before Edwin can continue.'}
+      <div className="auth-session-title">{title}</div>
+      <div className="auth-session-message">
+        {message || defaultMessage}
       </div>
       <button
         type="button"
         onClick={onSignIn}
         disabled={isSigningIn}
-        style={{
-          border: 'none',
-          borderRadius: 8,
-          background: '#8E1E1E',
-          color: '#fff',
-          cursor: isSigningIn ? 'default' : 'pointer',
-          fontWeight: 700,
-          padding: compact ? '8px 12px' : '10px 16px',
-          opacity: isSigningIn ? 0.75 : 1,
-        }}
+        className="auth-session-button"
       >
         {isSigningIn ? 'Opening sign-in...' : 'Sign in again'}
       </button>
@@ -170,52 +163,15 @@ function SessionExpiredPrompt({ compact = false, message, onSignIn, isSigningIn 
 
   if (compact) {
     return (
-      <div
-        role="alert"
-        style={{
-          position: 'fixed',
-          right: 24,
-          bottom: 24,
-          zIndex: 10000,
-          width: 360,
-          maxWidth: 'calc(100vw - 32px)',
-          background: '#fff',
-          border: '1px solid #ead6d6',
-          borderLeft: '4px solid #8E1E1E',
-          borderRadius: 12,
-          boxShadow: '0 16px 40px rgba(0,0,0,0.18)',
-          padding: 16,
-        }}
-      >
+      <div role="alert" className="auth-session-banner">
         {content}
       </div>
     );
   }
 
   return (
-    <div
-      role="alert"
-      style={{
-        minHeight: '100vh',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: '#f7f5f2',
-        padding: 24,
-      }}
-    >
-      <div
-        style={{
-          width: 420,
-          maxWidth: '100%',
-          background: '#fff',
-          border: '1px solid #ead6d6',
-          borderRadius: 16,
-          boxShadow: '0 20px 60px rgba(0,0,0,0.12)',
-          padding: 28,
-          textAlign: 'center',
-        }}
-      >
+    <div role="alert" className="auth-session-page">
+      <div className="auth-session-card">
         {content}
       </div>
     </div>
@@ -252,7 +208,7 @@ function ProtectedRoute({ children }) {
             sessionStorage.removeItem(AUTH_RETRY_KEY);
             setBootstrap({
               status: 'authExpired',
-              message: 'We could not refresh your Microsoft session automatically. Please sign in again to continue.',
+              message: 'Please sign in again to continue using Edwin.',
             });
             return;
           }
@@ -265,7 +221,7 @@ function ProtectedRoute({ children }) {
             sessionStorage.removeItem(AUTH_RETRY_KEY);
             setBootstrap({
               status: 'authExpired',
-              message: 'We could not open Microsoft sign-in automatically. Please try again.',
+              message: 'We could not open Microsoft sign-in. Please try again.',
             });
           }
           return;
@@ -335,8 +291,8 @@ function AuthSessionNotice() {
       const detail = event.detail || {};
       setNotice({
         message: detail.source === 'api_401'
-          ? 'Your Microsoft sign-in session expired. Please sign in again before continuing.'
-          : 'Microsoft could not refresh your sign-in silently. Please sign in again before continuing.',
+          ? 'Please sign in again before continuing.'
+          : 'Please sign in again to refresh your Microsoft session.',
       });
     };
     window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, onAuthExpired);

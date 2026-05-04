@@ -190,8 +190,7 @@ function applySlideReferenceIntent(routeResult, slideReferenceIntent, currentSli
     let slideIndex = step.slideIndex ?? null;
 
     if (step.action === 'edit_slide') {
-      const hasReferenceAsTarget = slideIndex != null && stepReferenceSlides.includes(slideIndex);
-      if (targetSlides.length === 1 && (slideIndex == null || hasReferenceAsTarget)) {
+      if (targetSlides.length === 1) {
         slideIndex = targetSlides[0];
       } else if (slideIndex == null && currentSlideIndex >= 0 && referenceSlides.length > 0) {
         slideIndex = currentSlideIndex;
@@ -217,7 +216,7 @@ function applySlideReferenceIntent(routeResult, slideReferenceIntent, currentSli
 
   const paramsSlideIndex = (() => {
     const existing = routeResult.params?.slideIndex;
-    if (targetSlides.length === 1 && (existing == null || referenceSlides.includes(existing))) {
+    if (targetSlides.length === 1) {
       return targetSlides[0];
     }
     return existing ?? currentSlideIndex;

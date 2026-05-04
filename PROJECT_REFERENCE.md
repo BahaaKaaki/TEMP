@@ -743,7 +743,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 59. **Auth session expiry UX**: MSAL silent token refresh failures and unrecovered backend 401s now surface a visible "Your session expired" prompt with a Microsoft sign-in action. Repeated `/api/whoami` 401s after automatic redirect no longer fall through to the editor as allowed; active-use failures appear as a persistent top-center banner styled from `app.css`.
 
-60. **Cross-slide visual reference and GPT 5.5 defaults**: AIChatbot now classifies slide/page mentions as targets versus visual references so requests like "make this slide like slide 3" keep the current slide as the edit target while passing slide 3 as reference HTML plus unscoped `customCSS`. Main slide generation and PPTX export defaults now use `pwc:openai.gpt-5.5`, including the PPTX service fallback for reset/empty settings.
+60. **Cross-slide visual reference and GPT 5.5 defaults**: AIChatbot now classifies slide/page mentions as targets versus visual references so requests like "make this slide like slide 3" keep the current slide as the edit target while passing slide 3 as reference HTML plus unscoped `customCSS`; the SmartAction target label and executed `slideIndex` are forced to stay aligned. Main slide generation and PPTX export defaults now use `pwc:openai.gpt-5.5`, including the PPTX service fallback for reset/empty settings.
 
 ---
 

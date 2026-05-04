@@ -290,7 +290,7 @@ When a user types a message in the chatbot:
    │   │   ├── Fixed → direct placeholder replacement (cover, sectionDivider)
    │   │   ├── Image → generateImageSlide (image model)
    │   │   └── flushInsertsInOrder (deterministic slide order)
-   │   └── Non-create steps: independent edit/switch/tracker updates run in ID-based parallel chunks; deletes and dependent steps stay ordered
+   │   └── Non-create steps: independent edit/switch/tracker updates run in ID-based parallel chunks using concrete slide targets; deletes and dependent steps stay ordered
    ├── Per-step search: cached by query/searchGoal and capped per plan (default 4) to avoid redundant broad searches
    └── Post-execution: sync storyline, update progress
 ```
@@ -769,6 +769,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 68. **Router/search dependency hardening**: GPT Responses router failures now fall back to Chat Completions planning, router outputs include a structured `evidencePack`, SmartAction per-step searches are cached/budgeted, and `contextFromStep` dependencies are validated and enforced across SmartAction plus agent `build_presentation` execution paths.
 69. **Per-step evidence search model**: SmartAction per-step web searches now use `settings.evidenceSearchModel` with a code default of `openai.gpt-5.5`, keeping classifier/search defaults lightweight while improving factual enrichment quality for slide-specific evidence. Dependent steps now preserve canonical entities from `contextFromStep` and use search for enrichment fields instead of broad rediscovery.
 70. **Slide source verification UX**: Created slides now retain router `sources[]` metadata and per-step web-search markdown links where available. `SlidePreview` extracts metadata, in-slide links, and URL text into a right-side source inspector with clickable verification cards; broad footer-only source labels are ignored unless no URL-backed source exists.
+71. **Parallel independent edit execution**: SmartAction execution now flattens router groups when all steps are dependency-free edits/switches/tracker updates, resolves edit batch targets by concrete `slideIndex` before broad `targetSlides`, and shows a parallel edit batch status while the LLM calls run concurrently.
 
 ---
 

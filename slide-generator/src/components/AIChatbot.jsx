@@ -3035,17 +3035,26 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       console.log('[SmartAction] Executing plan with', totalSteps, 'steps, parallel batch size:', parallelBatchSize, planSteps);
       console.log('[SmartAction] Captured deck:', capturedDeckName);
 
+      const independentEditActions = new Set(['edit_slide', 'switch_template', 'update_trackers', 'update_tracker']);
+      const isIndependentEditStep = (step) => (
+        step
+        && independentEditActions.has(step.action)
+        && step.contextFromStep == null
+      );
+
       // Build groups: use router-provided groups or default to all steps in one group
       // In agent mode, flatten ALL groups into ONE — content is fully baked by the agent,
       // no cross-group dependencies. Steps still insert in order via flushInsertsInOrder.
       const routerGroups = routeResult.groups && routeResult.groups.length > 0
         ? routeResult.groups
         : [planSteps.map((_, i) => i)];
-      const groups = fromAgent && routerGroups.length > 1
+      const canFlattenIndependentEditGroups = routerGroups.length > 1
+        && routerGroups.flat().every(stepIndex => isIndependentEditStep(planSteps[stepIndex]));
+      const groups = (fromAgent || canFlattenIndependentEditGroups) && routerGroups.length > 1
         ? [routerGroups.flat()]
         : routerGroups;
 
-      console.log(`[SmartAction] Execution groups (fromAgent=${!!fromAgent}):`, groups);
+      console.log(`[SmartAction] Execution groups (fromAgent=${!!fromAgent}, flattenedIndependentEdits=${canFlattenIndependentEditGroups}):`, groups);
 
       // Helper: check if we're still on the same deck
       const isDeckStillActive = () => {
@@ -3485,24 +3494,26 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           'delete_slide': 'Delete',
           'switch_template': 'Switch',
         };
-        setProgress(prev => {
-          const completed = new Set(prev?.completedSteps || []);
-          if (stepIndex > 0) completed.add(stepIndex - 1);
-          return {
-            phase: `Step ${stepIndex + 1}/${totalSteps}`,
-            current: stepIndex,
-            total: totalSteps,
-            completedSteps: completed,
-            plan: planSteps.map((s, idx) => ({
-              text: `${actionLabels[s.action] || s.action}${s.templateId ? ` (${s.templateId})` : ''}${s.searchQuery ? ' 🔍' : ''}`,
-              action: s.action,
-              templateId: s.templateId || null,
-              layoutGuidance: s.layoutGuidance || null,
-              stepIndex: idx,
-            })),
-            planStepsRef: planSteps,
-          };
-        });
+        if (!step._parallelBatchSize) {
+          setProgress(prev => {
+            const completed = new Set(prev?.completedSteps || []);
+            if (stepIndex > 0) completed.add(stepIndex - 1);
+            return {
+              phase: `Step ${stepIndex + 1}/${totalSteps}`,
+              current: stepIndex,
+              total: totalSteps,
+              completedSteps: completed,
+              plan: planSteps.map((s, idx) => ({
+                text: `${actionLabels[s.action] || s.action}${s.templateId ? ` (${s.templateId})` : ''}${s.searchQuery ? ' 🔍' : ''}`,
+                action: s.action,
+                templateId: s.templateId || null,
+                layoutGuidance: s.layoutGuidance || null,
+                stepIndex: idx,
+              })),
+              planStepsRef: planSteps,
+            };
+          });
+        }
 
         // Update agent-mode widget if active (pink/green step tracker)
         setAgentModeProgress(prev => {
@@ -3811,10 +3822,12 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             // Detect if this is an image slide — use image regeneration instead of text editing
             const isImageSlide = slideToEdit.templateId === 'image-full' || slideToEdit.templateId === 'image-content';
 
-            setExecutionStatus({
-              type: 'generating',
-              message: `Step ${stepIndex + 1}/${totalSteps}: ${isImageSlide ? 'Regenerating image for' : 'Editing'} slide ${slideIdx + 1}: "${slideToEdit.title}"...`,
-            });
+            if (!step._parallelBatchSize) {
+              setExecutionStatus({
+                type: 'generating',
+                message: `Step ${stepIndex + 1}/${totalSteps}: ${isImageSlide ? 'Regenerating image for' : 'Editing'} slide ${slideIdx + 1}: "${slideToEdit.title}"...`,
+              });
+            }
 
             // Build context including contextFromStep if present
             let editContext = stepPrompt;
@@ -4626,6 +4639,13 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             // Collect consecutive independent edit_slide steps targeting different slides
             const getStepTargetId = (s) => {
               const current = getFreshState();
+              if (Number.isInteger(s?.slideIndex)) {
+                return current.slides[s.slideIndex]?.id || `idx:${s.slideIndex}`;
+              }
+              if (Array.isArray(s?.targetSlides) && s.targetSlides.length === 1) {
+                const [targetIdx] = s.targetSlides;
+                return current.slides[targetIdx]?.id || `idx:${targetIdx}`;
+              }
               if (Array.isArray(s?.targetSlides) && s.targetSlides.length > 0) {
                 return s.targetSlides
                   .map(idx => current.slides[idx]?.id || `idx:${idx}`)
@@ -4635,7 +4655,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const idx = s?.slideIndex ?? (capturedSlideId ? current.slides.findIndex(sl => sl.id === capturedSlideId) : capturedSlideIdx);
               return current.slides[idx]?.id || `idx:${idx}`;
             };
-            const isIndependentEdit = (s) => (s.action === 'edit_slide' || s.action === 'switch_template' || s.action === 'update_trackers' || s.action === 'update_tracker') && s.contextFromStep == null;
+            const isIndependentEdit = isIndependentEditStep;
             if (isIndependentEdit(step)) {
               const editBatch = [{ step, actualIndex, si }];
               const editTargets = new Set([getStepTargetId(step)]);
@@ -4655,11 +4675,35 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 const concurrencyLimit = settings.apiMaxConcurrent || 5;
                 const batchLimit = Math.min(editBatch.length, concurrencyLimit);
                 console.log(`[SmartAction] Running ${editBatch.length} independent edits in parallel (limit ${batchLimit})`);
+                setExecutionStatus({
+                  type: 'generating',
+                  message: `Editing ${editBatch.length} slides in parallel...`,
+                });
+                setProgress(prev => ({
+                  ...prev,
+                  phase: `Editing ${editBatch.length} slides in parallel`,
+                  current: editBatch[0].actualIndex,
+                  total: totalSteps,
+                  completedSteps: prev?.completedSteps || new Set(),
+                  plan: planSteps.map((s, idx) => ({
+                    text: `${s.action}${s.templateId ? ` (${s.templateId})` : ''}`,
+                    action: s.action,
+                    templateId: s.templateId || null,
+                    layoutGuidance: s.layoutGuidance || null,
+                    stepIndex: idx,
+                    parallel: editBatch.some(item => item.step === s),
+                  })),
+                  planStepsRef: planSteps,
+                }));
                 for (let bStart = 0; bStart < editBatch.length; bStart += batchLimit) {
                   const chunk = editBatch.slice(bStart, bStart + batchLimit);
                   const results = await Promise.all(chunk.map(async ({ step: s, actualIndex: ai }) => {
-                    const result = await executeStep(s, ai);
-                    return result;
+                    s._parallelBatchSize = editBatch.length;
+                    try {
+                      return await executeStep(s, ai);
+                    } finally {
+                      delete s._parallelBatchSize;
+                    }
                   }));
                   for (const result of results) {
                     if (result?.pendingSlides) {

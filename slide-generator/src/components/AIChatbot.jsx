@@ -3173,7 +3173,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       };
 
       // Only use router-set or user-set searchQuery; no auto-derivation.
-      // The router (GPT 5.4 with native search) decides which steps need per-step search,
+      // The router decides which steps need per-step search,
       // and the user can toggle it on/off in SmartActionCard.
       const deriveSearchQuery = (step) => {
         if (step.searchQuery) return step.searchQuery;
@@ -3472,10 +3472,14 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const datedQuery = knownFacts
                 ? `${effectiveSearchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
                 : `${effectiveSearchQuery} ${currentDateString()}`;
-              const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
-              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${effectiveSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
+              const stepEvidenceSearchModel = settings.stepSearchModel || settings.searchModel;
+              const searchOpts = {
+                ...(step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {}),
+                ...(stepEvidenceSearchModel ? { model: stepEvidenceSearchModel } : {}),
+              };
+              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${effectiveSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}${stepEvidenceSearchModel ? ` using ${stepEvidenceSearchModel}` : ''}`);
               try {
-                const searchCacheKey = `${effectiveSearchQuery}::${step.searchGoal || ''}`;
+                const searchCacheKey = `${stepEvidenceSearchModel || 'default'}::${effectiveSearchQuery}::${step.searchGoal || ''}`;
                 let searchResult;
                 if (stepSearchCache.has(searchCacheKey)) {
                   searchResult = stepSearchCache.get(searchCacheKey);
@@ -3671,10 +3675,14 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const datedQuery = knownFacts
                 ? `${editSearchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
                 : `${editSearchQuery} ${currentDateString()}`;
-              const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
-              console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${editSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
+              const stepEvidenceSearchModel = settings.stepSearchModel || settings.searchModel;
+              const searchOpts = {
+                ...(step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {}),
+                ...(stepEvidenceSearchModel ? { model: stepEvidenceSearchModel } : {}),
+              };
+              console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${editSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}${stepEvidenceSearchModel ? ` using ${stepEvidenceSearchModel}` : ''}`);
               try {
-                const searchCacheKey = `${editSearchQuery}::${step.searchGoal || ''}`;
+                const searchCacheKey = `${stepEvidenceSearchModel || 'default'}::${editSearchQuery}::${step.searchGoal || ''}`;
                 let searchResult;
                 if (stepSearchCache.has(searchCacheKey)) {
                   searchResult = stepSearchCache.get(searchCacheKey);
@@ -4369,10 +4377,14 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const datedQuery = knownFacts
                 ? `${effectiveBatchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
                 : `${effectiveBatchQuery} ${currentDateString()}`;
-              const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
-              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${effectiveBatchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
+              const stepEvidenceSearchModel = settings.stepSearchModel || settings.searchModel;
+              const searchOpts = {
+                ...(step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {}),
+                ...(stepEvidenceSearchModel ? { model: stepEvidenceSearchModel } : {}),
+              };
+              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${effectiveBatchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}${stepEvidenceSearchModel ? ` using ${stepEvidenceSearchModel}` : ''}`);
               try {
-                const searchCacheKey = `${effectiveBatchQuery}::${step.searchGoal || ''}`;
+                const searchCacheKey = `${stepEvidenceSearchModel || 'default'}::${effectiveBatchQuery}::${step.searchGoal || ''}`;
                 let searchResult;
                 if (stepSearchCache.has(searchCacheKey)) {
                   searchResult = stepSearchCache.get(searchCacheKey);

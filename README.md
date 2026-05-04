@@ -30,7 +30,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - User Settings include generation defaults for slide approach (Auto/Freestyle) and model tier (Fast/Premium); Freestyle mode tells the router to use cover only for cover slides and freestyle for body slides unless the user explicitly requests a named template or layout
 - Voice dictation in the AI chat input uses browser speech recognition to place editable transcript text into the prompt before sending
 - AI plan review cards keep long section trackers, template names, and instructions constrained within the chat panel
-- Router search policy uses GPT 5.5 reasoning by default, but only attaches web search for requests that need current or external evidence; Responses API router failures fall back to Chat Completions planning, router evidence is packaged as structured metadata, and per-step search is cached/budgeted while still overriding older router facts when current/latest results conflict
+- Router search policy uses GPT 5.5 reasoning by default, but only attaches web search for requests that need current or external evidence; Responses API router failures fall back to Chat Completions planning, router evidence is packaged as structured metadata, and per-step evidence search uses GPT 5.5 by default with caching/budgeting while still overriding older router facts when current/latest results conflict
 - Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md`; runtime assembly injects the current template catalog so Auto/Freestyle routing can honor explicit template requests while preserving freestyle defaults
 - Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` and emphasizes sharp, scratch-built consulting layouts, semantic HTML table markup for table requests, inline sentence flow for nested text, chart geometry, sequential flows, frame fit, token-only colors, and visual uplift
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
@@ -193,6 +193,7 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 | Fast generation | `vertex_ai.gemini-3.1-flash-lite-preview` |
 | Classifier | `openai.gpt-5.4-mini` |
 | Router | `openai.gpt-5.5` |
+| Step evidence search | `openai.gpt-5.5` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
 | PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |

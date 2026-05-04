@@ -439,12 +439,14 @@ Core state shape:
     selectedSkillId: null,        // Single active consulting-skill id (or null). Attached to router calls as _skillId; never applied to rendering/edits/transforms/validation. Manual-clear only.
     clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
     clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
-    // Code-managed model assignments (always from initialState, never localStorage)
+    // Model/search defaults
     model: 'pwc:bedrock.anthropic.claude-opus-4-7',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
     routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
     pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7', // PPTX export code generation
+    searchModel: 'openai.gpt-5.4-mini',              // Dedicated lightweight search model
+    stepSearchModel: 'openai.gpt-5.5',               // Per-step evidence search enrichment
     providers: [...],            // Provider registry (PwC Shared Services)
     // ... many more settings (batch sizes, work levels, search, etc.)
   }
@@ -620,7 +622,7 @@ Search operates at two layers:
 
 1. **Router-level agentic search** (conditional): The router uses GPT 5.5 reasoning on every AI-router call, but only attaches `web_search_preview` when `getRouterSearchPolicy()` allows it. The policy enables search for `triage.needsSearch`, explicit search/freshness/evidence language, or `routerSearchMode='always'`; it disables search for normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring that only need deck/document context. Search results are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'`, `'presearch'`, or `'none'`, plus an `evidencePack` with source type, freshness date, raw/synthesized text, router queries, step facts/sources, and requested per-step searches. If the GPT Responses path fails, the router falls back to Chat Completions planning instead of failing the request immediately.
 
-2. **Per-step search** (controlled by `settings.searchEnabled` toggle): For steps with `searchQuery` + `searchGoal`, a separate `webSearch()` call runs during slide execution. The search receives `searchGoal` as `instructions` and appends already-known facts as context to avoid redundant re-searching. During SmartAction execution, per-step searches are cached by query/searchGoal and capped per plan (default 4) so repeated slide families do not make redundant broad searches.
+2. **Per-step search** (controlled by `settings.searchEnabled` toggle): For steps with `searchQuery` + `searchGoal`, a separate `webSearch()` call runs during slide execution using `settings.stepSearchModel` (default `openai.gpt-5.5`) for evidence enrichment, falling back to `settings.searchModel` if unset. The search receives `searchGoal` as `instructions` and appends already-known facts as context to avoid redundant re-searching. During SmartAction execution, per-step searches are cached by query/searchGoal and capped per plan (default 4) so repeated slide families do not make redundant broad searches.
 
 **Deduplication**: When `searchSource === 'inline'`, the global `buildSearchFactsBlock()` is skipped for steps that already have their own `facts[]` (avoiding 100% duplication). Steps without facts (cover, dividers) still receive the global block as a fallback.
 
@@ -765,6 +767,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 67. **Freshness-first search grounding**: Latest/current deck requests now tell the router to verify newest names per entity before planning, and slide execution treats per-step web search results as fresher than router facts when model/product names, dates, pricing, benchmarks, or availability conflict.
 68. **Router/search dependency hardening**: GPT Responses router failures now fall back to Chat Completions planning, router outputs include a structured `evidencePack`, SmartAction per-step searches are cached/budgeted, and `contextFromStep` dependencies are validated and enforced across SmartAction plus agent `build_presentation` execution paths.
+69. **Per-step evidence search model**: SmartAction per-step web searches now use `settings.stepSearchModel` with a code default of `openai.gpt-5.5`, keeping classifier/search defaults lightweight while improving factual enrichment quality for slide-specific evidence.
 
 ---
 

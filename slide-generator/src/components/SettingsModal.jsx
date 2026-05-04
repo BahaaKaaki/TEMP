@@ -1156,6 +1156,10 @@ export default function SettingsModal({ onClose }) {
                   <input type="text" value={settings.searchModel || ''} onChange={(e) => setSettings({ ...settings, searchModel: e.target.value })} placeholder="openai.gpt-5.4" style={{ fontSize: 12 }} />
                 </div>
                 <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label style={{ fontSize: 11 }}>Step Evidence Model</label>
+                  <input type="text" value={settings.stepSearchModel || ''} onChange={(e) => setSettings({ ...settings, stepSearchModel: e.target.value })} placeholder="openai.gpt-5.5" style={{ fontSize: 12 }} />
+                </div>
+                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                   <label style={{ fontSize: 11 }}>API Key</label>
                   <input type="password" value={settings.searchApiKey || ''} onChange={(e) => setSettings({ ...settings, searchApiKey: e.target.value })} placeholder="Enter key..." style={{ fontSize: 12 }} />
                 </div>
@@ -1890,6 +1894,7 @@ export default function SettingsModal({ onClose }) {
           { key: 'classifierModel', label: 'Classifier',      desc: 'Tier 1 quick intent classification',                  role: 'fast' },
           { key: 'routerModel',     label: 'Router',          desc: 'Tier 2 full planner for multi-slide requests',        role: 'chat' },
           { key: 'searchModel',     label: 'Search',          desc: 'Web search queries and result synthesis',              role: 'chat' },
+          { key: 'stepSearchModel', label: 'Step Evidence',   desc: 'Per-slide factual search enrichment',                  role: 'chat' },
           { key: 'pptxModel',       label: 'PPTX Export',     desc: 'Converts slides to PowerPoint code',                   role: 'chat' },
           { key: 'reportModel',     label: 'Report',          desc: 'Generates interactive HTML/JSON reports',              role: 'chat' },
           { key: 'imageModel',      label: 'Image',           desc: 'AI image generation',                                 role: 'image' },

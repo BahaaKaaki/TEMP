@@ -441,7 +441,9 @@ export async function webSearch(query, settings, options = {}) {
     return null;
   }
 
-  if (!settings.searchEndpoint || !settings.searchApiKey || !settings.searchModel) {
+  const effectiveSearchModel = options.model || settings.searchModel;
+
+  if (!settings.searchEndpoint || !settings.searchApiKey || !effectiveSearchModel) {
     // Custom search endpoint not configured — this is normal when using built-in Gemini/GPT search.
     // Only the custom "Agent Research" search endpoint needs these fields.
     console.log('[webSearch] Custom search endpoint not configured (searchEndpoint/searchApiKey/searchModel) — skipping.');
@@ -450,7 +452,7 @@ export async function webSearch(query, settings, options = {}) {
 
   try {
     const requestBody = {
-      model: settings.searchModel,
+      model: effectiveSearchModel,
       input: query,
       tools: [
         {
@@ -464,7 +466,7 @@ export async function webSearch(query, settings, options = {}) {
       requestBody.instructions = options.instructions;
     }
 
-    console.log('[webSearch] Searching:', query.substring(0, 100) + '...');
+    console.log('[webSearch] Searching:', query.substring(0, 100) + '...', `(model: ${effectiveSearchModel})`);
 
     const headers = { 'Content-Type': 'application/json' };
     const isServerProxy = settings.searchApiKey === 'server-managed' || (settings.searchEndpoint || '').startsWith('/api/');

@@ -465,6 +465,7 @@ Return JSON:
             const step = routeResult.plan[0];
             templateId = step.templateId;
             const stepInstruction = enrichedInstruction;
+            const stepSources = Array.isArray(step.sources) ? step.sources : [];
 
             // If step needs search, inject search tool into settings — one call that searches + generates
             let stepSettings = settings;
@@ -522,6 +523,7 @@ Return JSON:
                 if (imageResult?.html) {
                   newSlide = {
                     ...imageResult,
+                    ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                     ...(sectionLabel ? { sectionLabel } : {}),
                     ...(subSectionLabel ? { subSectionLabel } : {}),
                   };
@@ -547,6 +549,7 @@ Return JSON:
                       html: filledHtml,
                       type: templateId,
                       templateId: templateId,
+                      ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                       ...(sectionLabel ? { sectionLabel } : {}),
                       ...(subSectionLabel ? { subSectionLabel } : {}),
                     };
@@ -569,6 +572,7 @@ Return JSON:
               if (result?.length > 0) {
                 newSlide = {
                   ...result[0],
+                  ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                   ...(sectionLabel ? { sectionLabel } : {}),
                   ...(subSectionLabel ? { subSectionLabel } : {}),
 
@@ -757,6 +761,7 @@ Return JSON:
             if (routeResult?.plan?.length > 0) {
               const step = routeResult.plan[0];
               let templateId = step.templateId;
+              const stepSources = Array.isArray(step.sources) ? step.sources : [];
               // Always use the original enriched instruction (not the router's possibly-condensed version).
               // The router is only consulted for template selection, search queries, and layout guidance.
               const stepInstruction = enrichedInstruction;
@@ -801,6 +806,7 @@ Return JSON:
                     newSlide = {
                       ...imageResult,
                       id: `slide-${Date.now()}-${i}`,
+                      ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                       ...(spec.sectionLabel ? { sectionLabel: spec.sectionLabel } : {}),
                       ...(spec.subSectionLabel ? { subSectionLabel: spec.subSectionLabel } : {}),
                     };
@@ -825,6 +831,7 @@ Return JSON:
                         html: filledHtml,
                         type: templateId,
                         templateId,
+                        ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                         ...(spec.sectionLabel ? { sectionLabel: spec.sectionLabel } : {}),
                         ...(spec.subSectionLabel ? { subSectionLabel: spec.subSectionLabel } : {}),
 
@@ -852,6 +859,7 @@ Return JSON:
                 if (genResult?.length > 0 && genResult[0]?.html) {
                   newSlide = {
                     ...genResult[0],
+                    ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                     ...(spec.sectionLabel ? { sectionLabel: spec.sectionLabel } : {}),
                     ...(spec.subSectionLabel ? { subSectionLabel: spec.subSectionLabel } : {}),
 
@@ -1349,6 +1357,7 @@ Return JSON:
                     html: r.html,
                     type: r.finalTemplateId,
                     templateId: r.finalTemplateId,
+                    ...(Array.isArray(r.step.sources) && r.step.sources.length > 0 ? { sources: r.step.sources } : {}),
                     ...(r.step.sectionTracker ? { sectionLabel: r.step.sectionTracker } : {}),
                     ...(r.step.subSectionTracker ? { subSectionLabel: r.step.subSectionTracker } : {}),
                   };
@@ -1357,6 +1366,7 @@ Return JSON:
                   newSlide = {
                     ...(r.genData || {}),
                     html: r.html,
+                    ...(Array.isArray(r.step.sources) && r.step.sources.length > 0 ? { sources: r.step.sources } : {}),
                     ...(r.step.sectionTracker ? { sectionLabel: r.step.sectionTracker } : {}),
                     ...(r.step.subSectionTracker ? { subSectionLabel: r.step.subSectionTracker } : {}),
                   };
@@ -1370,6 +1380,7 @@ Return JSON:
                   if (genResult?.[0]?.html) {
                     newSlide = {
                       ...genResult[0],
+                      ...(Array.isArray(r.step.sources) && r.step.sources.length > 0 ? { sources: r.step.sources } : {}),
                       ...(r.step.sectionTracker ? { sectionLabel: r.step.sectionTracker } : {}),
                       ...(r.step.subSectionTracker ? { subSectionLabel: r.step.subSectionTracker } : {}),
                     };

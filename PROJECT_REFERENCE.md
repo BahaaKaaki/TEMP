@@ -249,9 +249,9 @@ When a user types a message in the chatbot:
    └── Execution: transformSlideToTemplate / fillTemplateWithAI / generateSlides / improveSlide
 
 3b. FULL ROUTER (multi-step planner)
-   ├── AI Router (aiRouteRequest) — GPT 5.4 reasoning with conditional search + Structured Outputs
+   ├── AI Router (aiRouteRequest) — GPT 5.5 reasoning with conditional search + Structured Outputs
    │   ├── Search policy: auto by default; triage.needsSearch, explicit freshness/evidence language, or routerSearchMode='always' enables router web search
-   │   ├── No-search planning: GPT 5.4 still uses Responses API/Structured Outputs, but without web_search_preview for edits, tracker updates, restyles, template switches, and deck restructuring that only need deck context
+   │   ├── No-search planning: GPT 5.5 still uses Responses API/Structured Outputs, but without web_search_preview for edits, tracker updates, restyles, template switches, and deck restructuring that only need deck context
    │   ├── Path A: Responses API for GPT models, with web_search_preview attached only when policy allows
    │   │   ├── Agentic search: reasoning.effort='low', multi-query research when enabled
    │   │   ├── Structured Outputs: text.format json_schema enforces field population
@@ -438,7 +438,7 @@ Core state shape:
     model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
-    routerModel: 'pwc:openai.gpt-5.4',               // Tier 2 full planner
+    routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
     providers: [...],            // Provider registry (PwC Shared Services)
     // ... many more settings (batch sizes, work levels, search, etc.)
   }
@@ -599,7 +599,7 @@ az webapp restart -g rg-edwin-slides -n app-edwin-slides
 ### Router Architecture
 
 Two routers operate in tandem:
-1. **AI Router** (`aiRouteRequest`): GPT 5.4 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. The default system prompt lives in `slide-generator/src/guides/router-system-prompt.md`; `getRouterSystemPrompt()` injects the current template catalog at runtime while the prompt/context instruct Freestyle mode to use cover only for cover slides and freestyle for body slides unless the user explicitly requests a named template/layout. Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
+1. **AI Router** (`aiRouteRequest`): GPT 5.5 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. The default system prompt lives in `slide-generator/src/guides/router-system-prompt.md`; `getRouterSystemPrompt()` injects the current template catalog at runtime while the prompt/context instruct Freestyle mode to use cover only for cover slides and freestyle for body slides unless the user explicitly requests a named template/layout. Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
 2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
 
 The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `targetSlides`, `referenceSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level. Triage selects a `contextLevel` (`active_slide`, `reference_slides`, `deck_digest`, `full_text_deck`) so the router receives enough deck context without defaulting to full-deck content on every request. The active page context includes both text digest and full page HTML with CSS stripped (`<style>` blocks and inline `style` attributes removed) so the router can reason about card/pillar/table hierarchy. Rich storyline sync uses the same CSS-stripped full HTML signal for each slide and stores a `contentInventory` so later storyline-aware prompts can see all major pillars, cards, bullets, metrics, labels, and table rows.
@@ -610,7 +610,7 @@ The AI router can ask clarifying questions (returned as `needsClarification` wit
 
 Search operates at two layers:
 
-1. **Router-level agentic search** (conditional): The router uses GPT 5.4 reasoning on every AI-router call, but only attaches `web_search_preview` when `getRouterSearchPolicy()` allows it. The policy enables search for `triage.needsSearch`, explicit search/freshness/evidence language, or `routerSearchMode='always'`; it disables search for normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring that only need deck/document context. Search results are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'`, `'presearch'`, or `'none'`.
+1. **Router-level agentic search** (conditional): The router uses GPT 5.5 reasoning on every AI-router call, but only attaches `web_search_preview` when `getRouterSearchPolicy()` allows it. The policy enables search for `triage.needsSearch`, explicit search/freshness/evidence language, or `routerSearchMode='always'`; it disables search for normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring that only need deck/document context. Search results are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'`, `'presearch'`, or `'none'`.
 
 2. **Per-step search** (controlled by `settings.searchEnabled` toggle): For steps with `searchQuery` + `searchGoal`, a separate `webSearch()` call runs during slide execution. The search receives `searchGoal` as `instructions` and appends already-known facts as context to avoid redundant re-searching.
 

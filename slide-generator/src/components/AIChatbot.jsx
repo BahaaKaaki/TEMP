@@ -3089,6 +3089,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   templateId: slideData.templateId || step.templateId,
                   type: slideData.type,
                   summary: slideData.summary,
+                  ...(slideData.sources ? { sources: slideData.sources } : {}),
                 });
                 lastInsertedIndex = replaceIdx;
                 stepOutputs[stepIndex] = { html: slideData.html, customCSS: slideData.customCSS, slideIndex: replaceIdx, title: slideData.title };
@@ -3270,6 +3271,70 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       const buildWebSearchResultInstruction = (dependencyContext) => dependencyContext?.entities?.length > 0
         ? `IMPORTANT: Treat WEB SEARCH RESULTS as fresh supporting evidence for facts, dates, prices, benchmarks, context windows, availability, and caveats. The canonical entity set from Step ${dependencyContext.dependency} remains authoritative for this dependent slide. Do not replace, add, or downgrade model/entity names from the referenced slide just because search mentions older or different names. Only change the entity set if the search explicitly proves a canonical entity is unavailable or outdated; if so, call out the conflict instead of silently substituting. Cite specific numbers and sources.`
         : 'IMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.';
+
+      const extractSourcesFromSearchResult = (searchResult = '') => {
+        const text = String(searchResult || '');
+        const sources = [];
+        const seenUrls = new Set();
+        const add = (label, url, note = 'Per-step web search result') => {
+          const cleanUrl = String(url || '').replace(/[).,;:]+$/, '').trim();
+          if (!/^https?:\/\//i.test(cleanUrl) || seenUrls.has(cleanUrl)) return;
+          seenUrls.add(cleanUrl);
+          let hostname = '';
+          try {
+            hostname = new URL(cleanUrl).hostname.replace(/^www\./, '');
+          } catch {
+            hostname = cleanUrl;
+          }
+          sources.push({
+            label: String(label || hostname || cleanUrl).replace(/\s+/g, ' ').trim(),
+            url: cleanUrl,
+            note,
+          });
+        };
+
+        for (const match of text.matchAll(/\[([^\]]{2,160})\]\((https?:\/\/[^)\s]+)\)/g)) {
+          add(match[1], match[2]);
+        }
+        for (const match of text.matchAll(/https?:\/\/[^\s<>)"]+/g)) {
+          add('', match[0]);
+        }
+        return sources.slice(0, 12);
+      };
+
+      const mergeStepSources = (stepSources = [], searchSources = []) => {
+        const merged = [];
+        const seen = new Set();
+        const add = (source) => {
+          if (!source) return;
+          const normalized = typeof source === 'string'
+            ? { label: source, url: '', note: '' }
+            : {
+                label: source.label || source.title || source.url || 'Source',
+                url: source.url || '',
+                note: source.note || source.snippet || '',
+              };
+          const key = normalized.url || String(normalized.label).toLowerCase();
+          if (!key || seen.has(key)) return;
+          seen.add(key);
+          merged.push(normalized);
+        };
+        stepSources.forEach(add);
+        searchSources.forEach(add);
+        return merged;
+      };
+
+      const captureSearchSourcesForStep = (step, searchResult) => {
+        const searchSources = extractSourcesFromSearchResult(searchResult);
+        if (searchSources.length === 0 && !Array.isArray(step?.sources)) return;
+        step._resolvedSources = mergeStepSources(step.sources || [], searchSources);
+      };
+
+      const getResolvedStepSources = (step) => (
+        Array.isArray(step?._resolvedSources) && step._resolvedSources.length > 0
+          ? step._resolvedSources
+          : (Array.isArray(step?.sources) ? step.sources : [])
+      );
 
       // Only use router-set or user-set searchQuery; no auto-derivation.
       // The router decides which steps need per-step search,
@@ -3595,6 +3660,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   stepSearchCache.set(searchCacheKey, searchResult || null);
                 }
                 if (searchResult) {
+                  captureSearchSourcesForStep(step, searchResult);
                   enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\n${buildWebSearchResultInstruction(dependencyContext)}`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
                 } else {
@@ -3672,6 +3738,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const extractedTitle = extractTitleFromHTML(filledHtml);
               const slideTitle = extractedTitle || template.title || 'Untitled Slide';
               const slideSummary = generateSlideSummary(filledHtml, templateId, slideTitle);
+              const resolvedSources = getResolvedStepSources(step);
 
               pendingSlides.push({
                 title: slideTitle,
@@ -3680,6 +3747,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 templateId,
                 customCSS: getTemplateCustomCSS(template, filledHtml),
                 summary: slideSummary,
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(step.sectionTracker ? { sectionLabel: step.sectionTracker } : {}),
                 ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
               });
@@ -3690,6 +3758,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 ...(step.layoutGuidance ? { layoutGuidance: step.layoutGuidance } : {}),
               };
               const newSlides = await generateSlides(freestyleContext, stepSettings, 1, freshState.slides, null, null, freestyleContextInfo);
+              const resolvedSources = getResolvedStepSources(step);
               for (const slide of newSlides) {
                 const title = extractTitleFromHTML(slide.html) || slide.title || 'Untitled Slide';
                 pendingSlides.push({
@@ -3698,6 +3767,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   type: slide.type,
                   summary: generateSlideSummary(slide.html, slide.type, title),
                   ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
+                  ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                   ...(step.sectionTracker ? { sectionLabel: step.sectionTracker } : {}),
                   ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
                 });
@@ -3800,6 +3870,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   stepSearchCache.set(searchCacheKey, searchResult || null);
                 }
                 if (searchResult) {
+                  captureSearchSourcesForStep(step, searchResult);
                   editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\n${buildWebSearchResultInstruction(dependencyContext)}`;
                   console.log(`[SmartAction] edit_slide step ${stepIndex}: search returned ${searchResult.length} chars`);
                 }
@@ -4242,11 +4313,13 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
 
           for (const { b, result } of imageResults) {
             recordAiIO(`create_slide (${b.step.templateId})`, b.enrichedPrompt, result.html.slice(0, 500));
+            const resolvedSources = getResolvedStepSources(b.step);
             allBatchInserts.push({
               stepIndex: b.actualIndex,
               slideDataArray: [{
                 ...result,
                 summary: generateSlideSummary(result.html, result.type, result.title),
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               }],
@@ -4257,6 +4330,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           // Fixed-layout slides (cover, section divider): direct placeholder fill
           // Cover titles are validated against search facts to prevent date hallucination
           for (const b of fixedSlides) {
+            const resolvedSources = getResolvedStepSources(b.step);
             const instr = b.step.instruction || '';
             // Prefer structured title/subtitle fields from the new router output
             const titleMatch = b.step.title ? [null, b.step.title] : instr.match(/TITLE:\s*(.+)/i);
@@ -4329,6 +4403,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               stepIndex: b.actualIndex,
               slideDataArray: [{
                 ...slideData,
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               }],
@@ -4341,6 +4416,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             recordAiIO(`create_slide (${b.step.templateId})`, b.enrichedPrompt, html.slice(0, 2000));
             const extractedTitle = extractTitleFromHTML(html);
             const slideTitle = extractedTitle || b.template.title || 'Untitled Slide';
+            const resolvedSources = getResolvedStepSources(b.step);
             allBatchInserts.push({
               stepIndex: b.actualIndex,
               slideDataArray: [{
@@ -4350,6 +4426,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 templateId: b.step.templateId,
                 customCSS: getTemplateCustomCSS(b.template, html),
                 summary: generateSlideSummary(html, b.step.templateId, slideTitle),
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               }],
@@ -4360,6 +4437,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           for (const { b, newSlides } of freestyleResults) {
             if (newSlides.length === 0) continue;
             recordAiIO(`create_slide (freestyle${b.step.layoutGuidance ? `:${b.step.layoutGuidance}` : ''})`, b.enrichedPrompt, newSlides.map(s => s.html.slice(0, 500)).join('\n---\n'));
+            const resolvedSources = getResolvedStepSources(b.step);
             const pendingSlides = newSlides.map(slide => {
               const title = extractTitleFromHTML(slide.html) || slide.title || 'Untitled Slide';
               return {
@@ -4368,6 +4446,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 type: slide.type,
                 summary: generateSlideSummary(slide.html, slide.type, title),
                 ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               };
@@ -4502,6 +4581,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   stepSearchCache.set(searchCacheKey, searchResult || null);
                 }
                 if (searchResult) {
+                  captureSearchSourcesForStep(step, searchResult);
                   enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\n${buildWebSearchResultInstruction(dependencyContext)}`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
                 } else {

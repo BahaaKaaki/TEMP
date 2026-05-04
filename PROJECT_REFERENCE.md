@@ -66,7 +66,7 @@ slide-themes-main/
 │   │   │   ├── AIChatbot.jsx         # **CORE**: chatbot UI, routing, execution engine
 │   │   │   ├── Header.jsx            # Deck name, export (PPTX/PDF/HTML), settings
 │   │   │   ├── MainContent.jsx       # Preview vs editor toggle
-│   │   │   ├── SlidePreview.jsx      # Slide preview, comments, zoom, fullscreen, widget menu
+│   │   │   ├── SlidePreview.jsx      # Slide preview, sources inspector, comments, zoom, fullscreen, widget menu
 │   │   │   ├── SlideEditor.jsx       # Monaco HTML/CSS editor
 │   │   │   ├── SlideList.jsx         # Slide thumbnails, drag-reorder, multi-select
 │   │   │   ├── SmartActionCard.jsx   # Execution plan review/edit UI, storyline editing
@@ -278,7 +278,7 @@ When a user types a message in the chatbot:
 5. EXECUTION (executeFromSmartAction)
    ├── Speed mode determines generation model for all steps
    ├── Active client design profile appends profile-specific design contract to generation/edit system prompts
-   ├── Structured fields (title, subtitle, facts, sources) prepended to step prompt
+   ├── Structured fields (title, subtitle, facts, sources) prepended to step prompt; router sources are stored on created slides for preview verification
    ├── Validate contextFromStep dependencies before execution; invalid or missing parent outputs fail visibly
    ├── Build groups from router plan
    ├── For each group → executeGroupParallel
@@ -416,7 +416,7 @@ Core state shape:
 
 ```javascript
 {
-  slides: [],                    // Array of { id, title, html, customCSS, type, summary, pptxRendererCode }; new slide IDs use compact s_* values, legacy UUIDs remain valid
+  slides: [],                    // Array of { id, title, html, customCSS, type, summary, sources, pptxRendererCode }; new slide IDs use compact s_* values, legacy UUIDs remain valid
   sharedCSS: SLIDES_CSS,         // Shell CSS (single source of truth)
   theme: DEFAULT_THEME,          // Theme config: { name, colors: {...}, fonts: {...}, layout?: { cssVars } }
   activeSlideId: null,           // Currently selected slide
@@ -768,6 +768,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 67. **Freshness-first search grounding**: Latest/current deck requests now tell the router to verify newest names per entity before planning, and slide execution treats per-step web search results as fresher than router facts when model/product names, dates, pricing, benchmarks, or availability conflict.
 68. **Router/search dependency hardening**: GPT Responses router failures now fall back to Chat Completions planning, router outputs include a structured `evidencePack`, SmartAction per-step searches are cached/budgeted, and `contextFromStep` dependencies are validated and enforced across SmartAction plus agent `build_presentation` execution paths.
 69. **Per-step evidence search model**: SmartAction per-step web searches now use `settings.evidenceSearchModel` with a code default of `openai.gpt-5.5`, keeping classifier/search defaults lightweight while improving factual enrichment quality for slide-specific evidence. Dependent steps now preserve canonical entities from `contextFromStep` and use search for enrichment fields instead of broad rediscovery.
+70. **Slide source verification UX**: Created slides now retain router `sources[]` metadata and per-step web-search markdown links where available. `SlidePreview` extracts metadata, in-slide links, and URL text into a right-side source inspector with clickable verification cards; broad footer-only source labels are ignored unless no URL-backed source exists.
 
 ---
 

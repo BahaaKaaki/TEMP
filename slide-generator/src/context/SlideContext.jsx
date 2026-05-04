@@ -602,6 +602,7 @@ function slideReducer(state, action) {
         pptxExportCode: action.payload.pptxExportCode || '',
         pptxRendererCode: action.payload.pptxRendererCode || null, // JavaScript code for PPTX export
         summary: action.payload.summary || generateSlideSummary(html, type, title),
+        sources: Array.isArray(action.payload.sources) ? action.payload.sources : [],
         comments: [], // Array of { id, text, createdAt, addressed, addressedAt, addressedBy }
         // Hierarchy and storyline
         parentId: action.payload.parentId || null, // For slide hierarchy
@@ -682,6 +683,7 @@ function slideReducer(state, action) {
         pptxExportCode: slideData.pptxExportCode || '',
         pptxRendererCode: slideData.pptxRendererCode || null, // JavaScript code for PPTX export
         summary: slideData.summary || generateSlideSummary(html, type, title),
+        sources: Array.isArray(slideData.sources) ? slideData.sources : [],
         comments: [],
         parentId: slideData.parentId || null,
         storyPointId: storyPointId,

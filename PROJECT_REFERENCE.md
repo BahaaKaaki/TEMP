@@ -544,6 +544,8 @@ Options: `-SkipBuild` (deploy only), `-SkipDeploy` (build only)
 
 `ALLOWLIST_MODE=enforce` is active on Azure. The Express middleware (`backend/src/common/middleware/entra-allowlist.middleware.ts`) verifies Entra ID JWTs and checks the user's email against `config/allowlist.txt`. Non-listed users get 403 ACCESS_DENIED.
 
+MSAL silent token refresh failures and unrecovered backend 401s dispatch `AUTH_SESSION_EXPIRED_EVENT` from `authFetch()`. `App.jsx` listens for that event and shows a visible "Session expired" prompt with a Microsoft sign-in action instead of relying only on console warnings. Repeated `/api/whoami` 401s after an automatic redirect attempt now stop at the same re-auth prompt rather than silently rendering the editor as allowed.
+
 ### Key Files
 
 | File | Purpose |
@@ -737,6 +739,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 57. **Router action parity and freestyle prompt contract**: Restored `switch_template` to the markdown router prompt's supported action set and tightened Freestyle-mode prompt/context rules so body slide creation remains freestyle unless the user explicitly requests a named template/layout.
 
 58. **STC section tracker alignment**: STC canvas trackers now render after the top-left logo as text-only chrome, using `#9E21FF` tracker text without arrow/chevron markers. The STC profile exposes the same tracker geometry to PPTX export so generated decks avoid logo overlap and keep canvas/export chrome aligned.
+
+59. **Auth session expiry UX**: MSAL silent token refresh failures and unrecovered backend 401s now surface a visible "Session expired" prompt with a Microsoft sign-in action. Repeated `/api/whoami` 401s after automatic redirect no longer fall through to the editor as allowed.
 
 ---
 

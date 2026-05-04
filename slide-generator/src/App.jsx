@@ -13,7 +13,7 @@ import AuthLoadingScreen from './components/AuthLoadingScreen';
 import AccessDenied from './components/AccessDenied';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { loadSkills } from './services/skillsService';
-import { authFetch } from './services/authFetch';
+import { AUTH_SESSION_EXPIRED_EVENT, authFetch } from './services/authFetch';
 import { loadStcForwardFonts } from './services/stcFontLoader';
 import { loadTemplateFromStorage } from './services/pptxTemplateService';
 import { getActiveClientProfile } from './utils/clientDesignProfiles';
@@ -141,6 +141,87 @@ function EditorContent() {
 const AUTH_RETRY_KEY = 'edwinAuthRetryAt';
 const LOGIN_SCOPES = ['openid', 'profile', 'email'];
 
+function SessionExpiredPrompt({ compact = false, message, onSignIn, isSigningIn = false }) {
+  const content = (
+    <>
+      <div style={{ fontWeight: 700, color: '#2d2d2d', marginBottom: 4 }}>Session expired</div>
+      <div style={{ color: '#666', fontSize: 14, lineHeight: 1.45, marginBottom: 12 }}>
+        {message || 'Your Microsoft sign-in session needs to be refreshed before Edwin can continue.'}
+      </div>
+      <button
+        type="button"
+        onClick={onSignIn}
+        disabled={isSigningIn}
+        style={{
+          border: 'none',
+          borderRadius: 8,
+          background: '#8E1E1E',
+          color: '#fff',
+          cursor: isSigningIn ? 'default' : 'pointer',
+          fontWeight: 700,
+          padding: compact ? '8px 12px' : '10px 16px',
+          opacity: isSigningIn ? 0.75 : 1,
+        }}
+      >
+        {isSigningIn ? 'Opening sign-in...' : 'Sign in again'}
+      </button>
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div
+        role="alert"
+        style={{
+          position: 'fixed',
+          right: 24,
+          bottom: 24,
+          zIndex: 10000,
+          width: 360,
+          maxWidth: 'calc(100vw - 32px)',
+          background: '#fff',
+          border: '1px solid #ead6d6',
+          borderLeft: '4px solid #8E1E1E',
+          borderRadius: 12,
+          boxShadow: '0 16px 40px rgba(0,0,0,0.18)',
+          padding: 16,
+        }}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="alert"
+      style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#f7f5f2',
+        padding: 24,
+      }}
+    >
+      <div
+        style={{
+          width: 420,
+          maxWidth: '100%',
+          background: '#fff',
+          border: '1px solid #ead6d6',
+          borderRadius: 16,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.12)',
+          padding: 28,
+          textAlign: 'center',
+        }}
+      >
+        {content}
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }) {
   const isAuthenticated = useIsAuthenticated();
   const { instance, inProgress } = useMsal();
@@ -167,9 +248,12 @@ function ProtectedRoute({ children }) {
           const now = Date.now();
           const lastRetry = parseInt(sessionStorage.getItem(AUTH_RETRY_KEY) || '0', 10);
           if (now - lastRetry < 60_000) {
-            console.warn('[ProtectedRoute] /api/whoami still 401 after recent re-auth -- stopping redirect loop');
+            console.warn('[ProtectedRoute] /api/whoami still 401 after recent re-auth -- prompting user');
             sessionStorage.removeItem(AUTH_RETRY_KEY);
-            setBootstrap({ status: 'allowed', email: null });
+            setBootstrap({
+              status: 'authExpired',
+              message: 'We could not refresh your Microsoft session automatically. Please sign in again to continue.',
+            });
             return;
           }
           console.warn('[ProtectedRoute] /api/whoami returned 401 -- triggering loginRedirect to refresh tokens');
@@ -179,7 +263,10 @@ function ProtectedRoute({ children }) {
           } catch (err) {
             console.error('[ProtectedRoute] loginRedirect failed:', err);
             sessionStorage.removeItem(AUTH_RETRY_KEY);
-            setBootstrap({ status: 'allowed', email: null });
+            setBootstrap({
+              status: 'authExpired',
+              message: 'We could not open Microsoft sign-in automatically. Please try again.',
+            });
           }
           return;
         }
@@ -215,8 +302,64 @@ function ProtectedRoute({ children }) {
   if (bootstrap.status === 'denied') {
     return <AccessDenied email={bootstrap.email} />;
   }
+  if (bootstrap.status === 'authExpired') {
+    return (
+      <SessionExpiredPrompt
+        message={bootstrap.message}
+        isSigningIn={isLoading}
+        onSignIn={() => {
+          sessionStorage.setItem(AUTH_RETRY_KEY, String(Date.now()));
+          instance.loginRedirect({ scopes: LOGIN_SCOPES }).catch((err) => {
+            console.error('[ProtectedRoute] manual loginRedirect failed:', err);
+            sessionStorage.removeItem(AUTH_RETRY_KEY);
+            setBootstrap({
+              status: 'authExpired',
+              message: 'We could not open Microsoft sign-in. Please refresh the page and try again.',
+            });
+          });
+        }}
+      />
+    );
+  }
 
   return children;
+}
+
+function AuthSessionNotice() {
+  const { instance, inProgress } = useMsal();
+  const [notice, setNotice] = useState(null);
+  const isSigningIn = inProgress !== InteractionStatus.None;
+
+  useEffect(() => {
+    const onAuthExpired = (event) => {
+      const detail = event.detail || {};
+      setNotice({
+        message: detail.source === 'api_401'
+          ? 'Your Microsoft sign-in session expired. Please sign in again before continuing.'
+          : 'Microsoft could not refresh your sign-in silently. Please sign in again before continuing.',
+      });
+    };
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, onAuthExpired);
+    return () => window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, onAuthExpired);
+  }, []);
+
+  if (!notice) return null;
+
+  return (
+    <SessionExpiredPrompt
+      compact
+      message={notice.message}
+      isSigningIn={isSigningIn}
+      onSignIn={() => {
+        instance.loginRedirect({ scopes: LOGIN_SCOPES }).catch((err) => {
+          console.error('[AuthSessionNotice] loginRedirect failed:', err);
+          setNotice({
+            message: 'We could not open Microsoft sign-in. Please refresh the page and try again.',
+          });
+        });
+      }}
+    />
+  );
 }
 
 function AppContent() {
@@ -234,6 +377,7 @@ function AppContent() {
   return (
     <SlideProvider>
       <KnowledgeBaseProvider>
+        <AuthSessionNotice />
         <Routes>
           <Route
             path="/"

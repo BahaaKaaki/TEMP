@@ -3105,9 +3105,9 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       const buildStepFactsBlock = (step) => {
         if (!Array.isArray(step?.facts) || step.facts.length === 0) return '';
         const title = hasRouterSearchFacts
-          ? `VERIFIED FACTS FROM WEB SEARCH (current as of ${currentDateString()})`
+          ? `ROUTER RESEARCH FACTS (verify freshness against later search results; current date ${currentDateString()})`
           : 'PLANNER FACTS FROM ROUTER (not web-verified)';
-        const closing = hasRouterSearchFacts ? 'END VERIFIED FACTS' : 'END PLANNER FACTS';
+        const closing = hasRouterSearchFacts ? 'END ROUTER RESEARCH FACTS' : 'END PLANNER FACTS';
         const lines = [`\n\n=== ${title} ===`, ...step.facts.map(f => `- ${f}`)];
         if (Array.isArray(step.sources) && step.sources.length > 0) {
           const srcLines = step.sources.map(s =>
@@ -3117,7 +3117,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         }
         lines.push(`=== ${closing} ===`);
         lines.push(hasRouterSearchFacts
-          ? 'IMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.'
+          ? 'IMPORTANT: Use these router research facts as initial grounding, but if a later WEB SEARCH RESULTS block appears, treat that block as fresher and override any conflicting or older names, dates, prices, benchmarks, and availability details. For latest/current requests, do not preserve stale model or product names merely because they appear here.'
           : 'IMPORTANT: Use the planner facts above as task context. They are not independently web-verified unless sources are listed, so do not describe them as web search results.');
         return `${lines.join('\n')}\n`;
       };
@@ -3424,7 +3424,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               try {
                 const searchResult = await webSearch(datedQuery, settings, searchOpts);
                 if (searchResult) {
-                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
@@ -3602,7 +3602,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               try {
                 const searchResult = await webSearch(datedQuery, settings, searchOpts);
                 if (searchResult) {
-                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] edit_slide step ${stepIndex}: search returned ${searchResult.length} chars`);
                 }
               } catch (searchErr) {
@@ -4287,7 +4287,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               try {
                 const searchResult = await webSearch(datedQuery, settings, searchOpts);
                 if (searchResult) {
-                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;

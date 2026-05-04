@@ -32,7 +32,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - AI plan review cards keep long section trackers, template names, and instructions constrained within the chat panel
 - Router search policy uses GPT 5.5 reasoning by default, but only attaches web search for requests that need current or external evidence; per-step search remains available for factual slides
 - Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md`; runtime assembly injects the current template catalog so Auto/Freestyle routing can honor explicit template requests while preserving freestyle defaults
-- Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` and emphasizes sharp, scratch-built consulting layouts, semantic HTML table markup for table requests, chart geometry, sequential flows, frame fit, token-only colors, and visual uplift
+- Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` and emphasizes sharp, scratch-built consulting layouts, semantic HTML table markup for table requests, inline sentence flow for nested text, chart geometry, sequential flows, frame fit, token-only colors, and visual uplift
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Complex chart generation uses fixed-coordinate geometry guidance for waterfall/bridge/bar-style exhibits, with inline numeric positioning allowed only for chart marks
 - Template auto-match now attaches the selected template's extracted CSS consistently across create, insert, fill, and switch paths

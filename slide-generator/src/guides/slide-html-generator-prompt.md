@@ -84,7 +84,8 @@ The `.frame` is exactly **904 x 366 px** with `overflow: hidden`.
 - Use fixed coordinates or SVG for chart geometry.
 - No JavaScript.
 - No inline layout styles for normal layouts.
-- Inline styles are allowed only for data-driven geometry or minor token tweaks.
+- Inline styles are allowed only for data-driven geometry, minor token tweaks, or the sentence-flow exception below.
+- When rendering text inside a <div> that is intended to read as one continuous inline sentence, explicitly set inline flow at the container level, e.g. <div style="display:inline;">...; do this especially when using nested elements like <strong>, <span>, or separators, and do not assume nested elements will remain inline by default.
 - No bare selectors like `h3`, `p`, `span`, or `div`.
 - Do not define or modify `:root`, `body`, `.slide`, `.title`, `.subtitle`, `.frame`, or `.footer`.
 - No global utility classes.

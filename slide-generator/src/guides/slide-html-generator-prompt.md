@@ -91,6 +91,7 @@ The `.frame` is exactly **904 x 366 px** with `overflow: hidden`.
 - Every custom class in HTML must have a matching CSS rule.
 - Prefer fewer semantic classes over many micro-classes.
 - When the user asks for a table or the content is clearly rows and columns, use semantic `<table>`, `<thead>`, `<tbody>`, `<tr>`, `<th>`, and `<td>` markup instead of simulating a table with unrelated divs.
+- For scorecards, benchmark matrices, RAG/status grids, and rating tables, put markers directly inside table cells as text glyphs such as `●`, `◐`, `○`, `✓`, or short labels. Do not create dots as separate positioned divs, circles, SVG marks, or overlay elements above the cells.
 - Use sharp-edged shapes by default; avoid rounded boxes and pill-shaped containers unless clearly justified.
 
 ---

@@ -752,6 +752,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 63. **STC section tracker readability**: STC section/subsection tracker chrome now uses 9px text in preview, fullscreen, prompt/profile guidance, and PPTX export, with wider logo-safe tracker measurements so subsection labels no longer overlap the main tracker.
 
+64. **Native table marker safeguards**: Scorecard/status table generation now asks for dot/check/RAG markers as glyph text inside `<td>` cells, and PPTX validation retries native-table exports that still draw ellipse/circle marker overlays above the table.
+
 ---
 
 ## 11. Pending / In Discussion

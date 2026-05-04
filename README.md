@@ -20,7 +20,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
 - Monaco-based slide editor (HTML/CSS)
-- PowerPoint (.pptx) export via PptxGenJS with template-aware merging (logo injection, master shape isolation, smart layout selection, template position awareness, and native table export guidance)
+- PowerPoint (.pptx) export via PptxGenJS with template-aware merging (logo injection, master shape isolation, smart layout selection, template position awareness, native table export guidance, and table-cell marker safeguards)
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
 - Client template profiles can switch generation away from the default Strategy& look; STC ships as the first full profile with semantic theme tokens, layout CSS variables, prompt-section overrides, footer branding, PPTX export hints, evidence metadata, and validation rules

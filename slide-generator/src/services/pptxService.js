@@ -355,7 +355,7 @@ BAR CHARTS: Render bar-chart-exhibit as native PptxGenJS shapes (filled rectangl
 AUTO-CHARTS: If you see <div class="auto-chart" data-chart='JSON'>, extract chart data and use slide.addChart().
 If unsure how to use addChart, render bars as rectangles instead — that always works.
 
-NATIVE TABLES: If the HTML contains a real <table>, or a hinted/native table element, prefer slide.addTable(rows, options) instead of drawing every cell as rectangles and text boxes. Use one table object with column widths, row height, borders, fills, and per-cell text styles. Use shapes only when the visual is a non-tabular matrix, chart, heatmap, or process layout.
+NATIVE TABLES: If the HTML contains a real <table>, or a hinted/native table element, prefer slide.addTable(rows, options) instead of drawing every cell as rectangles and text boxes. Use one table object with column widths, row height, borders, fills, and per-cell text styles. Use shapes only when the visual is a non-tabular matrix, chart, heatmap, or process layout. For scorecard/status tables, render dots, checks, RAG markers, and other cell indicators as table cell text glyphs (for example ●, ◐, ○, ✓) with per-cell text color and alignment. Do NOT draw those markers as separate ellipse/circle shapes over the table.
 
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
 
@@ -368,7 +368,7 @@ Interpret hints as follows:
 - exact-text: preserve the visible text exactly. Do not abbreviate, trim, or rewrite it.
 - step-number: keep the number as one prominent line, not multiple lines.
 - tight-box: minimise text margin / inset. Prefer margin:0, wrap:false, and valign:'middle' when that matches the CSS. Use fit:'shrink' only as a last resort to preserve one-line text.
-- table / native-table: render the element as a native PowerPoint table via slide.addTable when it is row/column data.
+- table / native-table: render the element as a native PowerPoint table via slide.addTable when it is row/column data. Cell markers belong inside table cells as text glyphs, not as overlay shapes.
 - align=... / valign=...: prefer that alignment for the hinted element.
 - typography-floor: even when using fit:'shrink', never set fontSize below 8 for compact tags/trackers or below 10 for normal text; use 12 for normal body copy and 14 for section/pillar/card titles.
 
@@ -587,6 +587,12 @@ function hasNativeTableIntent(html, hints = null) {
     parsedHints.some(entry => entry?.hints?.flags?.some(flag => flag === 'table' || flag === 'native-table'));
 }
 
+function hasTableMarkerOverlayShapes(codeString) {
+  const source = String(codeString || '');
+  return /\baddShape\s*\(\s*(?:[^,\n]*\.)?ShapeType\.(?:ellipse|oval)\b/i.test(source) ||
+    /\baddShape\s*\(\s*['"`](?:ellipse|oval)['"`]/i.test(source);
+}
+
 function buildPositionBlock(tplPositions) {
   if (!tplPositions || Object.keys(tplPositions).length === 0) return null;
   const t = tplPositions.title;
@@ -722,7 +728,7 @@ ${exampleCode}
 
 ========== SLIDE ${slideNum} OF ${totalSlides} ==========
 ${hintsBlock ? `\n${hintsBlock}\n` : ''}
-${nativeTableIntent ? `\n========== NATIVE TABLE EXPORT ==========\nThis slide contains row/column table intent. If the visible content is tabular, render it with PptxGenJS slide.addTable(rows, options), not a pile of independent rectangles and text boxes. Preserve header fills, body fills, borders, column widths, row heights, alignment, and per-cell text colors. Use shape grids only for non-tabular matrices, charts, heatmaps, or diagrams.\n` : ''}
+${nativeTableIntent ? `\n========== NATIVE TABLE EXPORT ==========\nThis slide contains row/column table intent. If the visible content is tabular, render it with PptxGenJS slide.addTable(rows, options), not a pile of independent rectangles and text boxes. Preserve header fills, body fills, borders, column widths, row heights, alignment, and per-cell text colors. Scorecard dots, hollow circles, checks, RAG markers, and similar status indicators MUST be table cell text glyphs inside the relevant rows/columns. Do not use slide.addShape('ellipse'), circle shapes, or positioned overlays for table cell markers; they detach when the table is resized. Use shape grids only for non-tabular matrices, charts, heatmaps, or diagrams.\n` : ''}
 >>> HTML (extract ALL text EXACTLY) <<<
 ${cleanHtml}
 >>> END HTML <<<
@@ -805,11 +811,20 @@ export function validateGeneratedCode(codeString, slideHtml) {
     return { valid: false, errors: [{ type: 'FormatError', message: 'Response is not an array containing a function', details: 'Expected [function(pptx, slideNum, totalSlides) { ... }]' }] };
   }
 
-  if (hasNativeTableIntent(slideHtml) && !/\baddTable\s*\(/.test(String(codeString))) {
+  const nativeTableIntent = hasNativeTableIntent(slideHtml);
+  const usesNativeTable = /\baddTable\s*\(/.test(String(codeString));
+  if (nativeTableIntent && !usesNativeTable) {
     errors.push({
       type: 'NativeTableWarning',
       message: 'Table-intent slide did not use slide.addTable',
       details: 'For real HTML tables or native-table hints, retry with a native PowerPoint table before falling back to shape grids.',
+    });
+  }
+  if (nativeTableIntent && usesNativeTable && hasTableMarkerOverlayShapes(codeString)) {
+    errors.push({
+      type: 'NativeTableWarning',
+      message: 'Table-intent slide used overlay circle shapes for table markers',
+      details: 'Retry with scorecard/status dots, checks, and hollow markers encoded as centered table cell text glyphs inside slide.addTable rows, not separate ellipse/circle shapes.',
     });
   }
 

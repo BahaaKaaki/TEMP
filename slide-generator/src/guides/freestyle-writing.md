@@ -29,3 +29,7 @@ If the source replaces the brand, two spans:
 ```
 
 Keep sources to **5-15 words maximum**. Examples: "Source: Bloomberg NEF", "McKinsey Global Institute, 2024", "Company annual report, FY2025". Never write full sentences in the source line. If no external data is cited, keep the brand name only (no invented source).
+
+## Tables
+
+When the user asks for a table, KPI input sheet, matrix, rubric, or row/column comparison, use real HTML table markup. Keep headers short, wrap only body copy, and avoid simulating tables with unrelated divs unless the visual is a non-tabular matrix or chart.

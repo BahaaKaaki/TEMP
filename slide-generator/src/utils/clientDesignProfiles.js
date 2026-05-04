@@ -103,7 +103,7 @@ const STC_LAYOUT_CONTRACT = {
     source: { x: 15, y: 494, w: 465, h: 19 },
     slideNumber: { x: 935, y: 519, w: 14, h: 10 },
     sectionTracker: {
-      text: { x: 57, y: 10, w: 242, h: 10 },
+      text: { x: 57, y: 10, w: 300, h: 14 },
     },
   },
   cover: {
@@ -122,7 +122,7 @@ const STC_LAYOUT_CONTRACT = {
 
 const STC_FREESTYLE_OVERRIDES = {
   shell: `Default to a 16:9 white STC board template on a 960x540 canvas. These STC positions replace any generic shell defaults:
-- Section tracker: keep the STC logo clear. Use text-only tracker chrome at top y=10px, x=57px, text color #9E21FF. Do not use arrow or chevron markers.
+- Section tracker: keep the STC logo clear. Use text-only tracker chrome at top y=10px, x=57px, 9px text, and color #9E21FF. Do not use arrow or chevron markers.
 - h1.title: left 15px, top 28px, width 931px, height about 71px, STC Forward regular 24px, color #4F008C.
 - h2.subtitle: left 15px, top 105px, width 931px, height about 19px, STC Forward regular 18px, color #FF375E.
 - div.frame: left 15px, top 134px, width 931px, height 340px. Design all custom content inside this STC frame, not the generic 904x366 frame.
@@ -206,7 +206,7 @@ const STC_PROMPT_CONTRACT = `# STC Client Design Contract
 ## Layout and chrome
 - STC slides use a 960x540 canvas mapped from 13.33x7.5 in.
 - Content-slide title band: title around x=15, y=29, w=931, h=71.
-- Section tracker band: logo-safe text-only tracker around x=57, y=10, color #9E21FF. Never place tracker chrome at x=0 over the logo, and do not add arrow/chevron markers.
+- Section tracker band: logo-safe text-only tracker around x=57, y=10, 9px text, color #9E21FF. Never place tracker chrome at x=0 over the logo, and do not add arrow/chevron markers.
 - Subtitle band: around x=15, y=105, w=931, h=19.
 - Main content band: around x=15, y=134, w=931, h=340.
 - Source/footer band: bottom-left around x=15, y=495; slide number bottom-right around x=935, y=519.
@@ -256,7 +256,7 @@ const stcStandardInches = {
     variant: 'stcBreadcrumb',
     text: {
       ...pxRectToInches(STC_LAYOUT_CONTRACT.standardContent.sectionTracker.text),
-      font: { fontFace: 'STC Forward', fontSize: 5.5, bold: true, color: '9E21FF' },
+      font: { fontFace: 'STC Forward', fontSize: 9, bold: true, color: '9E21FF' },
     },
     colors: { text: '9E21FF', subText: '515360' },
   },

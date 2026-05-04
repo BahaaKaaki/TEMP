@@ -441,10 +441,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       // Inject sub-section tracker attribute if slide has a subSectionLabel
       if (activeSlide.subSectionLabel) {
         const escaped = activeSlide.subSectionLabel.replace(/"/g, '&quot;');
-        // Calculate offset for sub-tracker based on main tracker text length
-        const trackerOffset = activeSlide.sectionLabel
-          ? Math.round(activeSlide.sectionLabel.length * 4.8 + 22)
-          : 0;
+        const trackerOffset = estimateTrackerOffset(activeSlide.sectionLabel, activeClientProfile);
         html = html.replace(
           /class="slide([^"]*)"/,
           `class="slide$1" data-subsection="${escaped}" style="--tracker-offset: ${trackerOffset}px"`
@@ -487,7 +484,7 @@ export default function SlidePreview({ onSwitchToCode }) {
           if (activeSlide?.subSectionLabel) {
             slideEl.setAttribute('data-subsection', activeSlide.subSectionLabel);
             if (activeSlide.sectionLabel) {
-              const offset = Math.round(activeSlide.sectionLabel.length * 4.8 + 22);
+              const offset = estimateTrackerOffset(activeSlide.sectionLabel, activeClientProfile);
               slideEl.style.setProperty('--tracker-offset', `${offset}px`);
             }
           } else {
@@ -497,7 +494,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         }
       });
     }
-  }, [state.darkMode, activeSlide?.sectionLabel, activeSlide?.subSectionLabel]);
+  }, [state.darkMode, activeSlide?.sectionLabel, activeSlide?.subSectionLabel, activeClientProfile]);
 
   // Make all text-bearing leaf elements editable.
   //
@@ -1558,6 +1555,17 @@ function escapeHtmlAttr(value = '') {
     .replace(/>/g, '&gt;');
 }
 
+function estimateTrackerOffset(sectionLabel, activeProfile = null) {
+  if (!sectionLabel) return 0;
+  const labelLength = String(sectionLabel).length;
+  const isStc = activeProfile?.id === 'stc';
+  const base = isStc ? 38 : 22;
+  const charWidth = isStc ? 6.1 : 4.8;
+  const min = isStc ? 190 : 0;
+  const max = isStc ? 360 : 360;
+  return Math.min(max, Math.max(min, Math.round(labelLength * charWidth + base)));
+}
+
 function stripClientProfileChrome(html = '') {
   return html
     .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-stc-logo\b[^"]*"[^>]*>/gi, '')
@@ -1596,12 +1604,11 @@ function injectSectionToHtml(html, sectionLabel) {
 }
 
 // Inject data-subsection attribute for sub-section tracker tab
-function injectSubSectionToHtml(html, subSectionLabel, sectionLabel) {
+function injectSubSectionToHtml(html, subSectionLabel, sectionLabel, activeProfile = null) {
   if (!subSectionLabel || !html) return html;
   const escaped = subSectionLabel.replace(/"/g, '&quot;');
   const cleanHtml = html.replace(/\s*data-subsection="[^"]*"/g, '');
-  // Calculate offset based on main tracker label width
-  const offset = sectionLabel ? Math.round(sectionLabel.length * 4.8 + 22) : 0;
+  const offset = estimateTrackerOffset(sectionLabel, activeProfile);
   return cleanHtml.replace(
     /class="slide([^"]*)"/,
     `class="slide$1" data-subsection="${escaped}" style="--tracker-offset: ${offset}px"`
@@ -1643,7 +1650,7 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, activeCli
   }
   // Inject sub-section tracker
   if (currentSlide?.subSectionLabel && slideHtml) {
-    slideHtml = injectSubSectionToHtml(slideHtml, currentSlide.subSectionLabel, currentSlide.sectionLabel);
+    slideHtml = injectSubSectionToHtml(slideHtml, currentSlide.subSectionLabel, currentSlide.sectionLabel, activeClientProfile);
   }
   slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length);
   slideHtml = injectClientProfileChrome(slideHtml, activeClientProfile, clientLogoUrl);

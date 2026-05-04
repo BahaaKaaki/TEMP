@@ -3166,11 +3166,110 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           lines.push('Sources:', ...srcLines.map(s => `- ${s}`));
         }
         lines.push(`=== ${closing} ===`);
+        const isDependentStep = step?.contextFromStep !== null && step?.contextFromStep !== undefined;
         lines.push(hasRouterSearchFacts
-          ? 'IMPORTANT: Use these router research facts as initial grounding, but if a later WEB SEARCH RESULTS block appears, treat that block as fresher and override any conflicting or older names, dates, prices, benchmarks, and availability details. For latest/current requests, do not preserve stale model or product names merely because they appear here.'
+          ? (isDependentStep
+              ? 'IMPORTANT: Use these router research facts as initial grounding. For dependent slides, the canonical entity set from the referenced step remains authoritative; later web results may enrich dates, prices, benchmarks, availability, and caveats, but must not silently replace the referenced entity names.'
+              : 'IMPORTANT: Use these router research facts as initial grounding, but if a later WEB SEARCH RESULTS block appears, treat that block as fresher and override any conflicting or older names, dates, prices, benchmarks, and availability details. For latest/current requests, do not preserve stale model or product names merely because they appear here.')
           : 'IMPORTANT: Use the planner facts above as task context. They are not independently web-verified unless sources are listed, so do not describe them as web search results.');
         return `${lines.join('\n')}\n`;
       };
+
+      const stripHtmlForEntities = (value = '') => String(value || '')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const extractCanonicalEntities = (step, prevStep, prevOutput) => {
+        const text = [
+          prevOutput?.title,
+          prevOutput?.html,
+          prevOutput?.analysis,
+          prevStep?.title,
+          prevStep?.subtitle,
+          prevStep?.instruction,
+          ...(Array.isArray(prevStep?.facts) ? prevStep.facts : []),
+          ...(Array.isArray(step?.facts) ? step.facts : []),
+        ].map(stripHtmlForEntities).filter(Boolean).join(' ');
+
+        const patterns = [
+          /\bGPT[-\s]?\d+(?:\.\d+)?(?:\s*(?:mini|nano|pro|high|turbo))?\b/gi,
+          /\bClaude\s+(?:Opus|Sonnet|Haiku)\s+\d+(?:\.\d+)?\b/gi,
+          /\bGemini\s+\d+(?:\.\d+)?\s*(?:Pro|Flash|Flash[-\s]?Lite|Ultra)?\b/gi,
+          /\bLlama\s+\d+(?:\.\d+)?(?:\s*(?:Scout|Maverick|Instruct|Vision))?\b/gi,
+          /\bGrok\s+\d+(?:\.\d+)?\b/gi,
+          /\bMistral\s+(?:Large|Medium|Small|Nemo|Codestral|Magistral|Le Chat|AI)\s*\d*(?:\.\d+)?\b/gi,
+          /\bDeepSeek\s+(?:V\d+(?:\.\d+)?|R\d+(?:\.\d+)?|Coder|Chat|Reasoner|Flash|Pro)\b/gi,
+          /\b(?:OpenAI|Anthropic|Google DeepMind|Google Gemini|Google|Meta AI|Meta|xAI|Mistral|DeepSeek)\b/g,
+        ];
+
+        const seen = new Set();
+        const entities = [];
+        for (const pattern of patterns) {
+          for (const match of text.matchAll(pattern)) {
+            const raw = match[0].replace(/\s+/g, ' ').trim();
+            if (!raw || raw.length < 3) continue;
+            const key = raw.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            entities.push(raw);
+            if (entities.length >= 30) return entities;
+          }
+        }
+        return entities;
+      };
+
+      const getDependencyEvidenceContext = (step) => {
+        const dependency = normalizeStepDependencyIndex(step);
+        if (dependency === null || !Number.isInteger(dependency)) {
+          return null;
+        }
+        const prevStep = planSteps[dependency];
+        const prevOutput = stepOutputs[dependency];
+        if (!prevOutput && !prevStep) {
+          return null;
+        }
+        const entities = extractCanonicalEntities(step, prevStep, prevOutput);
+        if (entities.length === 0) {
+          return { dependency, entities: [] };
+        }
+        const entityLines = entities.map(entity => `- ${entity}`).join('\n');
+        return {
+          dependency,
+          entities,
+          promptBlock: `\n\n=== CANONICAL ENTITY SET FROM STEP ${dependency} ===\n${entityLines}\n=== END CANONICAL ENTITY SET ===\nIMPORTANT: Treat this entity/model list as the canonical universe for this dependent slide. Use web search to enrich facts, pricing, benchmarks, context windows, availability, and caveats for these entities. Do not introduce older, different, or broader entity names unless current sources explicitly prove the canonical list is outdated; if that happens, call out the conflict instead of silently substituting names.`,
+          searchInstruction: `Canonical entity set from step ${dependency}: ${entities.join(', ')}. Preserve this entity/model list as the search target. Use search to refresh supporting facts, pricing, benchmarks, context windows, availability, and caveats for these entities. Do not introduce older or different entity names unless current sources explicitly prove the canonical list is outdated; report any conflict separately.`,
+        };
+      };
+
+      const buildStepWebSearchInstruction = (step, dependencyContext) => {
+        const base = step.searchGoal ? `Search goal: ${step.searchGoal}` : '';
+        return [base, dependencyContext?.searchInstruction].filter(Boolean).join('\n\n');
+      };
+
+      const buildStepEvidenceSearchQuery = (baseQuery, knownFacts, dependencyContext) => {
+        const canonicalEntities = dependencyContext?.entities || [];
+        const queryBase = canonicalEntities.length > 0
+          ? `current supporting evidence for canonical entities ${canonicalEntities.join(', ')}`
+          : baseQuery;
+        const dependencyFocus = canonicalEntities.length > 0
+          ? `\n\n[Use the canonical entities from step ${dependencyContext.dependency} as the search target. Do not broaden the query to discover alternative or older entity names. Original evidence need: ${baseQuery}]`
+          : '';
+        const factContext = knownFacts
+          ? `\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
+          : '';
+        return `${queryBase} ${currentDateString()}${dependencyFocus}${factContext}`;
+      };
+
+      const buildWebSearchResultInstruction = (dependencyContext) => dependencyContext?.entities?.length > 0
+        ? `IMPORTANT: Treat WEB SEARCH RESULTS as fresh supporting evidence for facts, dates, prices, benchmarks, context windows, availability, and caveats. The canonical entity set from Step ${dependencyContext.dependency} remains authoritative for this dependent slide. Do not replace, add, or downgrade model/entity names from the referenced slide just because search mentions older or different names. Only change the entity set if the search explicitly proves a canonical entity is unavailable or outdated; if so, call out the conflict instead of silently substituting. Cite specific numbers and sources.`
+        : 'IMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.';
 
       // Only use router-set or user-set searchQuery; no auto-derivation.
       // The router decides which steps need per-step search,
@@ -3244,7 +3343,9 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const cleanCSS = cleanSlideCSSForAI(prevOutput.customCSS);
               prevContext = `<style>\n${cleanCSS}\n</style>\n${prevOutput.html}`;
             }
-            contextForAI = `${contextForAI}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]\n\nIf this slide extends or compares the same entities as the previous slide, reuse the same entity names, labels, and ordering unless the instruction explicitly says to change them.`;
+            const dependencyContext = getDependencyEvidenceContext(step);
+            const canonicalBlock = dependencyContext?.promptBlock || '';
+            contextForAI = `${contextForAI}${canonicalBlock}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]\n\nIf this slide extends or compares the same entities as the previous slide, reuse the same entity names, labels, and ordering unless the instruction explicitly says to change them.`;
           }
         }
 
@@ -3469,12 +3570,12 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             const shouldRunStepSearch = effectiveSearchQuery && settings.searchEnabled;
             if (shouldRunStepSearch) {
               const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
-              const datedQuery = knownFacts
-                ? `${effectiveSearchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
-                : `${effectiveSearchQuery} ${currentDateString()}`;
-              const stepEvidenceSearchModel = settings.stepSearchModel || settings.searchModel;
+              const dependencyContext = getDependencyEvidenceContext(step);
+              const datedQuery = buildStepEvidenceSearchQuery(effectiveSearchQuery, knownFacts, dependencyContext);
+              const stepEvidenceSearchModel = settings.evidenceSearchModel || settings.stepSearchModel || settings.searchModel;
+              const searchInstructions = buildStepWebSearchInstruction(step, dependencyContext);
               const searchOpts = {
-                ...(step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {}),
+                ...(searchInstructions ? { instructions: searchInstructions } : {}),
                 ...(stepEvidenceSearchModel ? { model: stepEvidenceSearchModel } : {}),
               };
               console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${effectiveSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}${stepEvidenceSearchModel ? ` using ${stepEvidenceSearchModel}` : ''}`);
@@ -3494,7 +3595,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   stepSearchCache.set(searchCacheKey, searchResult || null);
                 }
                 if (searchResult) {
-                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.`;
+                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\n${buildWebSearchResultInstruction(dependencyContext)}`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
@@ -3662,7 +3763,9 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   const cleanCSS = cleanSlideCSSForAI(prevOutput.customCSS);
                   prevContext = `<style>\n${cleanCSS}\n</style>\n${prevOutput.html}`;
                 }
-                editContext = `${stepPrompt}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]`;
+                const dependencyContext = getDependencyEvidenceContext(step);
+                const canonicalBlock = dependencyContext?.promptBlock || '';
+                editContext = `${stepPrompt}${canonicalBlock}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]`;
               }
             }
 
@@ -3672,12 +3775,12 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             const editSearchQuery = deriveSearchQuery(step);
             if (editSearchQuery && settings.searchEnabled) {
               const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
-              const datedQuery = knownFacts
-                ? `${editSearchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
-                : `${editSearchQuery} ${currentDateString()}`;
-              const stepEvidenceSearchModel = settings.stepSearchModel || settings.searchModel;
+              const dependencyContext = getDependencyEvidenceContext(step);
+              const datedQuery = buildStepEvidenceSearchQuery(editSearchQuery, knownFacts, dependencyContext);
+              const stepEvidenceSearchModel = settings.evidenceSearchModel || settings.stepSearchModel || settings.searchModel;
+              const searchInstructions = buildStepWebSearchInstruction(step, dependencyContext);
               const searchOpts = {
-                ...(step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {}),
+                ...(searchInstructions ? { instructions: searchInstructions } : {}),
                 ...(stepEvidenceSearchModel ? { model: stepEvidenceSearchModel } : {}),
               };
               console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${editSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}${stepEvidenceSearchModel ? ` using ${stepEvidenceSearchModel}` : ''}`);
@@ -3697,7 +3800,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   stepSearchCache.set(searchCacheKey, searchResult || null);
                 }
                 if (searchResult) {
-                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.`;
+                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\n${buildWebSearchResultInstruction(dependencyContext)}`;
                   console.log(`[SmartAction] edit_slide step ${stepIndex}: search returned ${searchResult.length} chars`);
                 }
               } catch (searchErr) {
@@ -4374,12 +4477,12 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             const shouldRunBatchSearch = effectiveBatchQuery && settings.searchEnabled;
             if (shouldRunBatchSearch) {
               const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
-              const datedQuery = knownFacts
-                ? `${effectiveBatchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
-                : `${effectiveBatchQuery} ${currentDateString()}`;
-              const stepEvidenceSearchModel = settings.stepSearchModel || settings.searchModel;
+              const dependencyContext = getDependencyEvidenceContext(step);
+              const datedQuery = buildStepEvidenceSearchQuery(effectiveBatchQuery, knownFacts, dependencyContext);
+              const stepEvidenceSearchModel = settings.evidenceSearchModel || settings.stepSearchModel || settings.searchModel;
+              const searchInstructions = buildStepWebSearchInstruction(step, dependencyContext);
               const searchOpts = {
-                ...(step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {}),
+                ...(searchInstructions ? { instructions: searchInstructions } : {}),
                 ...(stepEvidenceSearchModel ? { model: stepEvidenceSearchModel } : {}),
               };
               console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${effectiveBatchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}${stepEvidenceSearchModel ? ` using ${stepEvidenceSearchModel}` : ''}`);
@@ -4399,7 +4502,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   stepSearchCache.set(searchCacheKey, searchResult || null);
                 }
                 if (searchResult) {
-                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.`;
+                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\n${buildWebSearchResultInstruction(dependencyContext)}`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;

@@ -140,7 +140,7 @@ const initialState = {
     searchEndpoint: '/api/ai/responses',
     searchApiKey: 'server-managed',
     searchModel: 'openai.gpt-5.4-mini',
-    stepSearchModel: 'openai.gpt-5.5',
+    evidenceSearchModel: 'openai.gpt-5.5',
     searchContextSize: 'high',
     searchMaxTokens: 32000,
     searchAuthHeader: 'api-key',

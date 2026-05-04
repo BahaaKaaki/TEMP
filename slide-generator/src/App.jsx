@@ -20,15 +20,28 @@ import './styles/app.css';
 import './styles/slides.css';
 
 // Capture handoff ID at module level so it survives React StrictMode double-mount.
-// When a handoff is detected, clear persisted slide state so the previous deck
-// doesn't flash before clearAll() runs in the React effect.
+// The ID is also persisted to sessionStorage so it survives MSAL login redirects
+// (first visit: URL has ?handoff= -> MSAL redirects to Microsoft -> comes back
+// without the param -> sessionStorage still has it).
 const _pendingHandoffId = (() => {
+  const HANDOFF_KEY = 'pendingHandoffId';
   const params = new URLSearchParams(window.location.search);
-  const id = params.get('handoff');
+  let id = params.get('handoff');
+
   if (id) {
     window.history.replaceState({}, '', window.location.pathname);
-    try { localStorage.removeItem('slideGeneratorState'); } catch { /* noop */ }
+    try { sessionStorage.setItem(HANDOFF_KEY, id); } catch { /* noop */ }
+  } else {
+    try { id = sessionStorage.getItem(HANDOFF_KEY); } catch { /* noop */ }
   }
+
+  if (id) {
+    try {
+      sessionStorage.removeItem(HANDOFF_KEY);
+      localStorage.removeItem('slideGeneratorState');
+    } catch { /* noop */ }
+  }
+
   return id;
 })();
 

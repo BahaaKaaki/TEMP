@@ -1389,6 +1389,7 @@ Each slide is built by a separate AI call that sees ONLY its own instruction (+ 
 1. BAKE SHARED DATA INTO EVERY INSTRUCTION: If slide 3 lists "Top 5 opportunities: A, B, C, D, E" and slides 8-12 detail each one, you MUST name the EXACT opportunity in each detail slide's instruction. Do NOT say "detail the first opportunity" — say "detail Opportunity A: [specific name/description]". The sub-agent for slide 8 has NO idea what slide 3 said unless you tell it.
 
 2. USE contextFromStep FOR DEPENDENT SLIDES: When a detail slide MUST match a summary slide's content, add "contextFromStep": N (the step index of the summary). This injects the summary slide's HTML into the detail slide's context so it can read the exact items.
+   For current-data comparison decks, use the referenced step as the canonical entity universe. Dependent slides should preserve the same entity/model/company names from the referenced step and use search only to enrich fields such as pricing, benchmarks, availability, risks, or caveats.
 
 3. USE EXECUTION GROUPS FOR DEPENDENCIES: Put the summary/overview slide in an earlier group so it's created FIRST. Then detail slides in a later group can reference it via contextFromStep.
    Example: "groups": [[0, 1], [2, 3, 4, 5, 6]] — cover + exec summary first, then all body slides.
@@ -1478,6 +1479,11 @@ PER-STEP SEARCH (searchQuery + searchGoal):
 Per-step search triggers a SEPARATE, dedicated web search call that feeds raw results directly to the slide generation model. This is independent from your own search — it runs a fresh query and returns raw, unfiltered results.
 
 PURPOSE: Per-step search should COMPLEMENT your research, not repeat it. Your facts[] contain what you already found. The per-step search should go DEEPER or VERIFY with different queries to catch what you may have missed.
+
+DEPENDENT STEP SEARCH:
+When a step has contextFromStep, do NOT use broad rediscovery queries that could replace the referenced step's entity list. Write searchQuery/searchGoal narrowly around the referenced entities and the missing fields for the dependent slide.
+Example: If step 1 created the canonical model landscape, step 2 should search "pricing benchmarks enterprise availability for the Step 1 AI model shortlist 2026" rather than "latest AI models 2026 comparison".
+The dependent slide executor will treat the referenced step's entity set as canonical and use per-step search as enrichment, not as permission to introduce older or unrelated names.
 
 WHEN TO SET searchQuery + searchGoal:
 - Slides presenting multiple statistics, percentages, or financial figures

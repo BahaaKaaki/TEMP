@@ -435,10 +435,11 @@ Core state shape:
     clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
     clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
     // Code-managed model assignments (always from initialState, never localStorage)
-    model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Premium generation
+    model: 'pwc:openai.gpt-5.5',                     // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
     routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
+    pptxModel: 'pwc:openai.gpt-5.5',                 // PPTX export code generation
     providers: [...],            // Provider registry (PwC Shared Services)
     // ... many more settings (batch sizes, work levels, search, etc.)
   }
@@ -741,6 +742,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 58. **STC section tracker alignment**: STC canvas trackers now render after the top-left logo as text-only chrome, using `#9E21FF` tracker text without arrow/chevron markers. The STC profile exposes the same tracker geometry to PPTX export so generated decks avoid logo overlap and keep canvas/export chrome aligned.
 
 59. **Auth session expiry UX**: MSAL silent token refresh failures and unrecovered backend 401s now surface a visible "Your session expired" prompt with a Microsoft sign-in action. Repeated `/api/whoami` 401s after automatic redirect no longer fall through to the editor as allowed; active-use failures appear as a persistent top-center banner styled from `app.css`.
+
+60. **Cross-slide visual reference and GPT 5.5 defaults**: AIChatbot now classifies slide/page mentions as targets versus visual references so requests like "make this slide like slide 3" keep the current slide as the edit target while passing slide 3 as reference HTML plus unscoped `customCSS`. Main slide generation and PPTX export defaults now use `pwc:openai.gpt-5.5`, including the PPTX service fallback for reset/empty settings.
 
 ---
 

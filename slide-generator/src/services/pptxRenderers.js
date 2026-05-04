@@ -90,13 +90,16 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
 // ── Section tracker ──────────────────────────────────────────────────────────
 
 function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) {
-  const textPos = tracker?.text || { x: 0.792, y: 0.139, w: 2.778, h: 0.139 };
+  const textPos = tracker?.text || { x: 0.792, y: 0.139, w: 4.167, h: 0.194 };
   const colors = tracker?.colors || {};
   const textColor = colors.text || '9E21FF';
   const subTextColor = colors.subText || COLORS.meta;
   const font = textPos.font || {};
-  const fontSize = pptxFontSize(font.fontSize, 5.5, 5);
-  const estimateTextWidth = label => Math.max(0.55, String(label || '').length * 0.045 + 0.18);
+  const fontSize = pptxFontSize(font.fontSize, 9, 8);
+  const estimateTextWidth = label => {
+    const estimated = String(label || '').length * 0.085 + 0.53;
+    return Math.min(5.0, Math.max(2.64, estimated));
+  };
   if (!sectionLabel && !subSectionLabel) return;
 
   if (sectionLabel) {
@@ -105,7 +108,7 @@ function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) 
       x: textPos.x,
       y: textPos.y - 0.004,
       w: sectionW,
-      h: Math.max(textPos.h || 0.12, 0.12),
+      h: Math.max(textPos.h || 0.18, 0.18),
       fontFace: font.fontFace || profileFontFace('STC Forward'),
       fontSize,
       bold: font.bold ?? true,
@@ -120,7 +123,7 @@ function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) 
         x: textPos.x + sectionW + 0.14,
         y: textPos.y - 0.004,
         w: estimateTextWidth(subSectionLabel),
-        h: Math.max(textPos.h || 0.12, 0.12),
+        h: Math.max(textPos.h || 0.18, 0.18),
         fontFace: font.fontFace || profileFontFace('STC Forward'),
         fontSize,
         bold: false,
@@ -135,7 +138,7 @@ function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) 
       x: textPos.x,
       y: textPos.y - 0.004,
       w: estimateTextWidth(subSectionLabel),
-      h: Math.max(textPos.h || 0.12, 0.12),
+      h: Math.max(textPos.h || 0.18, 0.18),
       fontFace: font.fontFace || profileFontFace('STC Forward'),
       fontSize,
       bold: false,

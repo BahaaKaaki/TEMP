@@ -750,6 +750,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 62. **Native table export guidance**: Table requests now steer slide HTML generation toward semantic `<table>` markup, PPTX export hints support `table` / `native-table`, and PPTX validation retries table-intent slides once when generated code omits native `slide.addTable`.
 
+63. **STC section tracker readability**: STC section/subsection tracker chrome now uses 9px text in preview, fullscreen, prompt/profile guidance, and PPTX export, with wider logo-safe tracker measurements so subsection labels no longer overlap the main tracker.
+
 ---
 
 ## 11. Pending / In Discussion

@@ -255,9 +255,11 @@ When a user types a message in the chatbot:
    │   ├── Path A: Responses API for GPT models, with web_search_preview attached only when policy allows
    │   │   ├── Agentic search: reasoning.effort='low', multi-query research when enabled
    │   │   ├── Structured Outputs: text.format json_schema enforces field population
+   │   │   ├── On Responses failure: fall back to Chat Completions planning instead of surfacing router failure immediately
    │   │   └── Result: searchSource='inline' when search ran, otherwise 'none'
-   │   ├── Path B: Pre-search + Chat Completions (non-GPT / image fallback) only when policy allows search
+   │   ├── Path B: Pre-search + Chat Completions (non-GPT / image / Responses fallback) only when policy allows search
    │   │   └── Result: searchSource='presearch', raw text in searchRawContext
+   │   ├── Evidence pack: { source, freshnessDate, rawText, searchQueries, facts, sources, stepSearchRequests }
    │   ├── Context: active page text summary, slide summaries, storyline, layout mix, section map, activeFlow, documents
    │   ├── Step fields: action, templateId, title, subtitle, instruction,
    │   │   facts, sources, layoutGuidance, contextSlides, targetSlides, referenceSlides, contextFromStep,
@@ -277,6 +279,7 @@ When a user types a message in the chatbot:
    ├── Speed mode determines generation model for all steps
    ├── Active client design profile appends profile-specific design contract to generation/edit system prompts
    ├── Structured fields (title, subtitle, facts, sources) prepended to step prompt
+   ├── Validate contextFromStep dependencies before execution; invalid or missing parent outputs fail visibly
    ├── Build groups from router plan
    ├── For each group → executeGroupParallel
    │   ├── Accumulate create_slide steps into batch
@@ -288,6 +291,7 @@ When a user types a message in the chatbot:
    │   │   ├── Image → generateImageSlide (image model)
    │   │   └── flushInsertsInOrder (deterministic slide order)
    │   └── Non-create steps: independent edit/switch/tracker updates run in ID-based parallel chunks; deletes and dependent steps stay ordered
+   ├── Per-step search: cached by query/searchGoal and capped per plan (default 4) to avoid redundant broad searches
    └── Post-execution: sync storyline, update progress
 ```
 
@@ -614,9 +618,9 @@ The AI router can ask clarifying questions (returned as `needsClarification` wit
 
 Search operates at two layers:
 
-1. **Router-level agentic search** (conditional): The router uses GPT 5.5 reasoning on every AI-router call, but only attaches `web_search_preview` when `getRouterSearchPolicy()` allows it. The policy enables search for `triage.needsSearch`, explicit search/freshness/evidence language, or `routerSearchMode='always'`; it disables search for normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring that only need deck/document context. Search results are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'`, `'presearch'`, or `'none'`.
+1. **Router-level agentic search** (conditional): The router uses GPT 5.5 reasoning on every AI-router call, but only attaches `web_search_preview` when `getRouterSearchPolicy()` allows it. The policy enables search for `triage.needsSearch`, explicit search/freshness/evidence language, or `routerSearchMode='always'`; it disables search for normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring that only need deck/document context. Search results are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'`, `'presearch'`, or `'none'`, plus an `evidencePack` with source type, freshness date, raw/synthesized text, router queries, step facts/sources, and requested per-step searches. If the GPT Responses path fails, the router falls back to Chat Completions planning instead of failing the request immediately.
 
-2. **Per-step search** (controlled by `settings.searchEnabled` toggle): For steps with `searchQuery` + `searchGoal`, a separate `webSearch()` call runs during slide execution. The search receives `searchGoal` as `instructions` and appends already-known facts as context to avoid redundant re-searching.
+2. **Per-step search** (controlled by `settings.searchEnabled` toggle): For steps with `searchQuery` + `searchGoal`, a separate `webSearch()` call runs during slide execution. The search receives `searchGoal` as `instructions` and appends already-known facts as context to avoid redundant re-searching. During SmartAction execution, per-step searches are cached by query/searchGoal and capped per plan (default 4) so repeated slide families do not make redundant broad searches.
 
 **Deduplication**: When `searchSource === 'inline'`, the global `buildSearchFactsBlock()` is skipped for steps that already have their own `facts[]` (avoiding 100% duplication). Steps without facts (cover, dividers) still receive the global block as a fallback.
 
@@ -626,6 +630,7 @@ Slides are created in batches for efficiency:
 - `fillTemplatesBulkWithAI`: one API call fills multiple template-based slides
 - `flushCreateBatch`: groups create steps, separates by type (templated/freestyle/image/fixed), processes each category optimally
 - `flushInsertsInOrder`: ensures slides appear in plan order regardless of parallel completion order
+- `contextFromStep` dependencies are validated before execution. SmartAction and agent `build_presentation` batches split before dependent steps, inject previous slide HTML plus cleaned CSS into the dependent prompt, and fail visibly if the referenced step does not produce reusable output.
 
 ### Section Trackers
 
@@ -759,6 +764,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 66. **Inline sentence flow guidance**: Slide HTML generation now explicitly instructs sentence-like `<div>` text with nested `<strong>` / `<span>` elements to set inline flow on the container so labels, separators, and descriptions render as one continuous sentence.
 
 67. **Freshness-first search grounding**: Latest/current deck requests now tell the router to verify newest names per entity before planning, and slide execution treats per-step web search results as fresher than router facts when model/product names, dates, pricing, benchmarks, or availability conflict.
+68. **Router/search dependency hardening**: GPT Responses router failures now fall back to Chat Completions planning, router outputs include a structured `evidencePack`, SmartAction per-step searches are cached/budgeted, and `contextFromStep` dependencies are validated and enforced across SmartAction plus agent `build_presentation` execution paths.
 
 ---
 

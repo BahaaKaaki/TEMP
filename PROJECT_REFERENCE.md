@@ -335,6 +335,7 @@ Slides in state (HTML + CSS)
   ├── PPTX: pptxService.js
   │   ├── AI generates PptxGenJS code from HTML
   │   ├── Table-intent HTML/hints are prompted and retried toward native slide.addTable output
+  │   ├── Section tracker chrome is measured, capped, and kept single-line with shrink/ellipsis fallback
   │   ├── PptxGenJS renders .pptx file
   │   ├── pptxTemplateService.js sanitizes slide XML for duplicate cNvPr IDs and zero/non-positive extents
   │   └── Batch processing with parallel API calls
@@ -780,9 +781,9 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 73. **Router dependency repair and Opus generation/export defaults**: Router planning now explicitly defines `contextFromStep` as a 0-based earlier plan-step index and repairs invalid self/future dependencies before SmartAction display, keeping the strict executor validator as a final safety net. Premium slide generation and PPTX export defaults use `pwc:bedrock.anthropic.claude-opus-4-7`; GPT 5.5 remains the router/search model.
 
-74. **Strategy Consulting Slide Prompt refresh**: `slide-html-generator-prompt.md` now uses the Strategy Consulting Slide Prompt contract for calm gridded bespoke slides, strict 904x366 frame fit, token-only color usage, explicit `on-accent` text on every dark-fill class, neutral/light layouts by default, a single intentional dark-fill anchor only when it adds meaning, simple grids/tables before ornate frameworks, explicit-coordinate geometry only for true charts/diagrams, label economy, and visual-quality self-checks.
+74. **Strategy Consulting Slide Prompt refresh**: `slide-html-generator-prompt.md` now uses the Strategy Consulting Slide Prompt contract for calm gridded bespoke slides, strict 904x366 frame fit, token-only color usage, solid dark section/pillar/shared headers with `on-accent` text, explicit-coordinate geometry for charts/frameworks/diagrams, disciplined spacing/density, label economy, and executive-readability self-checks.
 
-75. **Calm prompt and PPTX repair guardrail**: Freestyle generation now tells the premium generator not to over-design and to interpret consulting playbook terms as relationship guidance rather than mandates for ornate shapes. PPTX export now runs generated, template-merged, profile-chrome, and fallback decks through XML sanitation that de-duplicates `cNvPr` shape IDs and clamps zero/non-positive `cx`/`cy` extents before download to reduce PowerPoint repair prompts.
+75. **PPTX repair guardrail and export chrome parity**: PPTX export runs generated, template-merged, profile-chrome, and fallback decks through XML sanitation that de-duplicates `cNvPr` shape IDs and clamps zero/non-positive `cx`/`cy` extents before download to reduce PowerPoint repair prompts. Strategy& tracker labels are dynamically measured/capped so they remain single-line in PowerPoint, and Strategy& footer/source/page-number chrome uses the audited 7.5pt master typography.
 
 ---
 

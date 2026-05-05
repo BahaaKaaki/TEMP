@@ -22,6 +22,7 @@ import {
   applyTemplateToGenerated,
   loadTemplateFromStorage,
   downloadArrayBuffer,
+  sanitizePptxBufferForPowerPoint,
 } from './pptxTemplateService';
 import { extractRelevantCSS } from './aiService';
 import { resolveCustomProperties } from './ai/cssExtraction';
@@ -40,6 +41,17 @@ const DEFAULT_PPTX_MODEL = 'pwc:openai.gpt-5.5';
 const PROFILE_PPTX_FONT_FACE = {
   stc: 'STC Forward',
 };
+
+async function writeSanitizedPptxFile(pptx, filename, label = 'direct export') {
+  const buf = await pptx.write({ outputType: 'arraybuffer' });
+  try {
+    const sanitized = await sanitizePptxBufferForPowerPoint(buf, label);
+    downloadArrayBuffer(sanitized, filename);
+  } catch (error) {
+    console.error('[PPTX] PowerPoint sanitation failed; downloading original buffer:', error);
+    downloadArrayBuffer(buf, filename);
+  }
+}
 
 function getProfilePptxFontFace(profile) {
   return PROFILE_PPTX_FONT_FACE[profile?.id] || null;
@@ -1521,10 +1533,10 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       downloadArrayBuffer(merged, filename);
     } catch (e) {
       console.error('[PPTX] Template merge failed:', e);
-      await pptx.writeFile({ fileName: filename });
+      await writeSanitizedPptxFile(pptx, filename, 'template merge fallback');
     }
   } else {
-    await pptx.writeFile({ fileName: filename });
+    await writeSanitizedPptxFile(pptx, filename, 'direct export');
   }
 
   if (onProgress) onProgress({ phase: 'complete', processed: totalSlides, total: totalSlides, message: 'Download complete!' });
@@ -1620,9 +1632,9 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
           preserveTemplateChrome: activeProfile.id === 'strategy',
         });
       downloadArrayBuffer(merged, filename);
-    } catch (e) { await pptx.writeFile({ fileName: filename }); }
+    } catch (e) { await writeSanitizedPptxFile(pptx, filename, 'single-slide template fallback'); }
     } else {
-      await pptx.writeFile({ fileName: filename });
+      await writeSanitizedPptxFile(pptx, filename, 'single-slide direct export');
     }
 
   if (onProgress) onProgress({ phase: 'complete', message: 'Download complete!' });

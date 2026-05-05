@@ -336,6 +336,7 @@ Slides in state (HTML + CSS)
   │   ├── AI generates PptxGenJS code from HTML
   │   ├── Table-intent HTML/hints are prompted and retried toward native slide.addTable output
   │   ├── PptxGenJS renders .pptx file
+  │   ├── pptxTemplateService.js sanitizes slide XML for duplicate cNvPr IDs and zero/non-positive extents
   │   └── Batch processing with parallel API calls
   ├── PDF: jsPDF + html2canvas
   │   └── Renders each slide to canvas, then to PDF pages
@@ -779,7 +780,9 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 73. **Router dependency repair and GPT 5.5 generation defaults**: Router planning now explicitly defines `contextFromStep` as a 0-based earlier plan-step index and repairs invalid self/future dependencies before SmartAction display, keeping the strict executor validator as a final safety net. Premium slide generation and PPTX export defaults use `pwc:openai.gpt-5.5` with the configured low reasoning effort.
 
-74. **Strategy Consulting Slide Prompt refresh**: `slide-html-generator-prompt.md` now uses the Strategy Consulting Slide Prompt contract for calm gridded bespoke slides, strict 904x366 frame fit, token-only color usage, explicit `on-accent` text on every dark-fill class, dark-filled primary section headers, explicit-coordinate chart/framework geometry, label economy, and visual-quality self-checks.
+74. **Strategy Consulting Slide Prompt refresh**: `slide-html-generator-prompt.md` now uses the Strategy Consulting Slide Prompt contract for calm gridded bespoke slides, strict 904x366 frame fit, token-only color usage, explicit `on-accent` text on every dark-fill class, neutral/light layouts by default, a single intentional dark-fill anchor only when it adds meaning, simple grids/tables before ornate frameworks, explicit-coordinate geometry only for true charts/diagrams, label economy, and visual-quality self-checks.
+
+75. **Calm prompt and PPTX repair guardrail**: Freestyle generation now tells GPT 5.5 not to over-design and to interpret consulting playbook terms as relationship guidance rather than mandates for ornate shapes. PPTX export now runs generated, template-merged, profile-chrome, and fallback decks through XML sanitation that de-duplicates `cNvPr` shape IDs and clamps zero/non-positive `cx`/`cy` extents before download to reduce PowerPoint repair prompts.
 
 ---
 

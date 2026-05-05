@@ -39,7 +39,7 @@ All custom CSS scopes under `.slide .frame`. The top container inside `.frame` u
 
 2. **All colors via tokens** — `var(--heading | body | muted | accent | accent-hover | accent-soft | on-accent | page | surface | surface-alt | border | success | success-soft | warning | warning-soft | danger | danger-soft)`. No hex, rgb, named colors, or hardcoded gradients. Use `var(--font-body)` for all frame text.
 
-3. **Contrast and dark-background text enforcement.** Any element with a dark fill — `var(--accent)`, `var(--accent-hover)`, `var(--heading)`, `var(--success)`, `var(--warning)`, or `var(--danger)` — must explicitly set `color: var(--on-accent)` on the **same CSS rule** that sets the dark background. This applies to all dark-background elements: cards, headers, labels, chips, quadrants, callouts, chart labels, badges, editable elements, and any other container.
+3. **Contrast and dark-background text enforcement.** Dark fills are optional, not the default. When an element uses a dark fill — `var(--accent)`, `var(--accent-hover)`, `var(--success)`, `var(--warning)`, or `var(--danger)` — it must explicitly set `color: var(--on-accent)` on the **same CSS rule** that sets the dark background. This applies to all dark-background elements: cards, headers, labels, chips, quadrants, callouts, chart labels, badges, editable elements, and any other container.
 
    Never rely on inherited or default text color inside a dark-background element. The visible text may be a direct text node of the dark container, not a nested `span`, so descendant-only rules are insufficient.
 
@@ -47,7 +47,7 @@ All custom CSS scopes under `.slide .frame`. The top container inside `.frame` u
 
    ```css
    .slide .frame .[dark-class] {
-     background: var(--accent | accent-hover | heading | success | warning | danger);
+     background: var(--accent | accent-hover | success | warning | danger);
      color: var(--on-accent);
    }
 
@@ -60,7 +60,7 @@ All custom CSS scopes under `.slide .frame`. The top container inside `.frame` u
 
    The first selector protects direct text nodes. The descendant selector protects nested `span`, `strong`, `em`, `small`, labels, captions, chips, and inline wrappers. The editable selectors only guard against editing/helper classes that may override color; they are not the primary rule.
 
-   Do not use `var(--heading)`, `var(--body)`, `var(--muted)`, or inherited default text color on any dark fill.
+   Do not use `var(--heading)` as a background fill. Reserve it for text. Do not use `var(--heading)`, `var(--body)`, `var(--muted)`, or inherited default text color on any dark fill.
 
 4. **Readability floor.** Normal in-frame body text ≥ 10px. Compact tags, chips, and tracker labels ≥ 8px. Never use `--heading` text on dark backgrounds.
 
@@ -96,12 +96,12 @@ Strategy consulting decks are **calm, gridded, and sparing with color**. Default
 4. Containment helps only when content is already structured (peer items, comparison rows, labeled data).
 
 **Visual register:**
-- **Color economy.** Neutrals dominate the canvas: `--surface`, `--surface-alt`, `--border`, `--body`, `--muted`. Accent is punctuation, not a default container fill.
+- **Color economy.** Neutrals dominate the canvas: `--surface`, `--surface-alt`, `--border`, `--body`, `--muted`. Accent is punctuation, not a default container fill. Most slides should work with light surfaces, thin borders, spacing, and typography before using dark fill.
 - **Typography hierarchy.** Establish a clear, scannable hierarchy through scale, weight, color, and whitespace. The model chooses specific sizes and weights based on content needs. Constraints: respect the readability floors; adjacent hierarchy levels must be visibly distinct (don't pick 13px next to 14px for sibling levels); never use `--heading` text on dark backgrounds.
 - **Geometry.** Sharp corners. Thin borders (1px `var(--border)`).
-- **One dominant layout pattern.** No more than one auxiliary band (timeline strip, summary line, legend) outside the main grid. Three or more competing containers will read as cluttered.
+- **One dominant layout pattern.** No more than one auxiliary band (timeline strip, summary line, legend) outside the main grid. Three or more competing containers will read as cluttered. Do not over-design; a simple grid, table, or clean band is usually better than a decorative framework.
 
-**Section and pillar title fills.** Pillar titles, section titles, peer-card headers, and shared row/column headers in grid layouts use **solid dark fills** — `var(--accent)` or `var(--heading)` — with `var(--on-accent)` text. These are the strongest visual anchors in the frame after the slide title: confident, assertive, sharp-edged, compact. Not pastel washes. Reserve `var(--accent-soft)` for secondary emphasis only — chips inside cards, badges, light callouts, nested elements — never as a primary section header fill.
+**Section and pillar title treatment.** Pillar titles, section titles, peer-card headers, and shared row/column headers default to neutral/light treatments: bold text, thin borders, subtle `var(--surface-alt)` fills, or compact accent rules. Use a solid dark `var(--accent)` fill only when it creates the single primary visual anchor or materially improves scanability. Never use `var(--heading)` as a fill. Reserve `var(--accent-soft)` for secondary emphasis only — chips inside cards, badges, light callouts, nested elements — not as a large decorative wash.
 
 ---
 
@@ -109,7 +109,7 @@ Strategy consulting decks are **calm, gridded, and sparing with color**. Default
 
 The frame should feel like one designed piece, not assembled. Polish comes from composition discipline, not decoration. Every slide is judged against this section as much as against the hard rules.
 
-**One primary visual anchor.** The eye lands on one element first — a dark-filled section title, a hero number, the central node of a framework, a single quadrant of a 2×2. Everything else is subordinate. Use position, size, and contrast to direct attention. Resist creating multiple competing focal points; the slide title already carries the headline message.
+**One primary visual anchor.** The eye lands on one element first — a hero number, a concise summary band, a highlighted table row, the central node of a necessary framework, or one selectively dark-filled header. Everything else is subordinate. Use position, size, and contrast to direct attention. Resist creating multiple competing focal points; the slide title already carries the headline message.
 
 **Whitespace is intentional.** Roughly 40–55% of the frame stays empty by visual estimate. Whitespace anchors content; it is not waste. Never add a weak element — a vague chip, a redundant label, a decorative divider — to fill a region. Better to leave it clean.
 
@@ -121,7 +121,7 @@ The frame should feel like one designed piece, not assembled. Polish comes from 
 
 **Color count ≤ 7.** Total distinct colors used in the frame, including chart series and status colors. Beyond that the palette reads as drift, not intent.
 
-**Element count ≤ 12.** Total visible structural elements (cards, headers, chart bars, callouts, axis labels, hero numbers). More almost always means crowding or unnecessary decoration. Trim to twelve before considering smaller fonts.
+**Element count ≤ 12.** Total visible structural elements (cards, headers, chart bars, callouts, axis labels, hero numbers). More almost always means crowding or unnecessary decoration. Trim to twelve before considering smaller fonts. Avoid extra connectors, badges, icon placeholders, decorative arrows, or framework pieces unless they explain a real relationship.
 
 **Typography consistency.** Similar elements share identical typographic styling — all section / pillar titles use one size and weight, all body text uses one size and line-height, all hero numbers use one size, all captions use one size. The model chooses the values; what's required is consistency across siblings. Emphasis comes from position, dark fills, scale relationships, and whitespace — not from random size or weight variation.
 
@@ -141,13 +141,15 @@ Match the visual to the relationship:
 - **Hierarchy** — show levels (tree, pyramid, layered stack)
 - **Headline number** with supporting evidence — focal hero with chips
 
-Choose the archetype that best reveals the content's shape. Don't default to bullet grids. Don't pick a more complex archetype than the content warrants.
+Choose the simplest archetype that reveals the content's shape. If the content is an enumeration, recommendations list, risks/mitigations, KPIs, initiatives, governance forums, or trade-offs, prefer a clean table, row system, or simple grid. Use charts, matrices, flows, and custom frameworks only when the relationship cannot be understood as clearly in a simpler structure. Do not pick a more complex archetype than the content warrants.
+
+When the brief mentions a "playbook", "strategy house", "tree", "cascade", "roadmap", or similar consulting pattern, interpret it as relationship guidance, not a mandate for ornate shapes. The first implementation choice should still be the calmest readable version of that pattern.
 
 For 2×2s: place axes correctly; quadrant labels must not overlap the body; prefer meaningful axis titles over generic "Low / High."
 
 For Gantts and timelines: bars start at the period beginning and extend to its end. Do not center bars in cells if they represent duration.
 
-**Emphasis treatment.** Choose how to emphasize what matters most in the content. Tools available: scale variation, weight contrast, dark fills, position, surrounding whitespace, dedicated focal elements (a hero number, a callout block, a central framework node, a highlighted quadrant), and — when content is conceptual — **infographic treatment** with simple shapes, sparingly used icons, or visual metaphor. The model decides which fits the brief. Defaults: when a single number drives the message, treat it as a focal hero; when a comparison or trend drives, the chart or framework itself is the anchor; when the content is conceptual, an infographic may serve better than forcing a chart. The constraint across all choices is the Visual Quality discipline — one primary anchor, consistency across siblings, restraint with color and element count.
+**Emphasis treatment.** Choose how to emphasize what matters most in the content. Tools available: scale variation, weight contrast, position, surrounding whitespace, dedicated focal elements (a hero number, a callout block, a highlighted row or quadrant), and only when content is genuinely conceptual, a restrained infographic. Defaults: when a single number drives the message, treat it as a focal hero; when comparison or trend drives, a simple table, chart, or row system should carry the page. Do not add visual metaphor, hub-and-spoke, chevrons, connectors, or custom frameworks just to make the slide feel more designed.
 
 ---
 
@@ -183,7 +185,7 @@ Use containment when content is already structured. Bullets describing peer item
 **No repeated structural labels — hard rule.** If the same label would appear in the same position across 2+ peer items (e.g., "Context / Implication / Takeaway" repeated in every card; "Phase / Activity / Output" repeated in every column), consolidate into a **shared grid structure**:
 
 - Repeated labels become **column headers** (across the top) or **row headers** (down the left side), not duplicated inside each card.
-- The shared header gets the same solid dark fill (`var(--accent)` or `var(--heading)`) as a section title, with `var(--on-accent)` text. The structural axis becomes the visual anchor.
+- The shared header uses a clean neutral treatment by default: bold text, `var(--surface-alt)` fill, or a thin `var(--border)` outline. Use dark `var(--accent)` fill only if that shared header is the slide's single strongest anchor.
 - Each cell holds only the unique content for its row × column intersection. No category label inside the cell.
 - The grid is built with consistent column widths and row heights; cells align cleanly along both axes.
 
@@ -193,7 +195,9 @@ A repeated label is allowed only when each instance carries meaning the reader c
 
 ## Geometry & Frameworks
 
-Any visual where elements must be precisely placed relative to each other — charts, 2×2 matrices, Porter's Five Forces, value chains, McKinsey 7S, decision trees, network diagrams, process flows with non-linear shapes, radar charts, bubble maps, heat maps, custom frameworks, infographic compositions, or any diagram with arrows, connectors, or annotated positions — **must be built with explicit pixel coordinates**.
+Any visual where elements must be precisely placed relative to each other — charts, 2×2 matrices, true value chains, decision trees, network diagrams, non-linear process flows, radar charts, bubble maps, heat maps, custom frameworks, infographic compositions, or diagrams with arrows, connectors, or annotated positions — **must be built with explicit pixel coordinates**.
+
+Do not force ordinary consulting pages into custom geometry. Simple rows, peer cards, tables, KPI cascades, initiative lists, risk/mitigation grids, governance structures, and executive summaries should usually use CSS grid, flex, or semantic tables.
 
 Two acceptable patterns:
 
@@ -203,7 +207,7 @@ Two acceptable patterns:
 
 **Coordinate check before finalizing.** For each absolute-positioned element, compute its right edge (`left + width`) and bottom edge (`top + height`). Both must sit inside the canvas. No two elements may occupy the same space unless overlap is intentional (e.g., a label sitting on top of a bar). Crowding and overflow are the most common failures of inline-positioned visuals — solve them at coordinate-time, not by shrinking later.
 
-Flex and grid are reserved for **simple repeating layouts**: rows of peer cards, hero rows, regular column grids, and tables. They are not used for chart, framework, diagram, or infographic geometry.
+Flex and grid are preferred for **simple repeating layouts**: rows of peer cards, hero rows, regular column grids, KPI cascades, initiative lists, governance tables, risk/mitigation rows, and executive summaries. They are not used for true chart, framework, diagram, or infographic geometry.
 
 For charts: include a compact title and unit/basis. Reduce data points before reducing font size. For waterfall and bridge charts, calculate baselines first; every bar and connector needs explicit coordinates.
 
@@ -247,6 +251,7 @@ Source text: 5–15 words. Do not fabricate sources. If no external data is cite
 - Padding and gap ranges respected: cards 12–16px, peer-card gaps 6–12px, stacked-section gaps 12–20px.
 - Crowding caps respected: ≤ 4 peer items, ≤ 3 points per card, ≤ 1 chart, ≤ 1 auxiliary band, ≤ 1 dominant focal element.
 - One primary visual anchor present; supporting elements are visibly subordinate.
+- No unnecessary infographic, connector, chevron, hub-and-spoke, or custom framework appears when a simple table/grid communicates better.
 - Whitespace ~40–55%; no region filled with weak content.
 - Color count ≤ 7. Element count ≤ 12.
 - Similar elements styled identically; visible alignment between cards, headers, and baselines.
@@ -258,3 +263,4 @@ Source text: 5–15 words. Do not fabricate sources. If no external data is cite
 - Frame has one dominant structure, not many auxiliary boxes.
 - Title carries the so-what; subtitle is a noun phrase.
 - No invented facts, sources, or benchmarks.
+- Keep text concise; avoid overlap and overflow. The slide should feel clean, readable, and fully fitted.

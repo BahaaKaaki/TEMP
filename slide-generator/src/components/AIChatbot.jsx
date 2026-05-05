@@ -634,7 +634,7 @@ export default function AIChatbot({ initialHandoff = null }) {
     actions.clearAll();
 
     // Disable web search to preserve the handed-off data as-is
-    setSlideSearchEnabled(false);
+    actions.updateSettings({ searchEnabled: false });
 
     // Build handoff context message with full answer (never truncated)
     const source = initialHandoff.source || 'External app';

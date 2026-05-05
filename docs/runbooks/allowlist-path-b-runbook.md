@@ -172,7 +172,8 @@ Use this when checking "the users". The total user inventory is the Enterprise
 App assignment list, not the sign-in log. This command pages through
 `appRoleAssignedTo`, resolves assigned user details, overlays recent sign-in
 activity for context, compares each assigned user's UPN with the live Kudu
-allowlist, and prints rows that need review first.
+allowlist, then copies a compact Markdown table to the clipboard sorted by
+last sign-in date descending.
 
 ```bash
 SP_ID='d22acabf-976f-4929-a15a-95b9202b98d6'
@@ -199,8 +200,8 @@ SINCE_UTC = os.environ["SINCE_UTC"]
 SCM = os.environ["SCM"].rstrip("/")
 
 
-def run(cmd: list[str]) -> str:
-    return subprocess.check_output(cmd, text=True).strip()
+def run(cmd: list[str], input_text: str | None = None) -> str:
+    return subprocess.run(cmd, input=input_text, text=True, stdout=subprocess.PIPE, check=True).stdout.strip()
 
 
 def az_rest(method: str, uri: str, body: dict | None = None) -> dict:
@@ -252,19 +253,12 @@ signins, signin_pages = graph_get_all(graph_url("/auditLogs/signIns", {
     "$filter": f"appId eq '{APP_ID}' and createdDateTime ge {SINCE_UTC}",
     "$orderby": "createdDateTime desc",
 }))
-signins_by_user_id: dict[str, dict] = {}
+signins_by_user_id: dict[str, str] = {}
 for item in signins:
     user_id = item.get("userId")
-    if not user_id:
-        continue
-    rec = signins_by_user_id.setdefault(user_id, {
-        "last": item.get("createdDateTime") or "",
-        "ok": 0,
-        "fail": 0,
-    })
-    if (item.get("createdDateTime") or "") > rec["last"]:
-        rec["last"] = item.get("createdDateTime") or ""
-    rec["ok" if (item.get("status") or {}).get("errorCode") == 0 else "fail"] += 1
+    created = item.get("createdDateTime") or ""
+    if user_id and created > signins_by_user_id.get(user_id, ""):
+        signins_by_user_id[user_id] = created
 
 scm_token = run([
     "az", "account", "get-access-token",
@@ -285,71 +279,48 @@ allowlist = {
 
 rows = []
 for assignment in user_assignments:
-    user = users_by_id.get(assignment.get("principalId"), {})
+    user_id = assignment.get("principalId")
+    user = users_by_id.get(user_id, {})
     email = (user.get("userPrincipalName") or user.get("mail") or "").lower()
-    signin = signins_by_user_id.get(assignment.get("principalId"), {
-        "last": "",
-        "ok": 0,
-        "fail": 0,
-    })
-    allowed = email in allowlist
-    enabled = user.get("accountEnabled")
     rows.append({
-        "flag": "CHECK" if not allowed or enabled is False else "",
-        "allow": "yes" if allowed else "no",
-        "enabled": "yes" if enabled else "no",
-        "ok": str(signin["ok"]),
-        "fail": str(signin["fail"]),
-        "last": signin["last"] or "-",
+        "last": signins_by_user_id.get(user_id, "-"),
         "email": email or "-",
         "name": user.get("displayName") or assignment.get("principalDisplayName") or "-",
+        "allowlist": "No" if email not in allowlist else "Yes",
     })
 
-rows.sort(key=lambda row: row["last"], reverse=True)
-rows.sort(key=lambda row: row["flag"] != "CHECK")
+rows_with_dates = [row for row in rows if row["last"] != "-"]
+rows_without_dates = [row for row in rows if row["last"] == "-"]
+rows = sorted(rows_with_dates, key=lambda row: row["last"], reverse=True) + rows_without_dates
 
-columns = [
-    ("Flag", "flag", 5),
-    ("Allow", "allow", 5),
-    ("Enabled", "enabled", 7),
-    ("OK24", "ok", 4),
-    ("Fail", "fail", 4),
-    ("Last sign-in UTC", "last", 20),
-    ("Email", "email", 36),
-    ("Name", "name", 34),
+summary_lines = [
+    "Edwin assigned-user audit",
+    f"Generated UTC: {run(['date', '-u', '+%Y-%m-%dT%H:%M:%SZ'])}",
+    f"Assigned users: {len(user_assignments)}",
+    f"Assignment Graph pages: {assignment_pages}",
+    f"Recent sign-in events since {SINCE_UTC}: {len(signins)}",
+    f"Recent sign-in Graph pages: {signin_pages}",
+    f"Live allowlist entries: {len(allowlist)}",
+    f"Not in allowlist: {sum(1 for row in rows if row['allowlist'] == 'No')}",
+    "",
 ]
+header = "| Last sign-in UTC | Email | Name | Allowlist |"
+separator = "|---|---|---|---:|"
+row_lines = [
+    f"| {row['last']} | {row['email']} | {row['name']} | {row['allowlist']} |"
+    for row in rows
+]
+report = "\n".join(summary_lines + [header, separator] + row_lines) + "\n"
+run(["pbcopy"], input_text=report)
 
-
-def cell(value: object, width: int) -> str:
-    text = str(value)
-    return text if len(text) <= width else text[: max(0, width - 1)] + "~"
-
-
-def border() -> str:
-    return "+" + "+".join("-" * (width + 2) for _, _, width in columns) + "+"
-
-
-def table_row(values: list[str]) -> str:
-    return "| " + " | ".join(
-        cell(value, width).ljust(width)
-        for value, (_, _, width) in zip(values, columns)
-    ) + " |"
-
-
-print("Edwin assigned-user audit")
-print(f"Enterprise App assigned users : {len(user_assignments)}")
-print(f"Assignment Graph pages        : {assignment_pages}")
-print(f"Recent sign-in events         : {len(signins)} since {SINCE_UTC}")
-print(f"Recent sign-in Graph pages    : {signin_pages}")
-print(f"Live allowlist entries        : {len(allowlist)}")
-print(f"Assigned rows to check        : {sum(1 for row in rows if row['flag'])}")
+print("Full compact Markdown table copied to clipboard.")
+print("\n".join(summary_lines).rstrip())
 print()
-print(border())
-print(table_row([title for title, _, _ in columns]))
-print(border())
-for item in rows:
-    print(table_row([item[key] for _, key, _ in columns]))
-print(border())
+print("Latest 25 rows:")
+print(header)
+print(separator)
+for line in row_lines[:25]:
+    print(line)
 PY
 ```
 

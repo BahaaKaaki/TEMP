@@ -122,6 +122,13 @@ const STC_FONT_FILES: Record<string, string> = {
   'STCForward-Medium.ttf': 'STCForward-Medium.ttf',
   'STCForward-Bold.ttf': 'STCForward-Bold.ttf',
 };
+const PIF_FONT_ASSETS_DIR = path.join(process.cwd(), 'assets', 'fonts', 'pif-fund');
+const PIF_FONT_FILES: Record<string, string> = {
+  'Fund-Light.ttf': 'Fund-Light.ttf',
+  'Fund-Regular.ttf': 'Fund-Regular.ttf',
+  'Fund-Medium.ttf': 'Fund-Medium.ttf',
+  'Fund-SemiBold.ttf': 'Fund-SemiBold.ttf',
+};
 const CLIENT_TEMPLATE_IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -139,6 +146,20 @@ app.get('/api/assets/fonts/stc-forward/:fileName', (req, res, next) => {
   res.setHeader('Content-Type', 'font/ttf');
   res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
   res.sendFile(path.join(STC_FONT_ASSETS_DIR, safeFileName), (err) => {
+    if (err) next(err);
+  });
+});
+
+app.get('/api/assets/fonts/pif-fund/:fileName', (req, res, next) => {
+  const safeFileName = PIF_FONT_FILES[req.params.fileName];
+  if (!safeFileName) {
+    res.status(404).json({ error: 'FONT_NOT_FOUND' });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'font/ttf');
+  res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
+  res.sendFile(path.join(PIF_FONT_ASSETS_DIR, safeFileName), (err) => {
     if (err) next(err);
   });
 });

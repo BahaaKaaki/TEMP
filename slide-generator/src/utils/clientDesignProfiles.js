@@ -262,6 +262,202 @@ const stcStandardInches = {
   },
 };
 
+const PIF_THEME = {
+  name: 'PIF LDC',
+  defaultVariant: 'pif_ldc_implementation_guide',
+  colors: {
+    accent: '#005C4D',
+    accentHover: '#00332A',
+    accentSoft: '#E5F4EF',
+    onAccent: '#FFFFFF',
+    heading: '#C3984D',
+    body: '#00332A',
+    muted: '#7F7F7F',
+    page: '#FFFFFF',
+    surface: '#FFFCF2',
+    surfaceAlt: '#F4EBDD',
+    border: '#D9C6A3',
+    success: '#02CC99',
+    successSoft: '#D4F3EC',
+    warning: '#C3984D',
+    warningSoft: '#EFE4D2',
+    danger: '#B21D41',
+    dangerSoft: '#F7E1DD',
+    info: '#005A65',
+    neutral: '#7F7F7F',
+    coverDark: '#00332A',
+    kicker: '#C3984D',
+    pifGreen: '#005C4D',
+    pifDarkGreen: '#00332A',
+    pifGold: '#C3984D',
+    pifGoldAlt: '#C4995B',
+    pifMint: '#02CC99',
+  },
+  fonts: {
+    title: '"Fund Light", "Fund Regular", Arial, sans-serif',
+    heading: '"Fund Light", "Fund Regular", Arial, sans-serif',
+    body: '"Fund Light", "Fund Regular", Arial, sans-serif',
+  },
+  layout: {
+    cssVars: {
+      '--left-x': '35px',
+      '--title-y': '27px',
+      '--title-w': '597px',
+      '--title-font-size': '15px',
+      '--title-font-weight': '400',
+      '--title-line-height': '1.12',
+      '--subtitle-y': '5px',
+      '--subtitle-w': '192px',
+      '--subtitle-color': '#C3984D',
+      '--subtitle-font-size': '8px',
+      '--subtitle-font-weight': '400',
+      '--frame-y': '81px',
+      '--frame-w': '891px',
+      '--frame-h': '397px',
+      '--footer-x': '35px',
+      '--footer-y': '506px',
+      '--footer-bottom': 'auto',
+      '--footer-w': '891px',
+      '--footer-font-size': '8px',
+      '--footer-padding-bottom': '0',
+      '--source-x': '35px',
+      '--source-y': '506px',
+      '--source-w': '720px',
+      '--source-h': '16px',
+      '--slide-num-x': '890px',
+      '--slide-num-y': '506px',
+      '--slide-num-w': '43px',
+      '--slide-num-h': '29px',
+    },
+  },
+};
+
+const PIF_LAYOUT_CONTRACT = {
+  canvas: {
+    widthPx: 960,
+    heightPx: 540,
+    widthIn: 10,
+    heightIn: 5.625,
+  },
+  standardContent: {
+    logo: { x: 35, y: 23, w: 80, h: 36 },
+    title: { x: 132, y: 27, w: 597, h: 25 },
+    titleRule: { x: 132, y: 52, w: 597, h: 1 },
+    subtitle: { x: 765, y: 5, w: 192, h: 18 },
+    body: { x: 35, y: 81, w: 891, h: 397 },
+    source: { x: 35, y: 506, w: 720, h: 16 },
+    slideNumber: { x: 890, y: 506, w: 43, h: 29 },
+  },
+  cover: {
+    logo: { x: 34, y: 23, w: 80, h: 36 },
+    title: { x: 34, y: 199, w: 667, h: 67 },
+    subtitle: { x: 34, y: 273, w: 666, h: 35 },
+  },
+  stageMatrix: {
+    stageRow: { x: 130, y: 82, w: 796, h: 45 },
+    rowLabels: { x: 32, w: 92 },
+  },
+};
+
+const PIF_FREESTYLE_OVERRIDES = {
+  shell: `Use the PIF LDC implementation-guide master shell on a 960x540 canvas. These PIF positions replace generic shell defaults:
+- PIF logo: x=35, y=23, w=80, h=36.
+- h1.title: x=132, y=27, w=597, h=25, Fund Light 15px, PIF Gold #C3984D, with a thin gold rule directly below.
+- Do not render a visible h2.subtitle on standard PIF body slides. Router subtitles are planning context only unless the user explicitly asks for a compact in-exhibit label.
+- div.frame: x=35, y=81, w=891, h=397. Keep every exhibit, table, matrix, chart, and callout inside this frame.
+- footer/source: bottom-left around x=35, y=506; blank by default unless real source text exists.
+- page number: bottom-right gold block around x=890, y=506, w=43, h=29 with centered white page number.
+Use the LDC content shell for now; treat the DC opportunity-pitch deck as component inspiration, not a second master family.`,
+  theme: `Use PIF dark green (#00332A), PIF green (#005C4D), PIF gold (#C3984D/#C4995B), mint (#02CC99), white/light-neutral surfaces, and gray secondary copy. Do not use dormant purple (#5F007F), navy (#28176F), Strategy& maroon, review yellow, or review red as dominant colors. Keep the palette restrained and institutional.`,
+  vibe: `Formal sovereign-investment implementation guide, calm, precise, grid-led, dense but legible. Use thin rules, stage matrices, compact rows, green/gold hierarchy, and restrained mint accents. Avoid consumer-product cards, playful icons, heavy shadows, and decorative gradients.`,
+  writing: `Write implementation-guide language: direct, specific, and operational. Prefer concise exhibit labels, stage names, decision criteria, and action-oriented titles. Do not turn the page into marketing copy or surface hidden master labels such as National Development Division unless the user explicitly provides them.`,
+  css: `Use square-cornered modules, thin green/gold rules, sand or pale-mint fills, dark-green body text, and compact Fund typography. PIF pages have no broad subtitle band; use small in-exhibit labels when needed. Keep source/footer text blank unless a real source is provided.`,
+  pptx: `Export on a 10 x 5.625 in canvas using Fund Light/Fund Regular, PIF green/gold colors, the verified LDC geometry, a real top-left PIF logo asset, and the gold page-number block. Keep objects editable, suppress hidden master/review/scratch artifacts, and do not surface dormant labels from the source template.`,
+};
+
+const PIF_COMPONENT_PATTERNS = [
+  {
+    name: 'ldc_stage_matrix',
+    structure: 'Gold stage row with left row labels, compact cells, dotted or thin row separators, and green/gold emphasis.',
+    useWhen: 'Governance, value-chain, stage-by-stage implementation, and operating-model flows.',
+    avoid: ['standalone oversized cards', 'missing row labels', 'content outside the body frame'],
+  },
+  {
+    name: 'opportunity_grid',
+    structure: 'Sand tabs or badges, pale mint rows, compact opportunity labels, and thin green/gold rules.',
+    useWhen: 'Opportunity-category lists, investment idea inventories, and compact pitch-page content.',
+    avoid: ['busy icon grids', 'rainbow categories', 'oversized typography'],
+  },
+  {
+    name: 'opportunity_profile',
+    structure: 'Two-column investment profile with dark-green section pills, gray detail copy, and compact KPI rows.',
+    useWhen: 'Detailed opportunity or investment profile pages inside the LDC shell.',
+    avoid: ['many font sizes', 'heavy footer bars', 'content outside the frame'],
+  },
+  {
+    name: 'question_rows',
+    structure: 'Left label, mint divider, and right prompt text in airy horizontal rows.',
+    useWhen: 'Discussion guides, interview prompts, and decision questions.',
+    avoid: ['bullet walls', 'decorative icons'],
+  },
+];
+
+const PIF_PPTX_CONTRACT = {
+  slideSize: '10 x 5.625 in screen16x9, mapped from 960 x 540 px',
+  fontPolicy: 'Use Fund Light for normal title/body text and Fund Regular only for page numbers or limited emphasis. Do not use Aptos, Calibri, Georgia, STC Forward, or generic Office defaults.',
+  defaultFontFace: 'Fund Light',
+  allowedFontFaces: ['Fund Light', 'Fund Regular', 'Fund Med', 'Fund SemBd'],
+  logoPolicy: 'PIF logo top-left on standard content slides.',
+  sourcePolicy: 'Footer/source text is blank by default; show source text only when a real source exists.',
+  pageNumberPolicy: 'Bottom-right gold page block with centered editable white page number.',
+  titlePolicy: 'Content title at x=132 y=27 w=597 h=25 on the 960x540 canvas; Fund Light 11pt in PPTX / 15px in HTML; PIF Gold.',
+  subtitlePolicy: 'No visible broad subtitle band on standard PIF body slides. Optional lens labels must be compact in-exhibit labels only.',
+  hiddenPlaceholderPolicy: 'Do not surface National Development Division, Arabic labels, Confidential/Public labels, review notes, scratch content, or hidden think-cell artifacts unless explicitly requested.',
+  borderWeightPt: { min: 0.5, max: 1.25 },
+};
+
+const PIF_PROMPT_CONTRACT = `# PIF LDC Client Design Contract
+
+## Master
+- Use one LDC implementation-guide master shell. Do not invent alternate PIF master families.
+- Use the PIF logo at x=35 y=23 w=80 h=36.
+- Use the content title at x=132 y=27 w=597 h=25 in PIF Gold, Fund Light, 15px HTML / 11pt PPTX.
+- Use the body frame at x=35 y=81 w=891 h=397.
+- Use the bottom-right gold page block around x=890 y=506.
+- Keep footer/source text blank by default; sources appear only when real source text is provided.
+- Do not render h2.subtitle on standard body slides. If the router supplies a subtitle, use it only to understand the requested lens.
+
+## Theme
+- Use PIF dark green (#00332A), PIF green (#005C4D), PIF gold (#C3984D/#C4995B), mint (#02CC99), white/light neutrals, and gray secondary text.
+- Do not use dormant purple #5F007F, navy #28176F, Strategy& maroon, review yellow, or review red as dominant colors.
+
+## Typography
+- Use Fund Light and Fund Regular. Avoid default Office typography.
+- Dense body/detail text can be compact; do not solve overflow with oversized cards or alternate shells.
+
+## Components
+- Use LDC stage matrix, opportunity grid, opportunity profile, and question-row components only inside the body frame.
+- Treat DC opportunity-pitch ideas as body components, not as a second master.
+- Do not surface hidden placeholders, scratch pages, review comments, or think-cell artifacts.`;
+
+const PIF_PPTX_FONTS = {
+  title: { fontFace: 'Fund Light', fontSize: 11, bold: false, color: 'C3984D' },
+  subtitle: { fontFace: 'Fund Light', fontSize: 8, bold: false, color: 'C3984D' },
+  body: { fontFace: 'Fund Light', fontSize: 9, bold: false, color: '00332A' },
+  footer: { fontFace: 'Fund Light', fontSize: 8, italic: false, bold: false, color: '7F7F7F' },
+  slideNum: { fontFace: 'Fund Regular', fontSize: 7, minFontSize: 7, bold: false, color: 'FFFFFF', fill: 'C3984D', align: 'center' },
+};
+
+const pifStandardInches = {
+  logo: pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.logo, PIF_LAYOUT_CONTRACT.canvas),
+  title: { ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.title, PIF_LAYOUT_CONTRACT.canvas), font: PIF_PPTX_FONTS.title },
+  titleRule: { ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.titleRule, PIF_LAYOUT_CONTRACT.canvas), color: 'C3984D' },
+  subtitle: { ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.subtitle, PIF_LAYOUT_CONTRACT.canvas), font: PIF_PPTX_FONTS.subtitle },
+  body: { ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.body, PIF_LAYOUT_CONTRACT.canvas), font: PIF_PPTX_FONTS.body },
+  footer: { ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.source, PIF_LAYOUT_CONTRACT.canvas), font: PIF_PPTX_FONTS.footer },
+  slideNum: { ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.slideNumber, PIF_LAYOUT_CONTRACT.canvas), font: PIF_PPTX_FONTS.slideNum },
+};
+
 export const CLIENT_DESIGN_PROFILES = {
   strategy: {
     schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
@@ -416,6 +612,102 @@ export const CLIENT_DESIGN_PROFILES = {
       },
     },
   },
+  pif: {
+    schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
+    id: 'pif',
+    name: 'PIF LDC',
+    description: 'Use the PIF LDC implementation-guide master shell with Fund typography, PIF green/gold/mint colors, and blank footer/source text by default.',
+    status: 'ldc-0.1',
+    footerBranding: '',
+    theme: PIF_THEME,
+    layoutContract: PIF_LAYOUT_CONTRACT,
+    freestyleOverrides: PIF_FREESTYLE_OVERRIDES,
+    componentPatterns: PIF_COMPONENT_PATTERNS,
+    pptxContract: PIF_PPTX_CONTRACT,
+    promptContract: PIF_PROMPT_CONTRACT,
+    designContract: PIF_PROMPT_CONTRACT,
+    pptxMaster: {
+      mode: 'profile-bound',
+      templateId: PROFILE_TEMPLATE_SLOT.DEFAULT,
+      bundled: true,
+      storageKey: 'client-template:pif:default',
+      serverSync: 'backend-profile-default',
+      serverProfileId: 'pif',
+      forceBundledDefault: true,
+      useProfileChrome: true,
+      notes: 'Default PIF master is served from backend assets; user-uploaded PIF templates remain profile-bound local overrides.',
+    },
+    chrome: {
+      footerText: '',
+      positions: pifStandardInches,
+    },
+    evidence: {
+      sourceDecks: [
+        {
+          label: 'LDC Implementation Guide',
+          fileName: '11192024_LDC_Implementation Guide_vSend.pptx',
+          slides: 97,
+          layouts: 66,
+          masters: 5,
+          role: 'bundled master and canonical LDC content shell',
+          dominantLayouts: [
+            { layout: 47, slides: 46, role: 'dense matrix/governance content' },
+            { layout: 29, slides: 21, role: 'methodology and decision-analysis content' },
+            { layout: 5, slides: 12, role: 'roadmap and section-preface content' },
+          ],
+        },
+        {
+          label: 'DC Opportunity in KSA Pitch Deck',
+          fileName: '20260409_DC Opportunity in KSA_Pitch Deck_vDraft_Excl. Profiles_KN_kj (1).pptx',
+          slides: 23,
+          layouts: 92,
+          masters: 4,
+          role: 'component/style reference only, not a second selectable master',
+        },
+      ],
+      notes: [
+        'The LDC guide is a 10 x 5.625 in screen16x9 deck mapped to 960 x 540 px for canvas preview.',
+        'Visible text uses Fund Light heavily even though some theme font slots are generic Office fonts.',
+        'Footer/source text is intentionally blank by default in generated PIF slides.',
+      ],
+    },
+    validationRules: {
+      requiredColors: ['#00332A', '#005C4D', '#C3984D', '#02CC99', '#FFFFFF'],
+      preferredSurfaceColors: ['#FFFCF2', '#F4EBDD', '#EFE4D2', '#D4F3EC'],
+      disallowedColors: ['#5F007F', '#28176F', '#FFC000', '#FF0000', '#8E1E1E', '#A32020', '#4F008C'],
+      forbiddenDominantColors: ['#5F007F', '#28176F', '#FFC000', '#FF0000', '#8E1E1E', '#A32020'],
+      disallowedFonts: ['Aptos', 'Calibri', 'Georgia', 'STC Forward'],
+      disallowedFooterText: ['Strategy&', 'National Development Division', 'NATIONAL DEVELOPMENT DIVISION'],
+      minFontPx: 8,
+      targetBodyFontPx: 10,
+      fontSizesPt: {
+        titleStandard: { min: 10, max: 12 },
+        titleCover: { min: 30, max: 34 },
+        subtitle: { min: 7, max: 9 },
+        body: { min: 8, max: 12 },
+        bodyDense: { min: 8, max: 10 },
+        footer: { min: 7, max: 8 },
+      },
+      layoutBands: {
+        logoSafeBottomPct: 15,
+        titleMaxBottomPct: 16,
+        contentStartPct: 15,
+        footerStartPct: 93,
+      },
+      density: {
+        maxBulletsStandard: 6,
+        maxModulesStandard: 6,
+        minBodyPt: 8,
+      },
+      chrome: {
+        requireLogo: true,
+        requirePageNumberNonCover: true,
+        requireSourceNonCover: false,
+        forbidHeavyFooterBar: true,
+        forbidAccidentalAppendixNavigation: true,
+      },
+    },
+  },
 };
 
 export const CLIENT_DESIGN_PROFILE_OPTIONS = Object.values(CLIENT_DESIGN_PROFILES).map(profile => ({
@@ -532,15 +824,17 @@ function rewriteFreestyleShellForProfile(shell, profile) {
   const subtitleFont = profile.theme?.fonts?.heading || 'Arial, sans-serif';
   const titleColor = profile.theme?.colors?.heading || profile.theme?.colors?.accent || '#4F008C';
   const subtitleColor = profile.theme?.colors?.kicker || profile.theme?.colors?.danger || '#FF375E';
+  const titleFontSize = profile.theme?.layout?.cssVars?.['--title-font-size'] || '24px';
+  const subtitleFontSize = profile.theme?.layout?.cssVars?.['--subtitle-font-size'] || '18px';
 
   return shell
     .replace(
       /\| `h1\.title` \|[^\n]+/,
-      `| \`h1.title\` | top: ${title.y}px, left: ${title.x}px, width: ${title.w}px, height: ${title.h}px -- ${titleFont} regular 24px, ${titleColor} |`,
+      `| \`h1.title\` | top: ${title.y}px, left: ${title.x}px, width: ${title.w}px, height: ${title.h}px -- ${titleFont} regular ${titleFontSize}, ${titleColor} |`,
     )
     .replace(
       /\| `h2\.subtitle` \|[^\n]+/,
-      `| \`h2.subtitle\` | top: ${subtitle.y}px, left: ${subtitle.x}px, width: ${subtitle.w}px, height: ${subtitle.h}px -- ${subtitleFont} regular 18px, ${subtitleColor} |`,
+      `| \`h2.subtitle\` | top: ${subtitle.y}px, left: ${subtitle.x}px, width: ${subtitle.w}px, height: ${subtitle.h}px -- ${subtitleFont} regular ${subtitleFontSize}, ${subtitleColor} |`,
     )
     .replace(
       /\| `div\.frame` \|[^\n]+/,
@@ -571,15 +865,17 @@ export function rewritePromptGeometryForClientProfile(prompt, settings = {}) {
   const fontHeading = profile.theme?.fonts?.heading || 'Arial, sans-serif';
   const headingColor = profile.theme?.colors?.heading || profile.theme?.colors?.accent || '#111111';
   const subtitleColor = profile.theme?.colors?.kicker || profile.theme?.colors?.accent || '#A32020';
+  const titleFontSize = profile.theme?.layout?.cssVars?.['--title-font-size'] || '24px';
+  const subtitleFontSize = profile.theme?.layout?.cssVars?.['--subtitle-font-size'] || '18px';
 
   return rewriteFreestyleShellForProfile(prompt, profile)
     .replace(
       /- `h1\.title`: top 24px, left 28px, width 904px, Georgia 28px/g,
-      `- \`h1.title\`: top ${title.y}px, left ${title.x}px, width ${title.w}px, ${fontTitle} 24px regular, ${headingColor}`
+      `- \`h1.title\`: top ${title.y}px, left ${title.x}px, width ${title.w}px, ${fontTitle} ${titleFontSize} regular, ${headingColor}`
     )
     .replace(
       /- `h2\.subtitle`: top 95px, left 28px, width 904px, Arial bold 18px/g,
-      `- \`h2.subtitle\`: top ${subtitle.y}px, left ${subtitle.x}px, width ${subtitle.w}px, ${fontHeading} 18px regular, ${subtitleColor}`
+      `- \`h2.subtitle\`: top ${subtitle.y}px, left ${subtitle.x}px, width ${subtitle.w}px, ${fontHeading} ${subtitleFontSize} regular, ${subtitleColor}`
     )
     .replace(
       /- `\.frame`: top 127px, left 28px, size \*\*904 x 366 px\*\*/g,

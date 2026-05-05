@@ -253,7 +253,7 @@
   white-space: nowrap;
 }
 
-.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) > span:last-child {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]) footer.footer:has(span.source) > span:last-child {
   position: static;
   left: auto;
   top: auto;
@@ -271,7 +271,7 @@
   text-align: left;
 }
 
-.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) .source {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]) footer.footer:has(span.source) .source {
   min-width: 0;
   padding: 0 4px;
   overflow: hidden;
@@ -329,6 +329,84 @@
 .slide[data-client-profile="stc"] footer.footer:has(span.source):has(> span:first-child:not(:empty)) .source {
   left: calc(var(--source-x) - var(--footer-x) + 124px);
   width: calc(var(--source-w) - 124px);
+}
+
+/* PIF LDC profile: verified implementation-guide shell */
+.slide[data-client-profile="pif"] {
+  font-family: "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #00332A;
+}
+
+.slide[data-client-profile="pif"] .title {
+  left: 132px;
+  top: 27px;
+  width: 597px;
+  min-height: 25px;
+  font: 400 15px/1.12 "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #C3984D;
+}
+
+.slide[data-client-profile="pif"] .title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 25px;
+  width: 597px;
+  height: 1px;
+  background: #C3984D;
+}
+
+.slide[data-client-profile="pif"] .subtitle {
+  display: none;
+}
+
+.slide[data-client-profile="pif"] .frame {
+  left: 35px;
+  top: 81px;
+  width: 891px;
+  height: 397px;
+}
+
+.slide[data-client-profile="pif"] footer.footer:has(span.source),
+.slide[data-client-profile="pif"] footer.footer {
+  display: block;
+  font-family: "Fund Light", "Fund Regular", Arial, sans-serif;
+}
+
+.slide[data-client-profile="pif"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="pif"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #7F7F7F;
+}
+
+.slide[data-client-profile="pif"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #C3984D;
+  color: #FFFFFF;
+  font: 400 8px/1 "Fund Regular", "Fund Light", Arial, sans-serif;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .slide footer.footer:not(:has(span.source)) .source {

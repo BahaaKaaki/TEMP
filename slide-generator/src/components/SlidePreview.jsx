@@ -216,7 +216,13 @@ export default function SlidePreview({ onSwitchToCode }) {
   }, [activeSlide?.id]);
 
   useEffect(() => {
-    if (activeClientProfile?.id !== 'stc') {
+    const logoAsset = activeClientProfile?.id === 'stc'
+      ? '/api/assets/client-templates/stc/logo.png'
+      : activeClientProfile?.id === 'pif'
+        ? '/api/assets/client-templates/pif/logo.png'
+        : null;
+
+    if (!logoAsset) {
       setClientLogoUrl(null);
       return undefined;
     }
@@ -224,7 +230,7 @@ export default function SlidePreview({ onSwitchToCode }) {
     let cancelled = false;
     let objectUrl = null;
 
-    authFetch('/api/assets/client-templates/stc/logo.png')
+    authFetch(logoAsset)
       .then(res => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.blob();
@@ -236,7 +242,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       })
       .catch(err => {
         if (cancelled) return;
-        console.warn('[SlidePreview] STC logo unavailable:', err.message);
+        console.warn('[SlidePreview] Client logo unavailable:', err.message);
         setClientLogoUrl(null);
       });
 
@@ -1793,6 +1799,30 @@ function getClientChromeCSS() {
   color: var(--accent);
   letter-spacing: -1px;
 }
+
+.slide[data-client-profile="pif"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="pif"] .client-chrome-pif-logo {
+  left: 35px;
+  top: 23px;
+  width: 80px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.slide[data-client-profile="pif"] .client-chrome-pif-wordmark {
+  left: 35px;
+  top: 23px;
+  width: 80px;
+  height: 36px;
+  font: 400 24px/1 "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #005C4D;
+}
 `;
 }
 
@@ -1818,25 +1848,27 @@ function estimateTrackerOffset(sectionLabel, activeProfile = null) {
 function stripClientProfileChrome(html = '') {
   return html
     .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-stc-logo\b[^"]*"[^>]*>/gi, '')
+    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-pif-logo\b[^"]*"[^>]*>/gi, '')
     .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-stc-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-pif-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
     .replace(/\s*data-client-profile="[^"]*"/gi, '');
 }
 
 function injectClientProfileChrome(html, profile, logoUrl) {
   const cleanedHtml = stripClientProfileChrome(html || '');
-  if (profile?.id !== 'stc' || !cleanedHtml) return cleanedHtml;
+  if (!profile?.id || profile.id === 'strategy' || !cleanedHtml) return cleanedHtml;
 
   const isSpecialMaster = /\b(master-cover|master-blank|master-emptyPage)\b/i.test(cleanedHtml)
     || /cover-slide|cover-branding|section-divider-slide|separator-slide/i.test(cleanedHtml);
   const withProfile = cleanedHtml.replace(
     /class="slide([^"]*)"/,
-    'class="slide$1" data-client-profile="stc"'
+    `class="slide$1" data-client-profile="${escapeHtmlAttr(profile.id)}"`
   );
   if (isSpecialMaster) return withProfile;
 
   const logoMarkup = logoUrl
-    ? `<img class="client-chrome client-chrome-stc-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="stc" />`
-    : '<div class="client-chrome client-chrome-stc-wordmark" data-no-edit>stc</div>';
+    ? `<img class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="${escapeHtmlAttr(profile.name || profile.id)}" />`
+    : `<div class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-wordmark" data-no-edit>${profile.id === 'pif' ? 'PIF' : 'stc'}</div>`;
   return withProfile.replace(/(<div\b[^>]*class="[^"]*\bslide\b[^"]*"[^>]*>)/i, `$1${logoMarkup}`);
 }
 

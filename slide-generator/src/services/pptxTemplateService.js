@@ -30,6 +30,44 @@ function templateStorageKey(options = {}) {
   return getClientProfileTemplateStorageKey(normalized.profileId, normalized.templateId);
 }
 
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer || []);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function loadProfileLogo(profile) {
+  const logoPos = profile?.chrome?.positions?.logo;
+  if (!profile?.id || !logoPos) return null;
+  try {
+    const res = await authFetch(`/api/assets/client-templates/${profile.id}/logo.png`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buffer = await res.arrayBuffer();
+    return {
+      ...logoPos,
+      mediaPath: `ppt/media/${profile.id}_logo.png`,
+      image: `data:image/png;base64,${arrayBufferToBase64(buffer)}`,
+    };
+  } catch (error) {
+    console.warn('[PPTX Template] Profile logo unavailable for %s: %s', profile.id, error.message);
+    return null;
+  }
+}
+
+async function buildProfileChrome(profile) {
+  if (!profile?.chrome) return null;
+  const logo = await loadProfileLogo(profile);
+  return {
+    footerText: profile.chrome.footerText || '',
+    positions: profile.chrome.positions || null,
+    ...(logo ? { logo } : {}),
+  };
+}
+
 function canUseServerDefaultTemplate(profileId, templateId) {
   if (templateId !== 'default') return false;
   if (profileId === 'strategy') return true;
@@ -147,8 +185,11 @@ export async function saveTemplateToStorage(arrayBuffer, fileName, chrome = null
 export async function loadTemplateFromStorage(options = {}) {
   const normalized = normalizeTemplateOptions(options);
   const key = templateStorageKey(normalized);
+  const profile = getClientDesignProfile(normalized.profileId);
   const canUseServerDefault = canUseServerDefaultTemplate(normalized.profileId, normalized.templateId);
   const canUseLegacyLocal = normalized.profileId === 'strategy' && normalized.templateId === 'default';
+  const forceBundledDefault = normalized.templateId === 'default' && profile?.pptxMaster?.forceBundledDefault === true;
+  const useProfileChrome = profile?.pptxMaster?.useProfileChrome === true;
   let serverData = null;
   if (canUseServerDefault) {
     try {
@@ -191,18 +232,28 @@ export async function loadTemplateFromStorage(options = {}) {
     console.warn('[PPTX Template] IndexedDB read failed:', e.message);
   }
 
-  const record = canUseLegacyLocal ? (serverData || localRecord) : (localRecord || serverData);
+  const record = forceBundledDefault
+    ? (serverData || localRecord)
+    : canUseLegacyLocal
+      ? (serverData || localRecord)
+      : (localRecord || serverData);
   if (!record) {
     console.log('[PPTX Template] No template found for profile slot:', key);
     return null;
   }
 
-  if (serverData && localRecord?.chrome) {
+  if (useProfileChrome) {
+    const profileChrome = await buildProfileChrome(profile);
+    if (profileChrome) {
+      record.chrome = profileChrome;
+      console.log('[PPTX Template] Applied verified profile chrome:', normalized.profileId);
+    }
+  } else if (serverData && localRecord?.chrome) {
     record.chrome = localRecord.chrome;
     console.log('[PPTX Template] Merged chrome metadata from IndexedDB');
   }
 
-  const needsReExtract = record.data && (
+  const needsReExtract = !useProfileChrome && record.data && (
     !record.chrome?.logo?.image ||
     !record.chrome?.positions ||
     !record.chrome.positions.slideNum?.font ||

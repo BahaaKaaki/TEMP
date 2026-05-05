@@ -79,6 +79,7 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
   const positions = profilePositions();
   const numPos = positions?.slideNum;
   const numFont = numPos?.font || {};
+  const numFill = numFont.fill ? { fill: { color: numFont.fill }, line: { color: numFont.fill, transparency: 100 } } : {};
   slide.addText(String(slideNum), {
     x: numPos?.x ?? STRATEGY_SLIDE_NUM_DEFAULT.x,
     y: numPos?.y ?? STRATEGY_SLIDE_NUM_DEFAULT.y,
@@ -88,7 +89,8 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
     fontSize: pptxFontSize(numFont.fontSize, STRATEGY_FOOTER_FONT_SIZE, STRATEGY_FOOTER_FONT_SIZE),
     bold: numFont.bold || false,
     color: numFont.color || COLORS.meta,
-    align: 'right',
+    align: numFont.align || 'right',
+    ...numFill,
   });
 }
 

@@ -40,6 +40,7 @@ const MAX_RETRIES = 3; // 4 total attempts per slide
 const DEFAULT_PPTX_MODEL = 'pwc:bedrock.anthropic.claude-opus-4-7';
 const PROFILE_PPTX_FONT_FACE = {
   stc: 'STC Forward',
+  pif: 'Fund Light',
 };
 
 async function writeSanitizedPptxFile(pptx, filename, label = 'direct export') {
@@ -55,6 +56,20 @@ async function writeSanitizedPptxFile(pptx, filename, label = 'direct export') {
 
 function getProfilePptxFontFace(profile) {
   return PROFILE_PPTX_FONT_FACE[profile?.id] || null;
+}
+
+function getPptxLayoutForProfile(profile) {
+  const canvas = profile?.layoutContract?.canvas;
+  if (profile?.id && profile.id !== 'strategy' && canvas?.widthIn && canvas?.heightIn) {
+    return { width: canvas.widthIn, height: canvas.heightIn };
+  }
+  return { width: 13.333, height: 7.5 };
+}
+
+function applyPptxLayout(pptx, profile) {
+  const layout = getPptxLayoutForProfile(profile);
+  pptx.defineLayout({ name: 'CUSTOM', width: layout.width, height: layout.height });
+  pptx.layout = 'CUSTOM';
 }
 
 function getProfileTextColor(profile, token, fallback) {
@@ -101,11 +116,28 @@ function normalizePptxSettingsForProfile(settings = {}, profile = null, template
 }
 
 function getProfilePptxTypographyGuidance(profile) {
+  if (profile?.id === 'pif') {
+    return '- PIF typography: use Fund Light for titles/body and Fund Regular only for page numbers or limited emphasis. Content title is 11pt in PPTX, dense matrix/detail text may be 8-10pt, and footer/source/page chrome may be 7-8pt. There is no broad subtitle band on standard PIF body slides.\n';
+  }
   if (profile?.id !== 'stc') return '';
   return '- STC typography: use title 24pt regular, subtitle 18pt regular, body 12pt regular, local labels/card titles 500-equivalent only when bold is needed, and footer/source/page numbers 8pt regular.\n- For STC Forward, avoid bold:true on normal body leads, subtitles, card titles, stage titles, and labels unless the CSS explicitly requires strong emphasis.\n';
 }
 
 function getProfilePptxSystemGuidance(profile) {
+  if (profile?.id === 'pif') {
+    return `
+
+ACTIVE CLIENT PROFILE OVERRIDE -- PIF LDC:
+- Use the verified PIF LDC master shell, not generic Strategy& geometry.
+- PIF PPTX canvas is 10 x 5.625 inches. HTML 960 x 540 px maps with px * 10 / 960.
+- PIF colors: title/rules/page block C3984D/C4995B, dark green 00332A, PIF green 005C4D, mint 02CC99, white/light-neutral surfaces, gray 7F7F7F.
+- If you define a c palette, use: main:'C3984D', secondary:'00332A', accent:'005C4D', gold:'C3984D', mint:'02CC99', surface:'FFFCF2', surfaceAlt:'F4EBDD', border:'D9C6A3', meta:'7F7F7F'.
+- Use Fund Light for every normal text box; use Fund Regular only for page numbers or limited emphasis. Do not use Arial, Georgia, Calibri, Aptos, STC Forward, or emoji.
+- Follow the LDC master geometry: title x=1.375 y=0.281 w=6.219 h=0.260, body x=0.365 y=0.844 w=9.281 h=4.135, footer/source x=0.365 y=5.271, page block x=9.271 y=5.271.
+- Do not add a broad subtitle under the title. If a lens is needed, use a compact top-right label or in-exhibit label.
+- Keep footer/source text blank unless the user explicitly provides it. Do not surface National Development Division labels, Arabic labels, review notes, scratch pages, or hidden think-cell artifacts.
+`;
+  }
   if (profile?.id !== 'stc') return '';
   return `
 
@@ -182,19 +214,39 @@ function enforcePptxFontFaceForProfile(codeString, profile) {
 }
 
 function enforcePptxColorsForProfile(codeString, profile) {
-  if (profile?.id !== 'stc' || !codeString) return codeString;
-  const replacements = new Map([
-    ['111111', '4F008C'],
-    ['222222', '1D252D'],
-    ['A32020', 'FF375E'],
-    ['8E1E1E', '4F008C'],
-    ['F7F9FB', 'FBF8FE'],
-    ['EEF2F6', 'EDD5FF'],
-    ['F8E3E3', 'EDD5FF'],
-    ['4A4F57', '515360'],
-    ['4B4F55', '1D252D'],
-    ['E6E9EE', 'DBB8F3'],
-  ]);
+  if (!codeString) return codeString;
+  let replacements = null;
+  if (profile?.id === 'pif') {
+    replacements = new Map([
+      ['111111', '00332A'],
+      ['222222', '00332A'],
+      ['A32020', 'C3984D'],
+      ['8E1E1E', '005C4D'],
+      ['4F008C', '005C4D'],
+      ['FF375E', 'C3984D'],
+      ['F7F9FB', 'FFFCF2'],
+      ['EEF2F6', 'F4EBDD'],
+      ['F8E3E3', 'F4EBDD'],
+      ['4A4F57', '7F7F7F'],
+      ['4B4F55', '00332A'],
+      ['E6E9EE', 'D9C6A3'],
+      ['DBB8F3', 'D9C6A3'],
+    ]);
+  } else if (profile?.id === 'stc') {
+    replacements = new Map([
+      ['111111', '4F008C'],
+      ['222222', '1D252D'],
+      ['A32020', 'FF375E'],
+      ['8E1E1E', '4F008C'],
+      ['F7F9FB', 'FBF8FE'],
+      ['EEF2F6', 'EDD5FF'],
+      ['F8E3E3', 'EDD5FF'],
+      ['4A4F57', '515360'],
+      ['4B4F55', '1D252D'],
+      ['E6E9EE', 'DBB8F3'],
+    ]);
+  }
+  if (!replacements) return codeString;
   let next = String(codeString);
   for (const [from, to] of replacements) {
     next = next.replace(new RegExp(from, 'gi'), to);
@@ -203,10 +255,16 @@ function enforcePptxColorsForProfile(codeString, profile) {
 }
 
 function sanitizePptxTextForProfile(codeString, profile) {
-  if (profile?.id !== 'stc' || !codeString) return codeString;
-  return String(codeString)
+  if (!profile || profile.id === 'strategy' || !codeString) return codeString;
+  let next = String(codeString)
     .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, '')
     .replace(/([`'"])\s+(\1)/g, '$1$2');
+  if (profile.id === 'pif') {
+    next = next
+      .replace(/\bNational Development Division\b/gi, '')
+      .replace(/\bNATIONAL DEVELOPMENT DIVISION\b/g, '');
+  }
+  return next;
 }
 
 function enforcePptxProfileCode(codeString, profile) {
@@ -652,6 +710,20 @@ function buildProfilePositionBlock(profile) {
 export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, errorFeedback) {
   const palette = themeToPptxPalette(settings?.theme);
   const activeProfile = getActiveClientProfile(settings || {});
+  const canvas = activeProfile?.layoutContract?.canvas || {
+    widthPx: 960,
+    heightPx: 540,
+    widthIn: 13.333,
+    heightIn: 7.5,
+  };
+  const pxToIn = Number((canvas.widthIn / canvas.widthPx).toFixed(5));
+  const sampleX = Number((28 * canvas.widthIn / canvas.widthPx).toFixed(2));
+  const sampleTitleY = Number((24 * canvas.heightIn / canvas.heightPx).toFixed(2));
+  const sampleSubtitleY = Number((95 * canvas.heightIn / canvas.heightPx).toFixed(2));
+  const sampleFrameY = Number((127 * canvas.heightIn / canvas.heightPx).toFixed(2));
+  const sampleFrameW = Number((904 * canvas.widthIn / canvas.widthPx).toFixed(2));
+  const sampleFrameH = Number((366 * canvas.heightIn / canvas.heightPx).toFixed(2));
+  const sampleFooterY = Number((canvas.heightIn - 0.45).toFixed(2));
 
   const rawBaseCSS = extractRelevantCSS(slide.html, slide.customCSS || '');
   const resolvedBaseCSS = resolveCustomProperties(rawBaseCSS, settings?.theme);
@@ -709,18 +781,18 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
 ${palette.resolvedVars}
 
 ========== DIMENSION MAPPING (HTML px -> PptxGenJS inches) ==========
-HTML slide: 960px x 540px  |  PPTX slide: 13.333in x 7.5in
-Conversion: inches = px * 13.333 / 960  (approx 0.01389 in/px)
+HTML slide: ${canvas.widthPx}px x ${canvas.heightPx}px  |  PPTX slide: ${canvas.widthIn}in x ${canvas.heightIn}in
+Conversion: inches = px * ${canvas.widthIn} / ${canvas.widthPx}  (approx ${pxToIn} in/px)
 
 Key positions ${tplPos || `(px -> inches):
-  Title:    left:28px top:24px  w:904px        -> x:0.39  y:0.33  w:12.56
-  Subtitle: left:28px top:95px  w:904px        -> x:0.39  y:1.32  w:12.56
-  Frame:    left:28px top:127px w:904px h:366px -> x:0.39  y:1.76  w:12.56 h:5.08
-  Footer:   bottom of slide                    -> y:7.05`}
+  Title:    left:28px top:24px  w:904px        -> x:${sampleX}  y:${sampleTitleY}  w:${sampleFrameW}
+  Subtitle: left:28px top:95px  w:904px        -> x:${sampleX}  y:${sampleSubtitleY}  w:${sampleFrameW}
+  Frame:    left:28px top:127px w:904px h:366px -> x:${sampleX}  y:${sampleFrameY}  w:${sampleFrameW} h:${sampleFrameH}
+  Footer:   bottom of slide                    -> y:${sampleFooterY}`}
 
 When CSS specifies pixel values for position or size, convert them:
-  px=28  -> 0.39in    px=127 -> 1.76in    px=904 -> 12.56in
-  px=366 -> 5.08in    px=960 -> 13.333in  px=540 -> 7.5in
+  px=28  -> ${sampleX}in    px=127 -> ${sampleFrameY}in    px=904 -> ${sampleFrameW}in
+  px=366 -> ${sampleFrameH}in    px=${canvas.widthPx} -> ${canvas.widthIn}in  px=${canvas.heightPx} -> ${canvas.heightIn}in
 
 All content inside .frame maps to the PPTX region starting at the Frame position above.
 Position elements WITHIN that region relatively.
@@ -807,7 +879,7 @@ FIX the error and return the corrected JavaScript array. Return ONLY the fixed c
 
 // ── Sandboxed validation ─────────────────────────────────────────────────────
 
-export function validateGeneratedCode(codeString, slideHtml) {
+export function validateGeneratedCode(codeString, slideHtml, settings = null) {
   const errors = [];
 
   // 1. Parse check
@@ -848,7 +920,8 @@ export function validateGeneratedCode(codeString, slideHtml) {
     }))
     .filter(({ size, context }) => {
       if (!Number.isFinite(size)) return false;
-      if (size < 7.5) return true;
+      if (size < 7) return true;
+      if (size < 7.5) return !/\b(source|footer|slideNum|slide number|page number)\b/i.test(context);
       if (size >= 8) return false;
       return !/\b(source|footer|slideNum|slide number|page number)\b/i.test(context);
     });
@@ -866,8 +939,7 @@ export function validateGeneratedCode(codeString, slideHtml) {
 
   // 2. Execution check on a sandboxed PptxGenJS instance
   const testPptx = new PptxGenJS();
-  testPptx.defineLayout({ name: 'CUSTOM', width: 13.333, height: 7.5 });
-  testPptx.layout = 'CUSTOM';
+  applyPptxLayout(testPptx, getActiveClientProfile(settings || {}));
   testPptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
   try {
@@ -939,7 +1011,7 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
       const codeString = enforcePptxProfileCode(extractJSArray(raw), activeProfile);
       lastCode = codeString;
 
-      const validation = validateGeneratedCode(codeString, slide.html);
+      const validation = validateGeneratedCode(codeString, slide.html, settings);
 
       if (validation.valid) {
         if (isRetry) console.log(`[PPTX] Slide ${slideNum} fixed on attempt ${attempt + 1}`);
@@ -1131,21 +1203,44 @@ function sanitizeSlideObjectGeometry(pptxSlide) {
 }
 
 function sanitizeSlideObjectTextForProfile(pptxSlide, profile) {
-  if (profile?.id !== 'stc' || !pptxSlide?._slideObjects) return;
-  const sanitize = value => String(value || '')
-    .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+  if (!profile || profile.id === 'strategy' || !pptxSlide?._slideObjects) return;
+  const sanitize = (value, { trim = true } = {}) => {
+    let next = String(value || '')
+      .replace(/[\p{Extended_Pictographic}\uFE0F]/gu, '')
+      .replace(/\s+/g, ' ');
+    if (trim) next = next.trim();
+    if (profile.id === 'pif') {
+      next = next
+        .replace(/\bNational Development Division\b/gi, '')
+        .replace(/\bNATIONAL DEVELOPMENT DIVISION\b/g, '');
+      if (trim) next = next.trim();
+    }
+    return next;
+  };
+  const needsBoundarySpace = (prev, current) => {
+    const prevText = String(prev || '');
+    const currentText = String(current || '');
+    if (!prevText || !currentText) return false;
+    if (/\s$/.test(prevText) || /^\s/.test(currentText)) return false;
+    const prevChar = prevText.match(/\S(?=\s*$)/)?.[0] || '';
+    const nextChar = currentText.match(/^\s*(\S)/)?.[1] || '';
+    return /[A-Za-z0-9%)]/.test(prevChar) && /[A-Za-z0-9(]/.test(nextChar);
+  };
   for (const obj of pptxSlide._slideObjects) {
     if (typeof obj.text === 'string') {
       obj.text = sanitize(obj.text);
       continue;
     }
     if (!Array.isArray(obj.text)) continue;
+    let previousText = '';
     obj.text = obj.text.map(run => {
-      if (typeof run === 'string') return sanitize(run);
-      if (!run?.text) return run;
-      return { ...run, text: sanitize(run.text) };
+      const rawText = typeof run === 'string' ? run : run?.text;
+      if (rawText === undefined || rawText === null) return run;
+      let text = sanitize(rawText, { trim: false });
+      if (needsBoundarySpace(previousText, text)) text = ` ${text}`;
+      previousText = `${previousText}${text}`;
+      if (typeof run === 'string') return text;
+      return { ...run, text };
     });
   }
 }
@@ -1199,6 +1294,33 @@ function bodyCandidateObjects(objects, chromeObjects, bodyPos, footerPos) {
   });
 }
 
+function normalizeProfileTextBoxOptions(objects, profile) {
+  if (profile?.id !== 'pif' || !Array.isArray(objects)) return;
+  for (const obj of objects) {
+    const text = getSlideObjectText(obj);
+    if (!text || !obj.options) continue;
+    const isCompact = text.length <= 28 || /^[0-9]{1,2}$/.test(text) || /^[A-Z0-9 &/.-]{3,}$/.test(text);
+    applyObjectOptions(obj, {
+      margin: isCompact ? 0 : 0.03,
+      ...(isCompact ? { fit: 'shrink', breakLine: false, wrap: false } : {}),
+    });
+  }
+}
+
+function addProfileTitleRule(pptxSlide, profile, positions) {
+  const rule = positions?.titleRule;
+  if (profile?.id !== 'pif' || !rule || typeof pptxSlide?.addShape !== 'function') return;
+  const color = rule.color || positions?.title?.font?.color || getProfileTextColor(profile, 'kicker', 'C3984D');
+  pptxSlide.addShape('rect', {
+    x: rule.x,
+    y: rule.y,
+    w: rule.w,
+    h: Math.max(rule.h || 0.01, 0.005),
+    fill: { color },
+    line: { color, transparency: 100 },
+  });
+}
+
 function fitObjectsIntoRect(objects, target, padding = 0.02) {
   const bounds = collectBounds(objects);
   if (!bounds || !target?.w || !target?.h) return false;
@@ -1242,7 +1364,7 @@ function fitObjectsIntoRect(objects, target, padding = 0.02) {
 
 function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, profile, positions) {
   sanitizeSlideObjectGeometry(pptxSlide);
-  if (profile?.id !== 'stc' || !pptxSlide?._slideObjects || !positions) return;
+  if (!profile || profile.id === 'strategy' || !pptxSlide?._slideObjects || !positions) return;
 
   sanitizeSlideObjectTextForProfile(pptxSlide, profile);
 
@@ -1259,7 +1381,14 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
   const subtitlePos = positions.subtitle;
   const footerPos = positions.footer;
   const slideNumPos = positions.slideNum;
-  const fontFace = getProfilePptxFontFace(profile) || 'STC Forward';
+  const fontFace = getProfilePptxFontFace(profile) || titlePos?.font?.fontFace || bodyPos?.font?.fontFace || 'Arial';
+  const titleColor = titlePos?.font?.color || getProfileTextColor(profile, 'heading', '111111');
+  const subtitleColor = subtitlePos?.font?.color || getProfileTextColor(profile, 'kicker', getProfileTextColor(profile, 'danger', titleColor));
+  const footerColor = footerPos?.font?.color || getProfileTextColor(profile, 'muted', '515360');
+  const slideNumColor = slideNumPos?.font?.color || footerColor;
+  const slideNumFill = slideNumPos?.font?.fill || null;
+  const slideEdgeY = profile?.layoutContract?.canvas?.heightIn ? profile.layoutContract.canvas.heightIn - 0.7 : 6.8;
+  const slideEdgeX = profile?.layoutContract?.canvas?.widthIn ? profile.layoutContract.canvas.widthIn - 1.0 : 11.5;
 
   const objects = pptxSlide._slideObjects;
   const findTextObjects = predicate => objects.filter(obj => predicate(getSlideObjectText(obj), obj));
@@ -1268,7 +1397,7 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
   const sourceObjects = findTextObjects(text => text.startsWith('Source:') || sourceNeedles.has(text));
   const slideNumObjects = findTextObjects((text, obj) =>
     text === String(slideNum)
-    && ((obj.options?.y ?? 0) > 6.8 || (obj.options?.x ?? 0) > 11.5)
+    && ((obj.options?.y ?? 0) > slideEdgeY || (obj.options?.x ?? 0) > slideEdgeX)
   );
   const chromeObjects = new Set([...titleObjects, ...subtitleObjects, ...sourceObjects, ...slideNumObjects]);
 
@@ -1282,7 +1411,7 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       fontFace,
       fontSize: titlePos.font?.fontSize ?? 24,
       bold: false,
-      color: '4F008C',
+      color: titleColor,
       valign: 'top',
     });
   }
@@ -1296,7 +1425,7 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       fontFace,
       fontSize: subtitlePos.font?.fontSize ?? 18,
       bold: false,
-      color: 'FF375E',
+      color: subtitleColor,
       valign: 'top',
     });
   }
@@ -1311,7 +1440,7 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       fontSize: footerPos.font?.fontSize ?? 8,
       bold: false,
       italic: footerPos.font?.italic ?? false,
-      color: '515360',
+      color: footerColor,
       align: 'left',
       valign: 'top',
     });
@@ -1326,17 +1455,20 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       fontFace,
       fontSize: slideNumPos.font?.fontSize ?? 8,
       bold: false,
-      color: '515360',
-      align: 'right',
+      color: slideNumColor,
+      align: slideNumPos.font?.align || 'right',
+      ...(slideNumFill ? { fill: { color: slideNumFill }, line: { color: slideNumFill, transparency: 100 } } : {}),
     });
   }
+  addProfileTitleRule(pptxSlide, profile, positions);
 
   if (!bodyPos) return;
 
   const candidates = bodyCandidateObjects(objects, chromeObjects, bodyPos, footerPos);
   if (fitObjectsIntoRect(candidates, bodyPos)) {
-    console.info('[PPTX] Normalized %d body object(s) into STC body band on slide %d.', candidates.length, slideNum);
+    console.info('[PPTX] Normalized %d body object(s) into %s body band on slide %d.', candidates.length, profile.id, slideNum);
   }
+  normalizeProfileTextBoxOptions([...chromeObjects, ...candidates], profile);
   sanitizeSlideObjectGeometry(pptxSlide);
 }
 
@@ -1345,14 +1477,13 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
 export async function exportToPPTX(slides, filename = 'presentation.pptx', settings = null, onProgress = null) {
   if (!slides || slides.length === 0) throw new Error('No slides to export');
 
+  const activeProfile = getActiveClientProfile(settings || {});
   const pptx = new PptxGenJS();
-  pptx.defineLayout({ name: 'CUSTOM', width: 13.333, height: 7.5 });
-  pptx.layout = 'CUSTOM';
+  applyPptxLayout(pptx, activeProfile);
   pptx.title = filename.replace('.pptx', '');
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
-  const activeProfile = getActiveClientProfile(settings || {});
   let templateData = null;
   try { templateData = await loadTemplateFromStorage({ profileId: activeProfile.id }); } catch (e) { /* ignore */ }
   const activeProfilePositions = resolvePptxPositionsForProfile(activeProfile, templateData?.chrome?.positions || null);
@@ -1398,7 +1529,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       if (slide.pptxCode && canUseCachedPptxCodeForProfile(activeProfile)) {
         try {
           const codeString = enforcePptxProfileCode(slide.pptxCode, activeProfile);
-          const validation = validateGeneratedCode(codeString, slide.html);
+          const validation = validateGeneratedCode(codeString, slide.html, settings);
           if (validation.valid && validation.slideFunctions) {
             console.log(`[PPTX] Slide ${slideNum}: using pre-generated code`);
             aiResults[i] = { success: true, slideFunctions: validation.slideFunctions, code: codeString, cached: true };
@@ -1535,7 +1666,8 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         ...(templateData.chrome || {}),
         positions: activeProfilePositions || templateData.chrome?.positions || null,
       };
-      const merged = activeProfile.id === 'stc'
+      const useControlledProfileChrome = activeProfile.pptxMaster?.useProfileChrome === true || activeProfile.id === 'stc';
+      const merged = useControlledProfileChrome
         ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
           preserveTemplateChrome: activeProfile.id === 'strategy',
@@ -1563,14 +1695,13 @@ export async function exportToPPTXStatic(slides, filename = 'presentation.pptx')
 export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, filename, settings = null, onProgress = null) {
   if (!slide) throw new Error('No slide to export');
 
+  const activeProfile = getActiveClientProfile(settings || {});
   const pptx = new PptxGenJS();
-  pptx.defineLayout({ name: 'CUSTOM', width: 13.333, height: 7.5 });
-  pptx.layout = 'CUSTOM';
+  applyPptxLayout(pptx, activeProfile);
   pptx.title = filename.replace('.pptx', '');
   pptx.author = 'Edwin AI';
   pptx.defineSlideMaster({ title: 'BLANK_SLIDE', objects: [] });
 
-  const activeProfile = getActiveClientProfile(settings || {});
   let templateData = null;
   try { templateData = await loadTemplateFromStorage({ profileId: activeProfile.id }); } catch (e) { /* ignore */ }
   const activeProfilePositions = resolvePptxPositionsForProfile(activeProfile, templateData?.chrome?.positions || null);
@@ -1636,7 +1767,8 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
         ...(templateData.chrome || {}),
         positions: activeProfilePositions || templateData.chrome?.positions || null,
       };
-      const merged = activeProfile.id === 'stc'
+      const useControlledProfileChrome = activeProfile.pptxMaster?.useProfileChrome === true || activeProfile.id === 'stc';
+      const merged = useControlledProfileChrome
         ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
           preserveTemplateChrome: activeProfile.id === 'strategy',

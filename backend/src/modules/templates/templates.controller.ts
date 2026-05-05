@@ -12,6 +12,7 @@ const PPTX_META_PATH = path.join(UPLOADS_DIR, 'pptx-master.meta.json');
 const DEFAULT_PPTX_PATH = path.join(process.cwd(), 'assets', 'S&_Template 1.pptx');
 const PROFILE_DEFAULT_DISPLAY_NAMES: Record<string, string> = {
   stc: 'STC Board Affairs Playbook master.pptx',
+  pif: 'PIF LDC Implementation Guide master.pptx',
 };
 
 function getProfileDefaultPptx(profileId: string): { path: string; displayName: string } | null {
@@ -42,7 +43,7 @@ export function uploadPptxMaster(req: Request, res: Response, next: NextFunction
   }
 }
 
-/** GET /api/templates/pptx-master?profileId=strategy|stc */
+/** GET /api/templates/pptx-master?profileId=strategy|stc|pif */
 export function downloadPptxMaster(req: Request, res: Response, next: NextFunction): void {
   try {
     const profileId = typeof req.query.profileId === 'string' ? req.query.profileId : 'strategy';

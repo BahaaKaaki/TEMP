@@ -14,7 +14,7 @@ import AccessDenied from './components/AccessDenied';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { loadSkills } from './services/skillsService';
 import { AUTH_SESSION_EXPIRED_EVENT, authFetch } from './services/authFetch';
-import { loadStcForwardFonts } from './services/stcFontLoader';
+import { loadClientProfileFonts } from './services/stcFontLoader';
 import { loadTemplateFromStorage } from './services/pptxTemplateService';
 import { getActiveClientProfile } from './utils/clientDesignProfiles';
 import PptxLab from './components/PptxLab';
@@ -73,6 +73,9 @@ function EditorContent() {
     const profile = getActiveClientProfile({ clientDesignProfileId: activeClientDesignProfileId });
     const profileId = profile.id || 'strategy';
     const master = profile.pptxMaster;
+    loadClientProfileFonts(profileId).catch((error) => {
+      console.warn('[App] %s font warm-up failed: %s', profile.name || profileId, error.message);
+    });
     const shouldWarmMaster = profileId !== 'strategy'
       && (master?.bundled || master?.serverSync === 'backend-profile-default');
     if (!shouldWarmMaster) return undefined;
@@ -237,7 +240,10 @@ function ProtectedRoute({ children }) {
         const data = await res.json();
         if (cancelled) return;
         if (data.allowed) {
-          await loadStcForwardFonts();
+          await Promise.all([
+            loadClientProfileFonts('stc'),
+            loadClientProfileFonts('pif'),
+          ]);
           if (cancelled) return;
         }
         setBootstrap({

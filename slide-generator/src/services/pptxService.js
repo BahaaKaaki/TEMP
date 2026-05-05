@@ -338,8 +338,9 @@ STANDARD FONTS:
 - Body text, bullets, descriptions, and table cells: Arial 12-14pt, color secondary
 - Section titles, pillar titles, and card titles: Arial 14-16pt bold, color main
 - Compact tags, chips, badges, tracker labels, and short in-box labels: Arial 8pt minimum
-- Chart axes, sources, captions, and footer text: Arial 10pt minimum
-- Never output fontSize below 10 for normal text, or below 8 for compact tags/trackers. If text does not fit, reduce copy or split boxes; do not use tiny text.
+- Chart axes, legends, and captions: Arial 10pt minimum
+- Strategy& footer/source/page-number chrome follows the master template at 7.5pt; use addFooter/addSourceNote helpers rather than manually drawing footer chrome.
+- Never output fontSize below 10 for normal text, below 8 for compact tags/trackers, or below 7.5 for Strategy& footer/source/page chrome. If text does not fit, reduce copy or split boxes; do not use tiny text.
 
 DEFAULT POSITIONS (may be overridden by template positions in the user prompt):
 - Title: x:0.48, y:0.42, w:12.36
@@ -360,7 +361,7 @@ use color:'8E1E1E'. NEVER substitute your own colors. The examples are structura
 always override example colors with the ACTUAL colors from the CSS/HTML of each slide.
 
 FOOTNOTES & SOURCES: If HTML contains source/footnote text, render as small text near slide bottom:
-  slide.addText("Source: ...", {x:0.48, y:6.7, w:12.36, h:0.25, fontFace:'Arial', fontSize:10, color:'4A4F57'});
+  Strategy& source/footer/page chrome is 7.5pt and is handled by addSourceNote/addFooter. Do not use 7.5pt for body content, chart axes, captions, or legends.
 
 BAR CHARTS: Render bar-chart-exhibit as native PptxGenJS shapes (filled rectangles proportional to %).
 
@@ -766,7 +767,7 @@ ${profileTypographyGuidance}
 - Use fontSize 12 or larger for body copy, bullets, descriptions, and table cells.
 - Use fontSize 14 or larger for section titles, pillar titles, card titles, grid-cell titles, and h3/h4 equivalents.
 - Use fontSize 8 only for compact tags, chips, badges, tracker labels, and short in-box labels.
-- Use fontSize 10 only for chart axes, legends, captions, sources, and footer text, except client-profile footer/source/page chrome may use 8 when the active profile specifies it.
+- Use fontSize 10 only for chart axes, legends, and captions. Strategy& footer/source/page chrome is 7.5pt through addFooter/addSourceNote; client-profile footer/source/page chrome may use its active profile size when specified.
 - Do not use fit:'shrink' to push text below those floors. If needed, shorten copied text only when the HTML/CSS already indicates it is a compact label.
 
 OUTPUT FORMAT (return ONLY this, no markdown):
@@ -841,15 +842,24 @@ export function validateGeneratedCode(codeString, slideHtml) {
   }
 
   const tinyFontMatches = [...String(codeString).matchAll(/fontSize\s*:\s*([0-9]*\.?[0-9]+)/g)]
-    .map(match => Number(match[1]))
-    .filter(size => Number.isFinite(size) && size < 8);
+    .map(match => ({
+      size: Number(match[1]),
+      context: String(codeString).slice(Math.max(0, match.index - 140), match.index + 140),
+    }))
+    .filter(({ size, context }) => {
+      if (!Number.isFinite(size)) return false;
+      if (size < 7.5) return true;
+      if (size >= 8) return false;
+      return !/\b(source|footer|slideNum|slide number|page number)\b/i.test(context);
+    });
   if (tinyFontMatches.length > 0) {
+    const tinyFontSizes = tinyFontMatches.map(match => match.size);
     return {
       valid: false,
       errors: [{
         type: 'TypographyFloorError',
-        message: `PPTX code uses fontSize below 8 (${[...new Set(tinyFontMatches)].join(', ')})`,
-        details: 'Regenerate with fontSize >= 8 for compact tags/trackers and client-profile footer/page chrome, >= 10 for captions/axes/default footers, and >= 12 for normal body text.',
+        message: `PPTX code uses fontSize below the allowed floor (${[...new Set(tinyFontSizes)].join(', ')})`,
+        details: 'Regenerate with fontSize >= 8 for compact tags/trackers, >= 7.5 only for Strategy& footer/source/page chrome, >= 10 for captions/axes/legends, and >= 12 for normal body text.',
       }],
     };
   }

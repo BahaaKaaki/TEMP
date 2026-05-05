@@ -417,7 +417,10 @@
   font: 700 8px/1.35 Arial, sans-serif;
   letter-spacing: 0.3px;
   border-radius: 0 0 4px 0;
+  max-width: 480px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .slide[data-section][data-subsection]::before {
   border-radius: 0;
@@ -434,7 +437,10 @@
   font: 600 8px/1.35 Arial, sans-serif;
   letter-spacing: 0.2px;
   border-radius: 0 0 4px 0;
+  max-width: 420px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .slide[data-section][data-subsection]::after {
   left: var(--tracker-offset, 80px);
@@ -459,6 +465,7 @@
   font: 700 9px/12px "STC Forward", Arial, sans-serif;
   letter-spacing: 0.1px;
   border-radius: 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -478,6 +485,7 @@
   font: 600 9px/12px "STC Forward", Arial, sans-serif;
   letter-spacing: 0.1px;
   border-radius: 0;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }

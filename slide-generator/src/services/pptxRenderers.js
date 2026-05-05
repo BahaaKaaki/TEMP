@@ -36,6 +36,11 @@ export const LAYOUT = {
   cardRadius: 0.05,
 };
 
+const PPTX_SLIDE_W = 13.333;
+const STRATEGY_FOOTER_FONT_SIZE = 7.5;
+const STRATEGY_SOURCE_DEFAULT = { x: 2.66, y: 6.95, w: 8.0, h: 0.3 };
+const STRATEGY_SLIDE_NUM_DEFAULT = { x: 10.628, y: 7.092, w: 2.218, h: 0.12 };
+
 export function pptxFontSize(size, fallback = 10, floor = 10) {
   const numeric = Number(size ?? fallback);
   return Math.max(floor, Number.isFinite(numeric) ? numeric : fallback);
@@ -75,12 +80,12 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
   const numPos = positions?.slideNum;
   const numFont = numPos?.font || {};
   slide.addText(String(slideNum), {
-    x: numPos?.x ?? 11.5,
-    y: numPos?.y ?? 7.05,
-    w: numPos?.w ?? 1.3,
-    h: numPos?.h ?? 0.25,
+    x: numPos?.x ?? STRATEGY_SLIDE_NUM_DEFAULT.x,
+    y: numPos?.y ?? STRATEGY_SLIDE_NUM_DEFAULT.y,
+    w: numPos?.w ?? STRATEGY_SLIDE_NUM_DEFAULT.w,
+    h: numPos?.h ?? STRATEGY_SLIDE_NUM_DEFAULT.h,
     fontFace: numFont.fontFace || profileFontFace('Arial'),
-    fontSize: pptxFontSize(numFont.fontSize, 10, 8),
+    fontSize: pptxFontSize(numFont.fontSize, STRATEGY_FOOTER_FONT_SIZE, STRATEGY_FOOTER_FONT_SIZE),
     bold: numFont.bold || false,
     color: numFont.color || COLORS.meta,
     align: 'right',
@@ -89,6 +94,100 @@ export function addFooter(slide, slideNum, totalSlides, slideType) {
 
 // ── Section tracker ──────────────────────────────────────────────────────────
 
+function trackerCharUnits(char) {
+  if (/\s/.test(char)) return 0.45;
+  if (/[ilI1|.,:;]/.test(char)) return 0.45;
+  if (/[mwMW@#%&]/.test(char)) return 1.3;
+  if (/[A-Z0-9]/.test(char)) return 1.1;
+  return 1.0;
+}
+
+function measureTrackerLabel(label, { fontSize = 8, bold = false, paddingX = 0.22, minW = 0.7, maxW = 5.2 } = {}) {
+  const text = String(label || '').trim();
+  const units = [...text].reduce((sum, char) => sum + trackerCharUnits(char), 0);
+  const boldFactor = bold ? 1.08 : 1;
+  const estimated = units * (fontSize / 120) * boldFactor + paddingX;
+  return Math.min(maxW, Math.max(minW, Number(estimated.toFixed(3))));
+}
+
+function ellipsizeTrackerLabel(label, availableTextW, options = {}) {
+  const text = String(label || '').trim();
+  if (!text) return text;
+  const marker = '...';
+  const fits = value => measureTrackerLabel(value, { ...options, paddingX: 0, minW: 0, maxW: 99 }) <= availableTextW;
+  if (fits(text)) return text;
+  if (availableTextW <= 0 || !fits(marker)) return marker;
+  let next = text;
+  while (next.length > 0 && !fits(`${next}${marker}`)) {
+    next = next.slice(0, -1).trimEnd();
+  }
+  return next ? `${next}${marker}` : marker;
+}
+
+function resolveTrackerTabs(tabs, { startX = 0, safeRight = PPTX_SLIDE_W - 0.48, gap = 0.03 } = {}) {
+  const visibleTabs = tabs.filter(tab => tab?.label);
+  if (visibleTabs.length === 0) return [];
+  const available = Math.max(0, safeRight - startX - gap * (visibleTabs.length - 1));
+  const measured = visibleTabs.map(tab => ({
+    ...tab,
+    naturalW: measureTrackerLabel(tab.label, tab),
+  }));
+  const naturalTotal = measured.reduce((sum, tab) => sum + tab.naturalW, 0);
+
+  let widths = measured.map(tab => tab.naturalW);
+  if (naturalTotal > available) {
+    const minTotal = measured.reduce((sum, tab) => sum + (tab.minW || 0.7), 0);
+    const flexible = Math.max(0, available - minTotal);
+    const naturalFlex = measured.reduce((sum, tab) => sum + Math.max(0, tab.naturalW - (tab.minW || 0.7)), 0) || 1;
+    widths = measured.map(tab => {
+      const minW = tab.minW || 0.7;
+      return minW + flexible * (Math.max(0, tab.naturalW - minW) / naturalFlex);
+    });
+  }
+
+  let x = startX;
+  return measured.map((tab, index) => {
+    const w = Number(Math.max(tab.minW || 0.7, widths[index]).toFixed(3));
+    const textW = Math.max(0, w - (tab.paddingX || 0.22));
+    const resolved = {
+      ...tab,
+      x,
+      w,
+      text: ellipsizeTrackerLabel(tab.label, textW, tab),
+    };
+    x = Number((x + w + gap).toFixed(3));
+    return resolved;
+  });
+}
+
+function addTrackerTab(slide, tab) {
+  if (!tab?.text) return;
+  const shapeOptions = {
+    x: tab.x,
+    y: tab.y,
+    w: tab.w,
+    h: tab.h,
+    fill: { color: tab.fill },
+  };
+  if (tab.line) shapeOptions.line = tab.line;
+  slide.addShape('rect', shapeOptions);
+  const inset = tab.textInset ?? 0.04;
+  slide.addText(tab.text, {
+    x: tab.x + inset,
+    y: tab.y,
+    w: Math.max(0.05, tab.w - inset * 2),
+    h: tab.h,
+    fontFace: tab.fontFace || profileFontFace('Arial'),
+    fontSize: tab.fontSize || 8,
+    bold: tab.bold ?? true,
+    color: tab.color || COLORS.white,
+    valign: 'middle',
+    margin: 0,
+    fit: 'shrink',
+    breakLine: false,
+  });
+}
+
 function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) {
   const textPos = tracker?.text || { x: 0.792, y: 0.139, w: 4.167, h: 0.194 };
   const colors = tracker?.colors || {};
@@ -96,56 +195,41 @@ function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) 
   const subTextColor = colors.subText || COLORS.meta;
   const font = textPos.font || {};
   const fontSize = pptxFontSize(font.fontSize, 9, 8);
-  const estimateTextWidth = label => {
-    const estimated = String(label || '').length * 0.085 + 0.53;
-    return Math.min(5.0, Math.max(2.64, estimated));
-  };
   if (!sectionLabel && !subSectionLabel) return;
 
-  if (sectionLabel) {
-    const sectionW = estimateTextWidth(sectionLabel);
-    slide.addText(sectionLabel, {
-      x: textPos.x,
-      y: textPos.y - 0.004,
-      w: sectionW,
-      h: Math.max(textPos.h || 0.18, 0.18),
-      fontFace: font.fontFace || profileFontFace('STC Forward'),
+  const tabs = resolveTrackerTabs([
+    {
+      label: sectionLabel,
       fontSize,
       bold: font.bold ?? true,
-      color: textColor,
-      margin: 0,
-      valign: 'mid',
-      fit: 'shrink',
-    });
+      minW: 2.64,
+      maxW: 5.0,
+      paddingX: 0.36,
+    },
+    {
+      label: subSectionLabel,
+      fontSize,
+      bold: false,
+      minW: 1.2,
+      maxW: 5.0,
+      paddingX: 0.36,
+    },
+  ], { startX: textPos.x, safeRight: PPTX_SLIDE_W - 0.48, gap: 0.14 });
 
-    if (subSectionLabel) {
-      slide.addText(subSectionLabel, {
-        x: textPos.x + sectionW + 0.14,
-        y: textPos.y - 0.004,
-        w: estimateTextWidth(subSectionLabel),
-        h: Math.max(textPos.h || 0.18, 0.18),
-        fontFace: font.fontFace || profileFontFace('STC Forward'),
-        fontSize,
-        bold: false,
-        color: subTextColor,
-        margin: 0,
-        valign: 'mid',
-        fit: 'shrink',
-      });
-    }
-  } else if (subSectionLabel) {
-    slide.addText(subSectionLabel, {
-      x: textPos.x,
+  for (const [index, tab] of tabs.entries()) {
+    slide.addText(tab.text, {
+      x: tab.x,
       y: textPos.y - 0.004,
-      w: estimateTextWidth(subSectionLabel),
+      w: tab.w,
       h: Math.max(textPos.h || 0.18, 0.18),
       fontFace: font.fontFace || profileFontFace('STC Forward'),
       fontSize,
-      bold: false,
-      color: subTextColor,
+      bold: index === 0 && sectionLabel ? (font.bold ?? true) : false,
+      color: index === 0 && sectionLabel ? textColor : subTextColor,
       margin: 0,
       valign: 'mid',
       fit: 'shrink',
+      breakLine: false,
     });
   }
 }
@@ -159,21 +243,35 @@ export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
     return;
   }
 
-  if (sectionLabel) {
-    const sectionW = Math.max(0.85, sectionLabel.length * 0.052 + 0.3);
-    slide.addShape('rect', { x: 0, y: 0, w: sectionW, h: 0.23, fill: { color: COLORS.maroon } });
-    slide.addText(sectionLabel, { x: 0.04, y: 0, w: sectionW - 0.08, h: 0.23, fontFace: profileFontFace('Arial'), fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
+  const tabs = resolveTrackerTabs([
+    {
+      label: sectionLabel,
+      fill: COLORS.maroon,
+      y: 0,
+      h: 0.23,
+      fontSize: 8,
+      bold: true,
+      minW: 0.92,
+      maxW: 5.6,
+      paddingX: 0.22,
+      textInset: 0.05,
+    },
+    {
+      label: subSectionLabel,
+      fill: COLORS.coal,
+      y: 0,
+      h: 0.21,
+      fontSize: 8,
+      bold: true,
+      minW: 0.78,
+      maxW: 5.3,
+      paddingX: 0.2,
+      textInset: 0.05,
+    },
+  ], { startX: 0, safeRight: PPTX_SLIDE_W - 0.48, gap: sectionLabel && subSectionLabel ? 0.03 : 0 });
 
-    if (subSectionLabel) {
-      const subW = Math.max(0.7, subSectionLabel.length * 0.05 + 0.28);
-      const subX = sectionW + 0.03;
-      slide.addShape('rect', { x: subX, y: 0, w: subW, h: 0.21, fill: { color: COLORS.coal } });
-      slide.addText(subSectionLabel, { x: subX + 0.04, y: 0, w: subW - 0.08, h: 0.21, fontFace: profileFontFace('Arial'), fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
-    }
-  } else if (subSectionLabel) {
-    const subW = Math.max(0.7, subSectionLabel.length * 0.05 + 0.28);
-    slide.addShape('rect', { x: 0, y: 0, w: subW, h: 0.21, fill: { color: COLORS.coal } });
-    slide.addText(subSectionLabel, { x: 0.04, y: 0, w: subW - 0.08, h: 0.21, fontFace: profileFontFace('Arial'), fontSize: 8, bold: true, color: COLORS.white, valign: 'middle' });
+  for (const tab of tabs) {
+    addTrackerTab(slide, tab);
   }
 }
 
@@ -210,12 +308,12 @@ export function addSourceNote(slide, html) {
   const ftrPos = positions?.footer;
   const ftrFont = ftrPos?.font || {};
   slide.addText(texts.join(' | '), {
-    x: ftrPos?.x ?? 2.5,
-    y: ftrPos?.y ?? 7.05,
-    w: ftrPos?.w ?? 8.5,
-    h: ftrPos?.h ?? 0.25,
+    x: ftrPos?.x ?? STRATEGY_SOURCE_DEFAULT.x,
+    y: ftrPos?.y ?? STRATEGY_SOURCE_DEFAULT.y,
+    w: ftrPos?.w ?? STRATEGY_SOURCE_DEFAULT.w,
+    h: ftrPos?.h ?? STRATEGY_SOURCE_DEFAULT.h,
     fontFace: ftrFont.fontFace || profileFontFace('Arial'),
-    fontSize: pptxFontSize(ftrFont.fontSize, 10, 8),
+    fontSize: pptxFontSize(ftrFont.fontSize, STRATEGY_FOOTER_FONT_SIZE, STRATEGY_FOOTER_FONT_SIZE),
     italic: ftrFont.italic ?? true,
     color: ftrFont.color || COLORS.meta,
     align: 'left',

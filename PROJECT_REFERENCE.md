@@ -779,7 +779,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 73. **Router dependency repair and GPT 5.5 generation defaults**: Router planning now explicitly defines `contextFromStep` as a 0-based earlier plan-step index and repairs invalid self/future dependencies before SmartAction display, keeping the strict executor validator as a final safety net. Premium slide generation and PPTX export defaults use `pwc:openai.gpt-5.5` with the configured low reasoning effort.
 
-74. **Strategy Consulting Slide Prompt refresh**: `slide-html-generator-prompt.md` now uses the Strategy Consulting Slide Prompt contract for calm gridded bespoke slides, strict 904x366 frame fit, token-only color usage, dark-filled primary section headers, explicit-coordinate chart/framework geometry, label economy, and visual-quality self-checks.
+74. **Strategy Consulting Slide Prompt refresh**: `slide-html-generator-prompt.md` now uses the Strategy Consulting Slide Prompt contract for calm gridded bespoke slides, strict 904x366 frame fit, token-only color usage, explicit `on-accent` text on every dark-fill class, dark-filled primary section headers, explicit-coordinate chart/framework geometry, label economy, and visual-quality self-checks.
 
 ---
 

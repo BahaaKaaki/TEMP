@@ -1974,7 +1974,7 @@ export async function aiRouteRequest(userPrompt, context, settings) {
 
   // Get router model - use big model if requested, otherwise unified routerModel
   const defaultRouterModel = 'pwc:openai.gpt-5.5';
-  const bigModel = settings.model || 'pwc:bedrock.anthropic.claude-opus-4-7';
+  const bigModel = settings.model || 'pwc:openai.gpt-5.5';
 
   // Unified router: single model for all routing (chatRouterModel kept for backward compat)
   const effectiveRouterModel = useBigModel ? bigModel
@@ -2593,9 +2593,99 @@ USER REQUEST: "${routerPrompt}"`;
       instruction: '',
     }];
 
+    const outputProducingActions = new Set([
+      'analyze_content',
+      'create_slide',
+      'create_from_template',
+      'edit_slide',
+      'switch_template',
+      'update_trackers',
+      'update_tracker',
+    ]);
+
+    const normalizePlanStepDependencies = (steps) => {
+      const repairs = [];
+      const safeSteps = steps.map((step, stepIdx) => {
+        if (step.contextFromStep === null || step.contextFromStep === undefined) return step;
+
+        const rawDependency = step.contextFromStep;
+        const dependency = Number(rawDependency);
+        const repair = (nextValue, reason) => {
+          repairs.push({
+            stepIndex: stepIdx,
+            original: rawDependency,
+            repaired: nextValue,
+            reason,
+          });
+          return { ...step, contextFromStep: nextValue };
+        };
+
+        if (!Number.isInteger(dependency) || dependency < 0) {
+          return repair(null, 'invalid dependency index');
+        }
+
+        let resolvedDependency = dependency;
+        if (dependency >= stepIdx) {
+          const oneBasedCandidate = dependency - 1;
+          if (
+            oneBasedCandidate >= 0 &&
+            oneBasedCandidate < stepIdx &&
+            outputProducingActions.has(steps[oneBasedCandidate]?.action)
+          ) {
+            resolvedDependency = oneBasedCandidate;
+          } else {
+            return repair(null, 'dependency must reference an earlier step');
+          }
+        }
+
+        if (!outputProducingActions.has(steps[resolvedDependency]?.action)) {
+          return repair(null, 'dependency step does not produce reusable output');
+        }
+
+        if (resolvedDependency !== dependency) {
+          return repair(resolvedDependency, 'converted likely 1-based step reference to 0-based plan index');
+        }
+
+        return step;
+      });
+
+      if (repairs.length > 0) {
+        console.warn('[AI Router] Repaired invalid contextFromStep dependencies:', repairs);
+      }
+
+      return { steps: safeSteps, repairs };
+    };
+
+    // Safety: when agent provided the slides (fullInstructionMap exists), the router should
+    // only add a cover + one step per agent slide. Strip any extra slides the router invented
+    // (executiveSummary, sectionDivider, thankYou, etc.) beyond the expected count.
+    const selectedPlan = fullInstructionMap && fullInstructionMap.size > 0
+      ? (() => {
+          const expectedCount = fullInstructionMap.size + 1; // cover + agent slides
+          if (plan.length > expectedCount) {
+            // Router added extra slides. Keep cover (first) + exactly N body create_slide steps.
+            const kept = [];
+            let bodyKept = 0;
+            for (const step of plan) {
+              if (step.templateId === 'cover' && kept.length === 0) {
+                kept.push(step);
+              } else if ((step.action === 'create_slide' || step.action === 'create_from_template') && bodyKept < fullInstructionMap.size) {
+                kept.push(step);
+                bodyKept++;
+              } else {
+                console.warn(`[AI Router] Stripped router-added step "${step.templateId || step.action}" — agent slide list is complete (expected ${expectedCount}, got ${plan.length})`);
+              }
+            }
+            return kept;
+          }
+          return plan;
+        })()
+      : plan;
+    const { steps: dependencySafePlan, repairs: dependencyRepairs } = normalizePlanStepDependencies(selectedPlan);
+
     // Collect all source/context slides from the plan
     const sourceSlides = new Set(parsed.sourceSlides || []);
-    plan.forEach(step => {
+    dependencySafePlan.forEach(step => {
       if (step.slideIndex !== null && step.slideIndex !== undefined) {
         sourceSlides.add(step.slideIndex);
       }
@@ -2610,14 +2700,14 @@ USER REQUEST: "${routerPrompt}"`;
     const contextSlideIndices = [...sourceSlides].sort((a, b) => a - b);
 
     // First step determines primary action/template for backwards compatibility
-    const firstStep = plan[0] || {};
+    const firstStep = dependencySafePlan[0] || {};
 
     // Map to standard router result format
     const result = {
       intent: firstStep.action || 'create_slide',
       action: firstStep.action || 'create_slide',
-      understanding: plan.length > 1
-        ? `Plan: ${plan.length} steps (${plan.map(s => s.action).join(' → ')})`
+      understanding: dependencySafePlan.length > 1
+        ? `Plan: ${dependencySafePlan.length} steps (${dependencySafePlan.map(s => s.action).join(' → ')})`
         : firstStep.templateId
           ? `${firstStep.action} using ${firstStep.templateId} template`
           : `${firstStep.action} (freestyle)`,
@@ -2626,32 +2716,7 @@ USER REQUEST: "${routerPrompt}"`;
         confidence: 'high',
         reason: 'AI selected',
       } : null,
-      // Safety: when agent provided the slides (fullInstructionMap exists), the router should
-      // only add a cover + one step per agent slide. Strip any extra slides the router invented
-      // (executiveSummary, sectionDivider, thankYou, etc.) beyond the expected count.
-      plan: (fullInstructionMap && fullInstructionMap.size > 0
-        ? (() => {
-            const expectedCount = fullInstructionMap.size + 1; // cover + agent slides
-            if (plan.length > expectedCount) {
-              // Router added extra slides. Keep cover (first) + exactly N body create_slide steps.
-              const kept = [];
-              let bodyKept = 0;
-              for (const step of plan) {
-                if (step.templateId === 'cover' && kept.length === 0) {
-                  kept.push(step);
-                } else if ((step.action === 'create_slide' || step.action === 'create_from_template') && bodyKept < fullInstructionMap.size) {
-                  kept.push(step);
-                  bodyKept++;
-                } else {
-                  console.warn(`[AI Router] Stripped router-added step "${step.templateId || step.action}" — agent slide list is complete (expected ${expectedCount}, got ${plan.length})`);
-                }
-              }
-              return kept;
-            }
-            return plan;
-          })()
-        : plan
-      ).map((step, stepIdx) => {
+      plan: dependencySafePlan.map((step, stepIdx) => {
         // ── Post-routing merge: restore full instructions ──
         // When we condensed the agent prompt, the router only saw slide flow + data points.
         // Now we inject the full instruction text back so step execution gets all the content.
@@ -2664,7 +2729,7 @@ USER REQUEST: "${routerPrompt}"`;
           const isBodyStep = (s) =>
             (s.action === 'create_slide' || s.action === 'create_from_template') &&
             s.templateId !== 'cover';
-          const priorBodySteps = plan.slice(0, stepIdx).filter(isBodyStep).length;
+          const priorBodySteps = dependencySafePlan.slice(0, stepIdx).filter(isBodyStep).length;
           const isCover = step.templateId === 'cover';
           const slideNum = isCover ? -1 : priorBodySteps + 1;
           const fullInstr = fullInstructionMap.get(slideNum);
@@ -2682,7 +2747,7 @@ USER REQUEST: "${routerPrompt}"`;
           const isBodyStep = (s) =>
             (s.action === 'create_slide' || s.action === 'create_from_template') &&
             s.templateId !== 'cover';
-          const priorBodySteps = plan.slice(0, stepIdx).filter(isBodyStep).length;
+          const priorBodySteps = dependencySafePlan.slice(0, stepIdx).filter(isBodyStep).length;
           const isCover = step.templateId === 'cover';
           const slideNum = isCover ? -1 : priorBodySteps + 1;
           const userContent = userSlideContentMap.get(slideNum);
@@ -2815,6 +2880,7 @@ USER REQUEST: "${routerPrompt}"`;
         routerSearchUsed: routerSearchCallCount > 0 || !!routerSearchRawText,
         searchCallCount: routerSearchCallCount,
         searchQueries: routerSearchQueries,
+        dependencyRepairs,
       },
     };
 

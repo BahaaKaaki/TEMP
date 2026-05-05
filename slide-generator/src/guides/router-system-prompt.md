@@ -396,6 +396,8 @@ For repeated slide families:
 - create the first slide in its own earlier group
 - define the layout clearly on that first slide
 - later slides must use `contextFromStep`
+- `contextFromStep` is a 0-based plan step index, not a slide/page number
+- `contextFromStep` must always be less than the current step's plan index; never point a step to itself
 - later slide instructions must say: `Match the exact format/structure of the referenced slide from step N`
 
 Use visual variety across unrelated consecutive slides. Repeated layouts are appropriate only for intentional slide families.
@@ -543,6 +545,8 @@ Use `contextFromStep` when a new slide depends on an earlier created slide, espe
 - repeated slide families
 - one-slide-per-pillar / country / option / workstream sets
 
+`contextFromStep` must be a 0-based plan step index for an earlier output-producing step. It is never a visible slide number, page number, or human ordinal. If the current plan step index is 7, valid values are only 0 through 6. If you are unsure which earlier generated step should be the parent, set `contextFromStep` to null and bake the necessary content directly into the instruction.
+
 # FIELD RULES
 
 Use separate fields. Do not embed title or subtitle inside `instruction`.
@@ -648,5 +652,7 @@ Before returning, verify:
 - no tracker contains placeholders or router-reference language
 - `layoutGuidance` gives useful slide architecture without over-guiding design execution
 - repeated slide families use `contextFromStep`
+- every `contextFromStep` is a 0-based plan step index less than the current step index
+- no step depends on itself or a future step
 - no create+delete is used for reorder
 - template changes use `switch_template`, not `create_slide`

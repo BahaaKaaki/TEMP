@@ -279,7 +279,7 @@ When a user types a message in the chatbot:
    ├── Speed mode determines generation model for all steps
    ├── Active client design profile appends profile-specific design contract to generation/edit system prompts
    ├── Structured fields (title, subtitle, facts, sources) prepended to step prompt; router sources are stored on created slides for preview verification
-   ├── Validate contextFromStep dependencies before execution; invalid or missing parent outputs fail visibly
+   ├── Repair obvious contextFromStep self/future dependencies after routing, then validate dependencies before execution; invalid or missing parent outputs fail visibly
    ├── Build groups from router plan
    ├── For each group → executeGroupParallel
    │   ├── Accumulate create_slide steps into batch
@@ -440,11 +440,11 @@ Core state shape:
     clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
     clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
     // Model/search defaults
-    model: 'pwc:bedrock.anthropic.claude-opus-4-7',  // Premium generation
+    model: 'pwc:openai.gpt-5.5',                     // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
     routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
-    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7', // PPTX export code generation
+    pptxModel: 'pwc:openai.gpt-5.5',                 // PPTX export code generation
     searchModel: 'openai.gpt-5.4-mini',              // Dedicated lightweight search model
     evidenceSearchModel: 'openai.gpt-5.5',           // Per-step evidence search enrichment
     providers: [...],            // Provider registry (PwC Shared Services)
@@ -757,7 +757,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 60. **Cross-slide visual reference and GPT 5.5 defaults**: AIChatbot now classifies slide/page mentions as targets versus visual references so requests like "make this slide like slide 3" keep the current slide as the edit target while passing slide 3 as reference HTML plus unscoped `customCSS`; the SmartAction target label and executed `slideIndex` are forced to stay aligned. Main slide generation and PPTX export defaults now use `pwc:openai.gpt-5.5`, including the PPTX service fallback for reset/empty settings.
 
-61. **Opus model rollback for generation/export**: Main premium slide generation and PPTX export defaults now use `pwc:bedrock.anthropic.claude-opus-4-7` while router/search/classifier defaults remain unchanged, restoring the previous quality-first generation/export path pending prompt fixes.
+61. **Opus model rollback for generation/export (superseded)**: Main premium slide generation and PPTX export were temporarily restored to `pwc:bedrock.anthropic.claude-opus-4-7` while prompt fixes stabilized; current defaults have since moved back to GPT 5.5.
 
 62. **Native table export guidance**: Table requests now steer slide HTML generation toward semantic `<table>` markup, PPTX export hints support `table` / `native-table`, and PPTX validation retries table-intent slides once when generated code omits native `slide.addTable`.
 
@@ -776,6 +776,10 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 71. **Parallel independent edit execution**: SmartAction execution now flattens router groups when all steps are dependency-free edits/switches/tracker updates, resolves edit batch targets by concrete `slideIndex` before broad `targetSlides`, and shows a parallel edit batch status while the LLM calls run concurrently.
 
 72. **Freestyle prompt split cleanup**: Stable freestyle rules for content fidelity, title/subtitle passthrough, visual quality, typography, chart geometry, footer behavior, work depth, and user preferences now live in the system prompt (`slide-html-generator-prompt.md` plus runtime system contract). The freestyle user prompt is limited to the request-specific brief, date, deck/current-slide context, layout hints, slide count, and cover/no-cover requirements, and no longer asks for obsolete `X / total` footer numbering.
+
+73. **Router dependency repair and GPT 5.5 generation defaults**: Router planning now explicitly defines `contextFromStep` as a 0-based earlier plan-step index and repairs invalid self/future dependencies before SmartAction display, keeping the strict executor validator as a final safety net. Premium slide generation and PPTX export defaults use `pwc:openai.gpt-5.5` with the configured low reasoning effort.
+
+74. **Strategy Consulting Slide Prompt refresh**: `slide-html-generator-prompt.md` now uses the Strategy Consulting Slide Prompt contract for calm gridded bespoke slides, strict 904x366 frame fit, token-only color usage, dark-filled primary section headers, explicit-coordinate chart/framework geometry, label economy, and visual-quality self-checks.
 
 ---
 

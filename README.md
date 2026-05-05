@@ -15,7 +15,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 
 ## Features
 
-- AI slide generation via PwC Shared Services (premium model: `bedrock.anthropic.claude-opus-4-7`)
+- AI slide generation via PwC Shared Services (premium model: `openai.gpt-5.5`)
 - Backend AI proxy -- API key stays server-side, never exposed to browser
 - Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
@@ -33,13 +33,13 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Router search policy uses GPT 5.5 reasoning by default, but only attaches web search for requests that need current or external evidence; Responses API router failures fall back to Chat Completions planning, router evidence is packaged as structured metadata, and per-step evidence search uses GPT 5.5 by default with caching/budgeting while still overriding older router facts when current/latest results conflict
 - Slide preview includes a source inspector for evidence-backed slides: router/per-step search URLs, raw URLs, and in-slide links are shown as clickable verification cards; generic footer source labels are ignored unless no URL-backed source exists
 - Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md`; runtime assembly injects the current template catalog so Auto/Freestyle routing can honor explicit template requests while preserving freestyle defaults
-- Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` and emphasizes sharp, scratch-built consulting layouts, semantic HTML table markup for table requests, inline sentence flow for nested text, chart geometry, sequential flows, frame fit, token-only colors, and visual uplift; freestyle user prompts now carry only request-specific brief/context/count details while stable content-fidelity, title/subtitle, footer, work-depth, and visual-quality rules live in the system prompt
+- Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` and now uses a Strategy Consulting Slide Prompt contract: calm gridded bespoke slides, strict 904x366 frame fit, token-only colors, dark-filled primary section headers, explicit-coordinate geometry for charts/frameworks, label economy, and strong visual-quality self-checks; freestyle user prompts carry only request-specific brief/context/count details while stable behavior lives in the system prompt
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Complex chart generation uses fixed-coordinate geometry guidance for waterfall/bridge/bar-style exhibits, with inline numeric positioning allowed only for chart marks
 - Template auto-match now attaches the selected template's extracted CSS consistently across create, insert, fill, and switch paths
 - Reused template CSS is normalized through per-slide `data-slide-id` scoping on add/update, including CSS blocks with comments before selectors
 - Template switching strips model-returned `<style>` blocks when template CSS is applied, reducing conflicts between generated CSS and extracted template CSS
-- Cross-slide format matching keeps the displayed target and executed slide aligned while passing referenced slide HTML plus unscoped `customCSS`, so "make this like slide N" has the actual visual rules, not just markup; create-step execution validates `contextFromStep` dependencies up front and waits on prior outputs in both SmartAction and agent presentation builds so dependent comparison slides can reuse the same generated entities, structure, and ordering
+- Cross-slide format matching keeps the displayed target and executed slide aligned while passing referenced slide HTML plus unscoped `customCSS`, so "make this like slide N" has the actual visual rules, not just markup; router planning repairs invalid self/future `contextFromStep` dependencies before display, and execution still validates dependencies before dependent slides reuse generated structure and ordering
 - Independent multi-slide edits that share the same reference slide now run in parallel when they target different concrete pages, with execution progress showing the parallel edit batch
 - Explicit slide reorder prompts such as `3-4-2-5-6` or `reorder slides 4 and 5` are handled deterministically without an AI planning call, preserving omitted slides in their existing relative order; the create/delete guard is scoped to pure reorder requests so broader deck restructuring can still change content
 - Slide typography is normalized on generation/import/update and PPTX export: compact tags, chips, badges, and tracker labels may use 8px/8pt; normal text stays at least 10px/10pt, body copy targets 12px/12pt, and section/pillar/card titles target 14px/14pt
@@ -191,16 +191,16 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 
 | Role | Model |
 |---|---|
-| Thinking (main generation) | `bedrock.anthropic.claude-opus-4-7` |
+| Thinking (main generation) | `openai.gpt-5.5` |
 | Fast generation | `vertex_ai.gemini-3.1-flash-lite-preview` |
 | Classifier | `openai.gpt-5.4-mini` |
 | Router | `openai.gpt-5.5` |
 | Step evidence search | `openai.gpt-5.5` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
-| PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
+| PPTX (export) | `openai.gpt-5.5` |
 
-Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. GPT 5.5 generation and PPTX export use the configured reasoning effort (`low` by default) through the Responses API where supported. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 
 ## Linting
 

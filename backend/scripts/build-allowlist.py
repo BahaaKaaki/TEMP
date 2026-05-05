@@ -34,6 +34,7 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # xlsx is refreshed.
 MANUAL_EXTRAS: frozenset[str] = frozenset({
     "amr.shalaby@pwc.com",
+    "gautam.c.sharma@pwc.com",
     "mounir.d.doumani@pwc.com",
     "tarek.sultanem@pwc.com",
 })

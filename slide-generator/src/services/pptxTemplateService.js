@@ -456,6 +456,70 @@ function injectLogoPic(slideXml, logo, rId) {
   return slideXml.replace('</p:spTree>', pic + '</p:spTree>');
 }
 
+function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
+  let fixed = String(slideXml || '');
+  const seenIds = new Set();
+  let maxId = 0;
+  let duplicateIds = 0;
+  let nonPositiveExtents = 0;
+
+  fixed = fixed.replace(/(<[A-Za-z0-9]+:cNvPr\b[^>]*\bid=")(\d+)(")/g, (match, prefix, idValue, suffix) => {
+    const id = Number(idValue);
+    if (Number.isFinite(id)) maxId = Math.max(maxId, id);
+    if (!seenIds.has(idValue)) {
+      seenIds.add(idValue);
+      return match;
+    }
+    duplicateIds++;
+    let nextId = maxId + 1;
+    while (seenIds.has(String(nextId))) nextId++;
+    maxId = nextId;
+    seenIds.add(String(nextId));
+    return `${prefix}${nextId}${suffix}`;
+  });
+
+  fixed = fixed.replace(/\b(c[xy])="(-?\d+)"/g, (match, attr, value) => {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric <= 0) {
+      nonPositiveExtents++;
+      return `${attr}="1"`;
+    }
+    return match;
+  });
+
+  if (duplicateIds > 0 || nonPositiveExtents > 0) {
+    console.warn('[PPTX Template] Sanitized %s: duplicateShapeIds=%d nonPositiveExtents=%d',
+      slidePath || 'slide XML', duplicateIds, nonPositiveExtents);
+  }
+
+  return fixed;
+}
+
+async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
+  const slideFiles = Object.keys(zip.files)
+    .filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f))
+    .sort((a, b) => {
+      const na = parseInt(a.match(/slide(\d+)/)[1], 10);
+      const nb = parseInt(b.match(/slide(\d+)/)[1], 10);
+      return na - nb;
+    });
+
+  for (const slidePath of slideFiles) {
+    const xml = await zip.files[slidePath].async('string');
+    const fixed = sanitizeSlideXmlForPowerPoint(xml, slidePath);
+    if (fixed !== xml) zip.file(slidePath, fixed);
+  }
+
+  console.log('[PPTX Template] PowerPoint sanitation complete for %s (%d slide(s))', label, slideFiles.length);
+  return zip;
+}
+
+export async function sanitizePptxBufferForPowerPoint(buffer, label = 'presentation') {
+  const zip = await JSZip.loadAsync(buffer);
+  await sanitizePptxZipForPowerPoint(zip, label);
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
 export async function applyProfileChromeToGenerated(generatedBuf, chrome = null, options = {}) {
   console.log('[PPTX Template] Applying controlled profile chrome. Generated:', generatedBuf.byteLength, 'bytes');
   const genZip = await JSZip.loadAsync(generatedBuf);
@@ -500,6 +564,7 @@ export async function applyProfileChromeToGenerated(generatedBuf, chrome = null,
     genZip.file(ctPath, ensureMediaContentType(contentTypesXml, logoConfig.ext));
   }
 
+  await sanitizePptxZipForPowerPoint(genZip, 'profile chrome export');
   const result = await genZip.generateAsync({ type: 'arraybuffer' });
   console.log('[PPTX Template] Controlled profile chrome complete. Output:', result.byteLength, 'bytes');
   return result;
@@ -768,6 +833,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   }
 
   // ── Done: produce final arraybuffer ─────────────────────────────────────
+  await sanitizePptxZipForPowerPoint(tplZip, 'template merge export');
   const result = await tplZip.generateAsync({ type: 'arraybuffer' });
   console.log('[PPTX Template] Merge complete. Output:', result.byteLength, 'bytes');
   return result;

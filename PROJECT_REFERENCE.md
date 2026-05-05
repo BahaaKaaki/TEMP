@@ -771,6 +771,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 70. **Slide source verification UX**: Created slides now retain router `sources[]` metadata and per-step web-search markdown links where available. `SlidePreview` extracts metadata, in-slide links, and URL text into a right-side source inspector with clickable verification cards; broad footer-only source labels are ignored unless no URL-backed source exists.
 71. **Parallel independent edit execution**: SmartAction execution now flattens router groups when all steps are dependency-free edits/switches/tracker updates, resolves edit batch targets by concrete `slideIndex` before broad `targetSlides`, and shows a parallel edit batch status while the LLM calls run concurrently.
 
+72. **Freestyle prompt split cleanup**: Stable freestyle rules for content fidelity, title/subtitle passthrough, visual quality, typography, chart geometry, footer behavior, work depth, and user preferences now live in the system prompt (`slide-html-generator-prompt.md` plus runtime system contract). The freestyle user prompt is limited to the request-specific brief, date, deck/current-slide context, layout hints, slide count, and cover/no-cover requirements, and no longer asks for obsolete `X / total` footer numbering.
+
 ---
 
 ## 11. Pending / In Discussion

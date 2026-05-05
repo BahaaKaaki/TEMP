@@ -234,7 +234,7 @@ CRITICAL STRUCTURE:
     const totalSlides = existingSlides.length + targetCount;
     countInstruction = `Generate exactly ${targetCount} slide(s).
 - These will be slides ${startingSlideNum} to ${startingSlideNum + targetCount - 1} of the deck
-- Number the footer as "X / ${totalSlides}" starting from ${startingSlideNum}`;
+- Use right-footer page numbers starting from ${startingSlideNum}; do not use "X / ${totalSlides}" unless the user explicitly asks for total-page notation`;
   }
 
   // Check if user provided explicit layout instructions in the prompt
@@ -280,6 +280,23 @@ ${layoutGuidanceSpec.instruction}
     ? `left: "${footerBranding}"`
     : 'left: empty string unless a real source or footer label is provided';
 
+  if (isFreestyle && !template) {
+    const runtimeSystemContract = [
+      `RUNTIME FOOTER CONTRACT:
+- Use footer spans as: left ${footerLeftInstruction}, center <span class="source"> for a real source or footnote only, right page number only.
+- If no real source exists, keep the source span empty.`,
+      getWorkLevelInstructions(settings.workLevelSlide, 'slide'),
+      settings.userPreferences
+        ? `USER PREFERENCES:
+${settings.userPreferences}
+
+Apply these unless the specific user request contradicts them.`
+        : '',
+    ].filter(Boolean).join('\n\n');
+
+    activeSystemPrompt = `${activeSystemPrompt}\n\n---\n\n${runtimeSystemContract}`;
+  }
+
   // Build user prompt — freestyle gets a clean, minimal prompt; template mode gets the full one
   let userPrompt;
 
@@ -299,44 +316,14 @@ ${layoutPart !== contentPart && layoutPart !== prompt ? `LAYOUT DESCRIPTION: ${l
       ? `\nLAYOUT HINT (from narrative planner): "${routerLayoutGuidance}" — consider this, but choose whatever layout best serves the content. You are not bound to it.`
       : '';
 
-    const chartGeometryGuide = buildClientChartGeometryGuide(settings, CHART_GEOMETRY_GUIDE);
-
     userPrompt = `${freestyleIntro}
 TODAY: ${currentDateString()}
 ${currentSlideContext}${deckOverview}${existingDeckContext}${layoutHint}
-${TITLE_HEADER_RULES}
-
-TITLE / SUBTITLE PASSTHROUGH:
-If the content request starts with "TITLE:" and/or "SUBTITLE:" markers, use those EXACTLY as the slide's h1.title and h2.subtitle respectively.
-You may lightly adjust word count to fit the 8-12 word format but MUST preserve the specific data, claims, and terminology.
 
 REQUIREMENTS:
 ${countInstruction}
 ${coverInstruction}
-- Footer: three spans — ${footerLeftInstruction}, center: <span class="source"> (footnote if citing a source, otherwise empty), right: page number
-${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "this page", they mean the CURRENT SLIDE REFERENCE shown above' : ''}
-${getWorkLevelInstructions(settings.workLevelSlide, 'slide')}
-${settings.userPreferences ? `\nUSER PREFERENCES (apply unless contradicted by the specific request above):\n${settings.userPreferences}\n` : ''}
-
-VISUAL QUALITY:
-- You MUST output a <style> block with scoped CSS for every custom class you use.
-- Never output a plain <ul> or <ol> — always wrap items in styled cards, accent-bordered blocks, or grid cells.
-- Numbers and KPIs must be visually prominent: large font (32-48px Georgia), accent color, with a small label.
-- Use CSS grid or flexbox for every layout — no unstyled stacked divs.
-- Every slide must look polished enough for a C-suite audience.
-
-${TYPOGRAPHY_SIZE_GUIDE}
-
-${chartGeometryGuide}
-
-CONTENT FIDELITY:
-- TOPIC PROMPT (e.g., "AI trends") → you generate the content. Be professional, specific, data-rich.
-- PRECISE CONTENT (specific bullets, data, phrasing) → you are a LAYOUT ENGINE. Arrange their content as-is. Do NOT reword.
-- If the user provides questions, they MUST remain as questions.
-- If the user provides specific data/numbers/names, reproduce them EXACTLY.
-- SOURCE/CITATION: Sources go ONLY in <footer>, never inside <div class="frame">.
-
-Return the <style> block first, then the slide(s) as raw HTML, separated by a blank line between each slide.`;
+${contextInfo?.currentSlide ? '- If the user is referencing "this slide" or "this page", they mean the CURRENT SLIDE REFERENCE shown above' : ''}`;
     userPrompt = appendPromptOverride(settings, 'slideGen.freestyleUser', userPrompt);
 
   } else {

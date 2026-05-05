@@ -564,6 +564,10 @@ MSAL silent token refresh failures and unrecovered backend 401s dispatch `AUTH_S
 | `docs/runbooks/allowlist-path-b-runbook.md` | Full runbook for mode changes, rollback, troubleshooting |
 | `docs/auth-allowlist-experiment-2026-04-23.md` | Post-mortem of Path A (Easy Auth), motivation for Path B |
 
+### Usual User Check
+
+When asked to "check the users", use Microsoft Graph for `app-edwin-slides` rather than only the local allowlist. The total user inventory is the Enterprise App assignment list (currently ~300 users), not the recent sign-in log. The reusable CLI table command lives in `docs/runbooks/allowlist-path-b-runbook.md` under "Graph assigned-user audit table"; it pages through assignments via `@odata.nextLink`, resolves assigned user details, overlays recent sign-in activity, compares with the live Kudu allowlist, and prints flagged rows first.
+
 ### Quick-Add Procedure (Adding a User)
 
 When someone reports no access, follow all four steps:

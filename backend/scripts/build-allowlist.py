@@ -36,6 +36,7 @@ MANUAL_EXTRAS: frozenset[str] = frozenset({
     "amr.shalaby@pwc.com",
     "gautam.c.sharma@pwc.com",
     "mounir.d.doumani@pwc.com",
+    "musab.a.banaamah@pwc.com",
     "tarek.sultanem@pwc.com",
 })
 

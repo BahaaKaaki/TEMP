@@ -24,6 +24,7 @@ const SAMPLES = [
 ];
 
 const MODELS = [
+  'pwc:openai.gpt-5.5',
   'pwc:bedrock.anthropic.claude-opus-4-7',
   'pwc:vertex_ai.anthropic.claude-opus-4-7',
   'pwc:vertex_ai.gemini-3.1-pro-preview',

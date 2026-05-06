@@ -1,8 +1,8 @@
 import { debugLog, LogLevel } from '../../utils/debugLog';
 import { audit } from '../../utils/auditLog';
 import {
-  stripProviderPrefix, isGPT5Model, isGeminiModel, isGemini3Model, isGemini25Model,
-  isReasoningModel, mapReasoningToThinkingBudget, mapReasoningToThinkingLevel,
+  stripProviderPrefix, isGeminiModel, isGemini3Model, isGemini25Model,
+  isReasoningModel, omitChatCompletionsTemperature, mapReasoningToThinkingBudget, mapReasoningToThinkingLevel,
   extractGeminiResponseText, parseModelRef, findProvider, getCredentials,
   buildProviderHeaders, buildGeminiEndpoint, buildGeminiHeaders,
 } from './models.js';
@@ -590,9 +590,11 @@ export function buildRequestBody(settings, messages) {
       body.reasoning = { effort: reasoningEffort };
     }
 
-    // Temperature (only if not using reasoning)
+    // Temperature (only if not using reasoning); gpt-5.5 rejects non-default temperature
     if (!(isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none')) {
-      if (temperature !== undefined && temperature !== null) body.temperature = temperature;
+      if (!omitChatCompletionsTemperature(model) && temperature !== undefined && temperature !== null) {
+        body.temperature = temperature;
+      }
     }
 
     // Max output tokens (ensure integer for proxy compat)
@@ -680,7 +682,7 @@ export function buildRequestBody(settings, messages) {
 
   if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') {
     body.reasoning_effort = reasoningEffort;
-  } else {
+  } else if (!omitChatCompletionsTemperature(model) && temperature !== undefined && temperature !== null) {
     body.temperature = temperature;
   }
   // Always send max_tokens — reasoning models need it too (ensure integer for proxy compat)

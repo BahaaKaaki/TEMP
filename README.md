@@ -200,7 +200,7 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
 | PPTX (export) | `openai.gpt-5.5` |
 
-Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. Router, step evidence search, premium slide generation, and PPTX export use GPT 5.5 (Chat Completions through the proxy). In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. Router, step evidence search, premium slide generation, and PPTX export use GPT 5.5 (Chat Completions through the proxy). The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 
 ## Linting
 

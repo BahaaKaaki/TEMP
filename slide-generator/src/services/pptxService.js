@@ -33,6 +33,7 @@ import { buildClientProfileContext, getActiveClientProfile, getClientProfileFoot
 import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
 import { authFetch } from './authFetch.js';
 import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
+import { omitChatCompletionsTemperature } from './ai/models.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -585,14 +586,15 @@ function buildPptxRequestBody(credentials, settings, messages) {
     const input = inputItems.length === 1 && inputItems[0].role === 'user' ? inputItems[0].content : inputItems;
     const body = { model, input };
     if (instructions) body.instructions = instructions;
-    if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') body.reasoning = { effort: reasoningEffort }; else if (!noTemp) body.temperature = temperature || 0.2;
+    if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') body.reasoning = { effort: reasoningEffort };
+    else if (!noTemp && !omitChatCompletionsTemperature(model)) body.temperature = temperature || 0.2;
     body.max_output_tokens = maxTokens || 8000;
     if (verbosity) body.text = { verbosity };
     return body;
   }
   const body = { model, messages };
   if (isReasoningModel(model) && reasoningEffort && reasoningEffort !== 'none') body.reasoning_effort = reasoningEffort;
-  else if (!noTemp) { body.temperature = temperature || 0.2; }
+  else if (!noTemp && !omitChatCompletionsTemperature(model)) { body.temperature = temperature || 0.2; }
   body.max_tokens = maxTokens || 8000;
   return body;
 }

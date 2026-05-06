@@ -1,7 +1,7 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-04-27
+> Last updated: 2026-05-06
 
 ---
 
@@ -444,11 +444,11 @@ Core state shape:
     clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
     clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
     // Model/search defaults
-    model: 'pwc:bedrock.anthropic.claude-opus-4-7',  // Premium generation
+    model: 'pwc:openai.gpt-5.5',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
     routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
-    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7', // PPTX export code generation
+    pptxModel: 'pwc:openai.gpt-5.5', // PPTX export code generation
     searchModel: 'openai.gpt-5.4-mini',              // Dedicated lightweight search model
     evidenceSearchModel: 'openai.gpt-5.5',           // Per-step evidence search enrichment
     providers: [...],            // Provider registry (PwC Shared Services)
@@ -787,6 +787,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 75. **PPTX repair guardrail and export chrome parity**: PPTX export runs generated, template-merged, profile-chrome, and fallback decks through XML sanitation that de-duplicates `cNvPr` shape IDs and clamps zero/non-positive `cx`/`cy` extents before download to reduce PowerPoint repair prompts. Strategy& tracker labels are dynamically measured/capped so they remain single-line in PowerPoint, and Strategy& footer/source/page-number chrome uses the audited 7.5pt master typography.
 76. **PIF LDC client template profile**: Added a selectable PIF LDC client design profile using the LDC Implementation Guide as the bundled master and the DC Opportunity pitch deck as component/style evidence only. The profile ships `backend/assets/client-templates/pif/default-master.pptx`, `backend/assets/client-templates/pif/logo.png`, and Fund font assets under `backend/assets/fonts/pif-fund/`; backend routes serve `?profileId=pif` masters and authenticated Fund font files. Preview and PPTX export use PIF green/gold/mint tokens, Fund typography, a 10 x 5.625 in PPTX canvas mapped from 960 x 540 px, controlled top-left logo chrome, the master-derived standard title band and title rule, rich-text run spacing preservation, compact label no-wrap handling, blank footer/source text unless real source text exists, and a bottom-right gold page-number block.
+
+77. **GPT 5.5 premium generation and PPTX export**: Default premium slide generation (`settings.model`) and PPTX export code generation (`settings.pptxModel`) now use `pwc:openai.gpt-5.5` instead of Claude Opus 4.7.
 
 ---
 

@@ -15,7 +15,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 
 ## Features
 
-- AI slide generation via PwC Shared Services (premium model: `bedrock.anthropic.claude-opus-4-7`)
+- AI slide generation via PwC Shared Services (premium model: `openai.gpt-5.5`)
 - Backend AI proxy -- API key stays server-side, never exposed to browser
 - Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
@@ -191,16 +191,16 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 
 | Role | Model |
 |---|---|
-| Thinking (main generation) | `bedrock.anthropic.claude-opus-4-7` |
+| Thinking (main generation) | `openai.gpt-5.5` |
 | Fast generation | `vertex_ai.gemini-3.1-flash-lite-preview` |
 | Classifier | `openai.gpt-5.4-mini` |
 | Router | `openai.gpt-5.5` |
 | Step evidence search | `openai.gpt-5.5` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
-| PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
+| PPTX (export) | `openai.gpt-5.5` |
 
-Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. Router and step evidence search remain on GPT 5.5 for reasoning/search support, while premium generation and PPTX export use Claude Opus 4.7 through Chat Completions. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. Router, step evidence search, premium slide generation, and PPTX export use GPT 5.5 (Chat Completions through the proxy). In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 
 ## Linting
 

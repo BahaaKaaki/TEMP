@@ -17,6 +17,14 @@ const _RE_GEMINI25 = /\bgemini-2\.5/i;
 
 export function isReasoningModel(model) { return _RE_REASONING.test(stripProviderPrefix(model)); }
 export function isGPT5Model(model) { return _RE_GPT5.test(stripProviderPrefix(model)); }
+
+/**
+ * LiteLLM / some gateways reject custom `temperature` for `gpt-5.5` (only the provider
+ * default is accepted). Chat completions must omit `temperature` for these models.
+ */
+export function omitChatCompletionsTemperature(model) {
+  return /\bgpt-5\.5\b/i.test(stripProviderPrefix(model || ''));
+}
 export function isGeminiModel(model) { return _RE_GEMINI.test(stripProviderPrefix(model)); }
 export function isGemini3Model(model) { return _RE_GEMINI3.test(stripProviderPrefix(model)); }
 export function isGemini25Model(model) { return _RE_GEMINI25.test(stripProviderPrefix(model)); }

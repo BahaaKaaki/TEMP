@@ -790,6 +790,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 77. **GPT 5.5 premium generation and PPTX export**: Default premium slide generation (`settings.model`) and PPTX export code generation (`settings.pptxModel`) now use `pwc:openai.gpt-5.5` instead of Claude Opus 4.7.
 
+78. **gpt-5.5 temperature omission**: Chat completions and PPTX export omit the `temperature` field when the target model is `gpt-5.5`, because the LiteLLM gateway rejects non-default temperatures for that deployment (users with `reasoningEffort: none` or any path that previously forwarded `temperature: 0.1` were affected).
+
 ---
 
 ## 11. Pending / In Discussion

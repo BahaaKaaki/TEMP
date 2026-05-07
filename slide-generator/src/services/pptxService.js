@@ -431,6 +431,13 @@ NATIVE TABLES: If the HTML contains a real <table>, or a hinted/native table ele
 
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
 
+TEXT BOX AUTOFIT (PowerPoint: Format Shape > Text Box — maps to PptxGenJS option \`fit\`):
+- \`fit: 'none'\` — fixed box ("Do not Autofit"). Use for equal-height card shells, chart regions, bands, or anywhere the HTML/CSS locks height so peers align.
+- \`fit: 'shrink'\` — shrink font to fit ("Shrink text on overflow"). Last resort for tight single-line chips; do not use this as the primary fix when multi-line body copy sits in a box that is simply too short or too tall relative to the text.
+- \`fit: 'resize'\` — **resize shape to fit text** ("Resize shape to fit text"). **Prefer this** for narrative body paragraphs and bullet stacks in columns/cells when the slide HTML sizes content naturally (not fixed equal-height shells). Place using x, w, y from layout; set valign:'top'; give h a reasonable estimate from line count so you are not leaving a huge empty box or a visibly undersized box — this addresses feedback where the issue is **wrong box size vs text**, not ordinary overflow clipping.
+
+BULLET SPACING IN PPTX: Keep vertical rhythm uniform within each list — same lineSpacing / paragraph spacing for every item, or one \`addText\` with bullet styling so PowerPoint applies even gaps. If you emit separate \`addText\` calls per bullet, use a **constant** y increment between items (no ad-hoc shorter gaps in the middle of a column).
+
 HOW TO CONSUME ELEMENT HINTS:
 If the user prompt contains an ELEMENT HINTS block, each entry is semantic export guidance attached to a risky element in the HTML. Use the HTML and CSS for layout, but obey the hint when rendering that specific element in PptxGenJS.
 
@@ -439,7 +446,7 @@ Interpret hints as follows:
 - nowrap: never wrap the text, stack letters, or split words across lines.
 - exact-text: preserve the visible text exactly. Do not abbreviate, trim, or rewrite it.
 - step-number: keep the number as one prominent line, not multiple lines.
-- tight-box: minimise text margin / inset. Prefer margin:0, wrap:false, and valign:'middle' when that matches the CSS. Use fit:'shrink' only as a last resort to preserve one-line text.
+- tight-box: minimise text margin / inset. Prefer margin:0, wrap:false, and valign:'middle' when that matches the CSS. For one-line compact labels use fit:'shrink' only as a last resort; for multi-line bodies prefer fit:'resize' so the shape matches the text block.
 - table / native-table: render the element as a native PowerPoint table via slide.addTable when it is row/column data. Cell markers belong inside table cells as text glyphs, not as overlay shapes.
 - align=... / valign=...: prefer that alignment for the hinted element.
 - typography-floor: even when using fit:'shrink', never set fontSize below 8 for compact tags/trackers or below 10 for normal text; use 12 for normal body copy and 14 for section/pillar/card titles.

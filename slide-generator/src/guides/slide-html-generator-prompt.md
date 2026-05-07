@@ -203,6 +203,9 @@ Internal shape balance:
 - Similar cards or cells should feel visually consistent
 - Multi-line text should have enough height and readable line spacing
 
+**Text boxes should match their text (not overflow-only fixes):**  
+Avoid arbitrary fixed `height` on stacks of body lines or bullet lists when the intent is “box wraps content.” Prefer natural flow (`min-height` where needed, consistent padding, flex/grid `gap`) so the colored or bordered region does not end up visibly taller or shorter than the text block inside it. Equal-height card shells are fine when peer columns must align; inside each shell, body copy should still sit in a region sized to the copy.
+
 Aim for **executive density**: enough content to make the slide valuable, with enough whitespace to read quickly.
 
 Good density targets:
@@ -435,6 +438,9 @@ Bullet CSS should be compact and calm:
 - Modest indentation
 - Readable line-height
 - No decorative bullet chips unless they add meaning
+
+**Equal spacing between bullets:**  
+Use one rhythm for the whole list — for example `display: flex; flex-direction: column; gap: Npx` on `ul`, or uniform spacing between `li` only (e.g. `li + li { margin-top: Npx; }` with the same `N` everywhere). Use the same `line-height` on every bullet line. Do not mix large `margin-top` on some items with different inner padding on others, do not insert extra `<br>` between bullets instead of separate `<li>` rows, and do not combine paragraph margins with list margins in ways that make gaps uneven across columns.
 
 ---
 

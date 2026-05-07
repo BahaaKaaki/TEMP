@@ -1,13 +1,13 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-04-14
+> Last updated: 2026-05-07
 
 ---
 
 ## 1. Overview
 
-**Edwin Slides Creator** is an AI-powered presentation generator that creates professional slide decks in a Strategy& / PwC consulting style. It uses PwC Shared Services GenAI API for AI capabilities.
+**Edwin Slides Creator** is an AI-powered presentation generator that creates professional slide decks in a Strategy& / PwC consulting style, with V1 client design profiles for client-specific theming and prompt guidance. It uses PwC Shared Services GenAI API for AI capabilities.
 
 - **Repository:** `https://github.com/pwc-me-adv-strategyand/edwin-slides-creator.git`
 - **Branch:** `feature/bugfixes-and-enhancements`
@@ -66,7 +66,7 @@ slide-themes-main/
 │   │   │   ├── AIChatbot.jsx         # **CORE**: chatbot UI, routing, execution engine
 │   │   │   ├── Header.jsx            # Deck name, export (PPTX/PDF/HTML), settings
 │   │   │   ├── MainContent.jsx       # Preview vs editor toggle
-│   │   │   ├── SlidePreview.jsx      # Slide preview, comments, zoom, fullscreen, widget menu
+│   │   │   ├── SlidePreview.jsx      # Slide preview, sources inspector, comments, zoom, fullscreen, widget menu
 │   │   │   ├── SlideEditor.jsx       # Monaco HTML/CSS editor
 │   │   │   ├── SlideList.jsx         # Slide thumbnails, drag-reorder, multi-select
 │   │   │   ├── SmartActionCard.jsx   # Execution plan review/edit UI, storyline editing
@@ -134,13 +134,16 @@ slide-themes-main/
 │   │   │   ├── slideMasters.js        # Base layouts (default, blank, cover, etc.)
 │   │   │   ├── slideWidgets.js        # Widget definitions
 │   │   │   ├── themeUtils.js          # Theme config schema, DEFAULT_THEME, themeToCSS() converter
+│   │   │   ├── clientDesignProfiles.js # Versioned client template profile registry, themes, prompt/layout/PPTX contracts
+│   │   │   ├── clientProfileValidation.js # Client-profile demo readiness checks for colors, fonts, footer, and layout contract
 │   │   │   ├── templateCss.js         # Template CSS resolution helper
 │   │   │   ├── slideIds.js            # Compact slide ID generation helper
+│   │   │   ├── slideDomNormalize.js   # Post-mount DOM fix: wrap flex + prose so strong/em are not separate flex items
 │   │   │   ├── vibes.js              # Legacy design variants (retained for backward compat)
 │   │   │   ├── debugLog.js            # Debug logging utility
 │   │   │   └── auditLog.js            # Audit logging utility
 │   │   ├── styles/
-│   │   │   ├── slides.css             # **CORE**: minimal shell CSS (~134 lines), base tokens and structure
+│   │   │   ├── slides.css             # **CORE**: minimal shell CSS, base tokens, frame prose / emphasis overrides
 │   │   │   ├── app.css                # Application shell styles
 │   │   │   └── simple.css             # Simple variant styles
 │   │   ├── guides/
@@ -148,7 +151,9 @@ slide-themes-main/
 │   │   │   ├── freestyle-shell.md          # Shell: canvas dimensions, HTML skeleton, CSS scoping rules
 │   │   │   ├── freestyle-theme.md          # Theme: design tokens, fonts, surface usage, status colors
 │   │   │   ├── freestyle-vibe.md           # Vibe: visual design principles, layout variety, color usage
-│   │   │   └── freestyle-writing.md        # Writing: content rules, layout archetypes, citations, process
+│   │   │   ├── freestyle-writing.md        # Writing: content rules, layout archetypes, citations, process
+│   │   │   ├── router-system-prompt.md     # AI router planning prompt (hierarchy, trackers, output schema)
+│   │   │   └── slide-html-generator-prompt.md # Freestyle HTML generator prompt (fit, tokens, design quality)
 │   │   └── data/
 │   │       └── knowledgeBaseExamples.js # Knowledge base example entries
 │   ├── index.html
@@ -245,15 +250,17 @@ When a user types a message in the chatbot:
    └── Execution: transformSlideToTemplate / fillTemplateWithAI / generateSlides / improveSlide
 
 3b. FULL ROUTER (multi-step planner)
-   ├── AI Router (aiRouteRequest) — GPT 5.4 reasoning with conditional search + Structured Outputs
+   ├── AI Router (aiRouteRequest) — GPT 5.5 reasoning with conditional search + Structured Outputs
    │   ├── Search policy: auto by default; triage.needsSearch, explicit freshness/evidence language, or routerSearchMode='always' enables router web search
-   │   ├── No-search planning: GPT 5.4 still uses Responses API/Structured Outputs, but without web_search_preview for edits, tracker updates, restyles, template switches, and deck restructuring that only need deck context
+   │   ├── No-search planning: GPT 5.5 still uses Responses API/Structured Outputs, but without web_search_preview for edits, tracker updates, restyles, template switches, and deck restructuring that only need deck context
    │   ├── Path A: Responses API for GPT models, with web_search_preview attached only when policy allows
    │   │   ├── Agentic search: reasoning.effort='low', multi-query research when enabled
    │   │   ├── Structured Outputs: text.format json_schema enforces field population
+   │   │   ├── On Responses failure: fall back to Chat Completions planning instead of surfacing router failure immediately
    │   │   └── Result: searchSource='inline' when search ran, otherwise 'none'
-   │   ├── Path B: Pre-search + Chat Completions (non-GPT / image fallback) only when policy allows search
+   │   ├── Path B: Pre-search + Chat Completions (non-GPT / image / Responses fallback) only when policy allows search
    │   │   └── Result: searchSource='presearch', raw text in searchRawContext
+   │   ├── Evidence pack: { source, freshnessDate, rawText, searchQueries, facts, sources, stepSearchRequests }
    │   ├── Context: active page text summary, slide summaries, storyline, layout mix, section map, activeFlow, documents
    │   ├── Step fields: action, templateId, title, subtitle, instruction,
    │   │   facts, sources, layoutGuidance, contextSlides, targetSlides, referenceSlides, contextFromStep,
@@ -271,7 +278,9 @@ When a user types a message in the chatbot:
 
 5. EXECUTION (executeFromSmartAction)
    ├── Speed mode determines generation model for all steps
-   ├── Structured fields (title, subtitle, facts, sources) prepended to step prompt
+   ├── Active client design profile appends profile-specific design contract to generation/edit system prompts
+   ├── Structured fields (title, subtitle, facts, sources) prepended to step prompt; router sources are stored on created slides for preview verification
+   ├── Repair obvious contextFromStep self/future dependencies after routing, then validate dependencies before execution; invalid or missing parent outputs fail visibly
    ├── Build groups from router plan
    ├── For each group → executeGroupParallel
    │   ├── Accumulate create_slide steps into batch
@@ -282,7 +291,8 @@ When a user types a message in the chatbot:
    │   │   ├── Fixed → direct placeholder replacement (cover, sectionDivider)
    │   │   ├── Image → generateImageSlide (image model)
    │   │   └── flushInsertsInOrder (deterministic slide order)
-   │   └── Non-create steps: independent edit/switch/tracker updates run in ID-based parallel chunks; deletes and dependent steps stay ordered
+   │   └── Non-create steps: independent edit/switch/tracker updates run in ID-based parallel chunks using concrete slide targets; deletes and dependent steps stay ordered
+   ├── Per-step search: cached by query/searchGoal and capped per plan (default 4) to avoid redundant broad searches
    └── Post-execution: sync storyline, update progress
 ```
 
@@ -325,7 +335,10 @@ The agent uses a budget system, supports live user input during execution, and c
 Slides in state (HTML + CSS)
   ├── PPTX: pptxService.js
   │   ├── AI generates PptxGenJS code from HTML
+  │   ├── Table-intent HTML/hints are prompted and retried toward native slide.addTable output
+  │   ├── Section tracker chrome is measured, capped, and kept single-line with shrink/ellipsis fallback
   │   ├── PptxGenJS renders .pptx file
+  │   ├── pptxTemplateService.js sanitizes slide XML for duplicate cNvPr IDs and zero/non-positive extents
   │   └── Batch processing with parallel API calls
   ├── PDF: jsPDF + html2canvas
   │   └── Renders each slide to canvas, then to PDF pages
@@ -341,8 +354,8 @@ Slides in state (HTML + CSS)
 
 Slide CSS is organized into three layers:
 
-1. **Shell** (`slides.css`) -- structural CSS for `.slide`, `.title`, `.subtitle`, `.frame`, `.footer` with canvas dimensions (960x540), absolute positions, and overflow rules. Includes master-specific overrides (`master-blank`, `master-titleOnly`, `master-cover`, `master-emptyPage`). Never modified by LLM or user.
-2. **Theme** (`state.theme` -> CSS custom properties via `themeToCSS()`) -- JSON config mapping semantic tokens to concrete values (colors, fonts). Injected at render and export time. Changing the theme recolors all slides instantly. Populated from `DEFAULT_THEME` or extracted from uploaded PPTX templates via `brandingExtractor.js`.
+1. **Shell** (`slides.css`) -- structural CSS for `.slide`, `.title`, `.subtitle`, `.frame`, `.footer` with canvas dimensions (960x540), absolute positions, and overflow rules. Footer: two-span (brand/source + page) uses the `--source-*` / `--slide-num-*` bands from the active theme (`theme.layout.cssVars`, e.g. STC/PIF vs default). Three-span `(brand)(span.source)(page)`: Strategy&/default uses a compact grid so brand and source do not overlap; `data-client-profile="stc"` and `data-client-profile="pif"` slides keep profile footer geometry (absolute source width/position + slide number) and non-italic source, not Strategy& grid styling. STC section trackers render as logo-safe text-only chrome instead of top-left filled tabs. PIF LDC hides the broad subtitle band and renders a bottom-right gold page-number block. Includes master-specific overrides (`master-blank`, `master-titleOnly`, `master-cover`, `master-emptyPage`). Never modified by LLM or user.
+2. **Theme** (`state.theme` -> CSS custom properties via `themeToCSS()`) -- JSON config mapping semantic tokens to concrete values (colors, fonts). Injected at render and export time. Changing the theme recolors all slides instantly. Populated from `DEFAULT_THEME`, built-in client design profiles via `clientDesignProfiles.js`, or extracted from uploaded PPTX templates via `brandingExtractor.js`.
 3. **Content CSS** (per-slide `customCSS`) -- LLM-generated `<style>` blocks with scoped layout classes. Uses `var(--token)` for all colors so themes propagate automatically. Built-in templates carry pre-extracted component CSS (from `templateStyles.js`, sourced from `slides-legacy.css`).
 
 ### 4.2 Design Tokens
@@ -367,7 +380,11 @@ Slide CSS is organized into three layers:
 | `--font-heading` | Heading font family |
 | `--font-body` | Body font family |
 
-Theme config lives in `state.theme` (see `themeUtils.js` for schema and `themeToCSS()` conversion). Default theme: Strategy& brand (#8E1E1E accent, Georgia/Arial fonts).
+Theme config lives in `state.theme` (see `themeUtils.js` for schema and `themeToCSS()` conversion). Default theme: Strategy& brand (#8E1E1E accent, Georgia/Arial fonts). The client template profile registry keeps the durable `settings.clientDesignProfileId` and derives preview/export theme tokens from the active profile. STC uses purple #4F008C as the semantic primary accent, STC Forward typography, canonical title/subtitle/body/footer bands, logo-safe text-only section tracker geometry/color (#9E21FF text), prompt-section overrides, PPTX export hints, sandbox evidence metadata, and validation rules. PIF LDC uses PIF dark green #00332A, green #005C4D, gold #C3984D, mint #02CC99, Fund Light/Fund Regular typography, a compact gold title/rule, no broad subtitle band, blank footer/source by default, and a gold page-number block. The Board Affairs playbook standard content layout is the canonical STC geometry reference; the LDC Implementation Guide is the canonical PIF master/content-shell reference. Profile themes may include `layout.cssVars`, which `themeToCSS()` emits to the shared `.slide` shell so profile positions affect the actual HTML canvas, not only export prompts.
+
+STC profile source/footer behavior is intentionally blank by default; the left footer/source slot should only contain a real source or explicit user-provided footer label. The backend stores `STC Forward` regular, medium, and bold fonts under `backend/assets/fonts/stc-forward/`; the frontend loads them through the authenticated `/api/assets/fonts/stc-forward/` route via `FontFace`, and the STC profile declares STC Forward as its only font family while shared slide CSS disables synthetic browser bolding. The backend also ships `backend/assets/client-templates/stc/default-master.pptx`, served from `/api/templates/pptx-master?profileId=stc`; STC PPTX export uses it as the default master/logo source, rewrites generated text boxes to `fontFace: 'STC Forward'`, and applies the same logo-safe text-only section tracker positions/colors used on the canvas.
+
+PIF LDC profile source/footer behavior is also blank by default. The backend stores `Fund Light`, `Fund Regular`, `Fund Med`, and `Fund SemBd` fonts under `backend/assets/fonts/pif-fund/`; the frontend loads them through the authenticated `/api/assets/fonts/pif-fund/` route via `FontFace`. The backend ships `backend/assets/client-templates/pif/default-master.pptx`, served from `/api/templates/pptx-master?profileId=pif`, plus `backend/assets/client-templates/pif/logo.png`. PIF PPTX export uses the profile's 10 x 5.625 in slide size, controlled logo chrome, Fund font enforcement, the master-derived title band (`x=132 y=27 w=597 h=25` on the 960 x 540 canvas), controlled title-rule chrome, LDC content-frame positions, rich-text run spacing preservation, compact label no-wrap handling, and gold page-number block rather than the default Strategy& 13.333 x 7.5 in geometry.
 
 ### 4.3 Legacy Vibes
 
@@ -404,38 +421,44 @@ Core state shape:
 
 ```javascript
 {
-  slides: [],                    // Array of { id, title, html, customCSS, type, summary, pptxRendererCode }; new slide IDs use compact s_* values, legacy UUIDs remain valid
+  slides: [],                    // Array of { id, title, html, customCSS, type, summary, sources, pptxRendererCode }; new slide IDs use compact s_* values, legacy UUIDs remain valid
   sharedCSS: SLIDES_CSS,         // Shell CSS (single source of truth)
-  theme: DEFAULT_THEME,          // Theme config: { name, colors: {...}, fonts: {...} }
+  theme: DEFAULT_THEME,          // Theme config: { name, colors: {...}, fonts: {...}, layout?: { cssVars } }
   activeSlideId: null,           // Currently selected slide
   selectedSlideIds: [],          // Multi-selected slides (for export)
   deckName: 'Untitled Deck',
   imageVibe: 'default',         // Vibe for image-based slides (separate from removed deck vibe)
   darkMode: false,
-  storyline: [],                // Array of { id, title, description, slideId, order }
+  storyline: [],                // Array of { id, title, description, keyMessage, contentInventory, slideId, order }
   storylineStatus: 'none',      // none | generated | approved | populated
   availableSkills: [],          // Consulting-skill catalogue metadata from /api/skills (id, name, description, category, order) -- bodies stay server-side
   settings: {
     // User-controlled (persisted to localStorage)
     speedMode: 'premium',        // 'fast' | 'premium'
+    slideStylePreference: 'freestyle', // 'auto' | 'freestyle'; edited from Settings generation defaults
     freestyleShell: '',           // Override for Shell prompt section (empty = code default)
     freestyleTheme: '',           // Override for Theme prompt section (empty = code default)
     freestyleVibe: '',            // Override for Vibe prompt section (empty = code default)
     freestyleWriting: '',         // Override for Writing Profile section (empty = code default)
     promptOverrides: {},          // Debug-only prompt overrides keyed by prompt surface
     selectedSkillId: null,        // Single active consulting-skill id (or null). Attached to router calls as _skillId; never applied to rendering/edits/transforms/validation. Manual-clear only.
-    // Code-managed model assignments (always from initialState, never localStorage)
-    model: 'pwc:bedrock.anthropic.claude-opus-4-6',  // Premium generation
+    clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
+    clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
+    // Model/search defaults
+    model: 'pwc:bedrock.anthropic.claude-opus-4-7',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
-    routerModel: 'pwc:openai.gpt-5.4',               // Tier 2 full planner
+    routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
+    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7', // PPTX export code generation
+    searchModel: 'openai.gpt-5.4-mini',              // Dedicated lightweight search model
+    evidenceSearchModel: 'openai.gpt-5.5',           // Per-step evidence search enrichment
     providers: [...],            // Provider registry (PwC Shared Services)
     // ... many more settings (batch sizes, work levels, search, etc.)
   }
 }
 ```
 
-The `settings` slice is versioned via `SETTINGS_VERSION` in `SlideContext.jsx`. When incompatible shape changes ship (e.g., multi-select skills -> single-select), the loader runs an in-place migration against any persisted state before committing it to the reducer.
+The `settings` slice is versioned via `SETTINGS_VERSION` in `SlideContext.jsx`. When incompatible shape changes ship (e.g., multi-select skills -> single-select), the loader runs an in-place migration against any persisted state before committing it to the reducer. Profile-backed themes are restored at load time when `settings.clientDesignProfileId` is not `strategy`.
 
 
 ---
@@ -455,8 +478,8 @@ The `settings` slice is versioned via `SETTINGS_VERSION` in `SlideContext.jsx`. 
 | `/api/v1/organizations` | Organization CRUD |
 | `/api/v1/themes` | Theme CRUD |
 | `/api/v1/templates` | Template CRUD |
-| `POST /api/templates/pptx-master` | Upload PPTX master (multipart field `template`); saved as `uploads/pptx-master.pptx` |
-| `GET /api/templates/pptx-master` | Download stored PPTX master (404 if none) |
+| `POST /api/templates/pptx-master` | Legacy default-profile PPTX master upload (multipart field `template`); saved as `uploads/pptx-master.pptx` |
+| `GET /api/templates/pptx-master` | Legacy default-profile PPTX master download (404 if none). Frontend storage is profile-keyed; server template catalog is planned for profile-specific masters. |
 | `GET /health` | Health check (no auth) |
 
 ### Consulting Skills Module
@@ -528,15 +551,77 @@ Options: `-SkipBuild` (deploy only), `-SkipDeploy` (build only)
 
 ---
 
+## 7b. Access Control (Staff Allowlist)
+
+### Current State
+
+`ALLOWLIST_MODE=enforce` is active on Azure. The Express middleware (`backend/src/common/middleware/entra-allowlist.middleware.ts`) verifies Entra ID JWTs and checks the user's email against `config/allowlist.txt`. Non-listed users get 403 ACCESS_DENIED.
+
+MSAL silent token refresh failures and unrecovered backend 401s dispatch `AUTH_SESSION_EXPIRED_EVENT` from `authFetch()`. `App.jsx` listens for that event and shows a visible "Your session expired" prompt with a Microsoft sign-in action instead of relying only on console warnings. Repeated `/api/whoami` 401s after an automatic redirect attempt now stop at a blocking re-auth screen rather than silently rendering the editor as allowed; active-use failures show a persistent top-center banner.
+
+### Key Files
+
+| File | Purpose |
+|------|---------|
+| `backend/src/common/middleware/entra-allowlist.middleware.ts` | JWT verification + allowlist check middleware |
+| `backend/scripts/build-allowlist.py` | Generates `allowlist.txt` from HR XLSX; contains `MANUAL_EXTRAS` for manually approved users |
+| `backend/config/allowlist.txt` | Deployed email list (gitignored, never committed) |
+| `docs/runbooks/allowlist-path-b-runbook.md` | Full runbook for mode changes, rollback, troubleshooting |
+| `docs/auth-allowlist-experiment-2026-04-23.md` | Post-mortem of Path A (Easy Auth), motivation for Path B |
+
+### Usual User Check
+
+When asked to "check the users", use Microsoft Graph for `app-edwin-slides` rather than only the local allowlist. The total user inventory is the Enterprise App assignment list (currently ~300 users), not the recent sign-in log. The reusable CLI table command lives in `docs/runbooks/allowlist-path-b-runbook.md` under "Graph assigned-user audit table"; it pages through assignments via `@odata.nextLink`, resolves assigned user details, overlays recent sign-in activity, compares with the live Kudu allowlist, and prints flagged rows first.
+
+### Quick-Add Procedure (Adding a User)
+
+When someone reports no access, follow all four steps:
+
+1. **Add to `MANUAL_EXTRAS`** in `backend/scripts/build-allowlist.py` -- ensures future XLSX rebuilds never drop them. Commit and push.
+2. **Download the live allowlist** from Azure via Kudu, append the email, re-upload:
+   ```bash
+   SCM_TOKEN=$(az account get-access-token --resource https://management.azure.com --query accessToken -o tsv)
+   SCM=https://app-edwin-slides.scm.azurewebsites.net
+   # Download
+   curl -sS -H "Authorization: Bearer $SCM_TOKEN" "$SCM/api/vfs/site/wwwroot/config/allowlist.txt" > /tmp/allowlist.txt
+   # Append (the email must be lowercased)
+   echo "someone@pwc.com" >> /tmp/allowlist.txt
+   # Upload
+   curl -sS -X PUT -H "Authorization: Bearer $SCM_TOKEN" -H "If-Match: *" -H "Content-Type: application/octet-stream" --data-binary @/tmp/allowlist.txt "$SCM/api/vfs/site/wwwroot/config/allowlist.txt"
+   ```
+3. **Hard-restart** so the middleware reloads: `az webapp restart --resource-group rg-edwin-slides --name app-edwin-slides`
+4. **Verify** the email is in the live file via Kudu GET + grep.
+
+Also save the updated file locally to `backend/config/allowlist.txt` so the next `deploy.sh` run ships it.
+
+### Full Rebuild (from HR XLSX)
+
+```bash
+python3 backend/scripts/build-allowlist.py \
+  --input '/Users/bkaaki001/Downloads/Active staff list.xlsx' \
+  --output backend/config/allowlist.txt
+./deploy.sh
+```
+
+### Rollback
+
+```bash
+# Disable enforcement (immediate, no redeploy)
+az webapp config appsettings set -g rg-edwin-slides -n app-edwin-slides --settings ALLOWLIST_MODE='off' --output none
+az webapp restart -g rg-edwin-slides -n app-edwin-slides
+```
+
+---
+
 ## 8. Key Patterns and Conventions
 
 ### Router Architecture
 
 Two routers operate in tandem:
-1. **AI Router** (`aiRouteRequest`): GPT 5.4 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. Identity: "Strategy& Middle East, GCC region". Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
+1. **AI Router** (`aiRouteRequest`): GPT 5.5 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. The default system prompt lives in `slide-generator/src/guides/router-system-prompt.md`; `getRouterSystemPrompt()` applies runtime date/template substitutions if placeholders are present, and the prompt now enforces a fixed allowed-template set (`cover`, `sectionDivider`, `outcomeApproach`, `chevronFlow`, `projectStepDetail`, `freestyle`) plus stricter storyline, tracker hierarchy, and density rules. Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word short noun phrase only (not taglines or sentence-like); no em dashes, colons, or clauses.
 2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
 
-The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `targetSlides`, `referenceSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level. Triage selects a `contextLevel` (`active_slide`, `reference_slides`, `deck_digest`, `full_text_deck`) so the router receives enough text-only deck context without defaulting to full-deck content on every request.
+The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `targetSlides`, `referenceSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level. Triage selects a `contextLevel` (`active_slide`, `reference_slides`, `deck_digest`, `full_text_deck`) so the router receives enough deck context without defaulting to full-deck content on every request. The active page context includes both text digest and full page HTML with CSS stripped (`<style>` blocks and inline `style` attributes removed) so the router can reason about card/pillar/table hierarchy. Rich storyline sync uses the same CSS-stripped full HTML signal for each slide and stores a `contentInventory` so later storyline-aware prompts can see all major pillars, cards, bullets, metrics, labels, and table rows.
 
 **Consulting-skill injection.** When `settings.selectedSkillId` is set, `aiRouteRequest` copies it onto `routerSettings._skillId`. `apiClient.js` then attaches `_skillId` to the outgoing request body (`buildRequestBody` for text paths, `callRouterWithImages` for multimodal), but only when the call is routed through our PwC proxy (`authType === 'server'` or an `/api/ai/` endpoint). The backend's `applySkillInjection` prepends the skill's markdown + preamble to the system prompt and strips `_skillId` before forwarding. This keeps direct-provider calls unchanged and leaves slide rendering, edits, transforms, and validation paths untouched -- they never set `_skillId`. Clarifying questions stay on the same code path: when the skill's "Inputs the skill needs" section is not covered by the user's prompt, the router returns `intent=clarify` with missing-input questions.
 
@@ -544,9 +629,9 @@ The AI router can ask clarifying questions (returned as `needsClarification` wit
 
 Search operates at two layers:
 
-1. **Router-level agentic search** (conditional): The router uses GPT 5.4 reasoning on every AI-router call, but only attaches `web_search_preview` when `getRouterSearchPolicy()` allows it. The policy enables search for `triage.needsSearch`, explicit search/freshness/evidence language, or `routerSearchMode='always'`; it disables search for normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring that only need deck/document context. Search results are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'`, `'presearch'`, or `'none'`.
+1. **Router-level agentic search** (conditional): The router uses GPT 5.5 reasoning on every AI-router call, but only attaches `web_search_preview` when `getRouterSearchPolicy()` allows it. The policy enables search for `triage.needsSearch`, explicit search/freshness/evidence language, or `routerSearchMode='always'`; it disables search for normal edits, tracker updates, formatting, template switches, cross-slide restyling, and deck restructuring that only need deck/document context. Search results are distributed into each step's `facts[]` and `sources[]` arrays. The result carries `searchSource: 'inline'`, `'presearch'`, or `'none'`, plus an `evidencePack` with source type, freshness date, raw/synthesized text, router queries, step facts/sources, and requested per-step searches. If the GPT Responses path fails, the router falls back to Chat Completions planning instead of failing the request immediately.
 
-2. **Per-step search** (controlled by `settings.searchEnabled` toggle): For steps with `searchQuery` + `searchGoal`, a separate `webSearch()` call runs during slide execution. The search receives `searchGoal` as `instructions` and appends already-known facts as context to avoid redundant re-searching.
+2. **Per-step search** (controlled by `settings.searchEnabled` toggle): For steps with `searchQuery` + `searchGoal`, a separate `webSearch()` call runs during slide execution using `settings.evidenceSearchModel` (default `openai.gpt-5.5`) for evidence enrichment, falling back to `settings.searchModel` if unset. The search receives `searchGoal` as `instructions` and appends already-known facts as context to avoid redundant re-searching. During SmartAction execution, per-step searches are cached by model/query/searchGoal and capped per plan (default 4) so repeated slide families do not make redundant broad searches. When `contextFromStep` is present, the executor extracts canonical entities from the referenced slide HTML/router facts, injects a `CANONICAL ENTITY SET` block, and constrains per-step search to enrich those entities rather than rediscovering older/different names.
 
 **Deduplication**: When `searchSource === 'inline'`, the global `buildSearchFactsBlock()` is skipped for steps that already have their own `facts[]` (avoiding 100% duplication). Steps without facts (cover, dividers) still receive the global block as a fallback.
 
@@ -556,6 +641,7 @@ Slides are created in batches for efficiency:
 - `fillTemplatesBulkWithAI`: one API call fills multiple template-based slides
 - `flushCreateBatch`: groups create steps, separates by type (templated/freestyle/image/fixed), processes each category optimally
 - `flushInsertsInOrder`: ensures slides appear in plan order regardless of parallel completion order
+- `contextFromStep` dependencies are validated before execution. SmartAction and agent `build_presentation` batches split before dependent steps, inject previous slide HTML plus cleaned CSS into the dependent prompt, and fail visibly if the referenced step does not produce reusable output.
 
 ### Section Trackers
 
@@ -564,7 +650,7 @@ For structured decks (7+ slides):
 - `subSectionTracker`: "Phase 1", "Phase 2" (grey tab, for multi-slide sections)
 - Executive summary items correspond 1:1 to section tracker groups
 - Router plans can emit `update_trackers` to rename or clear tracker metadata directly, avoiding unnecessary HTML regeneration for tracker-only requests.
-- `buildDeckStructure()` derives a canonical section model from executive summary items and slide tracker metadata; after executive-summary edits, `planTrackerSyncFromDeckStructures()` syncs renamed section points to matching downstream body-slide trackers when the section count still aligns.
+- `buildDeckStructure()` derives a canonical section model from executive summary items and slide tracker metadata; after executive-summary edits, `planTrackerSyncFromDeckStructures()` syncs renamed section points to matching downstream body-slide trackers when the section count still aligns. Tracker labels preserve recognizable parent-page wording and only normalize numbering to `N. Label`.
 
 ---
 
@@ -643,6 +729,80 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 43. **Deterministic slide reorder**: Chat prompts with explicit slide sequences (for example `3-4-2-5-6`), two-slide reorder phrases (for example `reorder slides 4 and 5`), plus simple move/swap commands, bypass the AI router and apply a single undoable slide-array reorder. Omitted slides are preserved in their existing relative order. Router fallback has a real `reorder_slides` action, and the create/delete guard is limited to pure reorder requests so broader deck restructuring can still change content.
 
 44. **Executive summary tracker context**: Deck context extraction now reads semantic text from freestyle HTML even when point labels are rendered with arbitrary div/span classes. Executive summary detection checks template metadata plus HTML subtitle/class hints, router context includes the actual summary item labels, and exact one-summary-item-per-body-slide tracker requests apply deterministically to body slides only.
+
+45. **Rich storyline full-content sync**: `syncStorylineFromSlidesAI()` now passes each slide's CSS-stripped full HTML plus untruncated text into storyline extraction, and stores a `contentInventory` array per story point so downstream storyline-aware prompts retain all major pillars, cards, bullets, metrics, labels, and table rows.
+
+46. **Clarification card submit scoping**: Multi-round router and agent clarification cards submit answers from the clicked card instead of the first historical card in the chat transcript, so first, second, and later question rounds preserve their own selected options and free-text answers.
+
+47. **Router system prompt refresh**: The default AI router prompt moved to `slide-generator/src/guides/router-system-prompt.md` with dynamic date injection. The prompt now prioritizes hierarchy-aware tracker recalibration, explicit `layoutGuidance`, limited clarification rounds, cover-only default template selection, and freestyle-by-default body slides.
+
+48. **Slide HTML generator prompt refresh**: Freestyle slide generation now uses `slide-generator/src/guides/slide-html-generator-prompt.md` as the default system prompt. It emphasizes scratch-built consulting layouts, strict 904x366 frame fit, scoped CSS, token-only colors, containment, label economy, and visual uplift while retaining PPTX export hints.
+
+49. **Executive prompt balance refresh**: Router and slide HTML prompts now emphasize regular execution over unnecessary questions, explicit brainstorming mode, tracker continuity, source quality guardrails, balanced slide density, sharp-edged consulting visuals, chart geometry, sequential flow layouts, and reduced repeated structural labels.
+
+50. **Tracker wording and compact tag sizing fix**: Executive-summary-derived trackers now preserve recognizable parent-page wording instead of truncating to four words. Router guidance copies `[TRACKER]` / `[SUB_TRACKER]` tags exactly and avoids synonym rewording. Compact tags, chips, badges, and tracker labels may use 8px/8pt for PPTX fit while normal text retains the 10px/10pt floor.
+
+51. **Client template profile registry**: Replaced the STC V1 prompt preset with a versioned client profile registry. STC now carries semantic theme tokens, footer branding, canonical layout bands, prompt/layout/PPTX contracts, sandbox evidence metadata, and validation rules. Settings exposes active profile assets and profile-bound PPTX status; `SlideContext` keeps durable `clientDesignProfileId` plus profile version; router/generation/edit/image/PPTX paths receive the active profile context; uploaded PPTX masters are stored by profile slot locally while the legacy server slot remains default-profile only.
+
+52. **STC layout and prompt-section overrides**: The STC profile now encodes the GPT-derived purple consulting family as the default variant and the telecom outlook style as an explicit editorial alternate. Profile data includes freestyle shell/theme/vibe/writing/CSS/PPTX override sections, component patterns, PPTX contract rules, dense table/org/process bands, and stricter validation checks. `themeToCSS()` emits profile layout variables for the shared slide shell, so selecting STC moves the preview canvas title/subtitle/content/footer geometry without requiring a PPTX upload. The standard content geometry is aligned to the Board Affairs playbook reference layout (`12_Content slide _ VCS_to use`).
+
+53. **STC canvas/export fidelity pass**: The STC profile now aligns canvas typography with the Board Affairs master notes: content titles use STC Forward 24px regular, subtitles use 18px regular, and footer/source/page numbers use 8px. The STC logo extracted from the bundled playbook master is served from `backend/assets/client-templates/stc/logo.png` through the generic `/api/assets/client-templates/:profileId/:fileName` profile asset route and injected as render-time canvas chrome in `SlidePreview` without persisting into slide HTML. When a non-default profile declares a bundled/backend master, `App` warms that PPTX master/chrome on editor startup so Settings is not required to repair stale or deleted local template metadata. Client-profile geometry now rewrites generic frame/chart guidance during slide creation, keeps new/cleared decks on the selected profile theme, preserves Strategy& master chrome during template merge, refreshes stale API tokens once before falling back to local templates, keeps STC prompt/PPTX guidance away from over-bold weights, uses profile-shaped PPTX reference examples, carries the client master `ppt/theme/theme1.xml` into controlled exports and normalizes it with profile colors/fonts, normalizes exported body objects into the declared profile body band, strips emoji artifacts, sanitizes invalid negative shape dimensions before writing PPTX XML, and applies controlled logo chrome without copying the fragile full STC template shell into generated decks.
+
+54. **Chat input preference cleanup**: Moved slide approach (Auto/Freestyle) and generation quality (Fast/Premium) out of the AI chat input toolbar and into a Settings "Generation Defaults" card for both standard and debug settings views, leaving the prompt box focused on upload, search, and send actions.
+
+55. **Chat voice dictation**: Added browser SpeechRecognition-based voice input to the AI chat toolbar. The microphone button keeps listening through natural pauses, appends final transcript text into the prompt box, auto-stops after a longer silence window, shows interim listening/error status, supports manual cancel, and leaves sending under explicit user control.
+
+56. **Plan card overflow hardening**: SmartActionCard plan review rows now separate action/tracker metadata from template/position controls, constrain long tracker/template labels, and keep title/subtitle/instruction fields inside the AI panel width.
+
+57. **Router action parity and freestyle prompt contract**: Restored `switch_template` to the markdown router prompt's supported action set and tightened Freestyle-mode prompt/context rules so body slide creation remains freestyle unless the user explicitly requests a named template/layout.
+
+58. **STC section tracker alignment**: STC canvas trackers now render after the top-left logo as text-only chrome, using `#9E21FF` tracker text without arrow/chevron markers. The STC profile exposes the same tracker geometry to PPTX export so generated decks avoid logo overlap and keep canvas/export chrome aligned.
+
+59. **Auth session expiry UX**: MSAL silent token refresh failures and unrecovered backend 401s now surface a visible "Your session expired" prompt with a Microsoft sign-in action. Repeated `/api/whoami` 401s after automatic redirect no longer fall through to the editor as allowed; active-use failures appear as a persistent top-center banner styled from `app.css`.
+
+60. **Cross-slide visual reference and GPT 5.5 router defaults**: AIChatbot now classifies slide/page mentions as targets versus visual references so requests like "make this slide like slide 3" keep the current slide as the edit target while passing slide 3 as reference HTML plus unscoped `customCSS`; the SmartAction target label and executed `slideIndex` are forced to stay aligned. Router planning defaults use `pwc:openai.gpt-5.5`.
+
+61. **Opus model rollback for generation/export**: Main premium slide generation and PPTX export defaults use `pwc:bedrock.anthropic.claude-opus-4-7`, while router planning and per-step evidence search remain on GPT 5.5 where Responses/search support is needed.
+
+62. **Native table export guidance**: Table requests now steer slide HTML generation toward semantic `<table>` markup, PPTX export hints support `table` / `native-table`, and PPTX validation retries table-intent slides once when generated code omits native `slide.addTable`.
+
+63. **STC section tracker readability**: STC section/subsection tracker chrome now uses 9px text in preview, fullscreen, prompt/profile guidance, and PPTX export, with wider logo-safe tracker measurements so subsection labels no longer overlap the main tracker.
+
+64. **Native table marker safeguards**: Scorecard/status table generation now asks for dot/check/RAG markers as glyph text inside `<td>` cells, and PPTX validation retries native-table exports that still draw ellipse/circle marker overlays above the table.
+
+65. **Create-step dependency ordering**: SmartAction create-slide batching now flushes pending create steps before a later step with `contextFromStep` depends on them, so dependent slides receive the generated HTML/CSS context and can reuse the same entity roster/order.
+
+66. **Inline sentence flow guidance**: Slide HTML generation now explicitly instructs sentence-like `<div>` text with nested `<strong>` / `<span>` elements to set inline flow on the container so labels, separators, and descriptions render as one continuous sentence.
+
+67. **Freshness-first search grounding**: Latest/current deck requests now tell the router to verify newest names per entity before planning, and slide execution treats per-step web search results as fresher than router facts when model/product names, dates, pricing, benchmarks, or availability conflict.
+68. **Router/search dependency hardening**: GPT Responses router failures now fall back to Chat Completions planning, router outputs include a structured `evidencePack`, SmartAction per-step searches are cached/budgeted, and `contextFromStep` dependencies are validated and enforced across SmartAction plus agent `build_presentation` execution paths.
+69. **Per-step evidence search model**: SmartAction per-step web searches now use `settings.evidenceSearchModel` with a code default of `openai.gpt-5.5`, keeping classifier/search defaults lightweight while improving factual enrichment quality for slide-specific evidence. Dependent steps now preserve canonical entities from `contextFromStep` and use search for enrichment fields instead of broad rediscovery.
+70. **Slide source verification UX**: Created slides now retain router `sources[]` metadata and per-step web-search markdown links where available. `SlidePreview` extracts metadata, in-slide links, and URL text into a right-side source inspector with clickable verification cards; broad footer-only source labels are ignored unless no URL-backed source exists.
+71. **Parallel independent edit execution**: SmartAction execution now flattens router groups when all steps are dependency-free edits/switches/tracker updates, resolves edit batch targets by concrete `slideIndex` before broad `targetSlides`, and shows a parallel edit batch status while the LLM calls run concurrently.
+
+72. **Freestyle prompt split cleanup**: Stable freestyle rules for content fidelity, title/subtitle passthrough, visual quality, typography, chart geometry, footer behavior, work depth, and user preferences now live in the system prompt (`slide-html-generator-prompt.md` plus runtime system contract). The freestyle user prompt is limited to the request-specific brief, date, deck/current-slide context, layout hints, slide count, and cover/no-cover requirements, and no longer asks for obsolete `X / total` footer numbering.
+
+73. **Router dependency repair and Opus generation/export defaults**: Router planning now explicitly defines `contextFromStep` as a 0-based earlier plan-step index and repairs invalid self/future dependencies before SmartAction display, keeping the strict executor validator as a final safety net. Premium slide generation and PPTX export defaults use `pwc:bedrock.anthropic.claude-opus-4-7`; GPT 5.5 remains the router/search model.
+
+74. **Strategy Consulting Slide Prompt refresh**: `slide-html-generator-prompt.md` now uses the Strategy Consulting Slide Prompt contract for calm gridded bespoke slides, strict 904x366 frame fit, token-only color usage, solid dark section/pillar/shared headers with `on-accent` text, explicit-coordinate geometry for charts/frameworks/diagrams, disciplined spacing/density, label economy, and executive-readability self-checks.
+
+75. **PPTX repair guardrail and export chrome parity**: PPTX export runs generated, template-merged, profile-chrome, and fallback decks through XML sanitation that de-duplicates `cNvPr` shape IDs and clamps zero/non-positive `cx`/`cy` extents before download to reduce PowerPoint repair prompts. Strategy& tracker labels are dynamically measured/capped so they remain single-line in PowerPoint, and Strategy& footer/source/page-number chrome uses the audited 7.5pt master typography.
+76. **PIF LDC client template profile**: Added a selectable PIF LDC client design profile using the LDC Implementation Guide as the bundled master and the DC Opportunity pitch deck as component/style evidence only. The profile ships `backend/assets/client-templates/pif/default-master.pptx`, `backend/assets/client-templates/pif/logo.png`, and Fund font assets under `backend/assets/fonts/pif-fund/`; backend routes serve `?profileId=pif` masters and authenticated Fund font files. Preview and PPTX export use PIF green/gold/mint tokens, Fund typography, a 10 x 5.625 in PPTX canvas mapped from 960 x 540 px, controlled top-left logo chrome, the master-derived standard title band and title rule, rich-text run spacing preservation, compact label no-wrap handling, blank footer/source text unless real source text exists, and a bottom-right gold page-number block.
+
+77. **GPT 5.5 premium generation and PPTX export**: Default premium slide generation (`settings.model`) and PPTX export code generation (`settings.pptxModel`) now use `pwc:openai.gpt-5.5` instead of Claude Opus 4.7.
+
+78. **gpt-5.5 temperature omission**: Chat completions and PPTX export omit the `temperature` field when the target model is `gpt-5.5`, because the LiteLLM gateway rejects non-default temperatures for that deployment (users with `reasoningEffort: none` or any path that previously forwarded `temperature: 0.1` were affected).
+79. **Router prompt policy replacement**: `slide-generator/src/guides/router-system-prompt.md` was replaced with a stricter consulting-router contract covering fixed allowed templates, generator-aligned no-CSS layout guidance, two-pass tracker assignment, tracker sequencing/contiguity, repeated-family dependency rules, and tighter final self-check criteria.
+80. **Slide HTML generator prompt replacement**: `slide-generator/src/guides/slide-html-generator-prompt.md` was replaced with a minimal executive consulting prompt emphasizing restrained density, shared-label simplification, one dominant structure, explicit pixel geometry for complex visuals, token-only scoped CSS, and strict no-overlap/no-overflow fit checks.
+81. **Opus 4.7 default restored for generation/export**: Default premium slide generation (`settings.model`) and PPTX export code generation (`settings.pptxModel` plus `DEFAULT_PPTX_MODEL` fallback) were reverted to `pwc:bedrock.anthropic.claude-opus-4-7`; router and search defaults remain GPT 5.5.
+82. **Client profile guardrail carry-over**: Client-profile prompt-section overrides now append shared core generator guardrails so theme/profile switches retain inline sentence-flow handling, repeated-label grid de-duplication, one-dominant-structure discipline, and strict no-overlap/no-overflow frame fit rules.
+83. **Slide HTML prompt canonicalization**: Removed the legacy duplicated strategy prompt block from `slide-generator/src/guides/slide-html-generator-prompt.md` so the generator uses one canonical minimal executive contract.
+84. **Slide HTML generator prompt refinement**: `slide-html-generator-prompt.md` was expanded and tightened around the Strategy& executive consulting contract (hard canvas/frame rules, token palette, typography ladder, layout archetypes, chart/framework geometry, density and label-economy checks).
+85. **Text-box fit and bullet rhythm (HTML + PPTX prompts)**: Slide HTML guidance tells the model to size text regions to content (avoid arbitrary fixed heights) and to keep bullet spacing uniform (single gap rhythm, no uneven margins). The default PPTX export system prompt maps PowerPoint Text Box modes to PptxGenJS `fit` (`none` / `shrink` / `resize`), prefers `fit: 'resize'` for multi-line body and bullet stacks when layout is content-sized, and requires uniform line/paragraph spacing or constant y-step between bullet `addText` calls.
+86. **Router subtitle style**: `router-system-prompt.md` requires subtitles to stay short noun phrases (up to 6 words), not taglines or sentence-like descriptions, and forbids em dashes, colons, and clauses in subtitles (mirrored in TITLES AND SUBTITLES and FINAL SELF-CHECK).
+87. **Slide HTML generator prompt overhaul**: `slide-html-generator-prompt.md` was rewritten with a dedicated Subtitle Discipline section (blank allowed, forbidden generic taglines), Hard Constraints including no inline styles on `.frame`, Sentence Integrity / inline layout rules, Bullet Box Sizing (resize-to-fit behavior), expanded Final Check, and parent-based centering instead of flex/grid on sentence containers.
+88. **Flex + prose DOM fix (preview)**: `slide-generator/src/utils/slideDomNormalize.js` wraps mixed direct children (text + `<strong>` / `<em>`) inside `display:flex` containers in `.slide .frame` into a single block wrapper so sentences do not fragment into columns; `slides.css` adds `display: inline !important` for emphasis inside `.frame`. Applied after mount in main slide preview, fullscreen preview, and slide list thumbnails/hover.
+89. **Slide HTML prompt inline prose rule**: `slide-html-generator-prompt.md` adds a hard rule that sentence-bearing divs with `<strong>` / `<em>` use inline `display:block; white-space:normal` on the container and `display:inline` on emphasis tags (examples updated); removes the duplicate subtitle line about explaining slide purpose.
 
 ---
 

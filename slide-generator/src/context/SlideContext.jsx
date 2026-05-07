@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
 import { preGeneratePptxCode, hasAnyCredentials } from '../services/pptxService';
 import { DEFAULT_THEME } from '../utils/themeUtils';
+import { getClientDesignProfile, getClientProfileTheme } from '../utils/clientDesignProfiles';
 import { normalizeSlideTypographyHTML, scopeCSS, unscopeCSS } from '../utils/cssScoping';
 import { generateSlideId } from '../utils/slideIds';
 // Import full CSS as raw string so it's available in state for AI and exports
@@ -16,7 +17,7 @@ const DEFAULT_SHARED_CSS = SLIDES_CSS;
 // Model assignments are code-managed (always sourced from initialState, never
 // from localStorage) so model changes no longer require a version bump.
 // Reserve SETTINGS_VERSION for structural migrations only (new fields, format changes).
-const SETTINGS_VERSION = 13;
+const SETTINGS_VERSION = 14;
 
 // Initial state
 const initialState = {
@@ -35,7 +36,7 @@ const initialState = {
   flows: [], // Array of { id, name, description, overallGuidance, sections: [...] }
   modifiedSystemTemplates: {}, // Map of systemTemplateId -> modified template data
   // Storyline and agent workflow
-  storyline: [], // Array of { id, title, description, slideId?, order }
+  storyline: [], // Array of { id, title, description, keyMessage, contentInventory?, slideId?, order }
   storylineStatus: 'none', // 'none' | 'generated' | 'approved' | 'populated'
   skeletonMode: false, // Whether deck is in skeleton review mode
   // UI state for AI router context highlighting
@@ -54,6 +55,7 @@ const initialState = {
         models: [
           'bedrock.anthropic.claude-opus-4-7',
           'bedrock.anthropic.claude-sonnet-4-6',
+          'openai.gpt-5.5',
           'openai.gpt-5.4',
           'openai.gpt-5.4-mini',
           'openai.gpt-5.4-nano',
@@ -61,6 +63,8 @@ const initialState = {
           'vertex_ai.gemini-3.1-pro-preview',
           'vertex_ai.gemini-3-pro-image-preview',
           'vertex_ai.anthropic.claude-opus-4-7',
+          'azure.gpt-5.5',
+          'azure.gpt-5.5-2026-04-24',
           'azure.gpt-4.1',
         ],
         azurePrefix: false,
@@ -73,17 +77,17 @@ const initialState = {
     // ── Unified chat: speed mode ──
     speedMode: 'premium',        // 'fast' | 'premium' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:bedrock.anthropic.claude-opus-4-7',         // "Thinking" generation
+    model: 'pwc:bedrock.anthropic.claude-opus-4-7',          // "Thinking" generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',             // Tier 1 quick classifier (always fast)
     // Router / planner
-    routerModel: 'pwc:openai.gpt-5.4',                      // Tier 2 full planner
+    routerModel: 'pwc:openai.gpt-5.5',                      // Tier 2 full planner
     routerReasoningEffort: 'low',
     routerMaxTokens: 65536,
     routerSearchMode: 'auto', // 'auto' | 'always' | 'off' -- auto gates search on evidence need
     routerSearchEnabled: false,
     // Legacy chatbot-router fields (kept for backward compat, mirrors routerModel)
-    chatRouterModel: 'pwc:openai.gpt-5.4',
+    chatRouterModel: 'pwc:openai.gpt-5.5',
     chatRouterReasoningEffort: 'low',
     chatRouterMaxTokens: 65536,
     chatRouterSearchMode: 'auto',
@@ -136,6 +140,7 @@ const initialState = {
     searchEndpoint: '/api/ai/responses',
     searchApiKey: 'server-managed',
     searchModel: 'openai.gpt-5.4-mini',
+    evidenceSearchModel: 'openai.gpt-5.5',
     searchContextSize: 'high',
     searchMaxTokens: 32000,
     searchAuthHeader: 'api-key',
@@ -190,6 +195,8 @@ const initialState = {
     promptOverrides: {},
     // User preferences -- persistent free-text guidance injected into all LLM prompts
     userPreferences: '',
+    clientDesignProfileId: 'strategy',
+    clientProfileVersion: 'default',
     // Branding
     footerBranding: 'Strategy&', // Footer left text (firm name | topic). E.g., "Strategy&", "PwC | Digital Transformation"
     _settingsVersion: SETTINGS_VERSION,
@@ -409,6 +416,14 @@ function loadState() {
       if (prevSettingsVersion < 10) {
         loadedState.settings.speedMode = 'premium';
       }
+      if (loadedState.settings.clientDesignProfileId && loadedState.settings.clientDesignProfileId !== 'strategy') {
+        const activeProfile = getClientDesignProfile(loadedState.settings.clientDesignProfileId);
+        loadedState.theme = activeProfile.theme;
+        loadedState.settings.clientProfileVersion = activeProfile.status || String(activeProfile.schemaVersion || '');
+        if (activeProfile.id === 'stc' && loadedState.settings.footerBranding === 'stc') {
+          loadedState.settings.footerBranding = '';
+        }
+      }
       return loadedState;
     }
   } catch (e) {
@@ -587,6 +602,7 @@ function slideReducer(state, action) {
         pptxExportCode: action.payload.pptxExportCode || '',
         pptxRendererCode: action.payload.pptxRendererCode || null, // JavaScript code for PPTX export
         summary: action.payload.summary || generateSlideSummary(html, type, title),
+        sources: Array.isArray(action.payload.sources) ? action.payload.sources : [],
         comments: [], // Array of { id, text, createdAt, addressed, addressedAt, addressedBy }
         // Hierarchy and storyline
         parentId: action.payload.parentId || null, // For slide hierarchy
@@ -667,6 +683,7 @@ function slideReducer(state, action) {
         pptxExportCode: slideData.pptxExportCode || '',
         pptxRendererCode: slideData.pptxRendererCode || null, // JavaScript code for PPTX export
         summary: slideData.summary || generateSlideSummary(html, type, title),
+        sources: Array.isArray(slideData.sources) ? slideData.sources : [],
         comments: [],
         parentId: slideData.parentId || null,
         storyPointId: storyPointId,
@@ -1021,12 +1038,29 @@ function slideReducer(state, action) {
     }
 
     case ACTIONS.UPDATE_SETTINGS: {
+      const nextSettings = {
+        ...state.settings,
+        ...action.payload.settings,
+      };
+      const profileProvided = Object.prototype.hasOwnProperty.call(action.payload.settings || {}, 'clientDesignProfileId');
+      const profileChanged = profileProvided && nextSettings.clientDesignProfileId !== state.settings.clientDesignProfileId;
+      const activeProfile = profileChanged ? getClientDesignProfile(nextSettings.clientDesignProfileId) : null;
+      if (activeProfile) {
+        nextSettings.clientProfileVersion = activeProfile.status || String(activeProfile.schemaVersion || '');
+        if (Object.prototype.hasOwnProperty.call(activeProfile, 'footerBranding')) {
+          nextSettings.footerBranding = activeProfile.footerBranding ?? '';
+        }
+      }
       return {
         ...state,
-        settings: {
-          ...state.settings,
-          ...action.payload.settings,
-        },
+        slides: profileChanged
+          ? state.slides.map(slide => ({
+            ...slide,
+            pptxCode: null,
+          }))
+          : state.slides,
+        settings: nextSettings,
+        theme: profileProvided ? getClientProfileTheme(nextSettings.clientDesignProfileId) : state.theme,
       };
     }
 
@@ -1075,6 +1109,7 @@ function slideReducer(state, action) {
       return {
         ...initialState,
         settings: state.settings, // Keep settings
+        theme: getClientProfileTheme(state.settings.clientDesignProfileId || 'strategy'),
         deckVersions: state.deckVersions, // Keep versions
         customTemplates: state.customTemplates, // Keep custom templates
         flows: state.flows || [], // Keep flows
@@ -1141,6 +1176,7 @@ function slideReducer(state, action) {
       return {
         ...initialState,
         settings: state.settings,
+        theme: getClientProfileTheme(state.settings.clientDesignProfileId || 'strategy'),
         deckVersions: autoSaveVersion
           ? [...state.deckVersions, autoSaveVersion]
           : state.deckVersions,
@@ -1355,6 +1391,7 @@ function slideReducer(state, action) {
         title: point.title || '',
         description: point.description || '',
         keyMessage: point.keyMessage || '',
+        contentInventory: Array.isArray(point.contentInventory) ? point.contentInventory : [],
         templateId: point.templateId || null,
         parentId: point.parentId || null,
         slideId: point.slideId || null,
@@ -2125,8 +2162,10 @@ export function SlideProvider({ children }) {
     futureLength: futureRef.current.length,
   };
 
+  const activeClientProfile = getClientDesignProfile(state.settings.clientDesignProfileId || 'strategy');
+
   return (
-    <SlideContext.Provider value={{ state, actions, activeSlide, historyState, isPanelOpen, togglePanel }}>
+    <SlideContext.Provider value={{ state, actions, activeSlide, activeClientProfile, historyState, isPanelOpen, togglePanel }}>
       {children}
     </SlideContext.Provider>
   );

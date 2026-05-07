@@ -1,5 +1,43 @@
 /* ===== MINIMAL SHARED SLIDE CSS ===== */
 
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward"),
+    local("STC Forward Regular"),
+    local("stc Forward"),
+    local("stc Forward Regular"),
+    local("STCForward"),
+    local("STCForward-Regular");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward Medium"),
+    local("stc Forward Medium"),
+    local("STCForward-Medium"),
+    local("STC Forward"),
+    local("stc Forward");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward Bold"),
+    local("stc Forward Bold"),
+    local("STCForward-Bold");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
 .slide {
   /* Layout */
   --slide-w: 960px;
@@ -11,6 +49,28 @@
   --subtitle-y: 95px;
   --frame-y: 127px;
   --frame-w: 904px;
+  --frame-h: 366px;
+  --footer-x: var(--left-x);
+  --footer-y: 516px;
+  --footer-bottom: auto;
+  --footer-w: var(--frame-w);
+  --footer-padding-bottom: 0;
+  --footer-font-size: 10px;
+  --source-x: var(--footer-x);
+  --source-y: var(--footer-y);
+  --source-w: calc(var(--footer-w) - 32px);
+  --source-h: 16px;
+  --slide-num-x: calc(var(--footer-x) + var(--footer-w) - 16px);
+  --slide-num-y: var(--footer-y);
+  --slide-num-w: 16px;
+  --slide-num-h: 16px;
+  --title-font-size: 28px;
+  --title-font-weight: 400;
+  --title-line-height: 1.2;
+  --subtitle-font-size: 18px;
+  --subtitle-font-weight: 700;
+  --subtitle-line-height: 1.2;
+  --subtitle-color: var(--accent);
   --gH: 16px;
   --radius: 10px;
 
@@ -52,7 +112,8 @@
   background: var(--page);
   overflow: hidden;
   box-sizing: border-box;
-  font-family: Arial, sans-serif;
+  font-family: var(--font-body, Arial, sans-serif);
+  font-synthesis: none;
   color: var(--body);
 }
 
@@ -63,7 +124,7 @@
   top: var(--title-y);
   width: var(--title-w);
   margin: 0;
-  font: 400 28px/1.2 Georgia, serif;
+  font: var(--title-font-weight) var(--title-font-size)/var(--title-line-height) var(--font-title, Georgia, serif);
   color: var(--heading);
   word-wrap: break-word;
   overflow-wrap: break-word;
@@ -72,7 +133,7 @@
 /* Prevent bolded inline title text */
 .slide .title strong,
 .slide .title b {
-  font-weight: 400 !important;
+  font-weight: var(--title-font-weight) !important;
 }
 
 /* Subtitle */
@@ -82,8 +143,8 @@
   top: var(--subtitle-y);
   width: var(--subtitle-w);
   margin: 0;
-  font: 700 18px/1.2 Arial, sans-serif;
-  color: var(--accent);
+  font: var(--subtitle-font-weight) var(--subtitle-font-size)/var(--subtitle-line-height) var(--font-heading, Arial, sans-serif);
+  color: var(--subtitle-color);
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -94,8 +155,28 @@
   left: var(--left-x);
   top: var(--frame-y);
   width: var(--frame-w);
-  height: 366px;
+  height: var(--frame-h);
   overflow: hidden;
+  box-sizing: border-box;
+}
+
+/*
+ * AI-generated HTML often sets display:flex on prose blocks. Flex items are
+ * direct children only — so raw text + <strong> become separate columns.
+ * Keep emphasis inline; DOM normalization also wraps mixed prose (slideDomNormalize.js).
+ */
+.slide .frame strong,
+.slide .frame em,
+.slide .frame b,
+.slide .frame i {
+  display: inline !important;
+}
+
+.slide .frame .slide-prose-flow-wrap {
+  display: block;
+  white-space: normal;
+  min-width: 0;
+  width: 100%;
   box-sizing: border-box;
 }
 
@@ -137,24 +218,220 @@
 /* Footer */
 .slide footer.footer {
   position: absolute;
-  left: var(--left-x);
-  bottom: 0;
-  width: var(--frame-w);
-  padding-bottom: 14px;
+  left: var(--footer-x);
+  top: var(--footer-y);
+  bottom: var(--footer-bottom);
+  width: var(--footer-w);
+  height: var(--source-h);
+  padding-bottom: var(--footer-padding-bottom);
   display: flex;
   justify-content: space-between;
   align-items: baseline;
-  font: 10px/1 Arial, sans-serif;
+  font: var(--footer-font-size)/1 var(--font-body, Arial, sans-serif);
   color: var(--muted);
   box-sizing: border-box;
 }
 
+/* Two-span footer: first span is brand OR sole source line; last span is page number. */
+.slide footer.footer:not(:has(span.source)) > span:first-child {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  text-align: left;
+  color: var(--muted);
+}
+
+.slide footer.footer:not(:has(span.source)) > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: var(--muted);
+}
+
+/* Three-span footer (Strategy& / default): brand | .source | page — grid keeps brand out of the wide source band */
+.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  column-gap: 10px;
+  align-items: baseline;
+}
+
+.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) > span:first-child {
+  position: static;
+  left: auto;
+  top: auto;
+  width: auto;
+  max-width: 34%;
+  height: auto;
+  text-align: left;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]) footer.footer:has(span.source) > span:last-child {
+  position: static;
+  left: auto;
+  top: auto;
+  width: auto;
+  min-width: var(--slide-num-w);
+  height: auto;
+  text-align: right;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
 .slide footer.footer .source {
-  flex: 1;
-  padding: 0 12px;
   font-style: italic;
   opacity: 0.8;
   text-align: left;
+}
+
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]) footer.footer:has(span.source) .source {
+  min-width: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* STC profile: keep master geometry from theme layout vars; do not use Strategy& grid or italic source */
+.slide[data-client-profile="stc"] footer.footer:has(span.source) {
+  display: block;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) > span:first-child:not(:empty) {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  max-width: 120px;
+  height: auto;
+  text-align: left;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source):has(> span:first-child:not(:empty)) .source {
+  left: calc(var(--source-x) - var(--footer-x) + 124px);
+  width: calc(var(--source-w) - 124px);
+}
+
+/* PIF LDC profile: verified implementation-guide shell */
+.slide[data-client-profile="pif"] {
+  font-family: "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #00332A;
+}
+
+.slide[data-client-profile="pif"] .title {
+  left: 132px;
+  top: 27px;
+  width: 597px;
+  min-height: 25px;
+  font: 400 15px/1.12 "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #C3984D;
+}
+
+.slide[data-client-profile="pif"] .title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 25px;
+  width: 597px;
+  height: 1px;
+  background: #C3984D;
+}
+
+.slide[data-client-profile="pif"] .subtitle {
+  display: none;
+}
+
+.slide[data-client-profile="pif"] .frame {
+  left: 35px;
+  top: 81px;
+  width: 891px;
+  height: 397px;
+}
+
+.slide[data-client-profile="pif"] footer.footer:has(span.source),
+.slide[data-client-profile="pif"] footer.footer {
+  display: block;
+  font-family: "Fund Light", "Fund Regular", Arial, sans-serif;
+}
+
+.slide[data-client-profile="pif"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="pif"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #7F7F7F;
+}
+
+.slide[data-client-profile="pif"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #C3984D;
+  color: #FFFFFF;
+  font: 400 8px/1 "Fund Regular", "Fund Light", Arial, sans-serif;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.slide footer.footer:not(:has(span.source)) .source {
+  flex: 1;
+  padding: 0 12px;
 }
 
 /* ===== MASTER OVERRIDES ===== */
@@ -232,13 +509,16 @@
   top: 0;
   left: 0;
   z-index: 10;
-  padding: 4px 14px;
+  padding: 3px 10px;
   background: var(--maroon, #800020);
   color: #fff;
-  font: 700 10px/1.4 Arial, sans-serif;
+  font: 700 8px/1.35 Arial, sans-serif;
   letter-spacing: 0.3px;
   border-radius: 0 0 4px 0;
+  max-width: 480px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .slide[data-section][data-subsection]::before {
   border-radius: 0;
@@ -249,13 +529,16 @@
   position: absolute;
   top: 0;
   z-index: 10;
-  padding: 4px 12px;
+  padding: 3px 9px;
   background: #6b7280;
   color: #fff;
-  font: 600 10px/1.4 Arial, sans-serif;
+  font: 600 8px/1.35 Arial, sans-serif;
   letter-spacing: 0.2px;
   border-radius: 0 0 4px 0;
+  max-width: 420px;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .slide[data-section][data-subsection]::after {
   left: var(--tracker-offset, 80px);
@@ -264,4 +547,43 @@
 .slide:not([data-section])[data-subsection]::after {
   left: 0;
   border-radius: 0 0 4px 0;
+}
+
+/* STC slides reserve the top-left logo space and render section trackers as
+   quiet text-only chrome after the logo, not as filled tabs. */
+.slide[data-client-profile="stc"][data-section]::before {
+  top: 10px;
+  left: 57px;
+  min-width: 190px;
+  max-width: 360px;
+  height: 12px;
+  padding: 0;
+  background-color: transparent;
+  color: #9E21FF;
+  font: 700 9px/12px "STC Forward", Arial, sans-serif;
+  letter-spacing: 0.1px;
+  border-radius: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slide[data-client-profile="stc"][data-section][data-subsection]::before {
+  border-radius: 0;
+}
+
+.slide[data-client-profile="stc"][data-section][data-subsection]::after {
+  top: 10px;
+  left: calc(57px + var(--tracker-offset, 190px) + 12px);
+  max-width: 360px;
+  height: 12px;
+  padding: 0;
+  background: transparent;
+  color: #515360;
+  font: 600 9px/12px "STC Forward", Arial, sans-serif;
+  letter-spacing: 0.1px;
+  border-radius: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

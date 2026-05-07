@@ -22,6 +22,18 @@
 let _msalInstance = null;
 let _loginRequest = null;
 
+export const AUTH_SESSION_EXPIRED_EVENT = 'edwin:auth-session-expired';
+
+function notifyAuthSessionExpired(detail = {}) {
+  if (typeof window === 'undefined') return;
+  window.dispatchEvent(new CustomEvent(AUTH_SESSION_EXPIRED_EVENT, {
+    detail: {
+      reason: 'session_expired',
+      ...detail,
+    },
+  }));
+}
+
 /**
  * Register the MSAL PublicClientApplication after it has been initialised in
  * main.jsx. Idempotent; calling twice just overrides the reference.
@@ -39,7 +51,7 @@ function isOurBackend(url) {
   return url.startsWith('/api/');
 }
 
-async function getIdToken() {
+async function getIdToken({ forceRefresh = false } = {}) {
   if (!_msalInstance) return null;
   const account =
     _msalInstance.getActiveAccount() ||
@@ -50,14 +62,20 @@ async function getIdToken() {
     const result = await _msalInstance.acquireTokenSilent({
       ..._loginRequest,
       account,
+      forceRefresh,
     });
     return result?.idToken || null;
   } catch (err) {
     // InteractionRequiredAuthError: token can't be refreshed silently (e.g.,
-    // user revoked consent, session expired). Fall through and return null.
-    // The backend will return 401; the App-level bootstrap will then prompt
-    // the user to sign in again via loginRedirect.
+    // user revoked consent, session expired). Surface this to the UI so users
+    // get a clear sign-in prompt instead of only a console warning.
     console.warn('[authFetch] silent token acquisition failed:', err?.errorCode || err?.message);
+    notifyAuthSessionExpired({
+      source: 'acquireTokenSilent',
+      errorCode: err?.errorCode || null,
+      message: err?.message || null,
+      forceRefresh,
+    });
     return null;
   }
 }
@@ -75,5 +93,22 @@ export async function authFetch(url, options = {}) {
   if (idToken && !headers.has('Authorization')) {
     headers.set('Authorization', `Bearer ${idToken}`);
   }
-  return fetch(url, { ...options, headers });
+  const response = await fetch(url, { ...options, headers });
+  if (response.status !== 401) {
+    return response;
+  }
+
+  const refreshedToken = await getIdToken({ forceRefresh: true });
+  if (!refreshedToken || refreshedToken === idToken) {
+    notifyAuthSessionExpired({
+      source: 'api_401',
+      status: response.status,
+      url,
+    });
+    return response;
+  }
+
+  const retryHeaders = new Headers(options.headers || {});
+  retryHeaders.set('Authorization', `Bearer ${refreshedToken}`);
+  return fetch(url, { ...options, headers: retryHeaders });
 }

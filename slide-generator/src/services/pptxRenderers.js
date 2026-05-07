@@ -36,74 +36,255 @@ export const LAYOUT = {
   cardRadius: 0.05,
 };
 
-export function pptxFontSize(size, fallback = 10) {
+const PPTX_SLIDE_W = 13.333;
+const STRATEGY_FOOTER_FONT_SIZE = 7.5;
+const STRATEGY_SOURCE_DEFAULT = { x: 2.66, y: 6.95, w: 8.0, h: 0.3 };
+const STRATEGY_SLIDE_NUM_DEFAULT = { x: 10.628, y: 7.092, w: 2.218, h: 0.12 };
+
+export function pptxFontSize(size, fallback = 10, floor = 10) {
   const numeric = Number(size ?? fallback);
-  return Math.max(10, Number.isFinite(numeric) ? numeric : fallback);
+  return Math.max(floor, Number.isFinite(numeric) ? numeric : fallback);
 }
 
 // ── Footer branding ──────────────────────────────────────────────────────────
 
 let _footerBranding = 'Strategy&';
 let _tplPositions = null;
+let _profileFontFace = null;
 
 export function setFooterBranding(branding) {
-  _footerBranding = branding || 'Strategy&';
+  _footerBranding = branding ?? 'Strategy&';
 }
 
 export function setTemplatePositions(positions) {
   _tplPositions = positions || null;
 }
 
+export function setPptxFontFace(fontFace) {
+  _profileFontFace = fontFace || null;
+}
+
+function profileFontFace(fallback) {
+  return _profileFontFace || fallback;
+}
+
+function profilePositions() {
+  return _tplPositions || null;
+}
+
 export function addFooter(slide, slideNum, totalSlides, slideType) {
   if (!slide || !slideNum) return;
   if (slideType === 'cover') return;
 
-  const numPos = _tplPositions?.slideNum;
+  const positions = profilePositions();
+  const numPos = positions?.slideNum;
   const numFont = numPos?.font || {};
+  const numFill = numFont.fill ? { fill: { color: numFont.fill }, line: { color: numFont.fill, transparency: 100 } } : {};
   slide.addText(String(slideNum), {
-    x: numPos?.x ?? 11.5,
-    y: numPos?.y ?? 7.05,
-    w: numPos?.w ?? 1.3,
-    h: numPos?.h ?? 0.25,
-    fontFace: numFont.fontFace || 'Arial',
-    fontSize: pptxFontSize(numFont.fontSize, 10),
+    x: numPos?.x ?? STRATEGY_SLIDE_NUM_DEFAULT.x,
+    y: numPos?.y ?? STRATEGY_SLIDE_NUM_DEFAULT.y,
+    w: numPos?.w ?? STRATEGY_SLIDE_NUM_DEFAULT.w,
+    h: numPos?.h ?? STRATEGY_SLIDE_NUM_DEFAULT.h,
+    fontFace: numFont.fontFace || profileFontFace('Arial'),
+    fontSize: pptxFontSize(numFont.fontSize, STRATEGY_FOOTER_FONT_SIZE, STRATEGY_FOOTER_FONT_SIZE),
     bold: numFont.bold || false,
-    color: COLORS.meta,
-    align: 'right',
+    color: numFont.color || COLORS.meta,
+    align: numFont.align || 'right',
+    ...numFill,
   });
 }
 
 // ── Section tracker ──────────────────────────────────────────────────────────
 
+function trackerCharUnits(char) {
+  if (/\s/.test(char)) return 0.45;
+  if (/[ilI1|.,:;]/.test(char)) return 0.45;
+  if (/[mwMW@#%&]/.test(char)) return 1.3;
+  if (/[A-Z0-9]/.test(char)) return 1.1;
+  return 1.0;
+}
+
+function measureTrackerLabel(label, { fontSize = 8, bold = false, paddingX = 0.22, minW = 0.7, maxW = 5.2 } = {}) {
+  const text = String(label || '').trim();
+  const units = [...text].reduce((sum, char) => sum + trackerCharUnits(char), 0);
+  const boldFactor = bold ? 1.08 : 1;
+  const estimated = units * (fontSize / 120) * boldFactor + paddingX;
+  return Math.min(maxW, Math.max(minW, Number(estimated.toFixed(3))));
+}
+
+function ellipsizeTrackerLabel(label, availableTextW, options = {}) {
+  const text = String(label || '').trim();
+  if (!text) return text;
+  const marker = '...';
+  const fits = value => measureTrackerLabel(value, { ...options, paddingX: 0, minW: 0, maxW: 99 }) <= availableTextW;
+  if (fits(text)) return text;
+  if (availableTextW <= 0 || !fits(marker)) return marker;
+  let next = text;
+  while (next.length > 0 && !fits(`${next}${marker}`)) {
+    next = next.slice(0, -1).trimEnd();
+  }
+  return next ? `${next}${marker}` : marker;
+}
+
+function resolveTrackerTabs(tabs, { startX = 0, safeRight = PPTX_SLIDE_W - 0.48, gap = 0.03 } = {}) {
+  const visibleTabs = tabs.filter(tab => tab?.label);
+  if (visibleTabs.length === 0) return [];
+  const available = Math.max(0, safeRight - startX - gap * (visibleTabs.length - 1));
+  const measured = visibleTabs.map(tab => ({
+    ...tab,
+    naturalW: measureTrackerLabel(tab.label, tab),
+  }));
+  const naturalTotal = measured.reduce((sum, tab) => sum + tab.naturalW, 0);
+
+  let widths = measured.map(tab => tab.naturalW);
+  if (naturalTotal > available) {
+    const minTotal = measured.reduce((sum, tab) => sum + (tab.minW || 0.7), 0);
+    const flexible = Math.max(0, available - minTotal);
+    const naturalFlex = measured.reduce((sum, tab) => sum + Math.max(0, tab.naturalW - (tab.minW || 0.7)), 0) || 1;
+    widths = measured.map(tab => {
+      const minW = tab.minW || 0.7;
+      return minW + flexible * (Math.max(0, tab.naturalW - minW) / naturalFlex);
+    });
+  }
+
+  let x = startX;
+  return measured.map((tab, index) => {
+    const w = Number(Math.max(tab.minW || 0.7, widths[index]).toFixed(3));
+    const textW = Math.max(0, w - (tab.paddingX || 0.22));
+    const resolved = {
+      ...tab,
+      x,
+      w,
+      text: ellipsizeTrackerLabel(tab.label, textW, tab),
+    };
+    x = Number((x + w + gap).toFixed(3));
+    return resolved;
+  });
+}
+
+function addTrackerTab(slide, tab) {
+  if (!tab?.text) return;
+  const shapeOptions = {
+    x: tab.x,
+    y: tab.y,
+    w: tab.w,
+    h: tab.h,
+    fill: { color: tab.fill },
+  };
+  if (tab.line) shapeOptions.line = tab.line;
+  slide.addShape('rect', shapeOptions);
+  const inset = tab.textInset ?? 0.04;
+  slide.addText(tab.text, {
+    x: tab.x + inset,
+    y: tab.y,
+    w: Math.max(0.05, tab.w - inset * 2),
+    h: tab.h,
+    fontFace: tab.fontFace || profileFontFace('Arial'),
+    fontSize: tab.fontSize || 8,
+    bold: tab.bold ?? true,
+    color: tab.color || COLORS.white,
+    valign: 'middle',
+    margin: 0,
+    fit: 'shrink',
+    breakLine: false,
+  });
+}
+
+function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) {
+  const textPos = tracker?.text || { x: 0.792, y: 0.139, w: 4.167, h: 0.194 };
+  const colors = tracker?.colors || {};
+  const textColor = colors.text || '9E21FF';
+  const subTextColor = colors.subText || COLORS.meta;
+  const font = textPos.font || {};
+  const fontSize = pptxFontSize(font.fontSize, 9, 8);
+  if (!sectionLabel && !subSectionLabel) return;
+
+  const tabs = resolveTrackerTabs([
+    {
+      label: sectionLabel,
+      fontSize,
+      bold: font.bold ?? true,
+      minW: 2.64,
+      maxW: 5.0,
+      paddingX: 0.36,
+    },
+    {
+      label: subSectionLabel,
+      fontSize,
+      bold: false,
+      minW: 1.2,
+      maxW: 5.0,
+      paddingX: 0.36,
+    },
+  ], { startX: textPos.x, safeRight: PPTX_SLIDE_W - 0.48, gap: 0.14 });
+
+  for (const [index, tab] of tabs.entries()) {
+    slide.addText(tab.text, {
+      x: tab.x,
+      y: textPos.y - 0.004,
+      w: tab.w,
+      h: Math.max(textPos.h || 0.18, 0.18),
+      fontFace: font.fontFace || profileFontFace('STC Forward'),
+      fontSize,
+      bold: index === 0 && sectionLabel ? (font.bold ?? true) : false,
+      color: index === 0 && sectionLabel ? textColor : subTextColor,
+      margin: 0,
+      valign: 'mid',
+      fit: 'shrink',
+      breakLine: false,
+    });
+  }
+}
+
 export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
   if (!sectionLabel && !subSectionLabel) return;
 
-  if (sectionLabel) {
-    const sectionW = Math.max(1.0, sectionLabel.length * 0.065 + 0.35);
-    slide.addShape('rect', { x: 0, y: 0, w: sectionW, h: 0.28, fill: { color: COLORS.maroon } });
-    slide.addText(sectionLabel, { x: 0.05, y: 0, w: sectionW - 0.1, h: 0.28, fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
+  const positions = profilePositions();
+  if (positions?.sectionTracker?.variant === 'stcBreadcrumb') {
+    addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, positions.sectionTracker);
+    return;
+  }
 
-    if (subSectionLabel) {
-      const subW = Math.max(0.8, subSectionLabel.length * 0.06 + 0.3);
-      const subX = sectionW + 0.04;
-      slide.addShape('rect', { x: subX, y: 0, w: subW, h: 0.25, fill: { color: COLORS.coal } });
-      slide.addText(subSectionLabel, { x: subX + 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
-    }
-  } else if (subSectionLabel) {
-    const subW = Math.max(0.8, subSectionLabel.length * 0.06 + 0.3);
-    slide.addShape('rect', { x: 0, y: 0, w: subW, h: 0.25, fill: { color: COLORS.coal } });
-    slide.addText(subSectionLabel, { x: 0.05, y: 0, w: subW - 0.1, h: 0.25, fontFace: 'Arial', fontSize: 10, bold: true, color: COLORS.white, valign: 'middle' });
+  const tabs = resolveTrackerTabs([
+    {
+      label: sectionLabel,
+      fill: COLORS.maroon,
+      y: 0,
+      h: 0.23,
+      fontSize: 8,
+      bold: true,
+      minW: 0.92,
+      maxW: 5.6,
+      paddingX: 0.22,
+      textInset: 0.05,
+    },
+    {
+      label: subSectionLabel,
+      fill: COLORS.coal,
+      y: 0,
+      h: 0.21,
+      fontSize: 8,
+      bold: true,
+      minW: 0.78,
+      maxW: 5.3,
+      paddingX: 0.2,
+      textInset: 0.05,
+    },
+  ], { startX: 0, safeRight: PPTX_SLIDE_W - 0.48, gap: sectionLabel && subSectionLabel ? 0.03 : 0 });
+
+  for (const tab of tabs) {
+    addTrackerTab(slide, tab);
   }
 }
 
 // ── Title / subtitle helpers ─────────────────────────────────────────────────
 
 export function addTitle(slide, text) {
-  slide.addText(text, { x: LAYOUT.titleX, y: LAYOUT.titleY, w: LAYOUT.titleW, h: 0.8, fontFace: 'Georgia', fontSize: 28, color: COLORS.main });
+  slide.addText(text, { x: LAYOUT.titleX, y: LAYOUT.titleY, w: LAYOUT.titleW, h: 0.8, fontFace: profileFontFace('Georgia'), fontSize: 28, color: COLORS.main });
 }
 
 export function addSubtitle(slide, text) {
-  slide.addText(text, { x: LAYOUT.subtitleX, y: LAYOUT.subtitleY, w: LAYOUT.subtitleW, h: 0.4, fontFace: 'Arial', fontSize: 18, color: COLORS.red, bold: true });
+  slide.addText(text, { x: LAYOUT.subtitleX, y: LAYOUT.subtitleY, w: LAYOUT.subtitleW, h: 0.4, fontFace: profileFontFace('Arial'), fontSize: 18, color: COLORS.red, bold: true });
 }
 
 // ── Source note ──────────────────────────────────────────────────────────────
@@ -125,17 +306,18 @@ export function addSourceNote(slide, html) {
     });
   }
   if (texts.length === 0) return;
-  const ftrPos = _tplPositions?.footer;
+  const positions = profilePositions();
+  const ftrPos = positions?.footer;
   const ftrFont = ftrPos?.font || {};
   slide.addText(texts.join(' | '), {
-    x: ftrPos?.x ?? 2.5,
-    y: ftrPos?.y ?? 7.05,
-    w: ftrPos?.w ?? 8.5,
-    h: ftrPos?.h ?? 0.25,
-    fontFace: ftrFont.fontFace || 'Arial',
-    fontSize: pptxFontSize(ftrFont.fontSize, 10),
+    x: ftrPos?.x ?? STRATEGY_SOURCE_DEFAULT.x,
+    y: ftrPos?.y ?? STRATEGY_SOURCE_DEFAULT.y,
+    w: ftrPos?.w ?? STRATEGY_SOURCE_DEFAULT.w,
+    h: ftrPos?.h ?? STRATEGY_SOURCE_DEFAULT.h,
+    fontFace: ftrFont.fontFace || profileFontFace('Arial'),
+    fontSize: pptxFontSize(ftrFont.fontSize, STRATEGY_FOOTER_FONT_SIZE, STRATEGY_FOOTER_FONT_SIZE),
     italic: ftrFont.italic ?? true,
-    color: COLORS.meta,
+    color: ftrFont.color || COLORS.meta,
     align: 'left',
   });
 }

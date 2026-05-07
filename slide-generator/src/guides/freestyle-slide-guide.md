@@ -48,7 +48,7 @@ Use `var(--token)` for all colors. Never hardcode hex, rgb, or named colors.
 | Negative/decline | `var(--danger)` |
 | Negative bg | `var(--danger-soft)` |
 
-Fonts: Georgia serif for display numbers and emphasis. Arial sans-serif for body text (12px minimum), headings / section titles / pillar titles (14-18px bold), and labels / metadata / footnotes (10px minimum). Never go below 10px for any element.
+Fonts: Georgia serif for display numbers and emphasis. Arial sans-serif for body text (12px minimum), headings / section titles / pillar titles (14-18px bold), compact tags / chips / badges / tracker labels (8px minimum), and metadata / footnotes (10px minimum). Never go below 10px for normal text or 8px for compact tags/trackers.
 
 ## Output format
 
@@ -137,13 +137,21 @@ CSS grid with 2-3 columns, auto rows. Each cell is a small card with an icon-lik
 
 ## Source citations
 
-When the slide content references data, statistics, or research findings, add a brief source attribution in the footer. Replace the brand span with the source:
+When the slide references external evidence, put the citation in the footer only.
+
+If the brand should remain visible (default for Strategy& decks), use **three spans**: brand left, `class="source"` in the middle, page number right:
+
+```html
+<footer class="footer"><span>Strategy&amp;</span><span class="source">Source: IEA World Energy Outlook, 2025</span><span>[Page#]</span></footer>
+```
+
+If the source replaces the brand line entirely, two spans are fine:
 
 ```html
 <footer class="footer"><span>Source: IEA World Energy Outlook, 2025</span><span>[Page#]</span></footer>
 ```
 
-Keep sources to **5-15 words maximum**. Examples: "Source: Bloomberg NEF", "McKinsey Global Institute, 2024", "Company annual report, FY2025". Never write full sentences in the source line. If no external data is cited, keep the brand name in the footer instead.
+Keep sources to **5-15 words maximum**. Examples: "Source: Bloomberg NEF", "McKinsey Global Institute, 2024", "Company annual report, FY2025". Never write full sentences in the source line. If no external data is cited, keep the brand name only (no invented source).
 
 ## Anti-patterns -- DO NOT do these
 

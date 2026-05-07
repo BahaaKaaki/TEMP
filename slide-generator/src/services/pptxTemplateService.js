@@ -3,8 +3,9 @@
 // to a PptxGenJS-generated presentation via JSZip XML manipulation.
 
 import JSZip from 'jszip';
-import { extractBranding } from './brandingExtractor';
+import { extractBranding } from './brandingExtractor.js';
 import { authFetch } from './authFetch.js';
+import { getClientDesignProfile, getClientProfileTemplateStorageKey } from '../utils/clientDesignProfiles.js';
 
 /**
  * Store for the loaded template data.
@@ -12,7 +13,68 @@ import { authFetch } from './authFetch.js';
  */
 const DB_NAME = 'pptxTemplateDB';
 const DB_STORE = 'templates';
-const DB_KEY = 'baseTemplate';
+const LEGACY_DB_KEY = 'baseTemplate';
+
+function normalizeTemplateOptions(options = {}) {
+  if (typeof options === 'string') {
+    return { profileId: options, templateId: 'default' };
+  }
+  return {
+    profileId: options.profileId || 'strategy',
+    templateId: options.templateId || 'default',
+  };
+}
+
+function templateStorageKey(options = {}) {
+  const normalized = normalizeTemplateOptions(options);
+  return getClientProfileTemplateStorageKey(normalized.profileId, normalized.templateId);
+}
+
+function arrayBufferToBase64(buffer) {
+  const bytes = new Uint8Array(buffer || []);
+  let binary = '';
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+}
+
+async function loadProfileLogo(profile) {
+  const logoPos = profile?.chrome?.positions?.logo;
+  if (!profile?.id || !logoPos) return null;
+  try {
+    const res = await authFetch(`/api/assets/client-templates/${profile.id}/logo.png`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const buffer = await res.arrayBuffer();
+    return {
+      ...logoPos,
+      mediaPath: `ppt/media/${profile.id}_logo.png`,
+      image: `data:image/png;base64,${arrayBufferToBase64(buffer)}`,
+    };
+  } catch (error) {
+    console.warn('[PPTX Template] Profile logo unavailable for %s: %s', profile.id, error.message);
+    return null;
+  }
+}
+
+async function buildProfileChrome(profile) {
+  if (!profile?.chrome) return null;
+  const logo = await loadProfileLogo(profile);
+  return {
+    footerText: profile.chrome.footerText || '',
+    positions: profile.chrome.positions || null,
+    ...(logo ? { logo } : {}),
+  };
+}
+
+function canUseServerDefaultTemplate(profileId, templateId) {
+  if (templateId !== 'default') return false;
+  if (profileId === 'strategy') return true;
+  const profile = getClientDesignProfile(profileId);
+  const master = profile?.pptxMaster;
+  return master?.serverSync === 'backend-profile-default' || master?.bundled === true;
+}
 
 // ── Server sync (persists across browsers when backend is available) ─────────
 
@@ -47,8 +109,11 @@ export async function uploadTemplateToServer(arrayBuffer, fileName) {
  * GET stored PPTX master from the server.
  * @returns {Promise<{ data: ArrayBuffer, fileName: string } | null>}
  */
-export async function loadTemplateFromServer() {
-  const res = await authFetch('/api/templates/pptx-master', { method: 'GET' });
+export async function loadTemplateFromServer(profileId = 'strategy') {
+  const params = profileId && profileId !== 'strategy'
+    ? `?profileId=${encodeURIComponent(profileId)}`
+    : '';
+  const res = await authFetch(`/api/templates/pptx-master${params}`, { method: 'GET' });
   if (res.status === 404) return null;
   if (!res.ok) {
     const text = await res.text();
@@ -71,41 +136,78 @@ function openDB() {
   });
 }
 
-export async function saveTemplateToStorage(arrayBuffer, fileName, chrome = null) {
+export async function saveTemplateToStorage(arrayBuffer, fileName, chrome = null, options = {}) {
+  const normalized = normalizeTemplateOptions(options);
+  const key = templateStorageKey(normalized);
   const db = await openDB();
-  const record = { data: arrayBuffer, fileName, savedAt: Date.now() };
+  const record = {
+    data: arrayBuffer,
+    fileName,
+    savedAt: Date.now(),
+    profileId: normalized.profileId,
+    templateId: normalized.templateId,
+    storageKey: key,
+  };
   if (chrome) record.chrome = chrome;
+  if (options.extraction) {
+    record.extraction = {
+      profileId: options.extraction.profileId,
+      extractionVersion: options.extraction.extractionVersion,
+      raw: options.extraction.raw,
+      evidence: options.extraction.evidence,
+    };
+  }
   await new Promise((resolve, reject) => {
     const tx = db.transaction(DB_STORE, 'readwrite');
-    tx.objectStore(DB_STORE).put(record, DB_KEY);
+    const store = tx.objectStore(DB_STORE);
+    store.put(record, key);
+    if (normalized.profileId === 'strategy' && normalized.templateId === 'default') {
+      store.put(record, LEGACY_DB_KEY);
+    }
     tx.oncomplete = () => {
-      console.log('[PPTX Template] Saved template to IndexedDB:', fileName, arrayBuffer.byteLength, 'bytes',
+      console.log('[PPTX Template] Saved template to IndexedDB:', fileName, arrayBuffer.byteLength, 'bytes', `(${key})`,
         chrome ? '(with chrome)' : '');
       resolve();
     };
     tx.onerror = () => reject(tx.error);
   });
-  try {
-    await uploadTemplateToServer(arrayBuffer, fileName);
-  } catch (e) {
-    console.warn('[PPTX Template] Server upload failed:', e.message);
+  if (normalized.profileId === 'strategy' && normalized.templateId === 'default') {
+    try {
+      await uploadTemplateToServer(arrayBuffer, fileName);
+    } catch (e) {
+      console.warn('[PPTX Template] Server upload failed:', e.message);
+    }
+  } else {
+    console.info('[PPTX Template] Stored template locally for profile:', normalized.profileId);
   }
 }
 
-export async function loadTemplateFromStorage() {
+export async function loadTemplateFromStorage(options = {}) {
+  const normalized = normalizeTemplateOptions(options);
+  const key = templateStorageKey(normalized);
+  const profile = getClientDesignProfile(normalized.profileId);
+  const canUseServerDefault = canUseServerDefaultTemplate(normalized.profileId, normalized.templateId);
+  const canUseLegacyLocal = normalized.profileId === 'strategy' && normalized.templateId === 'default';
+  const forceBundledDefault = normalized.templateId === 'default' && profile?.pptxMaster?.forceBundledDefault === true;
+  const useProfileChrome = profile?.pptxMaster?.useProfileChrome === true;
   let serverData = null;
-  try {
-    const serverTemplate = await loadTemplateFromServer();
-    if (serverTemplate) {
-      serverData = {
-        data: serverTemplate.data,
-        fileName: serverTemplate.fileName,
-        savedAt: Date.now(),
-      };
-      console.log('[PPTX Template] Loaded from server:', serverData.fileName, serverData.data?.byteLength, 'bytes');
+  if (canUseServerDefault) {
+    try {
+      const serverTemplate = await loadTemplateFromServer(normalized.profileId);
+      if (serverTemplate) {
+        serverData = {
+          data: serverTemplate.data,
+          fileName: serverTemplate.fileName,
+          savedAt: Date.now(),
+          profileId: normalized.profileId,
+          templateId: normalized.templateId,
+          storageKey: key,
+        };
+        console.log('[PPTX Template] Loaded from server:', serverData.fileName, serverData.data?.byteLength, 'bytes');
+      }
+    } catch (e) {
+      console.warn('[PPTX Template] Server template unavailable, trying local:', e.message);
     }
-  } catch (e) {
-    console.warn('[PPTX Template] Server template unavailable, trying local:', e.message);
   }
 
   let localRecord = null;
@@ -113,26 +215,46 @@ export async function loadTemplateFromStorage() {
     const db = await openDB();
     localRecord = await new Promise((resolve, reject) => {
       const tx = db.transaction(DB_STORE, 'readonly');
-      const req = tx.objectStore(DB_STORE).get(DB_KEY);
-      req.onsuccess = () => resolve(req.result || null);
+      const store = tx.objectStore(DB_STORE);
+      const req = store.get(key);
+      req.onsuccess = () => {
+        if (req.result || !canUseLegacyLocal) {
+          resolve(req.result || null);
+          return;
+        }
+        const legacyReq = store.get(LEGACY_DB_KEY);
+        legacyReq.onsuccess = () => resolve(legacyReq.result || null);
+        legacyReq.onerror = () => reject(legacyReq.error);
+      };
       req.onerror = () => reject(req.error);
     });
   } catch (e) {
     console.warn('[PPTX Template] IndexedDB read failed:', e.message);
   }
 
-  const record = serverData || localRecord;
+  const record = forceBundledDefault
+    ? (serverData || localRecord)
+    : canUseLegacyLocal
+      ? (serverData || localRecord)
+      : (localRecord || serverData);
   if (!record) {
-    console.log('[PPTX Template] No template found');
+    console.log('[PPTX Template] No template found for profile slot:', key);
     return null;
   }
 
-  if (serverData && localRecord?.chrome) {
+  if (useProfileChrome) {
+    const profileChrome = await buildProfileChrome(profile);
+    if (profileChrome) {
+      record.chrome = profileChrome;
+      console.log('[PPTX Template] Applied verified profile chrome:', normalized.profileId);
+    }
+  } else if (serverData && localRecord?.chrome) {
     record.chrome = localRecord.chrome;
     console.log('[PPTX Template] Merged chrome metadata from IndexedDB');
   }
 
-  const needsReExtract = record.data && (
+  const needsReExtract = !useProfileChrome && record.data && (
+    !record.chrome?.logo?.image ||
     !record.chrome?.positions ||
     !record.chrome.positions.slideNum?.font ||
     !record.chrome.positions.footer?.font
@@ -140,13 +262,23 @@ export async function loadTemplateFromStorage() {
   if (needsReExtract) {
     try {
       console.log('[PPTX Template] Re-extracting branding for font metadata...');
-      const result = await extractBranding(record.data);
+      const result = await extractBranding(record.data, { profileId: normalized.profileId });
       if (result?.chrome) {
         record.chrome = result.chrome;
         const db = await openDB();
         await new Promise((resolve, reject) => {
           const tx = db.transaction(DB_STORE, 'readwrite');
-          tx.objectStore(DB_STORE).put({ ...record, chrome: result.chrome }, DB_KEY);
+          tx.objectStore(DB_STORE).put({
+            ...record,
+            chrome: result.chrome,
+            extraction: {
+              profileId: result.profileId,
+              extractionVersion: result.extractionVersion,
+              raw: result.raw,
+              evidence: result.evidence,
+            },
+            storageKey: key,
+          }, key);
           tx.oncomplete = () => resolve();
           tx.onerror = () => reject(tx.error);
         });
@@ -160,18 +292,24 @@ export async function loadTemplateFromStorage() {
   if (serverData) {
     console.log('[PPTX Template] Loaded from server:', record.fileName, record.data?.byteLength, 'bytes');
   } else {
-    console.log('[PPTX Template] Loaded from IndexedDB:', record.fileName, record.data?.byteLength, 'bytes');
+    console.log('[PPTX Template] Loaded from IndexedDB:', record.fileName, record.data?.byteLength, 'bytes', `(${key})`);
   }
   return record;
 }
 
-export async function clearTemplateFromStorage() {
+export async function clearTemplateFromStorage(options = {}) {
+  const normalized = normalizeTemplateOptions(options);
+  const key = templateStorageKey(normalized);
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(DB_STORE, 'readwrite');
-    tx.objectStore(DB_STORE).delete(DB_KEY);
+    const store = tx.objectStore(DB_STORE);
+    store.delete(key);
+    if (normalized.profileId === 'strategy' && normalized.templateId === 'default') {
+      store.delete(LEGACY_DB_KEY);
+    }
     tx.oncomplete = () => {
-      console.log('[PPTX Template] Cleared template from IndexedDB');
+      console.log('[PPTX Template] Cleared template from IndexedDB:', key);
       resolve();
     };
     tx.onerror = () => reject(tx.error);
@@ -202,7 +340,157 @@ function hideMasterShapes(slideXml) {
   return slideXml.replace(/<p:sld(\s)/, '<p:sld showMasterSp="0"$1');
 }
 
+function stripLayoutChrome(layoutXml) {
+  if (!layoutXml || !/<p:spTree>/.test(layoutXml)) return layoutXml;
+  return layoutXml.replace(/<p:spTree>([\s\S]*?)<\/p:spTree>/, (match, inner) => {
+    const nvGrp = inner.match(/<p:nvGrpSpPr\b[\s\S]*?<\/p:nvGrpSpPr>/)?.[0] || '';
+    const grpSpPr = inner.match(/<p:grpSpPr\b[\s\S]*?<\/p:grpSpPr>/)?.[0] || '';
+    return `<p:spTree>${nvGrp}${grpSpPr}</p:spTree>`;
+  });
+}
+
+function stripUnusedLayoutChromeRelationships(relsXml) {
+  if (!relsXml) return relsXml;
+  return relsXml
+    .replace(/<Relationship[^>]*Type="[^"]*\/image"[^>]*\/>/g, '')
+    .replace(/<Relationship[^>]*Type="[^"]*\/oleObject"[^>]*\/>/g, '');
+}
+
 const EMU_PER_INCH = 914400;
+
+function logoMediaConfig(logo) {
+  const logoMediaExt = String(logo?.mediaPath || '').split('.').pop()?.toLowerCase() || 'png';
+  const safeLogoExt = ['png', 'jpg', 'jpeg', 'gif', 'svg'].includes(logoMediaExt) ? logoMediaExt : 'png';
+  return {
+    mediaPath: `ppt/media/logo_chrome.${safeLogoExt}`,
+    relTarget: `../media/logo_chrome.${safeLogoExt}`,
+    ext: safeLogoExt,
+  };
+}
+
+function writeLogoMedia(zip, logo, mediaPath) {
+  if (!logo?.image) return false;
+  try {
+    const base64 = String(logo.image).split(',')[1];
+    if (!base64) return false;
+    const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    zip.file(mediaPath, binary);
+    console.log('[PPTX Template] Wrote logo media file (%d bytes)', binary.length);
+    return true;
+  } catch (e) {
+    console.warn('[PPTX Template] Logo media write failed:', e.message);
+    return false;
+  }
+}
+
+function addLogoRelationship(relsXml, rId, relTarget) {
+  const withoutExisting = relsXml.replace(
+    new RegExp(`<Relationship[^>]*Id="${rId}"[^>]*/>`, 'g'),
+    ''
+  );
+  return withoutExisting.replace(
+    '</Relationships>',
+    `<Relationship Id="${rId}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${relTarget}"/></Relationships>`
+  );
+}
+
+function ensureMediaContentType(contentTypesXml, ext) {
+  if (!contentTypesXml || !ext) return contentTypesXml;
+  if (new RegExp(`<Default[^>]*Extension="${ext}"`).test(contentTypesXml)) return contentTypesXml;
+  const contentType = ext === 'svg'
+    ? 'image/svg+xml'
+    : ext === 'jpg' || ext === 'jpeg'
+      ? 'image/jpeg'
+      : ext === 'gif'
+        ? 'image/gif'
+        : 'image/png';
+  return contentTypesXml.replace('</Types>', `<Default Extension="${ext}" ContentType="${contentType}"/></Types>`);
+}
+
+function normalizeHexColor(value) {
+  const raw = String(value || '').trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(raw)) {
+    return raw.split('').map(ch => ch + ch).join('').toUpperCase();
+  }
+  if (/^[0-9a-f]{6}$/i.test(raw)) return raw.toUpperCase();
+  return null;
+}
+
+function replaceThemeColorSlot(themeXml, slot, color) {
+  const hex = normalizeHexColor(color);
+  if (!hex) return themeXml;
+  const replacement = `<a:${slot}><a:srgbClr val="${hex}"/></a:${slot}>`;
+  const pattern = new RegExp(`<a:${slot}>[\\s\\S]*?</a:${slot}>`);
+  return pattern.test(themeXml)
+    ? themeXml.replace(pattern, replacement)
+    : themeXml;
+}
+
+function cleanFontFace(fontFace) {
+  return String(fontFace || '')
+    .split(',')[0]
+    .replace(/["']/g, '')
+    .trim();
+}
+
+function escapeXmlAttr(value) {
+  return String(value || '')
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function patchThemeFonts(themeXml, fontFace) {
+  const clean = cleanFontFace(fontFace);
+  if (!clean) return themeXml;
+  const escaped = escapeXmlAttr(clean);
+  return themeXml
+    .replace(/(<a:majorFont>[\s\S]*?<a:latin\b[^>]*typeface=")[^"]*(")/, `$1${escaped}$2`)
+    .replace(/(<a:minorFont>[\s\S]*?<a:latin\b[^>]*typeface=")[^"]*(")/, `$1${escaped}$2`);
+}
+
+async function copyTemplateThemeToGenerated(zip, templateBuf) {
+  if (!templateBuf) return false;
+  try {
+    const tplZip = await JSZip.loadAsync(templateBuf);
+    const themePath = 'ppt/theme/theme1.xml';
+    if (!tplZip.files[themePath]) return false;
+    const themeXml = await tplZip.files[themePath].async('string');
+    zip.file(themePath, themeXml);
+    console.log('[PPTX Template] Copied theme palette from template master');
+    return true;
+  } catch (e) {
+    console.warn('[PPTX Template] Template theme copy failed:', e.message);
+    return false;
+  }
+}
+
+async function applyProfileThemeToGenerated(zip, profile) {
+  const theme = profile?.theme;
+  const colors = theme?.colors;
+  const themePath = 'ppt/theme/theme1.xml';
+  if (!colors || !zip.files[themePath]) return;
+
+  let themeXml = await zip.files[themePath].async('string');
+  const schemeName = escapeXmlAttr(theme?.name || profile.name || profile.id || 'Client Profile');
+  themeXml = themeXml.replace(/(<a:clrScheme\b[^>]*name=")[^"]*(")/, `$1${schemeName}$2`);
+  themeXml = replaceThemeColorSlot(themeXml, 'dk1', colors.body || colors.heading || '#1D252D');
+  themeXml = replaceThemeColorSlot(themeXml, 'lt1', colors.page || '#FFFFFF');
+  themeXml = replaceThemeColorSlot(themeXml, 'dk2', colors.muted || colors.body || '#515360');
+  themeXml = replaceThemeColorSlot(themeXml, 'lt2', colors.surface || colors.accentSoft || '#FBF8FE');
+  themeXml = replaceThemeColorSlot(themeXml, 'accent1', colors.accent || colors.heading);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent2', colors.accentHover || colors.kicker || colors.danger);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent3', colors.success);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent4', colors.warning);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent5', colors.danger || colors.kicker);
+  themeXml = replaceThemeColorSlot(themeXml, 'accent6', colors.neutral || colors.info || colors.border);
+  themeXml = replaceThemeColorSlot(themeXml, 'hlink', colors.info || colors.accentHover || colors.accent);
+  themeXml = replaceThemeColorSlot(themeXml, 'folHlink', colors.kicker || colors.danger || colors.accentHover);
+  themeXml = patchThemeFonts(themeXml, theme.fonts?.body || theme.fonts?.heading || theme.fonts?.title);
+  zip.file(themePath, themeXml);
+  console.log('[PPTX Template] Applied profile theme palette:', profile.id || theme.name);
+}
 
 /**
  * Inject a `<p:pic>` shape for the logo into slide XML before `</p:spTree>`.
@@ -217,6 +505,120 @@ function injectLogoPic(slideXml, logo, rId) {
   const pic = `<p:pic><p:nvPicPr><p:cNvPr id="9990" name="TemplateLogo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
 
   return slideXml.replace('</p:spTree>', pic + '</p:spTree>');
+}
+
+function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
+  let fixed = String(slideXml || '');
+  const seenIds = new Set();
+  let maxId = 0;
+  let duplicateIds = 0;
+  let nonPositiveExtents = 0;
+
+  fixed = fixed.replace(/(<[A-Za-z0-9]+:cNvPr\b[^>]*\bid=")(\d+)(")/g, (match, prefix, idValue, suffix) => {
+    const id = Number(idValue);
+    if (Number.isFinite(id)) maxId = Math.max(maxId, id);
+    if (!seenIds.has(idValue)) {
+      seenIds.add(idValue);
+      return match;
+    }
+    duplicateIds++;
+    let nextId = maxId + 1;
+    while (seenIds.has(String(nextId))) nextId++;
+    maxId = nextId;
+    seenIds.add(String(nextId));
+    return `${prefix}${nextId}${suffix}`;
+  });
+
+  fixed = fixed.replace(/\b(c[xy])="(-?\d+)"/g, (match, attr, value) => {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && numeric <= 0) {
+      nonPositiveExtents++;
+      return `${attr}="1"`;
+    }
+    return match;
+  });
+
+  if (duplicateIds > 0 || nonPositiveExtents > 0) {
+    console.warn('[PPTX Template] Sanitized %s: duplicateShapeIds=%d nonPositiveExtents=%d',
+      slidePath || 'slide XML', duplicateIds, nonPositiveExtents);
+  }
+
+  return fixed;
+}
+
+async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
+  const slideFiles = Object.keys(zip.files)
+    .filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f))
+    .sort((a, b) => {
+      const na = parseInt(a.match(/slide(\d+)/)[1], 10);
+      const nb = parseInt(b.match(/slide(\d+)/)[1], 10);
+      return na - nb;
+    });
+
+  for (const slidePath of slideFiles) {
+    const xml = await zip.files[slidePath].async('string');
+    const fixed = sanitizeSlideXmlForPowerPoint(xml, slidePath);
+    if (fixed !== xml) zip.file(slidePath, fixed);
+  }
+
+  console.log('[PPTX Template] PowerPoint sanitation complete for %s (%d slide(s))', label, slideFiles.length);
+  return zip;
+}
+
+export async function sanitizePptxBufferForPowerPoint(buffer, label = 'presentation') {
+  const zip = await JSZip.loadAsync(buffer);
+  await sanitizePptxZipForPowerPoint(zip, label);
+  return zip.generateAsync({ type: 'arraybuffer' });
+}
+
+export async function applyProfileChromeToGenerated(generatedBuf, chrome = null, options = {}) {
+  console.log('[PPTX Template] Applying controlled profile chrome. Generated:', generatedBuf.byteLength, 'bytes');
+  const genZip = await JSZip.loadAsync(generatedBuf);
+  const profile = options.profile || (options.profileId ? getClientDesignProfile(options.profileId) : null);
+  await copyTemplateThemeToGenerated(genZip, options.templateData);
+  await applyProfileThemeToGenerated(genZip, profile);
+  const LOGO_RID = 'rId900';
+  const logoConfig = logoMediaConfig(chrome?.logo);
+  const hasLogo = writeLogoMedia(genZip, chrome?.logo, logoConfig.mediaPath);
+
+  const genSlideFiles = Object.keys(genZip.files)
+    .filter(f => f.match(/^ppt\/slides\/slide\d+\.xml$/))
+    .sort((a, b) => {
+      const na = parseInt(a.match(/slide(\d+)/)[1], 10);
+      const nb = parseInt(b.match(/slide(\d+)/)[1], 10);
+      return na - nb;
+    });
+
+  for (const genSlidePath of genSlideFiles) {
+    const slideNum = parseInt(genSlidePath.match(/slide(\d+)/)[1], 10);
+    const genSlideRelsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
+    let slideXml = await genZip.files[genSlidePath].async('string');
+    slideXml = hideMasterShapes(injectSlideBackground(slideXml));
+    if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
+    genZip.file(genSlidePath, slideXml);
+
+    if (!hasLogo) continue;
+    if (genZip.files[genSlideRelsPath]) {
+      const relsXml = await genZip.files[genSlideRelsPath].async('string');
+      genZip.file(genSlideRelsPath, addLogoRelationship(relsXml, LOGO_RID, logoConfig.relTarget));
+    } else {
+      genZip.file(genSlideRelsPath, `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${logoConfig.relTarget}"/>
+</Relationships>`);
+    }
+  }
+
+  const ctPath = '[Content_Types].xml';
+  if (hasLogo && genZip.files[ctPath]) {
+    const contentTypesXml = await genZip.files[ctPath].async('string');
+    genZip.file(ctPath, ensureMediaContentType(contentTypesXml, logoConfig.ext));
+  }
+
+  await sanitizePptxZipForPowerPoint(genZip, 'profile chrome export');
+  const result = await genZip.generateAsync({ type: 'arraybuffer' });
+  console.log('[PPTX Template] Controlled profile chrome complete. Output:', result.byteLength, 'bytes');
+  return result;
 }
 
 /**
@@ -285,11 +687,12 @@ async function pickBestLayout(tplZip) {
  *   6. Update [Content_Types].xml to list our slides
  *   7. Return merged ZIP
  */
-export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome = null) {
+export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome = null, options = {}) {
   console.log('[PPTX Template] Starting merge. Generated:', generatedBuf.byteLength, 'bytes, Template:', templateBuf.byteLength, 'bytes');
 
   const tplZip = await JSZip.loadAsync(templateBuf);
   const genZip = await JSZip.loadAsync(generatedBuf);
+  const preserveTemplateChrome = options.preserveTemplateChrome === true;
 
   // ── Step 1: Remove template's existing slides + notesSlides ────────────
   const tplSlideFiles = Object.keys(tplZip.files).filter(
@@ -315,12 +718,27 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   const targetLayoutNum = await pickBestLayout(tplZip);
   console.log('[PPTX Template] Using slideLayout' + targetLayoutNum);
 
+  const targetLayoutPath = `ppt/slideLayouts/slideLayout${targetLayoutNum}.xml`;
+  const targetLayoutRelsPath = `ppt/slideLayouts/_rels/slideLayout${targetLayoutNum}.xml.rels`;
+  if (!preserveTemplateChrome && tplZip.files[targetLayoutPath]) {
+    const layoutXml = await tplZip.files[targetLayoutPath].async('string');
+    tplZip.file(targetLayoutPath, stripLayoutChrome(layoutXml));
+    console.log('[PPTX Template] Stripped visible chrome from slideLayout' + targetLayoutNum);
+  }
+  if (!preserveTemplateChrome && tplZip.files[targetLayoutRelsPath]) {
+    const layoutRelsXml = await tplZip.files[targetLayoutRelsPath].async('string');
+    tplZip.file(targetLayoutRelsPath, stripUnusedLayoutChromeRelationships(layoutRelsXml));
+  }
+
   // ── Step 4a: Write logo media file if chrome provides one ───────────────
   const LOGO_RID = 'rId900';
-  const LOGO_MEDIA = 'ppt/media/logo_chrome.png';
+  const logoMediaExt = String(chrome?.logo?.mediaPath || '').split('.').pop()?.toLowerCase() || 'png';
+  const safeLogoExt = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'emf', 'wmf'].includes(logoMediaExt) ? logoMediaExt : 'png';
+  const LOGO_MEDIA = `ppt/media/logo_chrome.${safeLogoExt}`;
+  const LOGO_TARGET = `../media/logo_chrome.${safeLogoExt}`;
   let hasLogo = false;
 
-  if (chrome?.logo?.image) {
+  if (!preserveTemplateChrome && chrome?.logo?.image) {
     try {
       const dataUri = chrome.logo.image;
       const base64 = dataUri.split(',')[1];
@@ -343,7 +761,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
     if (genZip.files[genSlidePath]) {
       let slideXml = await genZip.files[genSlidePath].async('string');
-      // slideXml = hideMasterShapes(slideXml);
+      if (!preserveTemplateChrome) slideXml = hideMasterShapes(slideXml);
       slideXml = injectSlideBackground(slideXml);
       if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
       tplZip.file(genSlidePath, slideXml);
@@ -364,7 +782,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
       if (hasLogo) {
         genRelsXml = genRelsXml.replace(
           '</Relationships>',
-          `<Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo_chrome.png"/></Relationships>`
+          `<Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${LOGO_TARGET}"/></Relationships>`
         );
       }
       tplZip.file(genSlideRelsPath, genRelsXml);
@@ -373,7 +791,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${targetLayoutNum}.xml"/>`;
       if (hasLogo) {
-        slideRel += `\n  <Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="../media/logo_chrome.png"/>`;
+        slideRel += `\n  <Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${LOGO_TARGET}"/>`;
       }
       slideRel += '\n</Relationships>';
       tplZip.file(genSlideRelsPath, slideRel);
@@ -466,6 +884,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   }
 
   // ── Done: produce final arraybuffer ─────────────────────────────────────
+  await sanitizePptxZipForPowerPoint(tplZip, 'template merge export');
   const result = await tplZip.generateAsync({ type: 'arraybuffer' });
   console.log('[PPTX Template] Merge complete. Output:', result.byteLength, 'bytes');
   return result;

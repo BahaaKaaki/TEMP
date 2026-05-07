@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { SLIDE_TEMPLATES, getTemplatesByCategory, getEmptySlideTemplates } from '../utils/slideTemplates';
 import { generateEmptySlideHTML } from '../utils/slideMasters';
 import { extractRelevantCSS } from '../services/aiService';
 import { unscopeCSS } from '../utils/cssScoping';
+import { themeToCSS } from '../utils/themeUtils';
+import { normalizeFlexProseInSlideMount } from '../utils/slideDomNormalize';
 import SlideValidationModal from './SlideValidationModal';
 import TemplatePicker from './TemplatePicker';
 
@@ -586,7 +588,7 @@ export default function SlideList() {
 
                     {/* Slide thumbnail with number overlay */}
                     <div className="slide-item-thumbnail">
-                      <SlideThumbnail html={slide.html} customCSS={slide.customCSS} slideId={slide.id} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id || index}-${slide.updatedAt || ''}`} />
+                      <SlideThumbnail html={slide.html} customCSS={slide.customCSS} slideId={slide.id} theme={state.theme} darkMode={state.darkMode} sectionLabel={slide.sectionLabel} key={`thumb-${slide.id || index}-${slide.updatedAt || ''}`} />
                       <span className="slide-number-badge">{index + 1}</span>
                       {/* Comment indicator badge -- hidden, functionality preserved */}
                       {false && (slide.comments || []).filter(c => !c.addressed).length > 0 && (
@@ -661,7 +663,7 @@ export default function SlideList() {
           }}
         >
           <div className="hover-preview-content">
-            <SlideHoverPreview html={hoveredSlide.html} customCSS={hoveredSlide.customCSS} slideId={hoveredSlide.id} darkMode={state.darkMode} sectionLabel={hoveredSlide.sectionLabel} />
+            <SlideHoverPreview html={hoveredSlide.html} customCSS={hoveredSlide.customCSS} slideId={hoveredSlide.id} theme={state.theme} darkMode={state.darkMode} sectionLabel={hoveredSlide.sectionLabel} />
           </div>
           <div className="hover-preview-title">{hoveredSlide.title}</div>
         </div>
@@ -706,8 +708,9 @@ function injectSectionAttribute(html, sectionLabel) {
 }
 
 // Mini thumbnail component -- dynamically scales 960x540 slide to fit container
-function SlideThumbnail({ html, customCSS, slideId, darkMode = false, sectionLabel }) {
+function SlideThumbnail({ html, customCSS, slideId, theme, darkMode = false, sectionLabel }) {
   const wrapperRef = useRef(null);
+  const mountRef = useRef(null);
   const [scale, setScale] = useState(0.13);
 
   useEffect(() => {
@@ -731,32 +734,55 @@ function SlideThumbnail({ html, customCSS, slideId, darkMode = false, sectionLab
   if (slideId && previewHtml && !previewHtml.includes('data-slide-id')) {
     previewHtml = previewHtml.replace(/class="slide([^"]*)"/, `class="slide$1" data-slide-id="${slideId}"`);
   }
-  const cssTag = customCSS ? `<style>${customCSS}</style>` : '';
+  const themeCSS = theme ? themeToCSS(theme) : '';
+  const cssTag = `<style>${themeCSS}${customCSS ? `\n${customCSS}` : ''}</style>`;
+  const fullPreview = `${cssTag}${previewHtml}`;
+
+  useLayoutEffect(() => {
+    if (!mountRef.current) return;
+    requestAnimationFrame(() => {
+      if (mountRef.current) normalizeFlexProseInSlideMount(mountRef.current);
+    });
+  }, [previewHtml, customCSS, theme, slideId, darkMode, sectionLabel]);
+
   return (
     <div className="thumbnail-wrapper" ref={wrapperRef}>
       <div
+        ref={mountRef}
         className="thumbnail-slide"
         style={{ transform: `scale(${scale})` }}
-        dangerouslySetInnerHTML={{ __html: cssTag + previewHtml }}
+        dangerouslySetInnerHTML={{ __html: fullPreview }}
       />
     </div>
   );
 }
 
 // Larger hover preview component
-function SlideHoverPreview({ html, customCSS, slideId, darkMode = false, sectionLabel }) {
+function SlideHoverPreview({ html, customCSS, slideId, theme, darkMode = false, sectionLabel }) {
+  const hoverMountRef = useRef(null);
   let previewHtml = injectDarkModeAttribute(html, darkMode);
   previewHtml = injectSectionAttribute(previewHtml, sectionLabel);
   if (slideId && previewHtml && !previewHtml.includes('data-slide-id')) {
     previewHtml = previewHtml.replace(/class="slide([^"]*)"/, `class="slide$1" data-slide-id="${slideId}"`);
   }
-  const cssTag = customCSS ? `<style>${customCSS}</style>` : '';
+  const themeCSS = theme ? themeToCSS(theme) : '';
+  const cssTag = `<style>${themeCSS}${customCSS ? `\n${customCSS}` : ''}</style>`;
+  const fullHover = `${cssTag}${previewHtml}`;
+
+  useLayoutEffect(() => {
+    if (!hoverMountRef.current) return;
+    requestAnimationFrame(() => {
+      if (hoverMountRef.current) normalizeFlexProseInSlideMount(hoverMountRef.current);
+    });
+  }, [previewHtml, customCSS, theme, slideId, darkMode, sectionLabel]);
+
   return (
     <div className="hover-slide-wrapper">
       <style>{getPreviewCSS()}</style>
       <div
+        ref={hoverMountRef}
         className="hover-slide-content"
-        dangerouslySetInnerHTML={{ __html: cssTag + previewHtml }}
+        dangerouslySetInnerHTML={{ __html: fullHover }}
       />
     </div>
   );

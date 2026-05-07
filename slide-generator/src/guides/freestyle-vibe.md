@@ -44,7 +44,7 @@ Choose layout based on content type. Think like a consultant, things should read
 
 - Walls of text -- if you need more than 4-5 bullet points, split into two slides.
 - Decorative clutter -- no gratuitous borders, shadows, or ornamental shapes.
-- Fonts below the typography contract -- body text stays 12px, section/pillar titles stay 14px, and no visible text goes below 10px.
+- Fonts below the typography contract -- body text stays 12px, section/pillar titles stay 14px, normal text stays at least 10px, and compact tags/trackers stay at least 8px.
 - Competing focal points -- one accent element, one key number, one headline per slide.
 
 ## Important:

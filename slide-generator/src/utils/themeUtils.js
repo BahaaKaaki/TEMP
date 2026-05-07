@@ -49,6 +49,12 @@ const COLOR_TOKEN_MAP = {
   warningSoft: '--warning-soft',
   danger: '--danger',
   dangerSoft: '--danger-soft',
+  info: '--info',
+  infoSoft: '--info-soft',
+  neutral: '--neutral',
+  kicker: '--kicker',
+  coverDark: '--cover-dark',
+  surfaceLilac: '--surface-lilac',
 };
 
 const FONT_TOKEN_MAP = {
@@ -97,6 +103,14 @@ export function themeToCSS(theme) {
     for (const [key, token] of Object.entries(FONT_TOKEN_MAP)) {
       const value = theme.fonts[key];
       if (value) lines.push(`  ${token}: ${value};`);
+    }
+  }
+
+  if (theme.layout?.cssVars) {
+    for (const [token, value] of Object.entries(theme.layout.cssVars)) {
+      if (token && value !== undefined && value !== null && value !== '') {
+        lines.push(`  ${token}: ${value};`);
+      }
     }
   }
 

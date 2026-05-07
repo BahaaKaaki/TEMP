@@ -19,6 +19,7 @@
 
 import { generateSlides, improveSlide, generateStoryline, agentChat, fillTemplateWithAI, fillTemplatesBulkWithAI, aiRouteRequest, extractTitleFromHTML, researchWithSearch, reEvaluateTemplateForData, generateImageSlide, extractImageDataUri, detectSlideLayout } from './aiService';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
+import { getClientProfileFooterBranding } from '../utils/clientDesignProfiles';
 import { ragRetrieve, formatRAGContext } from './knowledgeBaseRAG';
 
 /**
@@ -464,6 +465,7 @@ Return JSON:
             const step = routeResult.plan[0];
             templateId = step.templateId;
             const stepInstruction = enrichedInstruction;
+            const stepSources = Array.isArray(step.sources) ? step.sources : [];
 
             // If step needs search, inject search tool into settings — one call that searches + generates
             let stepSettings = settings;
@@ -515,12 +517,13 @@ Return JSON:
                 const imageResult = await generateImageSlide(generationInstruction, settings, imageMode, {
                   layoutGuidance: effectiveLayoutGuidance,
                   vibe: state.imageVibe,
-                  footerBranding: settings.footerBranding || 'Strategy&',
+                  footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                   slideNumber: state.slides.length + 1,
                 });
                 if (imageResult?.html) {
                   newSlide = {
                     ...imageResult,
+                    ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                     ...(sectionLabel ? { sectionLabel } : {}),
                     ...(subSectionLabel ? { subSectionLabel } : {}),
                   };
@@ -546,6 +549,7 @@ Return JSON:
                       html: filledHtml,
                       type: templateId,
                       templateId: templateId,
+                      ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                       ...(sectionLabel ? { sectionLabel } : {}),
                       ...(subSectionLabel ? { subSectionLabel } : {}),
                     };
@@ -568,6 +572,7 @@ Return JSON:
               if (result?.length > 0) {
                 newSlide = {
                   ...result[0],
+                  ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                   ...(sectionLabel ? { sectionLabel } : {}),
                   ...(subSectionLabel ? { subSectionLabel } : {}),
 
@@ -756,6 +761,7 @@ Return JSON:
             if (routeResult?.plan?.length > 0) {
               const step = routeResult.plan[0];
               let templateId = step.templateId;
+              const stepSources = Array.isArray(step.sources) ? step.sources : [];
               // Always use the original enriched instruction (not the router's possibly-condensed version).
               // The router is only consulted for template selection, search queries, and layout guidance.
               const stepInstruction = enrichedInstruction;
@@ -793,13 +799,14 @@ Return JSON:
                   const imageResult = await generateImageSlide(genInstruction, settings, imageMode, {
                     layoutGuidance: effectiveLayoutGuidance,
                     vibe: state.imageVibe,
-                    footerBranding: settings.footerBranding || 'Strategy&',
+                    footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                     slideNumber: state.slides.length + i + 1,
                   });
                   if (imageResult?.html) {
                     newSlide = {
                       ...imageResult,
                       id: `slide-${Date.now()}-${i}`,
+                      ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                       ...(spec.sectionLabel ? { sectionLabel: spec.sectionLabel } : {}),
                       ...(spec.subSectionLabel ? { subSectionLabel: spec.subSectionLabel } : {}),
                     };
@@ -824,6 +831,7 @@ Return JSON:
                         html: filledHtml,
                         type: templateId,
                         templateId,
+                        ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                         ...(spec.sectionLabel ? { sectionLabel: spec.sectionLabel } : {}),
                         ...(spec.subSectionLabel ? { subSectionLabel: spec.subSectionLabel } : {}),
 
@@ -851,6 +859,7 @@ Return JSON:
                 if (genResult?.length > 0 && genResult[0]?.html) {
                   newSlide = {
                     ...genResult[0],
+                    ...(stepSources.length > 0 ? { sources: stepSources } : {}),
                     ...(spec.sectionLabel ? { sectionLabel: spec.sectionLabel } : {}),
                     ...(spec.subSectionLabel ? { subSectionLabel: spec.subSectionLabel } : {}),
 
@@ -1042,6 +1051,7 @@ Return JSON:
         // Batch size is controlled by settings.slideCreationBatchSize (default 3).
         // Batches are processed sequentially; freestyle slides fall back to individual calls.
         const results = [];
+        const stepOutputs = {};
         let lastInsertedIndex = -1;
         const creationBatchSize = settings.slideCreationBatchSize || 3;
 
@@ -1049,6 +1059,46 @@ Return JSON:
         const groups = routeResult.groups && routeResult.groups.length > 0
           ? routeResult.groups
           : [planSteps.map((_, i) => i)]; // Default: all steps in one group
+
+        const normalizeStepDependencyIndex = (step) => {
+          if (step?.contextFromStep === null || step?.contextFromStep === undefined) return null;
+          const dependency = Number(step.contextFromStep);
+          return Number.isInteger(dependency) ? dependency : NaN;
+        };
+        const dependencyIssues = [];
+        for (let idx = 0; idx < planSteps.length; idx++) {
+          const dependency = normalizeStepDependencyIndex(planSteps[idx]);
+          if (dependency === null) continue;
+          if (!Number.isInteger(dependency)) {
+            dependencyIssues.push(`Step ${idx} has an invalid contextFromStep value: ${planSteps[idx].contextFromStep}`);
+          } else if (dependency < 0 || dependency >= planSteps.length) {
+            dependencyIssues.push(`Step ${idx} depends on missing step ${dependency}`);
+          } else if (dependency >= idx) {
+            dependencyIssues.push(`Step ${idx} depends on step ${dependency}, which has not run yet`);
+          } else {
+            planSteps[idx].contextFromStep = dependency;
+          }
+        }
+        if (dependencyIssues.length > 0) {
+          throw new Error(`Router plan has invalid step dependencies:\n${dependencyIssues.join('\n')}`);
+        }
+
+        const cleanSlideCSSForAI = (customCSS = '') =>
+          String(customCSS || '').replace(/\[data-slide-id="[^"]*"\]\s*/g, '');
+
+        const appendContextFromStep = (instruction, step) => {
+          const dependency = normalizeStepDependencyIndex(step);
+          if (dependency === null) return instruction;
+          const prevOutput = stepOutputs[dependency];
+          if (!prevOutput) {
+            throw new Error(`Step depends on previous step ${dependency}, but that step did not produce reusable output.`);
+          }
+          let previousContext = prevOutput.html || '';
+          if (prevOutput.customCSS) {
+            previousContext = `<style>\n${cleanSlideCSSForAI(prevOutput.customCSS)}\n</style>\n${previousContext}`;
+          }
+          return `${instruction}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${dependency}) - "${prevOutput.title || 'Untitled'}":\n${previousContext}]\n\nIf this slide extends or compares the same entities as the referenced slide, reuse the same entity names, labels, ordering, and visual structure unless the instruction explicitly says to change them.`;
+        };
 
         // Helper: prepare a step's instruction (enrichment, vibe, search hint)
         // Returns { instruction, stepSettings } — stepSettings has _extraTools when search is needed
@@ -1078,7 +1128,7 @@ Return JSON:
 
           // Fallback for cover or unmapped steps
           if (stepInstruction.length < 50) {
-            const specIdx = (step.contextFromStep != null) ? step.contextFromStep - 1 : stepIdx;
+            const specIdx = stepIdx;
             const fallbackSpec = slideSpecs[specIdx] || slideSpecs[stepIdx];
             if (fallbackSpec?.instruction) stepInstruction = fallbackSpec.instruction;
             if (!specLayoutGuidance && fallbackSpec?.layoutGuidance) specLayoutGuidance = fallbackSpec.layoutGuidance;
@@ -1099,6 +1149,7 @@ Return JSON:
             stepInstruction = `${stepInstruction}\n\n[SEARCH THE WEB for: "${step.searchQuery}" — use real data, numbers, and facts from your search results. Be executive, not wordy.]`;
             console.log(`[build_presentation] Step ${stepIdx + 1}: inline search for "${step.searchQuery.substring(0, 80)}"`);
           }
+          stepInstruction = appendContextFromStep(stepInstruction, step);
           return { instruction: stepInstruction, stepSettings, layoutGuidance };
         };
 
@@ -1137,8 +1188,18 @@ Return JSON:
 
         for (const group of groups) {
           // Split group into sub-batches of creationBatchSize
-          for (let batchStart = 0; batchStart < group.length; batchStart += creationBatchSize) {
-            const batchIndices = group.slice(batchStart, batchStart + creationBatchSize);
+          for (let batchStart = 0; batchStart < group.length;) {
+            const batchIndices = [];
+            for (let cursor = batchStart; cursor < group.length && batchIndices.length < creationBatchSize; cursor++) {
+              const stepIdx = group[cursor];
+              const dependency = normalizeStepDependencyIndex(planSteps[stepIdx]);
+              if (dependency !== null && batchIndices.includes(dependency) && batchIndices.length > 0) {
+                break;
+              }
+              batchIndices.push(stepIdx);
+            }
+            if (batchIndices.length === 0) batchIndices.push(group[batchStart]);
+            batchStart += batchIndices.length;
 
             // Phase 1: Prepare all steps in this batch (instructions, template resolution)
             const prepared = [];
@@ -1213,7 +1274,7 @@ Return JSON:
                   const imageResult = await generateImageSlide(p.instruction, settings, imageMode, {
                     layoutGuidance: p.layoutGuidance || null,
                     vibe: state.imageVibe,
-                    footerBranding: settings.footerBranding || 'Strategy&',
+                    footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                     slideNumber: state.slides.length + p.stepIdx + 1,
                   });
                   imageResults.push({ ...p, html: imageResult?.html || null, genData: imageResult });
@@ -1296,6 +1357,7 @@ Return JSON:
                     html: r.html,
                     type: r.finalTemplateId,
                     templateId: r.finalTemplateId,
+                    ...(Array.isArray(r.step.sources) && r.step.sources.length > 0 ? { sources: r.step.sources } : {}),
                     ...(r.step.sectionTracker ? { sectionLabel: r.step.sectionTracker } : {}),
                     ...(r.step.subSectionTracker ? { subSectionLabel: r.step.subSectionTracker } : {}),
                   };
@@ -1304,6 +1366,7 @@ Return JSON:
                   newSlide = {
                     ...(r.genData || {}),
                     html: r.html,
+                    ...(Array.isArray(r.step.sources) && r.step.sources.length > 0 ? { sources: r.step.sources } : {}),
                     ...(r.step.sectionTracker ? { sectionLabel: r.step.sectionTracker } : {}),
                     ...(r.step.subSectionTracker ? { subSectionLabel: r.step.subSectionTracker } : {}),
                   };
@@ -1317,6 +1380,7 @@ Return JSON:
                   if (genResult?.[0]?.html) {
                     newSlide = {
                       ...genResult[0],
+                      ...(Array.isArray(r.step.sources) && r.step.sources.length > 0 ? { sources: r.step.sources } : {}),
                       ...(r.step.sectionTracker ? { sectionLabel: r.step.sectionTracker } : {}),
                       ...(r.step.subSectionTracker ? { subSectionLabel: r.step.subSectionTracker } : {}),
                     };
@@ -1326,6 +1390,12 @@ Return JSON:
 
               if (newSlide?.html) {
                 insertSlide(newSlide, r.step);
+                stepOutputs[r.stepIdx] = {
+                  html: newSlide.html,
+                  customCSS: newSlide.customCSS,
+                  title: newSlide.title,
+                  slideId: newSlide.id,
+                };
                 results.push({
                   success: true,
                   index: r.stepIdx,
@@ -1417,7 +1487,7 @@ Return JSON:
             const imageResult = await generateImageSlide(instruction, settings, imageMode, {
               layoutGuidance: instruction,
               vibe: state.imageVibe,
-              footerBranding: settings.footerBranding || 'Strategy&',
+              footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
               slideNumber: slideIndex + 1,
               totalSlides: state.slides.length,
               existingImageDataUri: existingImage,

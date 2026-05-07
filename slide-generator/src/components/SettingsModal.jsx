@@ -1,12 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { DEFAULT_SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT, PROMPT_OVERRIDE_DEFS, getLastPromptPayloads, setApiMaxConcurrent } from '../services/aiService';
-import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, FREESTYLE_PRESETS } from '../services/ai/freestylePromptBuilder.js';
+import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, FREESTYLE_PRESETS } from '../services/ai/freestylePromptBuilder.js';
 import { getRouterSystemPrompt, TRIAGE_SYSTEM_PROMPT } from '../services/ai/router.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
 import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorage, downloadArrayBuffer } from '../services/pptxTemplateService';
 import { extractBranding } from '../services/brandingExtractor';
 import { authFetch } from '../services/authFetch.js';
+import {
+  CLIENT_DESIGN_PROFILE_OPTIONS,
+  buildClientLayoutContractBlock,
+  buildClientValidationBlock,
+  getClientDesignProfile,
+} from '../utils/clientDesignProfiles.js';
 
 // ─── Utility helpers ────────────────────────────────────────────────────────
 function stripProviderPrefix(model) {
@@ -465,13 +471,15 @@ export default function SettingsModal({ onClose }) {
   }, []);
 
   useEffect(() => {
-    loadTemplateFromStorage().then(data => {
+    loadTemplateFromStorage({ profileId: settings.clientDesignProfileId || 'strategy' }).then(data => {
       if (data?.fileName) setPptxTemplateName(data.fileName);
+      else setPptxTemplateName(null);
     }).catch(() => {});
-  }, []);
+  }, [settings.clientDesignProfileId]);
 
   const providers = settings.providers || [];
   const roleSettings = settings.roleSettings || {};
+  const activeClientProfile = getClientDesignProfile(settings.clientDesignProfileId || 'strategy');
 
   // ─── Provider helpers ───────────────────────────────────────────────────────
   const updateProvider = (id, updates) => {
@@ -607,9 +615,12 @@ export default function SettingsModal({ onClose }) {
     setPptxTemplateLoading(true);
     try {
       const buffer = await file.arrayBuffer();
-      const result = await extractBranding(buffer);
+      const result = await extractBranding(buffer, { profileId: settings.clientDesignProfileId || 'strategy' });
       const chrome = result?.chrome || null;
-      await saveTemplateToStorage(buffer, file.name, chrome);
+      await saveTemplateToStorage(buffer, file.name, chrome, {
+        profileId: settings.clientDesignProfileId || 'strategy',
+        extraction: result,
+      });
       setPptxTemplateName(file.name);
 
       if (result) {
@@ -619,7 +630,7 @@ export default function SettingsModal({ onClose }) {
     finally { setPptxTemplateLoading(false); }
   };
   const handleTemplateClear = async () => {
-    await clearTemplateFromStorage();
+    await clearTemplateFromStorage({ profileId: settings.clientDesignProfileId || 'strategy' });
     setPptxTemplateName(null);
     setExtractedBranding(null);
   };
@@ -632,6 +643,89 @@ export default function SettingsModal({ onClose }) {
       setSettings(s => ({ ...s, footerBranding: extractedBranding.chrome.footerText }));
     }
     setExtractedBranding(null);
+  };
+  const handleClientProfileChange = (profileId) => {
+    const profile = getClientDesignProfile(profileId);
+    setSettings(s => ({
+      ...s,
+      clientDesignProfileId: profile.id,
+      clientProfileVersion: profile.status || String(profile.schemaVersion || ''),
+      footerBranding: Object.prototype.hasOwnProperty.call(profile, 'footerBranding')
+        ? (profile.footerBranding ?? '')
+        : s.footerBranding,
+    }));
+  };
+
+  const renderClientDesignProfile = (compact = false) => {
+    const selectedProfileId = settings.clientDesignProfileId || 'strategy';
+    const selectedProfile = getClientDesignProfile(selectedProfileId);
+    const swatches = Object.values(selectedProfile.theme?.colors || {}).slice(0, compact ? 6 : 8);
+    const layoutBlock = buildClientLayoutContractBlock(selectedProfile);
+    const validationBlock = buildClientValidationBlock(selectedProfile);
+
+    return (
+      <div style={{ padding: compact ? 14 : 20, background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+        <div style={{ fontSize: compact ? 12 : 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Client Design Profile</div>
+        <div style={{ fontSize: compact ? 10 : 12, color: 'var(--meta, #888)', marginBottom: 12 }}>
+          Selecting a profile is enough to test it: colors, fonts, canvas positions, prompt sections, footer branding, and PPTX export defaults are applied automatically. PPTX upload is optional for a specific master.
+        </div>
+        <div className="form-group" style={{ marginBottom: 10 }}>
+          <select
+            value={selectedProfileId}
+            onChange={(e) => handleClientProfileChange(e.target.value)}
+            style={{ width: '100%', fontSize: compact ? 12 : undefined }}
+          >
+            {CLIENT_DESIGN_PROFILE_OPTIONS.map(profile => (
+              <option key={profile.id} value={profile.id}>{profile.name}</option>
+            ))}
+          </select>
+        </div>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+          {swatches.map((color, index) => (
+            <div key={`${color}-${index}`} style={{ width: 18, height: 18, borderRadius: 4, background: color, border: '1px solid var(--border)' }} />
+          ))}
+        </div>
+        <div style={{ fontSize: compact ? 10 : 11, color: 'var(--meta, #888)', lineHeight: 1.4 }}>
+          {selectedProfile.description}
+        </div>
+        {!compact && (
+          <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
+            <div style={{ padding: 10, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--page, #fff)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Profile assets</div>
+              <div style={{ fontSize: 10, color: 'var(--meta)', lineHeight: 1.5 }}>
+                Version: {selectedProfile.status || 'default'}<br />
+                Default variant: {selectedProfile.theme?.defaultVariant || 'default'}<br />
+                Template slot: {selectedProfile.pptxMaster?.templateId || 'default'}<br />
+                Template storage: {selectedProfile.pptxMaster?.mode || 'user-uploaded'}<br />
+                Footer/source: {selectedProfile.footerBranding || settings.footerBranding || 'blank by default'}
+              </div>
+            </div>
+            <div style={{ padding: 10, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--page, #fff)' }}>
+              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Demo readiness</div>
+              <div style={{ fontSize: 10, color: 'var(--meta)', lineHeight: 1.5 }}>
+                {selectedProfile.validationRules?.requiredColors?.length
+                  ? `Checks: ${selectedProfile.validationRules.requiredColors.join(', ')}`
+                  : 'Default Strategy& checks'}
+                <br />
+                Layout: {selectedProfile.layoutContract?.standardContent ? 'title/body/footer bands active' : 'default shell'}
+                <br />
+                {selectedProfile.evidence?.generationTest
+                  ? `Generation test: ${selectedProfile.evidence.generationTest.verdict}`
+                  : 'No client-specific test artifact'}
+              </div>
+            </div>
+            {(layoutBlock || validationBlock) && (
+              <details style={{ gridColumn: '1 / -1', fontSize: 10, color: 'var(--meta)' }}>
+                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Profile contract details</summary>
+                <pre style={{ whiteSpace: 'pre-wrap', margin: '8px 0 0', fontFamily: 'monospace', fontSize: 10 }}>
+                  {[layoutBlock, validationBlock].filter(Boolean).join('\n\n')}
+                </pre>
+              </details>
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   // ─── Role helpers ──────────────────────────────────────────────────────────
@@ -676,6 +770,89 @@ export default function SettingsModal({ onClose }) {
 
   // ─── Toggle helper for collapsible sections ───────────────────────────────
   const toggle = (key) => setExpandedAdvanced(s => ({ ...s, [key]: !s[key] }));
+
+  const renderPreferenceSegment = ({ label, description, value, options, onChange }) => (
+    <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8 }}>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
+          <div style={{ fontSize: 11, color: 'var(--meta, #888)', lineHeight: 1.35, marginTop: 2 }}>{description}</div>
+        </div>
+      </div>
+      <div role="radiogroup" aria-label={label} style={{ display: 'grid', gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))`, gap: 8 }}>
+        {options.map(option => {
+          const selected = value === option.value;
+          return (
+            <button
+              key={option.value}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => onChange(option.value)}
+              style={{
+                padding: '11px 12px',
+                borderRadius: 8,
+                border: selected ? '2px solid var(--accent, #8E1E1E)' : '1px solid var(--border, #e2e8f0)',
+                background: selected ? 'var(--accent-soft, #fdf6f6)' : 'var(--page, #fff)',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                textAlign: 'left',
+                boxShadow: selected ? '0 6px 18px rgba(142, 30, 30, 0.08)' : 'none',
+                transition: 'border-color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                <span style={{ fontSize: 13, fontWeight: 700 }}>{option.label}</span>
+                {option.badge && (
+                  <span style={{
+                    fontSize: 9,
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: 0.3,
+                    color: selected ? 'var(--accent, #8E1E1E)' : 'var(--text-muted, #94a3b8)',
+                  }}>
+                    {option.badge}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: 10.5, color: 'var(--meta, #888)', lineHeight: 1.35, marginTop: 4 }}>{option.description}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const renderGenerationDefaults = () => (
+    <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4, color: 'var(--text-primary)' }}>Generation Defaults</div>
+      <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 16 }}>
+        These defaults apply to new chat requests.
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {renderPreferenceSegment({
+          label: 'Slide approach',
+          description: 'Choose how Edwin decides between template-led and freeform consulting layouts.',
+          value: settings.slideStylePreference || 'freestyle',
+          options: [
+            { value: 'auto', label: 'Auto', badge: 'Balanced', description: 'Let the planner choose the best layout for each request.' },
+            { value: 'freestyle', label: 'Freestyle', badge: 'Default', description: 'Favor custom HTML slides with sharper visual storytelling.' },
+          ],
+          onChange: (slideStylePreference) => setSettings({ ...settings, slideStylePreference }),
+        })}
+        {renderPreferenceSegment({
+          label: 'Generation quality',
+          description: 'Pick the default model tier used for creating or editing slides.',
+          value: settings.speedMode || 'premium',
+          options: [
+            { value: 'fast', label: 'Fast', description: 'Quicker drafts when speed matters more than polish.' },
+            { value: 'premium', label: 'Premium', badge: 'Recommended', description: 'Higher-quality slide writing, layout, and reasoning.' },
+          ],
+          onChange: (speedMode) => setSettings({ ...settings, speedMode }),
+        })}
+      </div>
+    </div>
+  );
 
   // ═══════════════════════════════════════════════════════════════════════════
   // ─── SECTION 1: Providers ──────────────────────────────────────────────
@@ -977,6 +1154,10 @@ export default function SettingsModal({ onClose }) {
                 <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                   <label style={{ fontSize: 11 }}>Model</label>
                   <input type="text" value={settings.searchModel || ''} onChange={(e) => setSettings({ ...settings, searchModel: e.target.value })} placeholder="openai.gpt-5.4" style={{ fontSize: 12 }} />
+                </div>
+                <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
+                  <label style={{ fontSize: 11 }}>Evidence Model</label>
+                  <input type="text" value={settings.evidenceSearchModel || settings.stepSearchModel || ''} onChange={(e) => setSettings({ ...settings, evidenceSearchModel: e.target.value })} placeholder="openai.gpt-5.5" style={{ fontSize: 12 }} />
                 </div>
                 <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
                   <label style={{ fontSize: 11 }}>API Key</label>
@@ -1320,7 +1501,7 @@ export default function SettingsModal({ onClose }) {
 
         <div className="form-group">
           <label>Footer / Branding</label>
-          <input type="text" value={settings.footerBranding || 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Strategy&" />
+          <input type="text" value={settings.footerBranding ?? 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Source (optional)" />
           <div style={hint}>Shown in the footer of every slide.</div>
         </div>
 
@@ -1357,15 +1538,15 @@ export default function SettingsModal({ onClose }) {
             {pptxTemplateName && (
             <div style={{ marginBottom: 16 }}>
               <label style={labelSmall}>Base Template</label>
-              <div style={{ ...hint, marginBottom: 8 }}>PowerPoint template used for slide masters, theme, and fonts.</div>
+              <div style={{ ...hint, marginBottom: 8 }}>PowerPoint template used for slide masters, theme, and fonts for the active {activeClientProfile.name} profile.</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--zone1)', borderRadius: 6, border: '1px solid var(--border)' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
-                  <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active</div>
+                  <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active for {activeClientProfile.name}</div>
                 </div>
                 <button
                   onClick={async () => {
-                    const data = await loadTemplateFromStorage();
+                    const data = await loadTemplateFromStorage({ profileId: settings.clientDesignProfileId || 'strategy' });
                     if (data?.data) downloadArrayBuffer(data.data, data.fileName || 'template.pptx');
                   }}
                   title="Download template"
@@ -1514,7 +1695,7 @@ export default function SettingsModal({ onClose }) {
     const promptOverrideDefaults = {
       'router.system': getRouterSystemPrompt(),
       'triage.system': TRIAGE_SYSTEM_PROMPT,
-      'slideGen.freestyleSystem': `${DEFAULT_SHELL}\n\n${DEFAULT_THEME}\n\n${DEFAULT_VIBE}\n\n${DEFAULT_WRITING}`,
+      'slideGen.freestyleSystem': DEFAULT_SLIDE_HTML_GENERATOR_PROMPT,
       'slideGen.freestyleUser': '',
       'slideGen.templateSystem': DEFAULT_SYSTEM_PROMPT,
       'slideGen.templateUser': '',
@@ -1696,6 +1877,10 @@ export default function SettingsModal({ onClose }) {
 
   const renderEssential = () => (
     <>
+      {renderGenerationDefaults()}
+
+      <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
       {renderProviders()}
 
       <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
@@ -1709,6 +1894,7 @@ export default function SettingsModal({ onClose }) {
           { key: 'classifierModel', label: 'Classifier',      desc: 'Tier 1 quick intent classification',                  role: 'fast' },
           { key: 'routerModel',     label: 'Router',          desc: 'Tier 2 full planner for multi-slide requests',        role: 'chat' },
           { key: 'searchModel',     label: 'Search',          desc: 'Web search queries and result synthesis',              role: 'chat' },
+          { key: 'evidenceSearchModel', label: 'Evidence',    desc: 'Per-slide factual search enrichment',                  role: 'chat' },
           { key: 'pptxModel',       label: 'PPTX Export',     desc: 'Converts slides to PowerPoint code',                   role: 'chat' },
           { key: 'reportModel',     label: 'Report',          desc: 'Generates interactive HTML/JSON reports',              role: 'chat' },
           { key: 'imageModel',      label: 'Image',           desc: 'AI image generation',                                 role: 'image' },
@@ -1768,19 +1954,23 @@ export default function SettingsModal({ onClose }) {
       <div style={{ display: 'flex', gap: 12, marginBottom: 12 }}>
         <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
           <label style={{ fontSize: 12 }}>Footer Branding</label>
-          <input type="text" value={settings.footerBranding || 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Strategy&" style={{ fontSize: 12 }} />
+          <input type="text" value={settings.footerBranding ?? 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Source (optional)" style={{ fontSize: 12 }} />
         </div>
         <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
           <label style={{ fontSize: 12 }}>Manager Name</label>
           <input type="text" value={settings.agentManagerName || 'Edwin'} onChange={(e) => setSettings({ ...settings, agentManagerName: e.target.value.trim() || 'Edwin' })} placeholder="Edwin" style={{ fontSize: 12 }} />
         </div>
       </div>
+
+      {renderClientDesignProfile(true)}
     </>
   );
 
   // ─── Simplified settings for non-debug users ──────────────────────────────
   const renderSimplifiedSettings = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+      {renderGenerationDefaults()}
+
       {/* User Preferences */}
       <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Preferences</div>
@@ -1807,7 +1997,7 @@ export default function SettingsModal({ onClose }) {
         <div style={{ display: 'flex', gap: 12 }}>
           <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
             <label style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, display: 'block' }}>Footer Text</label>
-            <input type="text" value={settings.footerBranding || 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Strategy&" style={{ fontSize: 12 }} />
+            <input type="text" value={settings.footerBranding ?? 'Strategy&'} onChange={(e) => setSettings({ ...settings, footerBranding: e.target.value })} placeholder="Source (optional)" style={{ fontSize: 12 }} />
           </div>
           <div className="form-group" style={{ flex: 1, marginBottom: 0 }}>
             <label style={{ fontSize: 12, fontWeight: 500, marginBottom: 4, display: 'block' }}>Agent Name</label>
@@ -1815,6 +2005,8 @@ export default function SettingsModal({ onClose }) {
           </div>
         </div>
       </div>
+
+      {renderClientDesignProfile()}
 
       {/* Design Style */}
       <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
@@ -1850,15 +2042,15 @@ export default function SettingsModal({ onClose }) {
       {pptxTemplateName && (
         <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Template</div>
-          <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>PowerPoint template used for slide masters, theme colors, and fonts.</div>
+          <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>PowerPoint template used for slide masters, theme colors, and fonts for the active {activeClientProfile.name} profile.</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--page, #fff)', borderRadius: 6, border: '1px solid var(--border)' }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
-              <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active</div>
+              <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active for {activeClientProfile.name}</div>
             </div>
             <button
               onClick={async () => {
-                const data = await loadTemplateFromStorage();
+                const data = await loadTemplateFromStorage({ profileId: settings.clientDesignProfileId || 'strategy' });
                 if (data?.data) downloadArrayBuffer(data.data, data.fileName || 'template.pptx');
               }}
               title="Download template"

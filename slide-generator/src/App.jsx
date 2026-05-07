@@ -13,7 +13,10 @@ import AuthLoadingScreen from './components/AuthLoadingScreen';
 import AccessDenied from './components/AccessDenied';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { loadSkills } from './services/skillsService';
-import { authFetch } from './services/authFetch';
+import { AUTH_SESSION_EXPIRED_EVENT, authFetch } from './services/authFetch';
+import { loadClientProfileFonts } from './services/stcFontLoader';
+import { loadTemplateFromStorage } from './services/pptxTemplateService';
+import { getActiveClientProfile } from './utils/clientDesignProfiles';
 import PptxLab from './components/PptxLab';
 import 'frontend-comps/styles.css';
 import './styles/app.css';
@@ -70,7 +73,8 @@ function useAutoReload() {
 function EditorContent() {
   useKeyboardShortcuts();
   useAutoReload();
-  const { isPanelOpen, togglePanel, actions } = useSlides();
+  const { state, isPanelOpen, togglePanel, actions } = useSlides();
+  const activeClientDesignProfileId = state.settings?.clientDesignProfileId || 'strategy';
   const [handoffData, setHandoffData] = useState(null);
 
   // Fetch handoff context using the ID captured at module level (before React mounted).
@@ -106,6 +110,30 @@ function EditorContent() {
     });
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    const profile = getActiveClientProfile({ clientDesignProfileId: activeClientDesignProfileId });
+    const profileId = profile.id || 'strategy';
+    const master = profile.pptxMaster;
+    loadClientProfileFonts(profileId).catch((error) => {
+      console.warn('[App] %s font warm-up failed: %s', profile.name || profileId, error.message);
+    });
+    const shouldWarmMaster = profileId !== 'strategy'
+      && (master?.bundled || master?.serverSync === 'backend-profile-default');
+    if (!shouldWarmMaster) return undefined;
+
+    let cancelled = false;
+    loadTemplateFromStorage({ profileId }).then((template) => {
+      if (cancelled) return;
+      if (template?.data) {
+        console.log('[App] %s PPTX master warmed on startup: %s', profile.name || profileId, template.fileName || 'default');
+      }
+    }).catch((error) => {
+      if (!cancelled) console.warn('[App] %s PPTX master warm-up failed: %s', profile.name || profileId, error.message);
+    });
+
+    return () => { cancelled = true; };
+  }, [activeClientDesignProfileId]);
 
   return (
     <div className="app-container">
@@ -158,6 +186,43 @@ function EditorContent() {
 const AUTH_RETRY_KEY = 'edwinAuthRetryAt';
 const LOGIN_SCOPES = ['openid', 'profile', 'email'];
 
+function SessionExpiredPrompt({ compact = false, message, onSignIn, isSigningIn = false }) {
+  const title = 'Your session expired';
+  const defaultMessage = 'Please sign in again to continue using Edwin.';
+  const content = (
+    <>
+      <div className="auth-session-title">{title}</div>
+      <div className="auth-session-message">
+        {message || defaultMessage}
+      </div>
+      <button
+        type="button"
+        onClick={onSignIn}
+        disabled={isSigningIn}
+        className="auth-session-button"
+      >
+        {isSigningIn ? 'Opening sign-in...' : 'Sign in again'}
+      </button>
+    </>
+  );
+
+  if (compact) {
+    return (
+      <div role="alert" className="auth-session-banner">
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div role="alert" className="auth-session-page">
+      <div className="auth-session-card">
+        {content}
+      </div>
+    </div>
+  );
+}
+
 function ProtectedRoute({ children }) {
   const isAuthenticated = useIsAuthenticated();
   const { instance, inProgress } = useMsal();
@@ -184,9 +249,12 @@ function ProtectedRoute({ children }) {
           const now = Date.now();
           const lastRetry = parseInt(sessionStorage.getItem(AUTH_RETRY_KEY) || '0', 10);
           if (now - lastRetry < 60_000) {
-            console.warn('[ProtectedRoute] /api/whoami still 401 after recent re-auth -- stopping redirect loop');
+            console.warn('[ProtectedRoute] /api/whoami still 401 after recent re-auth -- prompting user');
             sessionStorage.removeItem(AUTH_RETRY_KEY);
-            setBootstrap({ status: 'allowed', email: null });
+            setBootstrap({
+              status: 'authExpired',
+              message: 'Please sign in again to continue using Edwin.',
+            });
             return;
           }
           console.warn('[ProtectedRoute] /api/whoami returned 401 -- triggering loginRedirect to refresh tokens');
@@ -196,7 +264,10 @@ function ProtectedRoute({ children }) {
           } catch (err) {
             console.error('[ProtectedRoute] loginRedirect failed:', err);
             sessionStorage.removeItem(AUTH_RETRY_KEY);
-            setBootstrap({ status: 'allowed', email: null });
+            setBootstrap({
+              status: 'authExpired',
+              message: 'We could not open Microsoft sign-in. Please try again.',
+            });
           }
           return;
         }
@@ -210,6 +281,13 @@ function ProtectedRoute({ children }) {
         sessionStorage.removeItem(AUTH_RETRY_KEY);
         const data = await res.json();
         if (cancelled) return;
+        if (data.allowed) {
+          await Promise.all([
+            loadClientProfileFonts('stc'),
+            loadClientProfileFonts('pif'),
+          ]);
+          if (cancelled) return;
+        }
         setBootstrap({
           status: data.allowed ? 'allowed' : 'denied',
           email: data.email || null,
@@ -228,8 +306,64 @@ function ProtectedRoute({ children }) {
   if (bootstrap.status === 'denied') {
     return <AccessDenied email={bootstrap.email} />;
   }
+  if (bootstrap.status === 'authExpired') {
+    return (
+      <SessionExpiredPrompt
+        message={bootstrap.message}
+        isSigningIn={isLoading}
+        onSignIn={() => {
+          sessionStorage.setItem(AUTH_RETRY_KEY, String(Date.now()));
+          instance.loginRedirect({ scopes: LOGIN_SCOPES }).catch((err) => {
+            console.error('[ProtectedRoute] manual loginRedirect failed:', err);
+            sessionStorage.removeItem(AUTH_RETRY_KEY);
+            setBootstrap({
+              status: 'authExpired',
+              message: 'We could not open Microsoft sign-in. Please refresh the page and try again.',
+            });
+          });
+        }}
+      />
+    );
+  }
 
   return children;
+}
+
+function AuthSessionNotice() {
+  const { instance, inProgress } = useMsal();
+  const [notice, setNotice] = useState(null);
+  const isSigningIn = inProgress !== InteractionStatus.None;
+
+  useEffect(() => {
+    const onAuthExpired = (event) => {
+      const detail = event.detail || {};
+      setNotice({
+        message: detail.source === 'api_401'
+          ? 'Please sign in again before continuing.'
+          : 'Please sign in again to refresh your Microsoft session.',
+      });
+    };
+    window.addEventListener(AUTH_SESSION_EXPIRED_EVENT, onAuthExpired);
+    return () => window.removeEventListener(AUTH_SESSION_EXPIRED_EVENT, onAuthExpired);
+  }, []);
+
+  if (!notice) return null;
+
+  return (
+    <SessionExpiredPrompt
+      compact
+      message={notice.message}
+      isSigningIn={isSigningIn}
+      onSignIn={() => {
+        instance.loginRedirect({ scopes: LOGIN_SCOPES }).catch((err) => {
+          console.error('[AuthSessionNotice] loginRedirect failed:', err);
+          setNotice({
+            message: 'We could not open Microsoft sign-in. Please refresh the page and try again.',
+          });
+        });
+      }}
+    />
+  );
 }
 
 function AppContent() {
@@ -247,6 +381,7 @@ function AppContent() {
   return (
     <SlideProvider>
       <KnowledgeBaseProvider>
+        <AuthSessionNotice />
         <Routes>
           <Route
             path="/"

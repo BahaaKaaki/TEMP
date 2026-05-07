@@ -23,6 +23,7 @@ import KnowledgeBaseManager from './KnowledgeBaseManager';
 import SkillsPicker from './SkillsPicker';
 import { loadSkills } from '../services/skillsService';
 import { friendlyChatError } from '../utils/errorNotify';
+import { getClientProfileFooterBranding } from '../utils/clientDesignProfiles';
 
 // Detect vibe from user prompt for image-based mode
 // Returns a vibe ID or 'default' if no strong signal
@@ -41,6 +42,9 @@ function buildStorylineSummary(storyline) {
     let line = `${i + 1}. ${s.title || 'Untitled'}`;
     if (s.description) line += ` -- ${s.description}`;
     if (s.keyMessage) line += ` | Key: ${s.keyMessage}`;
+    if (Array.isArray(s.contentInventory) && s.contentInventory.length > 0) {
+      line += ` | Content: ${s.contentInventory.join('; ')}`;
+    }
     return line;
   }).join('\n');
 }
@@ -56,56 +60,184 @@ function formatReferenceSlideForAI(slide, index, purpose = 'style/reference') {
   return `[Page ${index + 1}] "${slide.title || 'Untitled'}" (${slide.type || slide.templateId || 'custom'}) — use for ${purpose}:\n${cssBlock}${slide.html || ''}`;
 }
 
+function uniqueValidIndices(indices, slideCount) {
+  return [...new Set(indices)]
+    .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < slideCount);
+}
+
 function parseSlideReferences(prompt, slides, currentSlideIndex) {
-  const references = [];
-  let cleanedPrompt = prompt;
+  const text = String(prompt || '');
+  const lower = text.toLowerCase();
+  const mentions = [];
+  const addMention = ({ type, index, start = -1, end = -1, text: mentionText = '' }) => {
+    if (!Number.isInteger(index) || index < 0 || index >= slides.length) return;
+    mentions.push({ type, index, slide: slides[index], start, end, text: mentionText });
+  };
 
   // Match patterns like "slide 5", "slide #5", "the 5th slide", "page 5", "page #5"
   const slideNumberPattern = /(?:(?:slide|page)\s*#?\s*(\d+)|the\s+(\d+)(?:st|nd|rd|th)\s+(?:slide|page)|in\s+(?:slide|page)\s*(\d+))/gi;
   let match;
-  while ((match = slideNumberPattern.exec(prompt)) !== null) {
-    const num = parseInt(match[1] || match[2] || match[3]);
-    if (num > 0 && num <= slides.length) {
-      references.push({ type: 'number', index: num - 1, slide: slides[num - 1] });
+  while ((match = slideNumberPattern.exec(text)) !== null) {
+    const num = parseInt(match[1] || match[2] || match[3], 10);
+    addMention({
+      type: 'number',
+      index: num - 1,
+      start: match.index,
+      end: match.index + match[0].length,
+      text: match[0],
+    });
+  }
+
+  const addKeywordMention = (pattern, type, index) => {
+    const keywordMatch = text.match(pattern);
+    if (keywordMatch) {
+      addMention({
+        type,
+        index,
+        start: keywordMatch.index,
+        end: keywordMatch.index + keywordMatch[0].length,
+        text: keywordMatch[0],
+      });
     }
+  };
+
+  if (currentSlideIndex >= 0) {
+    addKeywordMention(/\b(this|current)\s+(slide|page)\b/i, 'current', currentSlideIndex);
+  }
+  if (currentSlideIndex > 0) {
+    addKeywordMention(/\b(previous|preceding|prior)\s+(slide|page)\b/i, 'previous', currentSlideIndex - 1);
+  }
+  if (currentSlideIndex >= 0 && currentSlideIndex < slides.length - 1) {
+    addKeywordMention(/\bnext\s+(slide|page)\b/i, 'next', currentSlideIndex + 1);
+  }
+  if (slides.length > 0) {
+    addKeywordMention(/\bfirst\s+(slide|page)\b/i, 'first', 0);
+    addKeywordMention(/\blast\s+(slide|page)\b/i, 'last', slides.length - 1);
   }
 
-  // Match "this slide", "current slide", "this page"
-  if (/\b(this|current)\s+(slide|page)\b/i.test(prompt) && currentSlideIndex >= 0) {
-    references.push({ type: 'current', index: currentSlideIndex, slide: slides[currentSlideIndex] });
-  }
+  const visualReferenceLanguage = /\b(like|similar\s+to|same\s+as|match(?:ing)?|copy|based\s+on|look\s+and\s+feel|format|layout|style)\b/i.test(text);
+  const targetBeforePattern = /\b(?:make|edit|change|update|modify|revise|rewrite|regenerate|fix|improve|transform|convert|apply(?:\s+(?:to|on))?)\s*(?:the\s*)?$/i;
+  const referenceBeforePattern = /\b(?:like|similar\s+to|same\s+as|match(?:ing)?|copy(?:\s+(?:the\s+)?(?:format|layout|style))?\s+from|based\s+on|from|reference|style\s+of|format\s+of|layout\s+of|look\s+and\s+feel\s+(?:of|from|as)|use|using)\s*(?:the\s*)?$/i;
+  const targetAfterPattern = /^\s*(?:to|and)?\s*(?:should|with|into|so it|for)\b/i;
+  const referenceAfterPattern = /^\s*(?:as\s+(?:a\s+)?reference|for\s+reference|as\s+the\s+(?:style|layout|format)\s+reference|\bstyle\b|\blayout\b|\bformat\b|\blook\s+and\s+feel\b)/i;
 
-  // Match "previous slide/page", "the slide/page before"
-  if (/\b(previous|preceding|prior)\s+(slide|page)\b/i.test(prompt) && currentSlideIndex > 0) {
-    references.push({ type: 'previous', index: currentSlideIndex - 1, slide: slides[currentSlideIndex - 1] });
-  }
+  const classified = mentions.map((mention) => {
+    const before = lower.slice(Math.max(0, mention.start - 90), mention.start);
+    const after = lower.slice(mention.end, Math.min(lower.length, mention.end + 90));
+    let role = 'ambiguous';
 
-  // Match "next slide/page", "the slide/page after"
-  if (/\bnext\s+(slide|page)\b/i.test(prompt) && currentSlideIndex < slides.length - 1) {
-    references.push({ type: 'next', index: currentSlideIndex + 1, slide: slides[currentSlideIndex + 1] });
-  }
-
-  // Match "first slide/page"
-  if (/\bfirst\s+(slide|page)\b/i.test(prompt) && slides.length > 0) {
-    references.push({ type: 'first', index: 0, slide: slides[0] });
-  }
-
-  // Match "last slide/page" (but not "last" used for "previous")
-  if (/\blast\s+(slide|page)\b/i.test(prompt) && slides.length > 0) {
-    references.push({ type: 'last', index: slides.length - 1, slide: slides[slides.length - 1] });
-  }
-
-  // Deduplicate by index
-  const uniqueRefs = [];
-  const seenIndices = new Set();
-  for (const ref of references) {
-    if (!seenIndices.has(ref.index)) {
-      seenIndices.add(ref.index);
-      uniqueRefs.push(ref);
+    if (mention.type === 'current') {
+      role = visualReferenceLanguage || targetBeforePattern.test(before) || targetAfterPattern.test(after)
+        ? 'current-target'
+        : 'ambiguous';
+    } else if (referenceBeforePattern.test(before) || referenceAfterPattern.test(after)) {
+      role = 'reference';
+    } else if (targetBeforePattern.test(before) || targetAfterPattern.test(after)) {
+      role = 'target';
     }
+
+    return { ...mention, role };
+  });
+
+  let targetSlides = uniqueValidIndices(classified.filter(ref => ref.role === 'target' || ref.role === 'current-target').map(ref => ref.index), slides.length);
+  let referenceSlides = uniqueValidIndices(classified.filter(ref => ref.role === 'reference').map(ref => ref.index), slides.length);
+  const isCreateIntent = /\b(?:create|add|insert|generate|draft|build)\b[^.?!\n]{0,60}\b(?:new\s+)?(?:slide|page|deck|presentation)\b/i.test(text)
+    || /\bmake\s+(?:a|an|one|new)\s+(?:new\s+)?(?:slide|page|deck|presentation)\b/i.test(text);
+
+  // Visual clone requests usually omit an explicit target because "this slide" is implied.
+  // Treat the active slide as the target and keep numbered mentions as references.
+  if (!isCreateIntent && visualReferenceLanguage && referenceSlides.length > 0 && targetSlides.length === 0 && currentSlideIndex >= 0) {
+    targetSlides = [currentSlideIndex];
   }
 
-  return { referencedSlides: uniqueRefs, cleanedPrompt };
+  referenceSlides = referenceSlides.filter(idx => !targetSlides.includes(idx));
+  const ambiguousSlides = uniqueValidIndices(classified.filter(ref => ref.role === 'ambiguous').map(ref => ref.index), slides.length)
+    .filter(idx => !targetSlides.includes(idx) && !referenceSlides.includes(idx));
+  const referencedSlides = classified.map(ref => ({
+    ...ref,
+    role: ref.role === 'current-target' ? 'target' : ref.role,
+  }));
+
+  return {
+    referencedSlides,
+    referenceSlides,
+    targetSlides,
+    ambiguousSlides,
+    cleanedPrompt: prompt,
+  };
+}
+
+function applySlideReferenceIntent(routeResult, slideReferenceIntent, currentSlideIndex, slideCount) {
+  if (!routeResult || !slideReferenceIntent) return routeResult;
+
+  const referenceSlides = uniqueValidIndices(slideReferenceIntent.referenceSlides || [], slideCount);
+  const targetSlides = uniqueValidIndices(slideReferenceIntent.targetSlides || [], slideCount);
+  const contextSlides = uniqueValidIndices([
+    ...(routeResult.contextNeeded?.slideIndices || []),
+    ...(routeResult.referenceSlides || []),
+    ...referenceSlides,
+  ], slideCount);
+
+  const guardStep = (step = {}) => {
+    const stepReferenceSlides = uniqueValidIndices([
+      ...(step.referenceSlides || []),
+      ...referenceSlides,
+    ], slideCount).filter(idx => !targetSlides.includes(idx));
+    const stepContextSlides = uniqueValidIndices([
+      ...(step.contextSlides || []),
+      ...stepReferenceSlides,
+    ], slideCount);
+    let slideIndex = step.slideIndex ?? null;
+
+    if (step.action === 'edit_slide') {
+      if (targetSlides.length === 1) {
+        slideIndex = targetSlides[0];
+      } else if (slideIndex == null && currentSlideIndex >= 0 && referenceSlides.length > 0) {
+        slideIndex = currentSlideIndex;
+      }
+    }
+
+    const stepTargetSlides = step.action === 'edit_slide' && targetSlides.length > 0
+      ? targetSlides
+      : uniqueValidIndices(step.targetSlides || (slideIndex != null ? [slideIndex] : []), slideCount);
+
+    return {
+      ...step,
+      slideIndex,
+      contextSlides: stepContextSlides,
+      referenceSlides: stepReferenceSlides,
+      targetSlides: stepTargetSlides,
+    };
+  };
+
+  const plan = Array.isArray(routeResult.plan)
+    ? routeResult.plan.map(guardStep)
+    : routeResult.plan;
+
+  const paramsSlideIndex = (() => {
+    const existing = routeResult.params?.slideIndex;
+    if (targetSlides.length === 1) {
+      return targetSlides[0];
+    }
+    return existing ?? currentSlideIndex;
+  })();
+
+  return {
+    ...routeResult,
+    plan,
+    referenceSlides: uniqueValidIndices([...(routeResult.referenceSlides || []), ...referenceSlides], slideCount),
+    targetSlides: targetSlides.length > 0
+      ? targetSlides
+      : uniqueValidIndices(routeResult.targetSlides || [], slideCount),
+    contextNeeded: {
+      ...routeResult.contextNeeded,
+      slideIndices: contextSlides,
+    },
+    params: {
+      ...(routeResult.params || {}),
+      slideIndex: paramsSlideIndex,
+    },
+  };
 }
 
 function buildReorderResultFromNumbers(numbers, slides) {
@@ -511,6 +643,9 @@ export default function AIChatbot({ initialHandoff = null }) {
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [showSlideTemplatePicker, setShowSlideTemplatePicker] = useState(false);
   const [showSkillsPopover, setShowSkillsPopover] = useState(false);
+  const [isVoiceListening, setIsVoiceListening] = useState(false);
+  const [voiceInterimTranscript, setVoiceInterimTranscript] = useState('');
+  const [voiceError, setVoiceError] = useState('');
   // Tracks whether a skills fetch is currently in flight so the button's
   // lazy-retry doesn't fire parallel requests on rapid clicks. The "loading"
   // flag is kept as a re-render trigger for the picker's placeholder.
@@ -559,6 +694,8 @@ export default function AIChatbot({ initialHandoff = null }) {
   const [isUploadingFiles, setIsUploadingFiles] = useState(false);
   const [useKnowledgeContext, setUseKnowledgeContext] = useState(false); // Include knowledge base in AI context
   const fileInputRef = useRef(null);
+  const speechRecognitionRef = useRef(null);
+  const voiceSilenceTimerRef = useRef(null);
 
   // Chat messages state - must be defined before functions that use setMessages
   const [messages, setMessages] = useState([
@@ -614,6 +751,117 @@ export default function AIChatbot({ initialHandoff = null }) {
   const addMessage = (type, content, options = {}) => {
     const { aiIO = null, isHTML = false } = options;
     setMessages((prev) => [...prev, { type, content, timestamp: new Date(), aiIO, isHTML }]);
+  };
+
+  const getSpeechRecognitionCtor = () => {
+    if (typeof window === 'undefined') return null;
+    return window.SpeechRecognition || window.webkitSpeechRecognition || null;
+  };
+
+  const appendVoiceTranscript = (text) => {
+    const transcript = text.trim();
+    if (!transcript) return;
+    setPrompt(prev => {
+      const current = prev.trimEnd();
+      return current ? `${current} ${transcript}` : transcript;
+    });
+  };
+
+  const clearVoiceSilenceTimer = () => {
+    if (voiceSilenceTimerRef.current) {
+      window.clearTimeout(voiceSilenceTimerRef.current);
+      voiceSilenceTimerRef.current = null;
+    }
+  };
+
+  const scheduleVoiceAutoStop = (delayMs = 6000) => {
+    clearVoiceSilenceTimer();
+    voiceSilenceTimerRef.current = window.setTimeout(() => {
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.stop();
+      }
+    }, delayMs);
+  };
+
+  const stopVoiceInput = () => {
+    clearVoiceSilenceTimer();
+    if (speechRecognitionRef.current) {
+      speechRecognitionRef.current.stop();
+    }
+  };
+
+  const startVoiceInput = () => {
+    const SpeechRecognition = getSpeechRecognitionCtor();
+    if (!SpeechRecognition) {
+      setVoiceError('Voice input is not supported in this browser.');
+      return;
+    }
+
+    setVoiceError('');
+    setVoiceInterimTranscript('');
+
+    const recognition = new SpeechRecognition();
+    speechRecognitionRef.current = recognition;
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = navigator.language || 'en-US';
+
+    recognition.onstart = () => {
+      setIsVoiceListening(true);
+      setVoiceError('');
+      scheduleVoiceAutoStop(12000);
+    };
+
+    recognition.onresult = (event) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result[0]?.transcript || '';
+        if (result.isFinal) {
+          finalTranscript += transcript;
+        } else {
+          interimTranscript += transcript;
+        }
+      }
+
+      if (finalTranscript || interimTranscript) {
+        scheduleVoiceAutoStop(6000);
+      }
+      if (finalTranscript) {
+        appendVoiceTranscript(finalTranscript);
+      }
+      setVoiceInterimTranscript(interimTranscript.trim());
+    };
+
+    recognition.onerror = (event) => {
+      const message = event.error === 'not-allowed'
+        ? 'Microphone access was blocked.'
+        : event.error === 'no-speech'
+          ? 'No speech detected. Try again when ready.'
+          : 'Voice input stopped unexpectedly.';
+      setVoiceError(message);
+      setVoiceInterimTranscript('');
+      clearVoiceSilenceTimer();
+    };
+
+    recognition.onend = () => {
+      setIsVoiceListening(false);
+      setVoiceInterimTranscript('');
+      clearVoiceSilenceTimer();
+      speechRecognitionRef.current = null;
+    };
+
+    recognition.start();
+  };
+
+  const toggleVoiceInput = () => {
+    if (isVoiceListening) {
+      stopVoiceInput();
+      return;
+    }
+    startVoiceInput();
   };
 
   // Wrapper for addMessage that matches the agentic system's expected format
@@ -989,8 +1237,9 @@ export default function AIChatbot({ initialHandoff = null }) {
     };
 
     // Collect all selected option cards + free text per question and submit
-    window.__submitClarificationAnswers = () => {
-      const card = document.querySelector('.clarification-card');
+    window.__submitClarificationAnswers = (sourceEl) => {
+      const cards = Array.from(document.querySelectorAll('.clarification-card'));
+      const card = sourceEl?.closest?.('.clarification-card') || cards[cards.length - 1];
       if (!card) return;
       const blocks = card.querySelectorAll('.clarification-question-block');
       const parts = [];
@@ -1031,6 +1280,16 @@ export default function AIChatbot({ initialHandoff = null }) {
       }
     }
   }, [prompt]);
+
+  useEffect(() => {
+    return () => {
+      clearVoiceSilenceTimer();
+      if (speechRecognitionRef.current) {
+        speechRecognitionRef.current.abort();
+        speechRecognitionRef.current = null;
+      }
+    };
+  }, []);
 
   // Handle flow selection from Flow Studio
   const handleFlowSelect = (flow) => {
@@ -1386,12 +1645,14 @@ export default function AIChatbot({ initialHandoff = null }) {
     }
 
     let referenceContext = '';
-    const slideRefMatch = prompt.match(/(?:like|from|match|copy|same as)\s+slide\s+(\d+)/i);
-    if (slideRefMatch) {
-      const refIdx = parseInt(slideRefMatch[1], 10) - 1;
-      const refSlide = currentState.slides[refIdx];
-      if (refSlide) {
-        referenceContext = `\n\n=== REFERENCE SLIDES (match their style/design) ===\n${formatReferenceSlideForAI(refSlide, refIdx, 'visual format, CSS, spacing, and structure')}\n=== END REFERENCE ===`;
+    const referenceIndices = uniqueValidIndices(triage.referenceSlides || [], currentState.slides.length);
+    if (referenceIndices.length > 0) {
+      const referenceSlidesBlock = referenceIndices
+        .map(refIdx => formatReferenceSlideForAI(currentState.slides[refIdx], refIdx, 'visual format, CSS, spacing, and structure'))
+        .filter(Boolean)
+        .join('\n\n---\n\n');
+      if (referenceSlidesBlock) {
+        referenceContext = `\n\n=== REFERENCE SLIDES (match their style/design) ===\n${referenceSlidesBlock}\n=== END REFERENCE ===`;
       }
     }
 
@@ -1455,7 +1716,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       const template = isRealTemplate ? SLIDE_TEMPLATES[templateId] : null;
 
       if (template) {
-        const filledHtml = await fillTemplateWithAI(template, enrichedPrompt + deckContext, slideSettings, [], { agentMode: false });
+        const filledHtml = await fillTemplateWithAI(template, enrichedPrompt + referenceContext + deckContext, slideSettings, [], { agentMode: false });
         if (filledHtml) {
           return {
             action: 'filled',
@@ -1467,7 +1728,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         }
       }
 
-      const slides = await generateSlides(enrichedPrompt + deckContext, slideSettings, 1);
+      const slides = await generateSlides(enrichedPrompt + referenceContext + deckContext, slideSettings, 1);
       if (slides && slides.length > 0) {
         const s = slides[0];
         return {
@@ -1493,6 +1754,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!prompt.trim()) return;
+    if (isVoiceListening) stopVoiceInput();
 
     // ─── Live input: if agent is running, push message to its input queue ───
     // This enables chatting with the agent while it works (like Claude Code).
@@ -1710,7 +1972,8 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       : -1;
     // Default to first slide (0) when no slide is selected — never pass -1 to the router
     const currentSlideIndex = rawSlideIdx >= 0 ? rawSlideIdx : (currentState.slides.length > 0 ? 0 : -1);
-    const { referencedSlides } = parseSlideReferences(userPrompt, currentState.slides, currentSlideIndex);
+    const slideReferenceIntent = parseSlideReferences(effectivePrompt, currentState.slides, currentSlideIndex);
+    const { referencedSlides } = slideReferenceIntent;
     let deckContextDigest = buildDeckContextDigest(currentState.slides, {
       activeSlideIndex: currentSlideIndex,
       storyline: currentState.storyline,
@@ -1766,18 +2029,32 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       triage.scope = 'plan';
     }
 
-    const promptReferenceIndices = referencedSlides.map(r => r.index);
-    const triageReferenceIndices = [...new Set([...(triage.referenceSlides || []), ...promptReferenceIndices])]
+    const promptReferenceIndices = slideReferenceIntent.referenceSlides || [];
+    const promptAmbiguousIndices = slideReferenceIntent.ambiguousSlides || [];
+    const promptTargetIndices = slideReferenceIntent.targetSlides || [];
+    const triageTargetIndices = uniqueValidIndices([...(triage.targetSlides || []), ...promptTargetIndices], currentState.slides.length);
+    const triageReferenceIndices = uniqueValidIndices([
+      ...(triage.referenceSlides || []),
+      ...promptReferenceIndices,
+      ...promptAmbiguousIndices,
+    ], currentState.slides.length)
+      .filter(idx => !triageTargetIndices.includes(idx));
+    triage = {
+      ...triage,
+      targetSlides: triageTargetIndices,
+      referenceSlides: triageReferenceIndices,
+    };
+    const triageReferenceContextIndices = [...new Set([...triageReferenceIndices, ...promptAmbiguousIndices])]
       .filter(idx => Number.isInteger(idx) && idx >= 0 && idx < currentState.slides.length);
     const triageContextLevel = normalizeContextLevel(
       triage.contextLevel,
-      triageReferenceIndices.length > 0 ? CONTEXT_LEVELS.REFERENCE_SLIDES : CONTEXT_LEVELS.DECK_DIGEST
+      triageReferenceContextIndices.length > 0 ? CONTEXT_LEVELS.REFERENCE_SLIDES : CONTEXT_LEVELS.DECK_DIGEST
     );
     deckContextDigest = buildDeckContextDigest(currentState.slides, {
       activeSlideIndex: currentSlideIndex,
       storyline: currentState.storyline,
       contextLevel: triageContextLevel,
-      referenceSlides: triageReferenceIndices,
+      referenceSlides: triageReferenceContextIndices,
     });
 
     // ─── Q&A: direct response, no slide changes ───
@@ -1810,12 +2087,14 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
     // ─── DIRECT EXECUTION: single-slide actions via shared helper ───
     if (triage.scope === 'direct' && activeSlide) {
       try {
+        const directTargetIdx = triageTargetIndices.length === 1 ? triageTargetIndices[0] : currentSlideIndex;
+        const directSlide = currentState.slides[directTargetIdx] || activeSlide;
         const fullKnowledge = buildKnowledgeContextForPrompt(effectivePrompt, { fullContent: true });
-        const result = await performDirectSlideEdit(activeSlide, effectivePrompt, triage, { knowledgeContext: fullKnowledge });
+        const result = await performDirectSlideEdit(directSlide, effectivePrompt, triage, { knowledgeContext: fullKnowledge });
         if (result) {
           const beforeDeckStructure = buildDeckStructure(currentState.slides);
           const projectedSlides = currentState.slides.map((slide) =>
-            slide.id === activeSlide.id
+            slide.id === directSlide.id
               ? { ...slide, ...result.updateData }
               : slide
           );
@@ -1823,9 +2102,9 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             beforeDeckStructure,
             buildDeckStructure(projectedSlides)
           );
-          actions.updateSlide(activeSlide.id, result.updateData);
+          actions.updateSlide(directSlide.id, result.updateData);
           trackerSyncUpdates.forEach(sync => {
-            if (sync.slideId !== activeSlide.id) {
+            if (sync.slideId !== directSlide.id) {
               actions.updateSlide(sync.slideId, { sectionLabel: sync.newSectionLabel });
             }
           });
@@ -2334,10 +2613,11 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           referencedSlides: referencedSlides.length > 0 ? referencedSlides.map(r => ({
             index: r.index,
             type: r.type,
+            role: r.role,
             title: r.slide?.title,
           })) : null,
           referenceSlides: triageReferenceIndices,
-          targetSlides: triage.targetSlides || [],
+          targetSlides: triageTargetIndices,
           triageNeedsSearch: !!triage.needsSearch,
           triageSearchQuery: triage.searchQuery || null,
           // Agent mode flag — affects router settings and audit log
@@ -2404,6 +2684,8 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           routeResult = routeRequest(effectivePrompt, context);
         }
 
+        routeResult = applySlideReferenceIntent(routeResult, slideReferenceIntent, currentSlideIdx, freshState.slides.length);
+
         console.log('[AIChatbot] Route result (full):', JSON.stringify(routeResult, null, 2));
 
         if (
@@ -2446,7 +2728,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
   <div class="clarification-body">
     ${questionBlocksHtml}
     <div class="clarification-submit-row">
-      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers()">Submit Answers</button>
+      <button class="clarification-submit-btn" onclick="window.__submitClarificationAnswers && window.__submitClarificationAnswers(this)">Submit Answers</button>
     </div>
   </div>
 </div>`;
@@ -2473,15 +2755,18 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         const planContextIndices = routeResult.plan?.flatMap(step => step.contextSlides || []) || [];
         const planReferenceIndices = routeResult.plan?.flatMap(step => step.referenceSlides || []) || [];
 
-        // Include explicitly referenced slides from the prompt (e.g., "slide 3", "page 5")
-        const referencedSlideIndices = referencedSlides.map(r => r.index);
+        // Include reference/context slides from the prompt, but do not treat targets as context.
+        const referencedSlideIndices = uniqueValidIndices([
+          ...(slideReferenceIntent.referenceSlides || []),
+          ...(slideReferenceIntent.ambiguousSlides || []),
+        ], freshState.slides.length);
 
         // Combine all detected context indices
         let detectedContextIndices = [...new Set([...contextIndices, ...planContextIndices, ...planReferenceIndices, ...(routeResult.referenceSlides || []), ...referencedSlideIndices])];
 
         // Log when slides are detected from references
         if (referencedSlideIndices.length > 0) {
-          console.log('[SmartAction] Slides referenced in prompt:', referencedSlides.map(r => `Page ${r.index + 1} (${r.type})`).join(', '));
+          console.log('[SmartAction] Reference slides in prompt:', referencedSlides.map(r => `Page ${r.index + 1} (${r.role})`).join(', '));
         }
 
         // Fallback: if no context specified but prompt references current slide patterns, include current
@@ -2704,6 +2989,48 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             instruction: userPrompt,
           }];
 
+      const normalizeStepDependencyIndex = (step) => {
+        if (step?.contextFromStep === null || step?.contextFromStep === undefined) return null;
+        const dependency = Number(step.contextFromStep);
+        return Number.isInteger(dependency) ? dependency : NaN;
+      };
+      const outputProducingActions = new Set([
+        'analyze_content',
+        'create_slide',
+        'create_from_template',
+        'edit_slide',
+        'switch_template',
+        'update_trackers',
+        'update_tracker',
+      ]);
+      const dependencyIssues = [];
+      for (let idx = 0; idx < planSteps.length; idx++) {
+        const step = planSteps[idx];
+        const dependency = normalizeStepDependencyIndex(step);
+        if (dependency === null) continue;
+        if (!Number.isInteger(dependency)) {
+          dependencyIssues.push(`Step ${idx} has an invalid contextFromStep value: ${step.contextFromStep}`);
+          continue;
+        }
+        if (dependency < 0 || dependency >= planSteps.length) {
+          dependencyIssues.push(`Step ${idx} depends on missing step ${dependency}`);
+          continue;
+        }
+        if (dependency >= idx) {
+          dependencyIssues.push(`Step ${idx} depends on step ${dependency}, which has not run yet`);
+          continue;
+        }
+        const parentAction = planSteps[dependency]?.action;
+        if (!outputProducingActions.has(parentAction)) {
+          dependencyIssues.push(`Step ${idx} depends on step ${dependency}, but "${parentAction || 'unknown'}" does not produce reusable output`);
+        } else {
+          step.contextFromStep = dependency;
+        }
+      }
+      if (dependencyIssues.length > 0) {
+        throw new Error(`The generated plan has invalid step dependencies:\n${dependencyIssues.join('\n')}`);
+      }
+
       console.log('[SmartAction] Context indices for execution:', detectedContext);
 
       const totalSteps = planSteps.length;
@@ -2724,14 +3051,29 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       const freshState = getFreshState();
       let capturedDeckName = freshState.deckName;
 
-      // Pre-search key facts from router — threaded into every slide for grounding
-      const searchRawContext = routeResult.searchRawContext || '';
+      // Pre-search key facts from router — threaded into every slide for grounding.
+      // evidencePack is the structured contract; searchRawContext remains for
+      // backwards compatibility with older route results.
+      const evidencePack = routeResult.evidencePack || null;
+      const searchRawContext = evidencePack?.rawText || routeResult.searchRawContext || '';
       if (searchRawContext) {
         console.log('[SmartAction] Router search context available for all slides:', searchRawContext.length, 'chars');
       }
+      const stepSearchCache = new Map();
+      let stepSearchesRun = 0;
+      const maxStepSearchesPerPlan = Number.isFinite(Number(settings.maxStepSearchesPerPlan))
+        ? Math.max(0, Number(settings.maxStepSearchesPerPlan))
+        : 4;
 
       console.log('[SmartAction] Executing plan with', totalSteps, 'steps, parallel batch size:', parallelBatchSize, planSteps);
       console.log('[SmartAction] Captured deck:', capturedDeckName);
+
+      const independentEditActions = new Set(['edit_slide', 'switch_template', 'update_trackers', 'update_tracker']);
+      const isIndependentEditStep = (step) => (
+        step
+        && independentEditActions.has(step.action)
+        && step.contextFromStep == null
+      );
 
       // Build groups: use router-provided groups or default to all steps in one group
       // In agent mode, flatten ALL groups into ONE — content is fully baked by the agent,
@@ -2739,11 +3081,13 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       const routerGroups = routeResult.groups && routeResult.groups.length > 0
         ? routeResult.groups
         : [planSteps.map((_, i) => i)];
-      const groups = fromAgent && routerGroups.length > 1
+      const canFlattenIndependentEditGroups = routerGroups.length > 1
+        && routerGroups.flat().every(stepIndex => isIndependentEditStep(planSteps[stepIndex]));
+      const groups = (fromAgent || canFlattenIndependentEditGroups) && routerGroups.length > 1
         ? [routerGroups.flat()]
         : routerGroups;
 
-      console.log(`[SmartAction] Execution groups (fromAgent=${!!fromAgent}):`, groups);
+      console.log(`[SmartAction] Execution groups (fromAgent=${!!fromAgent}, flattenedIndependentEdits=${canFlattenIndependentEditGroups}):`, groups);
 
       // Helper: check if we're still on the same deck
       const isDeckStillActive = () => {
@@ -2787,6 +3131,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   templateId: slideData.templateId || step.templateId,
                   type: slideData.type,
                   summary: slideData.summary,
+                  ...(slideData.sources ? { sources: slideData.sources } : {}),
                 });
                 lastInsertedIndex = replaceIdx;
                 stepOutputs[stepIndex] = { html: slideData.html, customCSS: slideData.customCSS, slideIndex: replaceIdx, title: slideData.title };
@@ -2840,7 +3185,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       // would be 100% duplicated. Only inject the global block for:
       //   - Path B (presearch): global raw text is genuinely different from step facts
       //   - Path A steps WITHOUT their own facts (cover, dividers): fallback grounding
-      const searchSource = routeResult.searchSource || 'none';
+      const searchSource = evidencePack?.source || routeResult.searchSource || 'none';
       const hasRouterSearchFacts = searchSource === 'inline' || searchSource === 'presearch';
       const buildSearchFactsBlock = (step) => {
         if (!searchRawContext) return '';
@@ -2853,9 +3198,9 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       const buildStepFactsBlock = (step) => {
         if (!Array.isArray(step?.facts) || step.facts.length === 0) return '';
         const title = hasRouterSearchFacts
-          ? `VERIFIED FACTS FROM WEB SEARCH (current as of ${currentDateString()})`
+          ? `ROUTER RESEARCH FACTS (verify freshness against later search results; current date ${currentDateString()})`
           : 'PLANNER FACTS FROM ROUTER (not web-verified)';
-        const closing = hasRouterSearchFacts ? 'END VERIFIED FACTS' : 'END PLANNER FACTS';
+        const closing = hasRouterSearchFacts ? 'END ROUTER RESEARCH FACTS' : 'END PLANNER FACTS';
         const lines = [`\n\n=== ${title} ===`, ...step.facts.map(f => `- ${f}`)];
         if (Array.isArray(step.sources) && step.sources.length > 0) {
           const srcLines = step.sources.map(s =>
@@ -2864,14 +3209,177 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           lines.push('Sources:', ...srcLines.map(s => `- ${s}`));
         }
         lines.push(`=== ${closing} ===`);
+        const isDependentStep = step?.contextFromStep !== null && step?.contextFromStep !== undefined;
         lines.push(hasRouterSearchFacts
-          ? 'IMPORTANT: Prioritize and trust the verified facts above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent.'
+          ? (isDependentStep
+              ? 'IMPORTANT: Use these router research facts as initial grounding. For dependent slides, the canonical entity set from the referenced step remains authoritative; later web results may enrich dates, prices, benchmarks, availability, and caveats, but must not silently replace the referenced entity names.'
+              : 'IMPORTANT: Use these router research facts as initial grounding, but if a later WEB SEARCH RESULTS block appears, treat that block as fresher and override any conflicting or older names, dates, prices, benchmarks, and availability details. For latest/current requests, do not preserve stale model or product names merely because they appear here.')
           : 'IMPORTANT: Use the planner facts above as task context. They are not independently web-verified unless sources are listed, so do not describe them as web search results.');
         return `${lines.join('\n')}\n`;
       };
 
+      const stripHtmlForEntities = (value = '') => String(value || '')
+        .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+        .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const extractCanonicalEntities = (step, prevStep, prevOutput) => {
+        const text = [
+          prevOutput?.title,
+          prevOutput?.html,
+          prevOutput?.analysis,
+          prevStep?.title,
+          prevStep?.subtitle,
+          prevStep?.instruction,
+          ...(Array.isArray(prevStep?.facts) ? prevStep.facts : []),
+          ...(Array.isArray(step?.facts) ? step.facts : []),
+        ].map(stripHtmlForEntities).filter(Boolean).join(' ');
+
+        const patterns = [
+          /\bGPT[-\s]?\d+(?:\.\d+)?(?:\s*(?:mini|nano|pro|high|turbo))?\b/gi,
+          /\bClaude\s+(?:Opus|Sonnet|Haiku)\s+\d+(?:\.\d+)?\b/gi,
+          /\bGemini\s+\d+(?:\.\d+)?\s*(?:Pro|Flash|Flash[-\s]?Lite|Ultra)?\b/gi,
+          /\bLlama\s+\d+(?:\.\d+)?(?:\s*(?:Scout|Maverick|Instruct|Vision))?\b/gi,
+          /\bGrok\s+\d+(?:\.\d+)?\b/gi,
+          /\bMistral\s+(?:Large|Medium|Small|Nemo|Codestral|Magistral|Le Chat|AI)\s*\d*(?:\.\d+)?\b/gi,
+          /\bDeepSeek\s+(?:V\d+(?:\.\d+)?|R\d+(?:\.\d+)?|Coder|Chat|Reasoner|Flash|Pro)\b/gi,
+          /\b(?:OpenAI|Anthropic|Google DeepMind|Google Gemini|Google|Meta AI|Meta|xAI|Mistral|DeepSeek)\b/g,
+        ];
+
+        const seen = new Set();
+        const entities = [];
+        for (const pattern of patterns) {
+          for (const match of text.matchAll(pattern)) {
+            const raw = match[0].replace(/\s+/g, ' ').trim();
+            if (!raw || raw.length < 3) continue;
+            const key = raw.toLowerCase();
+            if (seen.has(key)) continue;
+            seen.add(key);
+            entities.push(raw);
+            if (entities.length >= 30) return entities;
+          }
+        }
+        return entities;
+      };
+
+      const getDependencyEvidenceContext = (step) => {
+        const dependency = normalizeStepDependencyIndex(step);
+        if (dependency === null || !Number.isInteger(dependency)) {
+          return null;
+        }
+        const prevStep = planSteps[dependency];
+        const prevOutput = stepOutputs[dependency];
+        if (!prevOutput && !prevStep) {
+          return null;
+        }
+        const entities = extractCanonicalEntities(step, prevStep, prevOutput);
+        if (entities.length === 0) {
+          return { dependency, entities: [] };
+        }
+        const entityLines = entities.map(entity => `- ${entity}`).join('\n');
+        return {
+          dependency,
+          entities,
+          promptBlock: `\n\n=== CANONICAL ENTITY SET FROM STEP ${dependency} ===\n${entityLines}\n=== END CANONICAL ENTITY SET ===\nIMPORTANT: Treat this entity/model list as the canonical universe for this dependent slide. Use web search to enrich facts, pricing, benchmarks, context windows, availability, and caveats for these entities. Do not introduce older, different, or broader entity names unless current sources explicitly prove the canonical list is outdated; if that happens, call out the conflict instead of silently substituting names.`,
+          searchInstruction: `Canonical entity set from step ${dependency}: ${entities.join(', ')}. Preserve this entity/model list as the search target. Use search to refresh supporting facts, pricing, benchmarks, context windows, availability, and caveats for these entities. Do not introduce older or different entity names unless current sources explicitly prove the canonical list is outdated; report any conflict separately.`,
+        };
+      };
+
+      const buildStepWebSearchInstruction = (step, dependencyContext) => {
+        const base = step.searchGoal ? `Search goal: ${step.searchGoal}` : '';
+        return [base, dependencyContext?.searchInstruction].filter(Boolean).join('\n\n');
+      };
+
+      const buildStepEvidenceSearchQuery = (baseQuery, knownFacts, dependencyContext) => {
+        const canonicalEntities = dependencyContext?.entities || [];
+        const queryBase = canonicalEntities.length > 0
+          ? `current supporting evidence for canonical entities ${canonicalEntities.join(', ')}`
+          : baseQuery;
+        const dependencyFocus = canonicalEntities.length > 0
+          ? `\n\n[Use the canonical entities from step ${dependencyContext.dependency} as the search target. Do not broaden the query to discover alternative or older entity names. Original evidence need: ${baseQuery}]`
+          : '';
+        const factContext = knownFacts
+          ? `\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
+          : '';
+        return `${queryBase} ${currentDateString()}${dependencyFocus}${factContext}`;
+      };
+
+      const buildWebSearchResultInstruction = (dependencyContext) => dependencyContext?.entities?.length > 0
+        ? `IMPORTANT: Treat WEB SEARCH RESULTS as fresh supporting evidence for facts, dates, prices, benchmarks, context windows, availability, and caveats. The canonical entity set from Step ${dependencyContext.dependency} remains authoritative for this dependent slide. Do not replace, add, or downgrade model/entity names from the referenced slide just because search mentions older or different names. Only change the entity set if the search explicitly proves a canonical entity is unavailable or outdated; if so, call out the conflict instead of silently substituting. Cite specific numbers and sources.`
+        : 'IMPORTANT: Treat WEB SEARCH RESULTS as the freshest source for this step. If they conflict with router/planner facts above, replace the older facts, names, prices, benchmarks, and availability details with the search results. For latest/current requests, do not keep stale model or product names from earlier facts when newer names appear here. Cite specific numbers and sources.';
+
+      const extractSourcesFromSearchResult = (searchResult = '') => {
+        const text = String(searchResult || '');
+        const sources = [];
+        const seenUrls = new Set();
+        const add = (label, url, note = 'Per-step web search result') => {
+          const cleanUrl = String(url || '').replace(/[).,;:]+$/, '').trim();
+          if (!/^https?:\/\//i.test(cleanUrl) || seenUrls.has(cleanUrl)) return;
+          seenUrls.add(cleanUrl);
+          let hostname = '';
+          try {
+            hostname = new URL(cleanUrl).hostname.replace(/^www\./, '');
+          } catch {
+            hostname = cleanUrl;
+          }
+          sources.push({
+            label: String(label || hostname || cleanUrl).replace(/\s+/g, ' ').trim(),
+            url: cleanUrl,
+            note,
+          });
+        };
+
+        for (const match of text.matchAll(/\[([^\]]{2,160})\]\((https?:\/\/[^)\s]+)\)/g)) {
+          add(match[1], match[2]);
+        }
+        for (const match of text.matchAll(/https?:\/\/[^\s<>)"]+/g)) {
+          add('', match[0]);
+        }
+        return sources.slice(0, 12);
+      };
+
+      const mergeStepSources = (stepSources = [], searchSources = []) => {
+        const merged = [];
+        const seen = new Set();
+        const add = (source) => {
+          if (!source) return;
+          const normalized = typeof source === 'string'
+            ? { label: source, url: '', note: '' }
+            : {
+                label: source.label || source.title || source.url || 'Source',
+                url: source.url || '',
+                note: source.note || source.snippet || '',
+              };
+          const key = normalized.url || String(normalized.label).toLowerCase();
+          if (!key || seen.has(key)) return;
+          seen.add(key);
+          merged.push(normalized);
+        };
+        stepSources.forEach(add);
+        searchSources.forEach(add);
+        return merged;
+      };
+
+      const captureSearchSourcesForStep = (step, searchResult) => {
+        const searchSources = extractSourcesFromSearchResult(searchResult);
+        if (searchSources.length === 0 && !Array.isArray(step?.sources)) return;
+        step._resolvedSources = mergeStepSources(step.sources || [], searchSources);
+      };
+
+      const getResolvedStepSources = (step) => (
+        Array.isArray(step?._resolvedSources) && step._resolvedSources.length > 0
+          ? step._resolvedSources
+          : (Array.isArray(step?.sources) ? step.sources : [])
+      );
+
       // Only use router-set or user-set searchQuery; no auto-derivation.
-      // The router (GPT 5.4 with native search) decides which steps need per-step search,
+      // The router decides which steps need per-step search,
       // and the user can toggle it on/off in SmartActionCard.
       const deriveSearchQuery = (step) => {
         if (step.searchQuery) return step.searchQuery;
@@ -2923,8 +3431,11 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         }
 
         // Add context from a previous step's output
-        if (step.contextFromStep !== null && step.contextFromStep !== undefined && stepOutputs[step.contextFromStep]) {
+        if (step.contextFromStep !== null && step.contextFromStep !== undefined) {
           const prevOutput = stepOutputs[step.contextFromStep];
+          if (!prevOutput) {
+            throw new Error(`Step depends on previous step ${step.contextFromStep}, but that step did not produce reusable output.`);
+          }
           const prevStep = planSteps[step.contextFromStep];
 
           // Check if the previous step was an analyze_content step
@@ -2939,7 +3450,9 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const cleanCSS = cleanSlideCSSForAI(prevOutput.customCSS);
               prevContext = `<style>\n${cleanCSS}\n</style>\n${prevOutput.html}`;
             }
-            contextForAI = `${contextForAI}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]`;
+            const dependencyContext = getDependencyEvidenceContext(step);
+            const canonicalBlock = dependencyContext?.promptBlock || '';
+            contextForAI = `${contextForAI}${canonicalBlock}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]\n\nIf this slide extends or compares the same entities as the previous slide, reuse the same entity names, labels, and ordering unless the instruction explicitly says to change them.`;
           }
         }
 
@@ -3014,24 +3527,26 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           'delete_slide': 'Delete',
           'switch_template': 'Switch',
         };
-        setProgress(prev => {
-          const completed = new Set(prev?.completedSteps || []);
-          if (stepIndex > 0) completed.add(stepIndex - 1);
-          return {
-            phase: `Step ${stepIndex + 1}/${totalSteps}`,
-            current: stepIndex,
-            total: totalSteps,
-            completedSteps: completed,
-            plan: planSteps.map((s, idx) => ({
-              text: `${actionLabels[s.action] || s.action}${s.templateId ? ` (${s.templateId})` : ''}${s.searchQuery ? ' 🔍' : ''}`,
-              action: s.action,
-              templateId: s.templateId || null,
-              layoutGuidance: s.layoutGuidance || null,
-              stepIndex: idx,
-            })),
-            planStepsRef: planSteps,
-          };
-        });
+        if (!step._parallelBatchSize) {
+          setProgress(prev => {
+            const completed = new Set(prev?.completedSteps || []);
+            if (stepIndex > 0) completed.add(stepIndex - 1);
+            return {
+              phase: `Step ${stepIndex + 1}/${totalSteps}`,
+              current: stepIndex,
+              total: totalSteps,
+              completedSteps: completed,
+              plan: planSteps.map((s, idx) => ({
+                text: `${actionLabels[s.action] || s.action}${s.templateId ? ` (${s.templateId})` : ''}${s.searchQuery ? ' 🔍' : ''}`,
+                action: s.action,
+                templateId: s.templateId || null,
+                layoutGuidance: s.layoutGuidance || null,
+                stepIndex: idx,
+              })),
+              planStepsRef: planSteps,
+            };
+          });
+        }
 
         // Update agent-mode widget if active (pink/green step tracker)
         setAgentModeProgress(prev => {
@@ -3164,15 +3679,33 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             const shouldRunStepSearch = effectiveSearchQuery && settings.searchEnabled;
             if (shouldRunStepSearch) {
               const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
-              const datedQuery = knownFacts
-                ? `${effectiveSearchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
-                : `${effectiveSearchQuery} ${currentDateString()}`;
-              const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
-              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${effectiveSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
+              const dependencyContext = getDependencyEvidenceContext(step);
+              const datedQuery = buildStepEvidenceSearchQuery(effectiveSearchQuery, knownFacts, dependencyContext);
+              const stepEvidenceSearchModel = settings.evidenceSearchModel || settings.stepSearchModel || settings.searchModel;
+              const searchInstructions = buildStepWebSearchInstruction(step, dependencyContext);
+              const searchOpts = {
+                ...(searchInstructions ? { instructions: searchInstructions } : {}),
+                ...(stepEvidenceSearchModel ? { model: stepEvidenceSearchModel } : {}),
+              };
+              console.log(`[SmartAction] Step ${stepIndex}: pre-searching for "${effectiveSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}${stepEvidenceSearchModel ? ` using ${stepEvidenceSearchModel}` : ''}`);
               try {
-                const searchResult = await webSearch(datedQuery, settings, searchOpts);
+                const searchCacheKey = `${stepEvidenceSearchModel || 'default'}::${effectiveSearchQuery}::${step.searchGoal || ''}`;
+                let searchResult;
+                if (stepSearchCache.has(searchCacheKey)) {
+                  searchResult = stepSearchCache.get(searchCacheKey);
+                  console.log(`[SmartAction] Step ${stepIndex}: reused cached search result for "${effectiveSearchQuery}"`);
+                } else if (stepSearchesRun >= maxStepSearchesPerPlan) {
+                  console.warn(`[SmartAction] Step ${stepIndex}: skipped search for "${effectiveSearchQuery}" because plan search budget (${maxStepSearchesPerPlan}) was exhausted`);
+                  searchResult = null;
+                  stepSearchCache.set(searchCacheKey, null);
+                } else {
+                  stepSearchesRun++;
+                  searchResult = await webSearch(datedQuery, settings, searchOpts);
+                  stepSearchCache.set(searchCacheKey, searchResult || null);
+                }
                 if (searchResult) {
-                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  captureSearchSourcesForStep(step, searchResult);
+                  enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\n${buildWebSearchResultInstruction(dependencyContext)}`;
                   console.log(`[SmartAction] Step ${stepIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedStepPrompt = `${stepPrompt}${buildSearchFactsBlock(step)}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
@@ -3192,7 +3725,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 const imageResult = await generateImageSlide(enrichedStepPrompt, stepSettings, imageMode, {
                   layoutGuidance: step.layoutGuidance,
                   vibe: imageVibe,
-                  footerBranding: settings.footerBranding || 'Strategy&',
+                  footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                   slideNumber: freshState.slides.length + 1,
                   totalSlides: freshState.slides.length + totalSteps,
                 });
@@ -3220,7 +3753,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 .replace('[01]', dividerNum)
                 .replace('[Section Title]', dividerTitle)
                 .replace('[What this section covers]', dividerSubtitle)
-                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('[Company]', getClientProfileFooterBranding(settings, 'Strategy&'))
                 .replace('1 / 1', '');
 
               pendingSlides.push({
@@ -3249,6 +3782,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const extractedTitle = extractTitleFromHTML(filledHtml);
               const slideTitle = extractedTitle || template.title || 'Untitled Slide';
               const slideSummary = generateSlideSummary(filledHtml, templateId, slideTitle);
+              const resolvedSources = getResolvedStepSources(step);
 
               pendingSlides.push({
                 title: slideTitle,
@@ -3257,6 +3791,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 templateId,
                 customCSS: getTemplateCustomCSS(template, filledHtml),
                 summary: slideSummary,
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(step.sectionTracker ? { sectionLabel: step.sectionTracker } : {}),
                 ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
               });
@@ -3267,6 +3802,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 ...(step.layoutGuidance ? { layoutGuidance: step.layoutGuidance } : {}),
               };
               const newSlides = await generateSlides(freestyleContext, stepSettings, 1, freshState.slides, null, null, freestyleContextInfo);
+              const resolvedSources = getResolvedStepSources(step);
               for (const slide of newSlides) {
                 const title = extractTitleFromHTML(slide.html) || slide.title || 'Untitled Slide';
                 pendingSlides.push({
@@ -3275,6 +3811,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                   type: slide.type,
                   summary: generateSlideSummary(slide.html, slide.type, title),
                   ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
+                  ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                   ...(step.sectionTracker ? { sectionLabel: step.sectionTracker } : {}),
                   ...(step.subSectionTracker ? { subSectionLabel: step.subSectionTracker } : {}),
                 });
@@ -3318,21 +3855,33 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             // Detect if this is an image slide — use image regeneration instead of text editing
             const isImageSlide = slideToEdit.templateId === 'image-full' || slideToEdit.templateId === 'image-content';
 
-            setExecutionStatus({
-              type: 'generating',
-              message: `Step ${stepIndex + 1}/${totalSteps}: ${isImageSlide ? 'Regenerating image for' : 'Editing'} slide ${slideIdx + 1}: "${slideToEdit.title}"...`,
-            });
+            if (!step._parallelBatchSize) {
+              setExecutionStatus({
+                type: 'generating',
+                message: `Step ${stepIndex + 1}/${totalSteps}: ${isImageSlide ? 'Regenerating image for' : 'Editing'} slide ${slideIdx + 1}: "${slideToEdit.title}"...`,
+              });
+            }
 
             // Build context including contextFromStep if present
             let editContext = stepPrompt;
-            if (step.contextFromStep !== null && step.contextFromStep !== undefined && stepOutputs[step.contextFromStep]) {
+            if (step.contextFromStep !== null && step.contextFromStep !== undefined) {
               const prevOutput = stepOutputs[step.contextFromStep];
+              if (!prevOutput) {
+                throw new Error(`Step depends on previous step ${step.contextFromStep}, but that step did not produce reusable output.`);
+              }
               const prevStep = planSteps[step.contextFromStep];
 
               if (prevStep?.action === 'analyze_content') {
                 editContext = `${stepPrompt}\n\n=== CONTENT ANALYSIS (Use this to guide the edit) ===\n${prevOutput.analysis || prevOutput.html}\n=== END ANALYSIS ===`;
               } else {
-                editContext = `${stepPrompt}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevOutput.html}]`;
+                let prevContext = prevOutput.html;
+                if (prevOutput.customCSS) {
+                  const cleanCSS = cleanSlideCSSForAI(prevOutput.customCSS);
+                  prevContext = `<style>\n${cleanCSS}\n</style>\n${prevOutput.html}`;
+                }
+                const dependencyContext = getDependencyEvidenceContext(step);
+                const canonicalBlock = dependencyContext?.promptBlock || '';
+                editContext = `${stepPrompt}${canonicalBlock}\n\n[CONTEXT FROM PREVIOUSLY CREATED SLIDE (Step ${step.contextFromStep}) - "${prevOutput.title}":\n${prevContext}]`;
               }
             }
 
@@ -3342,15 +3891,33 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             const editSearchQuery = deriveSearchQuery(step);
             if (editSearchQuery && settings.searchEnabled) {
               const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
-              const datedQuery = knownFacts
-                ? `${editSearchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
-                : `${editSearchQuery} ${currentDateString()}`;
-              const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
-              console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${editSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
+              const dependencyContext = getDependencyEvidenceContext(step);
+              const datedQuery = buildStepEvidenceSearchQuery(editSearchQuery, knownFacts, dependencyContext);
+              const stepEvidenceSearchModel = settings.evidenceSearchModel || settings.stepSearchModel || settings.searchModel;
+              const searchInstructions = buildStepWebSearchInstruction(step, dependencyContext);
+              const searchOpts = {
+                ...(searchInstructions ? { instructions: searchInstructions } : {}),
+                ...(stepEvidenceSearchModel ? { model: stepEvidenceSearchModel } : {}),
+              };
+              console.log(`[SmartAction] edit_slide step ${stepIndex}: pre-searching for "${editSearchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}${stepEvidenceSearchModel ? ` using ${stepEvidenceSearchModel}` : ''}`);
               try {
-                const searchResult = await webSearch(datedQuery, settings, searchOpts);
+                const searchCacheKey = `${stepEvidenceSearchModel || 'default'}::${editSearchQuery}::${step.searchGoal || ''}`;
+                let searchResult;
+                if (stepSearchCache.has(searchCacheKey)) {
+                  searchResult = stepSearchCache.get(searchCacheKey);
+                  console.log(`[SmartAction] edit_slide step ${stepIndex}: reused cached search result for "${editSearchQuery}"`);
+                } else if (stepSearchesRun >= maxStepSearchesPerPlan) {
+                  console.warn(`[SmartAction] edit_slide step ${stepIndex}: skipped search for "${editSearchQuery}" because plan search budget (${maxStepSearchesPerPlan}) was exhausted`);
+                  searchResult = null;
+                  stepSearchCache.set(searchCacheKey, null);
+                } else {
+                  stepSearchesRun++;
+                  searchResult = await webSearch(datedQuery, settings, searchOpts);
+                  stepSearchCache.set(searchCacheKey, searchResult || null);
+                }
                 if (searchResult) {
-                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  captureSearchSourcesForStep(step, searchResult);
+                  editContext = `${editContext}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\n${buildWebSearchResultInstruction(dependencyContext)}`;
                   console.log(`[SmartAction] edit_slide step ${stepIndex}: search returned ${searchResult.length} chars`);
                 }
               } catch (searchErr) {
@@ -3378,15 +3945,17 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               editContext += `\n\n=== DECK CONTEXT ===\n${posLine}${neighborLine ? '\n' + neighborLine : ''}${storylineLine ? '\n' + storylineLine : ''}\n=== END DECK CONTEXT ===`;
             }
 
-            // Inject referenced slides' HTML for match-design requests (Item 8)
-            const ctxSlideIndices = step.contextSlides || [];
+            // Inject referenced slides' HTML and CSS for match-design requests.
+            const ctxSlideIndices = uniqueValidIndices(
+              (step.referenceSlides?.length > 0 ? step.referenceSlides : step.contextSlides) || [],
+              freshState.slides.length
+            ).filter(idx => idx !== slideIdx);
             if (ctxSlideIndices.length > 0) {
-              const refSlides = ctxSlideIndices.slice(0, 2).map(idx => freshState.slides[idx]).filter(Boolean);
+              const refSlides = ctxSlideIndices.slice(0, 5).map(idx => ({ idx, slide: freshState.slides[idx] })).filter(item => item.slide);
               if (refSlides.length > 0) {
-                const refBlock = refSlides.map((rs, ri) => {
-                  const refIdx = ctxSlideIndices[ri];
-                  return `[Slide ${refIdx + 1}] "${rs.title}" (${rs.templateId || rs.type || 'custom'}):\n${rs.html}`;
-                }).join('\n\n---\n\n');
+                const refBlock = refSlides
+                  .map(({ idx, slide: rs }) => formatReferenceSlideForAI(rs, idx, 'visual format, CSS, spacing, and structure'))
+                  .join('\n\n---\n\n');
                 editContext += `\n\n=== REFERENCE SLIDES (match their style/design) ===\n${refBlock}\n=== END REFERENCE ===`;
               }
             }
@@ -3400,7 +3969,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 const imageResult = await generateImageSlide(editContext, executionSettings, imageMode, {
                   layoutGuidance: step.layoutGuidance || step.instruction,
                   vibe: imageVibe,
-                  footerBranding: settings.footerBranding || 'Strategy&',
+                  footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                   slideNumber: slideIdx + 1,
                   totalSlides: freshState.slides.length,
                   existingImageDataUri: existingImage,
@@ -3767,7 +4336,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 const result = await generateImageSlide(b.enrichedPrompt, b.settings || executionSettings, imageMode, {
                   layoutGuidance: b.step.layoutGuidance,
                   vibe: imageVibe,
-                  footerBranding: settings.footerBranding || 'Strategy&',
+                  footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
                   slideNumber: getFreshState().slides.length + 1,
                 });
                 if (result?.html) {
@@ -3790,11 +4359,13 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
 
           for (const { b, result } of imageResults) {
             recordAiIO(`create_slide (${b.step.templateId})`, b.enrichedPrompt, result.html.slice(0, 500));
+            const resolvedSources = getResolvedStepSources(b.step);
             allBatchInserts.push({
               stepIndex: b.actualIndex,
               slideDataArray: [{
                 ...result,
                 summary: generateSlideSummary(result.html, result.type, result.title),
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               }],
@@ -3805,6 +4376,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           // Fixed-layout slides (cover, section divider): direct placeholder fill
           // Cover titles are validated against search facts to prevent date hallucination
           for (const b of fixedSlides) {
+            const resolvedSources = getResolvedStepSources(b.step);
             const instr = b.step.instruction || '';
             // Prefer structured title/subtitle fields from the new router output
             const titleMatch = b.step.title ? [null, b.step.title] : instr.match(/TITLE:\s*(.+)/i);
@@ -3846,7 +4418,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const coverHtml = SLIDE_TEMPLATES.cover.html
                 .replace('[CATEGORY]', coverCategory || (coverSubtitle ? coverSubtitle.toUpperCase() : ''))
                 .replace('[Presentation Title]', coverTitle)
-                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('[Company]', getClientProfileFooterBranding(settings, 'Strategy&'))
                 .replace('[Date]', new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long' }));
               slideData = {
                 title: coverTitle,
@@ -3863,7 +4435,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 .replace('[01]', divNum)
                 .replace('[Section Title]', divTitle)
                 .replace('[What this section covers]', divSubtitle)
-                .replace('[Company]', settings.footerBranding || 'Strategy&')
+                .replace('[Company]', getClientProfileFooterBranding(settings, 'Strategy&'))
                 .replace('1 / 1', '');
               slideData = {
                 title: divTitle,
@@ -3877,6 +4449,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               stepIndex: b.actualIndex,
               slideDataArray: [{
                 ...slideData,
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               }],
@@ -3889,6 +4462,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             recordAiIO(`create_slide (${b.step.templateId})`, b.enrichedPrompt, html.slice(0, 2000));
             const extractedTitle = extractTitleFromHTML(html);
             const slideTitle = extractedTitle || b.template.title || 'Untitled Slide';
+            const resolvedSources = getResolvedStepSources(b.step);
             allBatchInserts.push({
               stepIndex: b.actualIndex,
               slideDataArray: [{
@@ -3898,6 +4472,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 templateId: b.step.templateId,
                 customCSS: getTemplateCustomCSS(b.template, html),
                 summary: generateSlideSummary(html, b.step.templateId, slideTitle),
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               }],
@@ -3908,6 +4483,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           for (const { b, newSlides } of freestyleResults) {
             if (newSlides.length === 0) continue;
             recordAiIO(`create_slide (freestyle${b.step.layoutGuidance ? `:${b.step.layoutGuidance}` : ''})`, b.enrichedPrompt, newSlides.map(s => s.html.slice(0, 500)).join('\n---\n'));
+            const resolvedSources = getResolvedStepSources(b.step);
             const pendingSlides = newSlides.map(slide => {
               const title = extractTitleFromHTML(slide.html) || slide.title || 'Untitled Slide';
               return {
@@ -3916,6 +4492,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 type: slide.type,
                 summary: generateSlideSummary(slide.html, slide.type, title),
                 ...(slide.customCSS ? { customCSS: slide.customCSS } : {}),
+                ...(resolvedSources.length > 0 ? { sources: resolvedSources } : {}),
                 ...(b.step.sectionTracker ? { sectionLabel: b.step.sectionTracker } : {}),
                 ...(b.step.subSectionTracker ? { subSectionLabel: b.step.subSectionTracker } : {}),
               };
@@ -3942,6 +4519,12 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
 
         let createBatch = []; // Accumulates create_slide steps
 
+        const getStepDependencyIndex = (step) => {
+          if (step?.contextFromStep === null || step?.contextFromStep === undefined) return null;
+          const dependency = Number(step.contextFromStep);
+          return Number.isInteger(dependency) ? dependency : null;
+        };
+
         for (let si = 0; si < group.length; si++) {
           if (abortControllerRef.current?.signal.aborted) break;
 
@@ -3956,6 +4539,15 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           const isCreateStep = step.action === 'create_slide' || step.action === 'create_from_template';
 
           if (isCreateStep) {
+            const dependencyIndex = getStepDependencyIndex(step);
+            const dependencyPendingInBatch = dependencyIndex !== null &&
+              createBatch.some(batchItem => batchItem.stepIndex === dependencyIndex);
+            if (dependencyPendingInBatch) {
+              console.log(`[SmartAction] Flushing ${createBatch.length} create step(s) before dependent step ${stepIndex} (contextFromStep=${dependencyIndex})`);
+              await flushCreateBatch(createBatch);
+              createBatch = [];
+            }
+
             // Prepare this step for batching
             const freshState = getFreshState();
             let stepPromptLocal = step.instruction || userPrompt;
@@ -4010,15 +4602,33 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             const shouldRunBatchSearch = effectiveBatchQuery && settings.searchEnabled;
             if (shouldRunBatchSearch) {
               const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
-              const datedQuery = knownFacts
-                ? `${effectiveBatchQuery} ${currentDateString()}\n\n[Context already established: ${knownFacts}... Focus on newer or additional sources.]`
-                : `${effectiveBatchQuery} ${currentDateString()}`;
-              const searchOpts = step.searchGoal ? { instructions: `Search goal: ${step.searchGoal}` } : {};
-              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${effectiveBatchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}`);
+              const dependencyContext = getDependencyEvidenceContext(step);
+              const datedQuery = buildStepEvidenceSearchQuery(effectiveBatchQuery, knownFacts, dependencyContext);
+              const stepEvidenceSearchModel = settings.evidenceSearchModel || settings.stepSearchModel || settings.searchModel;
+              const searchInstructions = buildStepWebSearchInstruction(step, dependencyContext);
+              const searchOpts = {
+                ...(searchInstructions ? { instructions: searchInstructions } : {}),
+                ...(stepEvidenceSearchModel ? { model: stepEvidenceSearchModel } : {}),
+              };
+              console.log(`[SmartAction] Step ${actualIndex}: pre-searching for "${effectiveBatchQuery}"${step.searchGoal ? ' (with searchGoal)' : ''}${stepEvidenceSearchModel ? ` using ${stepEvidenceSearchModel}` : ''}`);
               try {
-                const searchResult = await webSearch(datedQuery, settings, searchOpts);
+                const searchCacheKey = `${stepEvidenceSearchModel || 'default'}::${effectiveBatchQuery}::${step.searchGoal || ''}`;
+                let searchResult;
+                if (stepSearchCache.has(searchCacheKey)) {
+                  searchResult = stepSearchCache.get(searchCacheKey);
+                  console.log(`[SmartAction] Step ${actualIndex}: reused cached search result for "${effectiveBatchQuery}"`);
+                } else if (stepSearchesRun >= maxStepSearchesPerPlan) {
+                  console.warn(`[SmartAction] Step ${actualIndex}: skipped search for "${effectiveBatchQuery}" because plan search budget (${maxStepSearchesPerPlan}) was exhausted`);
+                  searchResult = null;
+                  stepSearchCache.set(searchCacheKey, null);
+                } else {
+                  stepSearchesRun++;
+                  searchResult = await webSearch(datedQuery, settings, searchOpts);
+                  stepSearchCache.set(searchCacheKey, searchResult || null);
+                }
                 if (searchResult) {
-                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\nIMPORTANT: Prioritize and trust the verified facts and web search results above. When dates, names, or numbers are provided, use them exactly — do NOT substitute older versions from training data. You may supplement with general knowledge where the search results are silent. Cite specific numbers and sources.`;
+                  captureSearchSourcesForStep(step, searchResult);
+                  enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n=== WEB SEARCH RESULTS (current as of ${currentDateString()}) ===\nQuery: "${datedQuery}"\n${searchResult}\n=== END WEB SEARCH RESULTS ===\n${buildWebSearchResultInstruction(dependencyContext)}`;
                   console.log(`[SmartAction] Step ${actualIndex}: search returned ${searchResult.length} chars`);
                 } else {
                   enrichedPrompt = `${stepPromptLocal}${buildSearchFactsBlock(step)}\n\n[Note: web search was attempted for "${datedQuery}" but returned no results. Use key facts above and your best knowledge.]`;
@@ -4062,6 +4672,13 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             // Collect consecutive independent edit_slide steps targeting different slides
             const getStepTargetId = (s) => {
               const current = getFreshState();
+              if (Number.isInteger(s?.slideIndex)) {
+                return current.slides[s.slideIndex]?.id || `idx:${s.slideIndex}`;
+              }
+              if (Array.isArray(s?.targetSlides) && s.targetSlides.length === 1) {
+                const [targetIdx] = s.targetSlides;
+                return current.slides[targetIdx]?.id || `idx:${targetIdx}`;
+              }
               if (Array.isArray(s?.targetSlides) && s.targetSlides.length > 0) {
                 return s.targetSlides
                   .map(idx => current.slides[idx]?.id || `idx:${idx}`)
@@ -4071,7 +4688,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               const idx = s?.slideIndex ?? (capturedSlideId ? current.slides.findIndex(sl => sl.id === capturedSlideId) : capturedSlideIdx);
               return current.slides[idx]?.id || `idx:${idx}`;
             };
-            const isIndependentEdit = (s) => (s.action === 'edit_slide' || s.action === 'switch_template' || s.action === 'update_trackers' || s.action === 'update_tracker') && s.contextFromStep === undefined;
+            const isIndependentEdit = isIndependentEditStep;
             if (isIndependentEdit(step)) {
               const editBatch = [{ step, actualIndex, si }];
               const editTargets = new Set([getStepTargetId(step)]);
@@ -4091,11 +4708,35 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
                 const concurrencyLimit = settings.apiMaxConcurrent || 5;
                 const batchLimit = Math.min(editBatch.length, concurrencyLimit);
                 console.log(`[SmartAction] Running ${editBatch.length} independent edits in parallel (limit ${batchLimit})`);
+                setExecutionStatus({
+                  type: 'generating',
+                  message: `Editing ${editBatch.length} slides in parallel...`,
+                });
+                setProgress(prev => ({
+                  ...prev,
+                  phase: `Editing ${editBatch.length} slides in parallel`,
+                  current: editBatch[0].actualIndex,
+                  total: totalSteps,
+                  completedSteps: prev?.completedSteps || new Set(),
+                  plan: planSteps.map((s, idx) => ({
+                    text: `${s.action}${s.templateId ? ` (${s.templateId})` : ''}`,
+                    action: s.action,
+                    templateId: s.templateId || null,
+                    layoutGuidance: s.layoutGuidance || null,
+                    stepIndex: idx,
+                    parallel: editBatch.some(item => item.step === s),
+                  })),
+                  planStepsRef: planSteps,
+                }));
                 for (let bStart = 0; bStart < editBatch.length; bStart += batchLimit) {
                   const chunk = editBatch.slice(bStart, bStart + batchLimit);
                   const results = await Promise.all(chunk.map(async ({ step: s, actualIndex: ai }) => {
-                    const result = await executeStep(s, ai);
-                    return result;
+                    s._parallelBatchSize = editBatch.length;
+                    try {
+                      return await executeStep(s, ai);
+                    } finally {
+                      delete s._parallelBatchSize;
+                    }
                   }));
                   for (const result of results) {
                     if (result?.pendingSlides) {
@@ -4948,7 +5589,7 @@ Original request: ${userPrompt}`;
                     const imageResult = await generateImageSlide(fullPrompt, createSlideState.settings, imageMode, {
                       layoutGuidance: step.params?.layoutGuidance,
                       vibe: imageVibe,
-                      footerBranding: createSlideState.settings.footerBranding || 'Strategy&',
+                      footerBranding: getClientProfileFooterBranding(createSlideState.settings, 'Strategy&'),
                       slideNumber: createSlideState.slides.length + 1,
                     });
                     if (isAborted()) break;
@@ -4969,7 +5610,7 @@ Original request: ${userPrompt}`;
                     .replace('[01]', divNum)
                     .replace('[Section Title]', divTitle)
                     .replace('[What this section covers]', divSubtitle)
-                    .replace('[Company]', createSlideState.settings.footerBranding || 'Strategy&')
+                    .replace('[Company]', getClientProfileFooterBranding(createSlideState.settings, 'Strategy&'))
                     .replace('1 / 1', '');
                   newSlides = [{
                     title: divTitle,
@@ -5212,7 +5853,7 @@ Original request: ${userPrompt}`;
                     const imageResult = await generateImageSlide(fullPrompt, insertState.settings, imageMode, {
                       layoutGuidance: step.params?.layoutGuidance,
                       vibe: imageVibe,
-                      footerBranding: insertState.settings.footerBranding || 'Strategy&',
+                      footerBranding: getClientProfileFooterBranding(insertState.settings, 'Strategy&'),
                       slideNumber: (typeof position === 'number' && position >= 0) ? position + 1 : insertState.slides.length + 1,
                     });
                     if (isAborted()) break;
@@ -6960,84 +7601,44 @@ Original request: ${userPrompt}`;
             onChange={handleFileUpload}
             style={{ display: 'none' }}
           />
-          {/* Bottom toggles: style + speed mode */}
-          <div className="chatbot-input-actions">
-            <div className="chatbot-action-group chatbot-mode-group">
-              <div className="pill-toggle" role="group" aria-label="Slide style">
+          {state.settings.enableAgenticMode && (
+            <div className="chatbot-input-actions">
+              <div className="chatbot-action-group chatbot-mode-group">
                 <button
                   type="button"
-                  className={`pill-toggle-btn${state.settings.slideStylePreference === 'auto' ? ' active' : ''}`}
-                  onClick={() => actions.updateSettings({ slideStylePreference: 'auto' })}
-                  aria-pressed={state.settings.slideStylePreference === 'auto'}
+                  className={`chatbot-mode-btn ${useAgenticMode && !useReportMode ? 'active' : ''}`}
+                  onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(false); }}
+                  disabled={isLoading}
+                  title="Deep Deck - Research-powered slide presentation"
                 >
-                  Auto
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                    <line x1="8" y1="21" x2="16" y2="21" />
+                    <line x1="12" y1="17" x2="12" y2="21" />
+                  </svg>
+                  Deep Deck
                 </button>
                 <button
                   type="button"
-                  className={`pill-toggle-btn${state.settings.slideStylePreference === 'freestyle' ? ' active' : ''}`}
-                  onClick={() => actions.updateSettings({ slideStylePreference: 'freestyle' })}
-                  title="Freestyle HTML slides"
-                  aria-pressed={state.settings.slideStylePreference === 'freestyle'}
+                  className={`chatbot-mode-btn chatbot-report-mode ${useReportMode ? 'active' : ''}`}
+                  onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(true); }}
+                  disabled={isLoading}
+                  title="Deep Report - Research-powered interactive dashboard"
                 >
-                  Freestyle
-                </button>
-              </div>
-              {/* Fast / Premium pill slider */}
-              <div className="pill-toggle" role="group" aria-label="Speed mode">
-                <button
-                  type="button"
-                  className={`pill-toggle-btn ${state.settings.speedMode === 'fast' ? 'active' : ''}`}
-                  onClick={() => actions.updateSettings({ speedMode: 'fast' })}
-                  title="Faster generation with balanced quality"
-                >
-                  Fast
-                </button>
-                <button
-                  type="button"
-                  className={`pill-toggle-btn ${state.settings.speedMode === 'premium' ? 'active' : ''}`}
-                  onClick={() => actions.updateSettings({ speedMode: 'premium' })}
-                  title="Higher quality generation using the premium model"
-                >
-                  Premium
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M3 3v18h18" />
+                    <path d="M18 9l-5 5-4-4-3 3" />
+                  </svg>
+                  Deep Report
                 </button>
               </div>
-              {state.settings.enableAgenticMode && (
-                <>
-                  <button
-                    type="button"
-                    className={`chatbot-mode-btn ${useAgenticMode && !useReportMode ? 'active' : ''}`}
-                    onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(false); }}
-                    disabled={isLoading}
-                    title="Deep Deck - Research-powered slide presentation"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-                      <line x1="8" y1="21" x2="16" y2="21" />
-                      <line x1="12" y1="17" x2="12" y2="21" />
-                    </svg>
-                    Deep Deck
-                  </button>
-                  <button
-                    type="button"
-                    className={`chatbot-mode-btn chatbot-report-mode ${useReportMode ? 'active' : ''}`}
-                    onClick={() => { setUseImageMode(false); setUseAgenticMode(true); setUseReportMode(true); }}
-                    disabled={isLoading}
-                    title="Deep Report - Research-powered interactive dashboard"
-                  >
-                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d="M3 3v18h18" />
-                      <path d="M18 9l-5 5-4-4-3 3" />
-                    </svg>
-                    Deep Report
-                  </button>
-                </>
-              )}
             </div>
-          </div>
+          )}
           {(() => {
             const smartActionExecuting = isLoading && !!pendingSmartAction;
             const inputDisabled = (isLoading && !agenticExecution.isRunning && !smartActionExecuting);
             const noSlidesYet = state.slides.length === 0;
+            const voiceSupported = !!getSpeechRecognitionCtor();
             const placeholder = noSlidesYet
               ? 'Describe your presentation to get started...'
               : smartActionExecuting
@@ -7057,34 +7658,57 @@ Original request: ${userPrompt}`;
                   disabled={inputDisabled}
                   placeholder={placeholder}
                 />
+                {(isVoiceListening || voiceInterimTranscript || voiceError) && (
+                  <div className={`chatbot-voice-status${voiceError ? ' error' : ''}`} aria-live="polite">
+                    {voiceError || (voiceInterimTranscript ? `Listening: ${voiceInterimTranscript}` : 'Listening... pause when done')}
+                  </div>
+                )}
                 <div className="chatbot-input-toolbar">
-                  <button
-                    type="button"
-                    className="panel-attach-btn"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={inputDisabled || isUploadingFiles}
-                    title="Upload documents (PDF, Word, Excel, PPTX, Images)"
-                  >
-                    {isUploadingFiles ? (
-                      <span className="upload-spinner"></span>
-                    ) : (
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                  <div className="chatbot-input-tools">
+                    <button
+                      type="button"
+                      className="panel-attach-btn"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={inputDisabled || isUploadingFiles}
+                      title="Upload documents (PDF, Word, Excel, PPTX, Images)"
+                    >
+                      {isUploadingFiles ? (
+                        <span className="upload-spinner"></span>
+                      ) : (
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                        </svg>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className={`panel-voice-toggle-btn ${isVoiceListening ? 'active' : ''}`}
+                      onClick={toggleVoiceInput}
+                      disabled={inputDisabled || isUploadingFiles || !voiceSupported}
+                      title={voiceSupported ? (isVoiceListening ? 'Stop voice input' : 'Dictate prompt; pauses are allowed') : 'Voice input is not supported in this browser'}
+                      aria-pressed={isVoiceListening}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3z" />
+                        <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                        <line x1="12" y1="19" x2="12" y2="21" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
                       </svg>
-                    )}
-                  </button>
-                  {/* Search toggle */}
-                  <button
-                    type="button"
-                    className={`panel-search-toggle-btn ${state.settings.searchEnabled ? 'active' : ''}`}
-                    onClick={() => actions.updateSettings({ searchEnabled: !state.settings.searchEnabled })}
-                    title={state.settings.searchEnabled ? 'Web search enabled — router uses it only when needed; step searches can be toggled in the plan' : 'Web search disabled — router and slide execution will avoid web search'}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <circle cx="11" cy="11" r="8" />
-                      <line x1="21" y1="21" x2="16.65" y2="16.65" />
-                    </svg>
-                  </button>
+                    </button>
+                  </div>
+                  <div className="chatbot-input-search">
+                    <button
+                      type="button"
+                      className={`panel-search-toggle-btn ${state.settings.searchEnabled ? 'active' : ''}`}
+                      onClick={() => actions.updateSettings({ searchEnabled: !state.settings.searchEnabled })}
+                      title={state.settings.searchEnabled ? 'Web search enabled — router uses it only when needed; step searches can be toggled in the plan' : 'Web search disabled — router and slide execution will avoid web search'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="11" cy="11" r="8" />
+                        <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                      </svg>
+                    </button>
+                  </div>
                   <button type="submit" className="chatbot-send-btn" disabled={inputDisabled || isUploadingFiles || !prompt.trim()}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                       <line x1="22" y1="2" x2="11" y2="13" />

@@ -7,6 +7,7 @@ import { CHART_GEOMETRY_GUIDE, CSS_STYLE_GUIDE, EDIT_SYSTEM_PROMPT as BASE_EDIT_
 import { appendPptxHintsGuide } from './freestylePromptBuilder.js';
 import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
+import { appendClientDesignContract, getClientProfileFooterBranding } from '../../utils/clientDesignProfiles.js';
 import { unscopeCSS } from '../../utils/cssScoping.js';
 import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext, buildSectionMap } from './slideContext.js';
 import { extractSingleSlide, flattenNestedFrames, extractTitleFromHTML, ensureSlideStructure } from './slideGeneration.js';
@@ -15,7 +16,10 @@ import { currentDateString, safeJSONParse } from './router.js';
 // All edit flows in this module produce slide HTML, so every call uses the
 // edit prompt with the PPTX export-guidance hint guide appended.
 const getEditSystemPrompt = (settings) =>
-  applyPromptOverride(settings, 'edit.system', appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT));
+  appendClientDesignContract(
+    applyPromptOverride(settings, 'edit.system', appendPptxHintsGuide(BASE_EDIT_SYSTEM_PROMPT)),
+    settings
+  );
 
 const stripStyleBlocks = (html = '') =>
   html.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').trim();
@@ -63,8 +67,9 @@ Keep reasoning under 20 words.`;
   try {
     let content;
 
+    const analysisModel = settings.classifierModel || settings.chatRouterModel || settings.routerModel || settings.model;
     content = await callWithModelFallback(
-      { ...settings, temperature: 0.1, maxTokens: 200 },
+      { ...settings, model: analysisModel, temperature: 0.1, maxTokens: 600, reasoningEffort: 'low' },
       'You analyze editing instructions. Respond only in JSON.',
       analysisPrompt
     );
@@ -306,7 +311,7 @@ ${cssContext}${positionContext}${metadataContext}${contextNote}${neighborContext
 
 ${TITLE_HEADER_RULES}
 
-Footer branding: use "${settings.footerBranding || 'Strategy&'}" in footer left span.`;
+Footer/source text: use "${getClientProfileFooterBranding(settings, 'Strategy&')}" in footer left span; if this value is empty, leave the left span blank unless a real source is provided.`;
 
   debugLog(LogLevel.INFO, 'improveSlide', `Starting edit: "${instruction.substring(0, 100)}..."`, {
     slideTitle: title,

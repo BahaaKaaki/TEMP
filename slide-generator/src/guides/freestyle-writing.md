@@ -16,10 +16,20 @@ Write in a message-led executive style: use larger paragraph titles to state the
 
 ## Source citations
 
-When the slide content references data, statistics, or research findings, add a brief source attribution in the footer. Replace the brand span with the source:
+When the slide references external evidence, cite in the footer only. If the brand stays visible, use three spans (`brand`, `span.source`, page):
+
+```html
+<footer class="footer"><span>Strategy&amp;</span><span class="source">Source: IEA World Energy Outlook, 2025</span><span>[Page#]</span></footer>
+```
+
+If the source replaces the brand, two spans:
 
 ```html
 <footer class="footer"><span>Source: IEA World Energy Outlook, 2025</span><span>[Page#]</span></footer>
 ```
 
-Keep sources to **5-15 words maximum**. Examples: "Source: Bloomberg NEF", "McKinsey Global Institute, 2024", "Company annual report, FY2025". Never write full sentences in the source line. If no external data is cited, keep the brand name in the footer instead.
+Keep sources to **5-15 words maximum**. Examples: "Source: Bloomberg NEF", "McKinsey Global Institute, 2024", "Company annual report, FY2025". Never write full sentences in the source line. If no external data is cited, keep the brand name only (no invented source).
+
+## Tables
+
+When the user asks for a table, KPI input sheet, matrix, rubric, or row/column comparison, use real HTML table markup. Keep headers short, wrap only body copy, and avoid simulating tables with unrelated divs unless the visual is a non-tabular matrix or chart. For scorecard dots, RAG markers, checks, or status symbols, place the marker as text inside the relevant `<td>` so it remains part of the table in PowerPoint.

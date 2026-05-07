@@ -172,6 +172,29 @@ export function extractSlideContentForAI(html, options = {}) {
   return output.substring(0, maxLength) || '[Empty slide]';
 }
 
+// Extract the page HTML for router context.
+// Keep the full DOM structure/classes/content so the router can reason about
+// pillars, cards, tables, and labels. Strip CSS only; do not truncate.
+export function extractSlideHtmlForRouter(html) {
+  if (!html || typeof html !== 'string') return '';
+
+  const tempDiv = typeof document !== 'undefined' ? document.createElement('div') : null;
+  if (!tempDiv) {
+    return html
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
+      .replace(/\sstyle=(["'])[\s\S]*?\1/gi, '')
+      .trim();
+  }
+
+  tempDiv.innerHTML = html;
+  tempDiv.querySelectorAll('style').forEach(node => node.remove());
+  tempDiv.querySelectorAll('*').forEach(node => {
+    node.removeAttribute('style');
+  });
+
+  return tempDiv.innerHTML.trim();
+}
+
 // Build lightweight deck outline (no HTML, just metadata)
 export function buildDeckOutline(slides, storyline = null) {
   const outline = slides.map((slide, index) => {
@@ -522,7 +545,10 @@ export function buildStorylineSummary(storyline, compact = true) {
 
   return storyline.map((p, i) => {
     const parentNote = p.parentId ? ` (child of: ${storyline.find(sp => sp.id === p.parentId)?.title || 'parent'})` : '';
-    return `  ${i + 1}. ${p.title}${parentNote}${p.keyMessage ? ` - ${p.keyMessage}` : ''}`;
+    const inventory = Array.isArray(p.contentInventory) && p.contentInventory.length > 0
+      ? ` | Content: ${p.contentInventory.join('; ')}`
+      : '';
+    return `  ${i + 1}. ${p.title}${parentNote}${p.keyMessage ? ` - ${p.keyMessage}` : ''}${inventory}`;
   }).join('\n');
 }
 
@@ -554,13 +580,9 @@ function normalizeComparableLabel(text) {
     .trim();
 }
 
-function toShortTrackerTitle(title, fallback = 'Section') {
-  const cleaned = cleanStructureText(title) || fallback;
-  return cleaned.split(/\s+/).slice(0, 4).join(' ');
-}
-
 function formatTrackerLabel(index, title) {
-  return `${index + 1}. ${toShortTrackerTitle(title)}`;
+  const cleaned = cleanStructureText(title) || 'Section';
+  return `${index + 1}. ${cleaned}`;
 }
 
 function getVisibleTextLines(root) {
@@ -916,6 +938,7 @@ export function buildDeckContextDigest(slides = [], options = {}) {
       maxLength: Math.max(maxContentCharsPerSlide, 700),
       includeStructure: true,
     }),
+    structuralHtml: extractSlideHtmlForRouter(activeSlide.html || ''),
     previousTitle: activeSlideIndex > 0 ? safeSlides[activeSlideIndex - 1]?.title || 'Untitled' : null,
     nextTitle: activeSlideIndex < safeSlides.length - 1 ? safeSlides[activeSlideIndex + 1]?.title || 'Untitled' : null,
   } : null;
@@ -935,6 +958,7 @@ export function buildDeckContextDigest(slides = [], options = {}) {
           maxLength: normalizedContextLevel === CONTEXT_LEVELS.FULL_TEXT_DECK ? 1400 : 1000,
           includeStructure: true,
         }),
+        structuralHtml: extractSlideHtmlForRouter(slide.html || ''),
       };
     })
     .filter(Boolean);
@@ -947,6 +971,9 @@ export function buildDeckContextDigest(slides = [], options = {}) {
           `${index + 1}. ${point.title || slide?.title || 'Untitled'}`,
           point.description ? `Description: ${point.description}` : null,
           point.keyMessage ? `Key: ${point.keyMessage}` : null,
+          Array.isArray(point.contentInventory) && point.contentInventory.length > 0
+            ? `Content: ${point.contentInventory.join('; ')}`
+            : null,
           slide ? `Slide ${slideIndex + 1}: ${slide.title || 'Untitled'}${formatSlideSectionTag(slide)}` : 'No linked slide',
           slide ? `Text: ${extractSlideContentForAI(slide.html || '', { maxLength: 360, includeStructure: false })}` : null,
         ].filter(Boolean);

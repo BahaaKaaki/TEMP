@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { useMemo, useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useSlides } from '../context/SlideContext';
 import { transformElementToWidget, hasAnyApiKey } from '../services/aiService';
@@ -6,11 +6,149 @@ import { exportSingleSlideToPPTX, testPPTXCodeGeneration } from '../services/ppt
 import { exportSingleSlideToPDF, generateFileName } from '../services/exportService';
 import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
 import { themeToCSS } from '../utils/themeUtils';
+import { authFetch } from '../services/authFetch';
 import CommentPanel from './CommentPanel';
+import { normalizeFlexProseInSlideMount } from '../utils/slideDomNormalize';
 
 const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
 const DEFAULT_ZOOM = 1;
 const DEBUG_MODE = typeof window !== 'undefined' && localStorage.getItem('DEBUG_MODE') === 'true';
+const SOURCE_TEXT_SELECTORS = [
+  '.source',
+  'cite',
+  '[data-source]',
+  '[data-citation]',
+].join(',');
+
+function decodeHtmlEntities(value = '') {
+  if (typeof document === 'undefined') return String(value || '');
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = String(value || '');
+  return textarea.value;
+}
+
+function normalizeWhitespace(value = '') {
+  return decodeHtmlEntities(value)
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getSourceHost(url) {
+  try {
+    return new URL(url).hostname.replace(/^www\./, '');
+  } catch {
+    return '';
+  }
+}
+
+function toSearchUrl(label) {
+  return `https://www.google.com/search?q=${encodeURIComponent(label)}`;
+}
+
+function cleanSourceLabel(value = '') {
+  return normalizeWhitespace(value)
+    .replace(/^\s*(sources?|references?|citation)\s*[:\-\u2013]\s*/i, '')
+    .replace(/\s*\(?https?:\/\/\S+\)?/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function splitSourceText(text = '') {
+  const cleaned = cleanSourceLabel(text);
+  if (!cleaned) return [];
+  return cleaned
+    .split(/\s*(?:\||;|\n|\u2022)\s*/g)
+    .map(part => cleanSourceLabel(part))
+    .filter(part => part.length > 2 && !/^\d+$/.test(part));
+}
+
+function isUsefulTextSource(label = '') {
+  const text = cleanSourceLabel(label);
+  if (!text || /^(strategy&|pwc|source|sources|references?)$/i.test(text)) return false;
+  const commaCount = (text.match(/,/g) || []).length;
+  if (text.length > 90 || commaCount >= 2) return false;
+  if (commaCount > 0 && /\bofficial docs?\b/i.test(text)) return false;
+  if (commaCount > 0 && /\b(OpenAI|Anthropic|Google|Meta|xAI|Mistral|DeepSeek)\b/i.test(text)) return false;
+  return true;
+}
+
+function extractSlideSources(html = '', metadataSources = []) {
+  if (typeof DOMParser === 'undefined' && (!metadataSources || metadataSources.length === 0)) return [];
+  const doc = typeof DOMParser !== 'undefined'
+    ? new DOMParser().parseFromString(html || '', 'text/html')
+    : null;
+  const sources = [];
+  const seen = new Set();
+
+  const addSource = ({ label, url, context, type = 'link' }) => {
+    const cleanLabel = cleanSourceLabel(label) || getSourceHost(url) || 'Source';
+    if (!cleanLabel && !url) return;
+    const cleanUrl = typeof url === 'string' && /^https?:\/\//i.test(url.trim())
+      ? url.trim()
+      : '';
+    const key = cleanUrl || cleanLabel.toLowerCase();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    sources.push({
+      id: `source-${sources.length + 1}`,
+      label: cleanLabel,
+      url: cleanUrl,
+      host: cleanUrl ? getSourceHost(cleanUrl) : '',
+      context: normalizeWhitespace(context || ''),
+      type: cleanUrl ? type : 'search',
+    });
+  };
+
+  metadataSources.forEach(source => {
+    if (!source) return;
+    if (typeof source === 'string') {
+      addSource({ label: source, context: source, type: 'metadata' });
+      return;
+    }
+    addSource({
+      label: source.label || source.title || source.url || 'Source',
+      url: source.url || '',
+      context: source.note || source.snippet || source.label || '',
+      type: 'metadata',
+    });
+  });
+
+  if (!doc) return sources.slice(0, 20);
+
+  doc.querySelectorAll('a[href]').forEach(anchor => {
+    const href = anchor.getAttribute('href') || '';
+    if (!/^https?:\/\//i.test(href)) return;
+    addSource({
+      label: anchor.textContent || href,
+      url: href,
+      context: anchor.closest('tr, li, p, div, footer')?.textContent || anchor.textContent || href,
+      type: 'link',
+    });
+  });
+
+  const bodyText = doc.body?.textContent || '';
+  for (const match of bodyText.matchAll(/https?:\/\/[^\s<>)"]+/gi)) {
+    const url = match[0].replace(/[.,;:]+$/, '');
+    addSource({ label: getSourceHost(url) || url, url, context: url, type: 'url' });
+  }
+
+  if (sources.some(source => source.url)) {
+    return sources.slice(0, 20);
+  }
+
+  doc.querySelectorAll(SOURCE_TEXT_SELECTORS).forEach(el => {
+    const text = normalizeWhitespace(el.textContent || '');
+    if (!/(^|\b)(sources?|references?|citation)\b/i.test(text) && !el.matches('[class*="source"], [data-source], [data-citation], cite')) {
+      return;
+    }
+    splitSourceText(text).forEach(part => {
+      if (!isUsefulTextSource(part)) return;
+      addSource({ label: part, context: text, type: 'text' });
+    });
+  });
+
+  return sources.slice(0, 20);
+}
 
 // Category icon helper for context menu
 function getCategoryIcon(category) {
@@ -28,7 +166,7 @@ function getCategoryIcon(category) {
 }
 
 export default function SlidePreview({ onSwitchToCode }) {
-  const { activeSlide, state, actions } = useSlides();
+  const { activeSlide, state, actions, activeClientProfile } = useSlides();
   const [isEditMode, setIsEditMode] = useState(true); // Always on
   const [isVisualEditMode, setIsVisualEditMode] = useState(true); // Always on
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
@@ -49,6 +187,8 @@ export default function SlidePreview({ onSwitchToCode }) {
   const [pptxTestResult, setPptxTestResult] = useState(null);
   const [isTestingPPTX, setIsTestingPPTX] = useState(false);
   const [showCommentPanel, setShowCommentPanel] = useState(false);
+  const [showSourcesPanel, setShowSourcesPanel] = useState(false);
+  const [clientLogoUrl, setClientLogoUrl] = useState(null);
   const downloadMenuRef = useRef(null);
   const commentPanelRef = useRef(null);
 
@@ -75,6 +215,43 @@ export default function SlidePreview({ onSwitchToCode }) {
   useEffect(() => {
     activeSlideIdRef.current = activeSlide?.id;
   }, [activeSlide?.id]);
+
+  useEffect(() => {
+    const logoAsset = activeClientProfile?.id === 'stc'
+      ? '/api/assets/client-templates/stc/logo.png'
+      : activeClientProfile?.id === 'pif'
+        ? '/api/assets/client-templates/pif/logo.png'
+        : null;
+
+    if (!logoAsset) {
+      setClientLogoUrl(null);
+      return undefined;
+    }
+
+    let cancelled = false;
+    let objectUrl = null;
+
+    authFetch(logoAsset)
+      .then(res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.blob();
+      })
+      .then(blob => {
+        if (cancelled) return;
+        objectUrl = URL.createObjectURL(blob);
+        setClientLogoUrl(objectUrl);
+      })
+      .catch(err => {
+        if (cancelled) return;
+        console.warn('[SlidePreview] Client logo unavailable:', err.message);
+        setClientLogoUrl(null);
+      });
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [activeClientProfile?.id]);
 
   // Handle Escape key to exit fullscreen
   useEffect(() => {
@@ -381,6 +558,14 @@ export default function SlidePreview({ onSwitchToCode }) {
     return activeSlide?.customCSS || '';
   }, [activeSlide?.customCSS]);
 
+  const slideSources = useMemo(() => {
+    return extractSlideSources(activeSlide?.html || '', activeSlide?.sources || []);
+  }, [activeSlide?.html, activeSlide?.sources]);
+
+  useEffect(() => {
+    setShowSourcesPanel(false);
+  }, [activeSlide?.id]);
+
   // Set up the slide HTML when activeSlide changes
   useEffect(() => {
     if (slideRef.current && activeSlide) {
@@ -408,10 +593,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       // Inject sub-section tracker attribute if slide has a subSectionLabel
       if (activeSlide.subSectionLabel) {
         const escaped = activeSlide.subSectionLabel.replace(/"/g, '&quot;');
-        // Calculate offset for sub-tracker based on main tracker text length
-        const trackerOffset = activeSlide.sectionLabel
-          ? Math.round(activeSlide.sectionLabel.length * 5.7 + 28)
-          : 0;
+        const trackerOffset = estimateTrackerOffset(activeSlide.sectionLabel, activeClientProfile);
         html = html.replace(
           /class="slide([^"]*)"/,
           `class="slide$1" data-subsection="${escaped}" style="--tracker-offset: ${trackerOffset}px"`
@@ -427,12 +609,27 @@ export default function SlidePreview({ onSwitchToCode }) {
       if (slideIndex >= 0) {
         html = injectPageNumber(html, slideIndex + 1, state.slides.length);
       }
+      html = injectClientProfileChrome(html, activeClientProfile, clientLogoUrl);
       slideRef.current.innerHTML = html;
-      if (isEditMode) {
-        makeEditable(slideRef.current);
-      }
+      requestAnimationFrame(() => {
+        if (!slideRef.current) return;
+        normalizeFlexProseInSlideMount(slideRef.current);
+        slideRef.current.querySelectorAll('a[href]').forEach(anchor => {
+          const href = anchor.getAttribute('href') || '';
+          if (!/^https?:\/\//i.test(href)) return;
+          anchor.classList.add('slide-source-link');
+          anchor.setAttribute('data-source-preview-enhanced', 'true');
+          anchor.setAttribute('target', '_blank');
+          anchor.setAttribute('rel', 'noopener noreferrer');
+          anchor.setAttribute('data-no-edit', 'true');
+          anchor.setAttribute('title', `Open source: ${anchor.textContent?.trim() || href}`);
+        });
+        if (isEditMode) {
+          makeEditable(slideRef.current);
+        }
+      });
     }
-  }, [activeSlide?.id, activeSlide?.html, isEditMode, state.darkMode, state.slides]);
+  }, [activeSlide?.id, activeSlide?.html, isEditMode, state.darkMode, state.slides, activeClientProfile, clientLogoUrl]);
 
   // Update dark-mode and section-tracker attributes on the slide DOM element
   useEffect(() => {
@@ -453,7 +650,7 @@ export default function SlidePreview({ onSwitchToCode }) {
           if (activeSlide?.subSectionLabel) {
             slideEl.setAttribute('data-subsection', activeSlide.subSectionLabel);
             if (activeSlide.sectionLabel) {
-              const offset = Math.round(activeSlide.sectionLabel.length * 5.7 + 28);
+              const offset = estimateTrackerOffset(activeSlide.sectionLabel, activeClientProfile);
               slideEl.style.setProperty('--tracker-offset', `${offset}px`);
             }
           } else {
@@ -463,7 +660,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         }
       });
     }
-  }, [state.darkMode, activeSlide?.sectionLabel, activeSlide?.subSectionLabel]);
+  }, [state.darkMode, activeSlide?.sectionLabel, activeSlide?.subSectionLabel, activeClientProfile]);
 
   // Make all text-bearing leaf elements editable.
   //
@@ -604,6 +801,10 @@ export default function SlidePreview({ onSwitchToCode }) {
   const handleDragStart = useCallback((e) => {
     if (!isVisualEditMode) return;
 
+    if (e.target.closest('a[href], .slide-source-link')) {
+      return;
+    }
+
     // Find the closest draggable element
     const draggableEl = e.target.closest('.draggable-element');
     if (!draggableEl) {
@@ -723,6 +924,11 @@ export default function SlidePreview({ onSwitchToCode }) {
     const temp = document.createElement('div');
     temp.innerHTML = html;
 
+    temp.querySelectorAll('.client-chrome').forEach(el => el.remove());
+    temp.querySelectorAll('[data-client-profile]').forEach(el => {
+      el.removeAttribute('data-client-profile');
+    });
+
     // Remove contenteditable attributes
     temp.querySelectorAll('[contenteditable]').forEach(el => {
       el.removeAttribute('contenteditable');
@@ -742,6 +948,16 @@ export default function SlidePreview({ onSwitchToCode }) {
     });
     temp.querySelectorAll('.dragging').forEach(el => {
       el.classList.remove('dragging');
+    });
+    temp.querySelectorAll('.slide-source-link').forEach(el => {
+      const wasPreviewEnhanced = el.getAttribute('data-source-preview-enhanced') === 'true';
+      el.classList.remove('slide-source-link');
+      if (!wasPreviewEnhanced) return;
+      el.removeAttribute('data-source-preview-enhanced');
+      if (el.getAttribute('data-no-edit') === 'true') el.removeAttribute('data-no-edit');
+      if (el.getAttribute('target') === '_blank') el.removeAttribute('target');
+      if (el.getAttribute('rel') === 'noopener noreferrer') el.removeAttribute('rel');
+      if ((el.getAttribute('title') || '').startsWith('Open source:')) el.removeAttribute('title');
     });
 
     // Remove data-drag-id attributes
@@ -817,6 +1033,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         newHtml = newHtml.replace(/\s*data-slide-id="[^"]*"/g, '');
         newHtml = newHtml.replace(/\s*data-section="[^"]*"/g, '');
         newHtml = newHtml.replace(/\s*data-subsection="[^"]*"/g, '');
+        newHtml = newHtml.replace(/\s*data-client-profile="[^"]*"/g, '');
         newHtml = newHtml.replace(/\s*style="--tracker-offset:\s*\d+px"/g, '');
 
         // Ensure the slide wrapper is preserved
@@ -843,6 +1060,18 @@ export default function SlidePreview({ onSwitchToCode }) {
       e.target.blur();
     }
   }, [handleBlur]);
+
+  const handleSlideClick = useCallback((e) => {
+    const anchor = e.target.closest('a[href]');
+    if (!anchor) return;
+
+    const href = anchor.getAttribute('href') || '';
+    if (!/^https?:\/\//i.test(href)) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+    window.open(href, '_blank', 'noopener,noreferrer');
+  }, []);
 
   if (!activeSlide) {
     return (
@@ -901,8 +1130,23 @@ export default function SlidePreview({ onSwitchToCode }) {
           </svg>
         </button>
 
+        {slideSources.length > 0 && (
+          <button
+            className={`slide-sources-float ${showSourcesPanel ? 'active' : ''}`}
+            onClick={() => setShowSourcesPanel(value => !value)}
+            title={`Review ${slideSources.length} source${slideSources.length === 1 ? '' : 's'} for this slide`}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M10 13a5 5 0 0 0 7.1.1l2-2a5 5 0 0 0-7.1-7.1l-1.1 1.1" />
+              <path d="M14 11a5 5 0 0 0-7.1-.1l-2 2a5 5 0 0 0 7.1 7.1l1.1-1.1" />
+            </svg>
+            Sources
+            <span>{slideSources.length}</span>
+          </button>
+        )}
+
         {/* Inject CSS */}
-        <style>{getBaseCSS() + '\n' + themeToCSS(state.theme) + '\n' + combinedCSS + '\n' + getEditModeCSS(isEditMode) + '\n' + getVisualEditModeCSS(isVisualEditMode)}</style>
+        <style>{getBaseCSS() + '\n' + getClientChromeCSS() + '\n' + themeToCSS(state.theme) + '\n' + combinedCSS + '\n' + getEditModeCSS(isEditMode) + '\n' + getVisualEditModeCSS(isVisualEditMode)}</style>
 
         {/* Zoomable slide container */}
         <div
@@ -914,6 +1158,7 @@ export default function SlidePreview({ onSwitchToCode }) {
             className={`slide-render-container ${isEditMode ? 'edit-mode' : ''} ${isVisualEditMode ? 'visual-edit-mode' : ''}`}
             onBlur={handleBlur}
             onKeyDown={handleKeyDown}
+            onClick={handleSlideClick}
             onMouseDown={handleDragStart}
             onContextMenu={handleContextMenu}
           />
@@ -990,6 +1235,58 @@ export default function SlidePreview({ onSwitchToCode }) {
 
       </div>
       </div>
+      {slideSources.length > 0 && showSourcesPanel && (
+        <aside className="slide-sources-panel" aria-label="Slide sources">
+          <div className="slide-sources-header">
+            <div>
+              <h3>Slide Sources</h3>
+              <p>Verify the evidence used on this slide.</p>
+            </div>
+            <button
+              className="slide-sources-close"
+              onClick={() => setShowSourcesPanel(false)}
+              title="Close sources"
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+          </div>
+          <div className="slide-sources-list">
+            {slideSources.map((source, index) => {
+              const href = source.url || toSearchUrl(source.label);
+              return (
+                <article className="slide-source-card" key={source.id}>
+                  <div className="slide-source-index">{index + 1}</div>
+                  <div className="slide-source-body">
+                    <div className="slide-source-title">{source.label}</div>
+                    <div className="slide-source-meta">
+                      {source.host || 'Search web'}
+                      {source.type === 'search' && <span>Generated from slide source text</span>}
+                    </div>
+                    {source.context && source.context !== source.label && (
+                      <p className="slide-source-context">{source.context}</p>
+                    )}
+                    <a
+                      className="slide-source-open"
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {source.url ? 'Open original source' : 'Search this source'}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M7 17L17 7" />
+                        <path d="M7 7h10v10" />
+                      </svg>
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </aside>
+      )}
       </div>
 
       {/* Bottom bar removed for vertical space -- info available in slide list sidebar */}
@@ -1347,6 +1644,8 @@ export default function SlidePreview({ onSwitchToCode }) {
           currentSlideId={activeSlide?.id}
           theme={state.theme}
           combinedCSS={combinedCSS}
+          activeClientProfile={activeClientProfile}
+          clientLogoUrl={clientLogoUrl}
           onClose={() => setIsFullscreen(false)}
           onNavigate={(slideId) => actions.setActiveSlide(slideId)}
         />
@@ -1479,6 +1778,105 @@ export function getBaseCSS() {
 `;
 }
 
+function getClientChromeCSS() {
+  return `
+.slide[data-client-profile="stc"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="stc"] .client-chrome-stc-logo {
+  left: 14px;
+  top: 2px;
+  width: 35px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.slide[data-client-profile="stc"] .client-chrome-stc-wordmark {
+  left: 14px;
+  top: 2px;
+  width: 35px;
+  height: 18px;
+  font: 700 16px/1 "STC Forward", Arial, sans-serif;
+  color: var(--accent);
+  letter-spacing: -1px;
+}
+
+.slide[data-client-profile="pif"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="pif"] .client-chrome-pif-logo {
+  left: 35px;
+  top: 23px;
+  width: 80px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.slide[data-client-profile="pif"] .client-chrome-pif-wordmark {
+  left: 35px;
+  top: 23px;
+  width: 80px;
+  height: 36px;
+  font: 400 24px/1 "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #005C4D;
+}
+`;
+}
+
+function escapeHtmlAttr(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function estimateTrackerOffset(sectionLabel, activeProfile = null) {
+  if (!sectionLabel) return 0;
+  const labelLength = String(sectionLabel).length;
+  const isStc = activeProfile?.id === 'stc';
+  const base = isStc ? 38 : 22;
+  const charWidth = isStc ? 6.1 : 4.8;
+  const min = isStc ? 190 : 0;
+  const max = isStc ? 360 : 360;
+  return Math.min(max, Math.max(min, Math.round(labelLength * charWidth + base)));
+}
+
+function stripClientProfileChrome(html = '') {
+  return html
+    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-stc-logo\b[^"]*"[^>]*>/gi, '')
+    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-pif-logo\b[^"]*"[^>]*>/gi, '')
+    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-stc-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-pif-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/\s*data-client-profile="[^"]*"/gi, '');
+}
+
+function injectClientProfileChrome(html, profile, logoUrl) {
+  const cleanedHtml = stripClientProfileChrome(html || '');
+  if (!profile?.id || profile.id === 'strategy' || !cleanedHtml) return cleanedHtml;
+
+  const isSpecialMaster = /\b(master-cover|master-blank|master-emptyPage)\b/i.test(cleanedHtml)
+    || /cover-slide|cover-branding|section-divider-slide|separator-slide/i.test(cleanedHtml);
+  const withProfile = cleanedHtml.replace(
+    /class="slide([^"]*)"/,
+    `class="slide$1" data-client-profile="${escapeHtmlAttr(profile.id)}"`
+  );
+  if (isSpecialMaster) return withProfile;
+
+  const logoMarkup = logoUrl
+    ? `<img class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="${escapeHtmlAttr(profile.name || profile.id)}" />`
+    : `<div class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-wordmark" data-no-edit>${profile.id === 'pif' ? 'PIF' : 'stc'}</div>`;
+  return withProfile.replace(/(<div\b[^>]*class="[^"]*\bslide\b[^"]*"[^>]*>)/i, `$1${logoMarkup}`);
+}
+
 
 // Inject data-section attribute for section tracker tab
 function injectSectionToHtml(html, sectionLabel) {
@@ -1492,12 +1890,11 @@ function injectSectionToHtml(html, sectionLabel) {
 }
 
 // Inject data-subsection attribute for sub-section tracker tab
-function injectSubSectionToHtml(html, subSectionLabel, sectionLabel) {
+function injectSubSectionToHtml(html, subSectionLabel, sectionLabel, activeProfile = null) {
   if (!subSectionLabel || !html) return html;
   const escaped = subSectionLabel.replace(/"/g, '&quot;');
   const cleanHtml = html.replace(/\s*data-subsection="[^"]*"/g, '');
-  // Calculate offset based on main tracker label width
-  const offset = sectionLabel ? Math.round(sectionLabel.length * 5.5 + 29) : 0;
+  const offset = estimateTrackerOffset(sectionLabel, activeProfile);
   return cleanHtml.replace(
     /class="slide([^"]*)"/,
     `class="slide$1" data-subsection="${escaped}" style="--tracker-offset: ${offset}px"`
@@ -1517,7 +1914,7 @@ function injectPageNumber(html, pageNumber, totalSlides) {
 }
 
 // Fullscreen Modal Component with proper scaling and navigation
-function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, onNavigate }) {
+function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, activeClientProfile, clientLogoUrl, onClose, onNavigate }) {
   const [scale, setScale] = useState(1);
   const [currentIndex, setCurrentIndex] = useState(() =>
     slides.findIndex(s => s.id === currentSlideId)
@@ -1539,9 +1936,19 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, 
   }
   // Inject sub-section tracker
   if (currentSlide?.subSectionLabel && slideHtml) {
-    slideHtml = injectSubSectionToHtml(slideHtml, currentSlide.subSectionLabel, currentSlide.sectionLabel);
+    slideHtml = injectSubSectionToHtml(slideHtml, currentSlide.subSectionLabel, currentSlide.sectionLabel, activeClientProfile);
   }
   slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length);
+  slideHtml = injectClientProfileChrome(slideHtml, activeClientProfile, clientLogoUrl);
+  const fullscreenSlideRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!fullscreenSlideRef.current || !slideHtml) return;
+    requestAnimationFrame(() => {
+      if (fullscreenSlideRef.current) normalizeFlexProseInSlideMount(fullscreenSlideRef.current);
+    });
+  }, [slideHtml, currentIndex, currentSlide?.id]);
+
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < slides.length - 1;
 
@@ -1645,7 +2052,7 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, 
       }}
     >
       {/* Inject CSS */}
-      <style>{getBaseCSS() + '\n' + themeToCSS(theme) + '\n' + (currentSlide?.customCSS || '')}</style>
+      <style>{getBaseCSS() + '\n' + getClientChromeCSS() + '\n' + themeToCSS(theme) + '\n' + (currentSlide?.customCSS || '')}</style>
 
       {/* Scaled slide wrapper */}
       <div
@@ -1656,6 +2063,7 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, onClose, 
         }}
       >
         <div
+          ref={fullscreenSlideRef}
           style={{
             width: 960,
             height: 540,

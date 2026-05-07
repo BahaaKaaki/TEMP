@@ -15,29 +15,45 @@ AI-powered presentation generator that creates professional slide decks using Pw
 
 ## Features
 
-- AI slide generation via PwC Shared Services (model: `vertex_ai.gemini-3.1-pro-preview`)
+- AI slide generation via PwC Shared Services (premium model: `bedrock.anthropic.claude-opus-4-7`)
 - Backend AI proxy -- API key stays server-side, never exposed to browser
 - Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
 - Monaco-based slide editor (HTML/CSS)
-- PowerPoint (.pptx) export via PptxGenJS with template-aware merging (logo injection, master shape isolation, smart layout selection, template position awareness)
+- PowerPoint (.pptx) export via PptxGenJS with template-aware merging (logo injection, master shape isolation, smart layout selection, template position awareness, native table export guidance, table-cell marker safeguards, single-line tracker chrome, Strategy& 7.5pt footer/source/page chrome, PowerPoint XML sanitation, and export prompts that steer `fit: 'resize'` where body text should track content height plus even bullet spacing)
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
+- Client template profiles can switch generation away from the default Strategy& look; STC and PIF LDC ship as full profiles with semantic theme tokens, layout CSS variables, prompt-section overrides, bundled masters/assets, PPTX export hints, evidence metadata, and validation rules
+- Client profile prompt overrides now inherit non-negotiable slide-generator guardrails (inline sentence flow, shared row/column headers instead of repeated tags, one dominant structure, and strict no-overlap/no-overflow fit) so theme/profile switches keep the same core quality constraints
+- Client-profile geometry and theme state are applied at slide creation and PPTX export: active profiles rewrite generic frame/chart guidance, keep new/cleared decks on the selected profile theme, preserve Strategy& master chrome during template merge, carry client master theme palettes into controlled exports, use profile-shaped PPTX examples, normalize exported body objects into the declared content band, keep STC section trackers clear of the logo with 9px text-only reference coloring, render PIF's 10 x 5.625 in LDC shell with Fund typography and gold page-number block, sanitize invalid negative shape dimensions, de-duplicate PowerPoint shape IDs, clamp zero-size extents, and load bundled masters/assets through profile-driven routes with token-refresh retry
 - Web search via PwC Responses API
-- Router search policy uses GPT 5.4 reasoning by default, but only attaches web search for requests that need current or external evidence; per-step search remains available for factual slides
+- Expired Microsoft sessions surface a visible re-auth prompt when MSAL silent token refresh or backend 401 recovery fails; active-use failures show as a top-center banner
+- User Settings include generation defaults for slide approach (Auto/Freestyle) and model tier (Fast/Premium); Freestyle mode tells the router to use cover only for cover slides and freestyle for body slides unless the user explicitly requests a named template or layout
+- Voice dictation in the AI chat input uses browser speech recognition to place editable transcript text into the prompt before sending
+- AI plan review cards keep long section trackers, template names, and instructions constrained within the chat panel
+- Router search policy uses GPT 5.5 reasoning by default, but only attaches web search for requests that need current or external evidence; Responses API router failures fall back to Chat Completions planning, router evidence is packaged as structured metadata, and per-step evidence search uses GPT 5.5 by default with caching/budgeting while still overriding older router facts when current/latest results conflict
+- Slide preview includes a source inspector for evidence-backed slides: router/per-step search URLs, raw URLs, and in-slide links are shown as clickable verification cards; generic footer source labels are ignored unless no URL-backed source exists
+- Slide rendering runs a post-mount normalization (`slideDomNormalize.js`) and frame-level CSS so `display:flex` on prose cannot split loose text and `<strong>` / `<em>` into separate flex columns; emphasis stays inline inside wrapped prose blocks
+- Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md` and now enforces a strict allowed-template set (`cover`, `sectionDivider`, `outcomeApproach`, `chevronFlow`, `projectStepDetail`, `freestyle`) with stronger tracker hierarchy, layout-density, storyline sequencing rules, and subtitle discipline (short noun phrases up to six words; no em dashes, colons, or clauses)
+- Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` (Strategy& executive consulting contract: subtitle discipline, sentence-level HTML integrity including explicit inline display on prose divs and `<strong>` / `<em>`, clarity, hierarchy, whitespace, bullet box sizing, non-overlapping/non-overflowing fit, shared-label reduction, explicit geometry for complex visuals, strict token-only scoped CSS on `.frame`)
+- The slide HTML generator guide is now a single canonical prompt block (legacy duplicate prompt sections removed) so deployed behavior matches one authoritative prompt contract
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Complex chart generation uses fixed-coordinate geometry guidance for waterfall/bridge/bar-style exhibits, with inline numeric positioning allowed only for chart marks
 - Template auto-match now attaches the selected template's extracted CSS consistently across create, insert, fill, and switch paths
 - Reused template CSS is normalized through per-slide `data-slide-id` scoping on add/update, including CSS blocks with comments before selectors
 - Template switching strips model-returned `<style>` blocks when template CSS is applied, reducing conflicts between generated CSS and extracted template CSS
-- Cross-slide format matching passes referenced slide HTML plus its unscoped `customCSS`, so "make this like slide N" has the actual visual rules, not just markup
+- Cross-slide format matching keeps the displayed target and executed slide aligned while passing referenced slide HTML plus unscoped `customCSS`, so "make this like slide N" has the actual visual rules, not just markup; router planning repairs invalid self/future `contextFromStep` dependencies before display, and execution still validates dependencies before dependent slides reuse generated structure and ordering
+- Independent multi-slide edits that share the same reference slide now run in parallel when they target different concrete pages, with execution progress showing the parallel edit batch
 - Explicit slide reorder prompts such as `3-4-2-5-6` or `reorder slides 4 and 5` are handled deterministically without an AI planning call, preserving omitted slides in their existing relative order; the create/delete guard is scoped to pure reorder requests so broader deck restructuring can still change content
-- Slide typography is normalized on generation/import/update and PPTX export: no visible text below 10px/10pt, body copy targets 12px/12pt, and section/pillar/card titles target 14px/14pt
+- Slide typography is normalized on generation/import/update and PPTX export: compact tags, chips, badges, and tracker labels may use 8px/8pt; Strategy& footer/source/page chrome follows the master at 7.5pt; normal text stays at least 10px/10pt, body copy targets 12px/12pt, and section/pillar/card titles target 14px/14pt
 - Deck-aware routing uses active-page text, layout mix, section maps, and enriched storyline context for follow-on deck requests
 - Triage now selects context depth (`active_slide`, `reference_slides`, `deck_digest`, or `full_text_deck`) and separates target slides from reference slides for cross-slide edits
 - Section and subsection trackers can be updated as slide metadata without regenerating slide HTML
-- Executive summary trackers are derived from semantic slide text, including freestyle HTML with arbitrary div/span classes, and apply to body slides rather than the executive summary slide
+- Executive summary trackers are derived from recognizable parent-page wording, including freestyle HTML with arbitrary div/span classes, and apply to body slides rather than the executive summary slide
 - Prompt Debug settings expose router, triage, generation, edit, validation, and PPTX prompt overrides plus recent prompt payloads for troubleshooting look and feel
+- Multi-round clarification cards submit answers from the active question card, so follow-up question sets preserve first, second, and later-round user preferences
+- Router context includes the active page's full HTML structure without CSS, so planning can see card/pillar/table hierarchy instead of relying only on text digests
+- Rich storyline sync from existing slides also analyzes each slide's full HTML structure without CSS and stores a `contentInventory` for pillars, cards, bullets, metrics, table rows, and labels
 - New slides use compact stable IDs while older UUID-based decks continue to load unchanged
 - Auto-fetch available models from PwC Shared Services `/models` endpoint with grouped vendor display
 - Deck-aware template switching with pillar preservation and optional user guidance
@@ -178,19 +194,30 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 
 | Role | Model |
 |---|---|
-| Thinking (main generation) | `bedrock.anthropic.claude-opus-4-6` |
+| Thinking (main generation) | `bedrock.anthropic.claude-opus-4-7` |
 | Fast generation | `vertex_ai.gemini-3.1-flash-lite-preview` |
 | Classifier | `openai.gpt-5.4-mini` |
-| Router | `openai.gpt-5.4` |
+| Router | `openai.gpt-5.5` |
+| Step evidence search | `openai.gpt-5.5` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
-| PPTX (export) | `vertex_ai.gemini-3.1-pro-preview` |
+| PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
 
-Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. Router and step evidence search use GPT 5.5, while premium slide generation and PPTX export default to Claude Opus 4.7. The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 
 ## Linting
 
 The frontend ESLint config keeps undefined symbols and parse-level issues as blocking errors, while legacy cleanup categories such as unused helpers, React Compiler migration warnings, and Fast Refresh export warnings are reported as warnings so `npm run lint` remains usable during active development.
+
+## Client Design Profiles
+
+Settings includes a **Client Design Profile** selector. The default remains Strategy&, while the built-in STC and PIF LDC profiles apply client semantic theme tokens, footer behavior, layout bands, prompt-section guidance, and PPTX export positioning derived from audited client decks. Selecting either profile is enough to test it; the preview canvas receives profile title/content/footer positions through theme CSS variables and render-time logo chrome.
+
+Uploaded PPTX masters are now stored by profile/template slot in IndexedDB, so an STC or PIF upload does not overwrite the default Strategy& template. The backend `/api/templates/pptx-master` endpoint serves the legacy Strategy& default, the built-in STC Playbook master through `?profileId=stc`, and the built-in PIF LDC Implementation Guide master through `?profileId=pif`; user-uploaded client templates remain local profile-bound overrides. Client demo checks are available through `clientProfileValidation.js` for color/font/footer/layout readiness.
+
+STC leaves the footer/source text blank by default; sources should appear only when a real citation exists. The backend stores `STC Forward` regular, medium, and bold fonts under `backend/assets/fonts/stc-forward/` and the extracted STC logo under `backend/assets/client-templates/stc/logo.png`; the frontend loads them through authenticated `/api/assets/...` routes. When STC is the active profile, the app warms the bundled STC PPTX master/chrome on editor startup so users do not need to open Settings to restore stale or deleted local template metadata. STC canvas typography follows the master notes: content titles are 24px regular, subtitles are 18px regular, and footer/source/page numbers are 8px. STC section trackers render as logo-safe, text-only chrome using the reference deck's placement and `#9E21FF` tracker color in both canvas preview and PPTX export. PPTX export forces the active STC profile theme, clears/skips stale cached PPTX code, enforces `fontFace: 'STC Forward'`, normalizes generated title/subtitle/body/source/page geometry to the STC contract, strips emoji artifacts, and applies controlled logo chrome without copying the fragile full STC template shell into generated decks.
+
+PIF LDC uses the audited `11192024_LDC_Implementation Guide_vSend.pptx` as its bundled master and the DC Opportunity pitch deck only as component/style evidence. The backend stores Fund font files under `backend/assets/fonts/pif-fund/` and the PIF logo under `backend/assets/client-templates/pif/logo.png`; the frontend loads them through authenticated `/api/assets/...` routes. PIF standard slides map the 960 x 540 preview canvas to a 10 x 5.625 in PPTX deck, use a top-left logo, the master-derived compact Fund Light gold title at `x=132 y=27 w=597 h=25`, an 891 x 397px body frame, blank footer/source text unless real source text exists, and a bottom-right gold page-number block. PIF PPTX export adds the title rule as controlled profile chrome, preserves rich-text run spacing, and tightens compact label boxes so formatted leads, stage headers, and page numbers do not merge or wrap unexpectedly.
 
 ## Azure Deployment
 

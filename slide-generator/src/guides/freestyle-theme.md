@@ -44,10 +44,11 @@ Georgia (`var(--font-title)`) is ONLY for `h1.title`. Do not use Georgia for h3,
 - h3/h4 section heads, pillar titles, card titles: 14px bold, `var(--font-body)` (Arial)
 - Body text, bullets, descriptions, and table cells: 12px, `var(--font-body)` (Arial)
 - KPI numbers/stats: 28-36px bold, `var(--font-body)` (Arial), `var(--accent)`
-- Small labels, badges, chips, captions, chart axis ticks, legends: 10px minimum, `var(--font-body)` (Arial), `var(--muted)`
+- Compact tags, badges, chips, tracker labels, and short in-box labels: 8px minimum, `var(--font-body)` (Arial), `var(--muted)`
+- Captions, chart axis ticks, legends, sources, and footer text: 10px minimum, `var(--font-body)` (Arial), `var(--muted)`
 - Footer: 10px, `var(--font-body)` (Arial), `var(--muted)`
 
-Never set any visible text below 10px. If content will not fit with 12px body text and 14px section/pillar titles, cut copy, reduce item count, tighten spacing, or split into another slide.
+Never set normal visible text below 10px, or compact tag/tracker text below 8px. If content will not fit with 12px body text and 14px section/pillar titles, cut copy, reduce item count, tighten spacing, or split into another slide.
 
 ## Contrast (CRITICAL)
 

@@ -18,6 +18,7 @@ drifts in PowerPoint:
 - badges / tags / status labels
 - tight one-line labels
 - prominent step numbers or compact numeric markers
+- real row/column tables that should remain editable as PowerPoint tables
 
 Do **not** emit hints for:
 
@@ -49,6 +50,8 @@ Supported flags:
 | `exact-text` | Preserve the visible text exactly. Do not abbreviate, trim, or rewrite it for export. |
 | `step-number` | Compact numeric marker such as `1`, `2`, `01`, `001`. Keep it as a single prominent number. |
 | `tight-box` | The visual box is intentionally tight. Avoid extra text inset or padding in export. |
+| `table` | Row/column content that should export as a native PowerPoint table. |
+| `native-table` | Stronger table signal for a real `<table>` or table-like structure that should use `slide.addTable`. |
 | `center` | Center the text horizontally. |
 | `left` | Keep left alignment explicit when the label is small and alignment matters. |
 | `right` | Keep right alignment explicit when the label is small and alignment matters. |
@@ -69,7 +72,9 @@ If a flag is not present, the exporter falls back to the HTML and CSS.
 5. **Use `nowrap` aggressively for risky labels.** If a word like `TURQUOISE`
    must stay on one line, mark it.
 6. **Use `exact-text` whenever line breaks or shortening would harm fidelity.**
-7. **Do not hint shell elements.** Title, subtitle, frame, and footer are
+7. **Use table hints only for true tables.** Do not mark charts, 2x2 matrices,
+   heatmaps, process flows, or dashboard cards as native tables.
+8. **Do not hint shell elements.** Title, subtitle, frame, and footer are
    intentionally excluded because slide structure cleanup may move them.
 
 ## Editing an existing slide

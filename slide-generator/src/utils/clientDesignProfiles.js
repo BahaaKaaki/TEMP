@@ -914,6 +914,12 @@ export function applyClientProfilePromptSections(sections = {}, settings = {}, o
   const profile = getActiveClientProfile(settings);
   if (!profile || profile.id === 'strategy' || !profile.freestyleOverrides) return sections;
 
+  const CORE_GENERATOR_GUARDRAILS = `Non-negotiable carry-over from the base slide generator prompt:
+- Keep sentence-like text in one inline-flow container; do not split one sentence across sibling flex/grid blocks.
+- Convert repeated peer labels/tags into one shared row/column header structure instead of duplicating labels inside each peer card.
+- Preserve one dominant structure, avoid crowding, and keep all content non-overlapping and non-overflowing inside the frame.
+- Keep color-token, scoped-CSS, and readability-floor rules active; profile style can tune aesthetics but must not relax these constraints.`;
+
   const includeShell = options.includeShell !== false;
   const next = { ...sections };
   if (includeShell) {
@@ -934,6 +940,13 @@ ${heading}
 
 ${profileSection}`.trim();
   }
+  next.vibe = `${next.vibe || ''}
+
+---
+
+# Active Client Profile -- Core Generator Guardrails
+
+${CORE_GENERATOR_GUARDRAILS}`.trim();
   return next;
 }
 

@@ -38,7 +38,7 @@ import { omitChatCompletionsTemperature } from './ai/models.js';
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
-const DEFAULT_PPTX_MODEL = 'pwc:openai.gpt-5.5';
+const DEFAULT_PPTX_MODEL = 'pwc:bedrock.anthropic.claude-opus-4-7';
 const PROFILE_PPTX_FONT_FACE = {
   stc: 'STC Forward',
   pif: 'Fund Light',

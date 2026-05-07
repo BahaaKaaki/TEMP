@@ -77,7 +77,7 @@ const initialState = {
     // ── Unified chat: speed mode ──
     speedMode: 'premium',        // 'fast' | 'premium' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:openai.gpt-5.5',                             // "Thinking" generation
+    model: 'pwc:bedrock.anthropic.claude-opus-4-7',          // "Thinking" generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',             // Tier 1 quick classifier (always fast)
     // Router / planner
@@ -99,7 +99,7 @@ const initialState = {
     reasoningEffort: 'low',
     verbosity: '',
     // PPTX Export settings
-    pptxModel: 'pwc:openai.gpt-5.5',
+    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7',
     pptxSystemPrompt: '',
     pptxCodeExample: '',
     pptxBatchSize: 10, // Number of slides to process per API call

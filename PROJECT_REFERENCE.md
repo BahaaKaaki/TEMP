@@ -444,11 +444,11 @@ Core state shape:
     clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
     clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
     // Model/search defaults
-    model: 'pwc:openai.gpt-5.5',  // Premium generation
+    model: 'pwc:bedrock.anthropic.claude-opus-4-7',  // Premium generation
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
     routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
-    pptxModel: 'pwc:openai.gpt-5.5', // PPTX export code generation
+    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7', // PPTX export code generation
     searchModel: 'openai.gpt-5.4-mini',              // Dedicated lightweight search model
     evidenceSearchModel: 'openai.gpt-5.5',           // Per-step evidence search enrichment
     providers: [...],            // Provider registry (PwC Shared Services)
@@ -617,7 +617,7 @@ az webapp restart -g rg-edwin-slides -n app-edwin-slides
 ### Router Architecture
 
 Two routers operate in tandem:
-1. **AI Router** (`aiRouteRequest`): GPT 5.5 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. The default system prompt lives in `slide-generator/src/guides/router-system-prompt.md`; `getRouterSystemPrompt()` injects the current template catalog at runtime while the prompt/context instruct Freestyle mode to use cover only for cover slides and freestyle for body slides unless the user explicitly requests a named template/layout. Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
+1. **AI Router** (`aiRouteRequest`): GPT 5.5 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. The default system prompt lives in `slide-generator/src/guides/router-system-prompt.md`; `getRouterSystemPrompt()` applies runtime date/template substitutions if placeholders are present, and the prompt now enforces a fixed allowed-template set (`cover`, `sectionDivider`, `outcomeApproach`, `chevronFlow`, `projectStepDetail`, `freestyle`) plus stricter storyline, tracker hierarchy, and density rules. Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
 2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
 
 The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `targetSlides`, `referenceSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level. Triage selects a `contextLevel` (`active_slide`, `reference_slides`, `deck_digest`, `full_text_deck`) so the router receives enough deck context without defaulting to full-deck content on every request. The active page context includes both text digest and full page HTML with CSS stripped (`<style>` blocks and inline `style` attributes removed) so the router can reason about card/pillar/table hierarchy. Rich storyline sync uses the same CSS-stripped full HTML signal for each slide and stores a `contentInventory` so later storyline-aware prompts can see all major pillars, cards, bullets, metrics, labels, and table rows.
@@ -791,6 +791,10 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 77. **GPT 5.5 premium generation and PPTX export**: Default premium slide generation (`settings.model`) and PPTX export code generation (`settings.pptxModel`) now use `pwc:openai.gpt-5.5` instead of Claude Opus 4.7.
 
 78. **gpt-5.5 temperature omission**: Chat completions and PPTX export omit the `temperature` field when the target model is `gpt-5.5`, because the LiteLLM gateway rejects non-default temperatures for that deployment (users with `reasoningEffort: none` or any path that previously forwarded `temperature: 0.1` were affected).
+79. **Router prompt policy replacement**: `slide-generator/src/guides/router-system-prompt.md` was replaced with a stricter consulting-router contract covering fixed allowed templates, generator-aligned no-CSS layout guidance, two-pass tracker assignment, tracker sequencing/contiguity, repeated-family dependency rules, and tighter final self-check criteria.
+80. **Slide HTML generator prompt replacement**: `slide-generator/src/guides/slide-html-generator-prompt.md` was replaced with a minimal executive consulting prompt emphasizing restrained density, shared-label simplification, one dominant structure, explicit pixel geometry for complex visuals, token-only scoped CSS, and strict no-overlap/no-overflow fit checks.
+81. **Opus 4.7 default restored for generation/export**: Default premium slide generation (`settings.model`) and PPTX export code generation (`settings.pptxModel` plus `DEFAULT_PPTX_MODEL` fallback) were reverted to `pwc:bedrock.anthropic.claude-opus-4-7`; router and search defaults remain GPT 5.5.
+82. **Client profile guardrail carry-over**: Client-profile prompt-section overrides now append shared core generator guardrails so theme/profile switches retain inline sentence-flow handling, repeated-label grid de-duplication, one-dominant-structure discipline, and strict no-overlap/no-overflow frame fit rules.
 
 ---
 

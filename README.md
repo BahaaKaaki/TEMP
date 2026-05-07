@@ -15,7 +15,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 
 ## Features
 
-- AI slide generation via PwC Shared Services (premium model: `openai.gpt-5.5`)
+- AI slide generation via PwC Shared Services (premium model: `bedrock.anthropic.claude-opus-4-7`)
 - Backend AI proxy -- API key stays server-side, never exposed to browser
 - Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
@@ -24,6 +24,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Knowledge base / RAG for contextual generation
 - Theme and template system with CSS variables
 - Client template profiles can switch generation away from the default Strategy& look; STC and PIF LDC ship as full profiles with semantic theme tokens, layout CSS variables, prompt-section overrides, bundled masters/assets, PPTX export hints, evidence metadata, and validation rules
+- Client profile prompt overrides now inherit non-negotiable slide-generator guardrails (inline sentence flow, shared row/column headers instead of repeated tags, one dominant structure, and strict no-overlap/no-overflow fit) so theme/profile switches keep the same core quality constraints
 - Client-profile geometry and theme state are applied at slide creation and PPTX export: active profiles rewrite generic frame/chart guidance, keep new/cleared decks on the selected profile theme, preserve Strategy& master chrome during template merge, carry client master theme palettes into controlled exports, use profile-shaped PPTX examples, normalize exported body objects into the declared content band, keep STC section trackers clear of the logo with 9px text-only reference coloring, render PIF's 10 x 5.625 in LDC shell with Fund typography and gold page-number block, sanitize invalid negative shape dimensions, de-duplicate PowerPoint shape IDs, clamp zero-size extents, and load bundled masters/assets through profile-driven routes with token-refresh retry
 - Web search via PwC Responses API
 - Expired Microsoft sessions surface a visible re-auth prompt when MSAL silent token refresh or backend 401 recovery fails; active-use failures show as a top-center banner
@@ -32,8 +33,8 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - AI plan review cards keep long section trackers, template names, and instructions constrained within the chat panel
 - Router search policy uses GPT 5.5 reasoning by default, but only attaches web search for requests that need current or external evidence; Responses API router failures fall back to Chat Completions planning, router evidence is packaged as structured metadata, and per-step evidence search uses GPT 5.5 by default with caching/budgeting while still overriding older router facts when current/latest results conflict
 - Slide preview includes a source inspector for evidence-backed slides: router/per-step search URLs, raw URLs, and in-slide links are shown as clickable verification cards; generic footer source labels are ignored unless no URL-backed source exists
-- Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md`; runtime assembly injects the current template catalog so Auto/Freestyle routing can honor explicit template requests while preserving freestyle defaults
-- Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` and now uses a Strategy Consulting Slide Prompt contract: calm gridded bespoke slides, strict 904x366 frame fit, token-only colors, solid dark section/pillar/shared headers with `on-accent` text, explicit-coordinate geometry for charts/frameworks/diagrams, disciplined spacing/density, label economy, and executive-readability self-checks; freestyle user prompts carry only request-specific brief/context/count details while stable behavior lives in the system prompt
+- Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md` and now enforces a strict allowed-template set (`cover`, `sectionDivider`, `outcomeApproach`, `chevronFlow`, `projectStepDetail`, `freestyle`) with stronger tracker hierarchy, layout-density, and storyline sequencing rules
+- Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` and now uses a minimal executive consulting contract focused on clarity, hierarchy, whitespace, non-overlapping/non-overflowing fit, shared-label reduction, explicit geometry for complex visuals, and strict token-only scoped CSS
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Complex chart generation uses fixed-coordinate geometry guidance for waterfall/bridge/bar-style exhibits, with inline numeric positioning allowed only for chart marks
 - Template auto-match now attaches the selected template's extracted CSS consistently across create, insert, fill, and switch paths
@@ -191,16 +192,16 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 
 | Role | Model |
 |---|---|
-| Thinking (main generation) | `openai.gpt-5.5` |
+| Thinking (main generation) | `bedrock.anthropic.claude-opus-4-7` |
 | Fast generation | `vertex_ai.gemini-3.1-flash-lite-preview` |
 | Classifier | `openai.gpt-5.4-mini` |
 | Router | `openai.gpt-5.5` |
 | Step evidence search | `openai.gpt-5.5` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
-| PPTX (export) | `openai.gpt-5.5` |
+| PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
 
-Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. Router, step evidence search, premium slide generation, and PPTX export use GPT 5.5 (Chat Completions through the proxy). The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. Router and step evidence search use GPT 5.5, while premium slide generation and PPTX export default to Claude Opus 4.7. The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 
 ## Linting
 

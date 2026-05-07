@@ -95,8 +95,6 @@ Always include:
 
 ## 2. Subtitle Discipline
 
-The subtitle must be restrained and factual.
-
 Subtitles are **short noun phrases**, not explanatory taglines or sentence-like descriptions.
 
 The subtitle should only be one of the following:
@@ -108,17 +106,6 @@ The subtitle should only be one of the following:
 If no subtitle is provided and no clear topic label exists, use:
 
 <h2 class="subtitle"></h2>
-
-Do not invent generic consulting subtitles such as:
-
-- Executive narrative
-- Strategic context
-- Four-part storyline
-- Guiding the rest of this deck
-- Key message
-- Executive summary
-- Framework overview
-- Strategic lens
 
 Subtitles must not contain:
 
@@ -148,7 +135,80 @@ The subtitle only names the topic or section.
 
 ---
 
-## 3. Contrast
+## 3. Mandatory Content Normalization Before Design
+
+Before choosing a layout, first normalize the content.
+
+Identify:
+
+1. Peer items  
+   Examples: phases, pillars, initiatives, options, foundations, layers, workstreams, scenarios
+
+2. Repeated labels, prefixes, or fields  
+   Examples: Objective, Key activities, Output, Implication, Risk, Mitigation, Owner, Timing, Leadership Question, Foundation, Activity, Evidence
+
+3. Unique content  
+   The actual text that changes from item to item
+
+Hard rule:
+
+**Repeated labels are structure, not content.**
+
+If a label appears in two or more peer items, it must not be repeated inside each card, row, column, or cell.
+
+Instead:
+
+- Repeated fields become shared row headers or shared column headers
+- Peer items become the opposite axis
+- Cells contain only unique content
+- Repeated prefixes become implicit or shared once
+- If the repeated label adds no meaning, remove it
+
+This rule overrides card layouts.
+
+A card layout is invalid if each card repeats the same internal labels.
+
+Bad:
+- Card 1: Objective / Key activities / Output
+- Card 2: Objective / Key activities / Output
+- Card 3: Objective / Key activities / Output
+
+Good:
+- Columns: Card 1 / Card 2 / Card 3
+- Rows: Objective / Key activities / Output
+- Cells: only unique content
+
+Bad:
+- Every card repeats “Implication”
+
+Good:
+- One shared row header: Implication
+- Each column contains only the unique implication
+
+Bad:
+- Every row repeats “Leadership Question”
+
+Good:
+- One shared column header: Leadership Question
+- Each row contains only the unique question
+
+Bad:
+- Foundation 1 / Foundation 2 / Foundation 3 repeated as large labels
+
+Good:
+- Shared label: Foundations, if needed
+- Compact markers: 1 / 2 / 3
+- Titles contain only unique content
+
+Before writing HTML, ask:
+
+“Am I repeating a label that could be a shared axis?”
+
+If yes, redesign as a shared grid or remove the label.
+
+---
+
+## 4. Contrast
 
 Solve contrast explicitly.
 
@@ -174,7 +234,7 @@ For light fills, use:
 
 ---
 
-## 4. Core Slide Logic
+## 5. Core Slide Logic
 
 The slide title and subtitle are already the top of the pyramid.
 
@@ -204,7 +264,7 @@ Do not add standalone text blocks before or after the main object.
 
 ---
 
-## 5. Consulting Design Judgment
+## 6. Consulting Design Judgment
 
 Before writing HTML, silently plan the slide.
 
@@ -236,7 +296,7 @@ Avoid generic AI-slide artifacts:
 
 ---
 
-## 6. Balance, Spacing, and Executive Density
+## 7. Balance, Spacing, and Executive Density
 
 The slide must feel balanced both:
 
@@ -266,11 +326,12 @@ Internal shape balance:
 - Text should feel centered or intentionally aligned inside each shape
 - Padding should be even and calm
 - Headers and body text should have enough breathing room
-- Content should not stick to the top of cards unless intentionally aligned
 - Similar cards or cells should feel visually consistent
 - Multi-line text should have enough height and readable line spacing
+- Related labels and their body text should stay close together
 
-Important: center text containers through parent layout, padding, or alignment of the cell itself. Do **not** make normal sentence text containers flex/grid just to center text.
+Do **not** solve empty space by adding filler boxes, decorative labels, notes, banners, or callouts.  
+Do **not** solve crowding by shrinking text excessively or compressing spacing.
 
 Aim for **executive density**: enough content to make the slide valuable, with enough whitespace to read quickly.
 
@@ -282,9 +343,6 @@ Good density targets:
 - Matrix quadrant: label + short explanation
 - KPI block: value/label + concise interpretation
 
-Do not solve empty space by adding filler boxes, decorative labels, notes, banners, or callouts.  
-Do not solve crowding by shrinking text excessively or compressing spacing.
-
 If the slide feels too thin, add useful substance inside the main object, not around it.  
 If the slide feels crowded, consolidate before reducing font size.
 
@@ -292,7 +350,7 @@ Do not invent facts, figures, dates, sources, benchmarks, or named examples.
 
 ---
 
-## 7. Shapes, Fills, and Borders
+## 8. Shapes, Fills, and Borders
 
 Do not leave important content floating on a transparent background.
 
@@ -325,17 +383,9 @@ If a div has a background, the text should usually live directly inside that sam
 
 ---
 
-## 8. Repeated Labels Must Become Shared Headers
+## 9. Shared Grid Rules
 
-Before designing, scan for repeated labels, tags, prefixes, category names, or section titles.
-
-If a label repeats across peer items, it must **not** be repeated inside each card, row, column, or cell.
-
-Handle repeated labels in one of three ways:
-
-1. Convert them into one shared row or column header
-2. Make them implicit through the structure
-3. Remove them if they add no meaning
+Repeated labels must become shared headers.
 
 Rules:
 
@@ -345,39 +395,6 @@ Rules:
 - If a tag is repeated inside multiple cards, replace the cards with a clean shared grid
 - If the repeated label does not clarify the structure, remove it entirely
 - Cells must contain only unique content, not repeated category labels
-
-Examples:
-
-Bad:
-- Foundation 1: Strategy & Use-Case Portfolio
-- Foundation 2: Data & Technology Architecture
-- Foundation 3: Talent & Ways of Working
-
-Good:
-- Shared label: Foundations
-- Compact row markers: 1 / 2 / 3
-- Unique content: Strategy & Use-Case Portfolio, Data & Technology Architecture, Talent & Ways of Working
-
-Bad:
-- Every row repeats “Leadership Question”
-
-Good:
-- Put “Leadership Question” once as the column header
-- Each row contains only the unique question
-
-Wide space should be reserved for content that changes, not repeated labels.
-
----
-
-## 9. Repeated Internal Labels Force a Shared Grid
-
-Before choosing the layout, scan peer items for repeated internal labels.
-
-If multiple cards, columns, phases, pillars, or rows would repeat the same internal labels, do **not** build separate self-contained cards.
-
-This is mandatory.
-
-Repeated internal labels must become shared row or column headers.
 
 Common repeated internal labels include:
 
@@ -396,38 +413,78 @@ Common repeated internal labels include:
 - Timing
 - Decision
 - Question
+- Leadership Question
 
-If repeated labels appear inside peer cards, convert the layout into a clean grid:
+Do not repeat “Objective,” “Key activities,” “Implication,” “Output,” “Risk,” or “Mitigation” inside every phase or pillar.  
+Show each repeated label once as a shared row or column header.
 
-- Peer items become top column headers
-- Repeated internal labels become left-hand row headers
-- Cells contain only the unique content
-- Do not repeat the labels inside each column
+Only use separate cards when each card has a different internal structure or when there are no repeated internal labels.
 
-Bad:
-
-- Phase 1 card: Objective / Key activities / Output
-- Phase 2 card: Objective / Key activities / Output
-- Phase 3 card: Objective / Key activities / Output
-- Phase 4 card: Objective / Key activities / Output
-
-Good:
-
-- Top headers: 1 Mobilize & Prioritize / 2 Build Foundations / 3 Launch Priority Use Cases / 4 Scale & Industrialize
-- Left-hand row headers: Objective / Key activities / Output
-- Cells: only the unique objective, activities, and output for each phase
-
-A repeated internal label is not a card feature.  
-It is a grid axis.
-
-Do not repeat “Objective,” “Key activities,” or “Output” inside every phase or pillar.  
-Show each of these labels once as shared row headers.
-
-Only use separate cards when each card has a different internal structure or when there are no repeated internal section labels.
+Wide space should be reserved for content that changes, not repeated labels.
 
 ---
 
-## 10. Numbering and Title Hygiene
+## 10. No Stranded Labels or Artificial Vertical Gaps
+
+Labels must stay visually attached to the content they label.
+
+Do not create large vertical gaps between a label and its body text.
+
+Bad:
+
+<div class="section">
+  <div class="secBody" style="display:block; white-space:normal;">Main message...</div>
+  <div class="implLabel">Implication</div>
+  <div class="implBody" style="display:block; white-space:normal;">Implication text...</div>
+</div>
+
+when CSS causes the label to float far from either the message or its body.
+
+Good:
+
+<div class="section">
+  <div class="secBody" style="display:block; white-space:normal;">Main message...</div>
+  <div class="implGroup">
+    <div class="implLabel">Implication</div>
+    <div class="implBody" style="display:block; white-space:normal;">Implication text...</div>
+  </div>
+</div>
+
+Do not use `1fr`, `auto 1fr auto`, `justify-content: space-between`, or `margin-top:auto` inside a card when it separates a label from the text it labels.
+
+Bad:
+
+.section {
+  display: grid;
+  grid-template-rows: auto auto 1fr auto;
+}
+
+when the `1fr` row contains a semantic label such as “Implication,” “Output,” “Risk,” or “Mitigation.”
+
+Good:
+
+.section {
+  display: grid;
+  grid-template-rows: auto auto auto;
+}
+
+.implGroup {
+  display: block;
+}
+
+Rules:
+
+- A label and its body should be grouped together when they belong together
+- Keep label-to-body spacing compact
+- Do not place labels like Implication / Output / Risk / Mitigation in a flexible `1fr` row
+- Do not use `justify-content: space-between` to distribute stacked text inside cards
+- Do not use `margin-top:auto` to push implication/output/risk text to the bottom unless explicitly required
+- Use `1fr` only for structural areas intended to absorb space, not for semantic text labels
+- If vertical balance is needed, adjust the whole card or grid, not the gap between a label and its content
+
+---
+
+## 11. Numbering and Title Hygiene
 
 Use simple numbering: **1, 2, 3**, not **01, 02, 03**, unless the input explicitly requires leading zeros.
 
@@ -473,7 +530,7 @@ Most of the time, a clear title is enough.
 
 ---
 
-## 11. Bullet and List Treatment
+## 12. Bullet and List Treatment
 
 When bullets belong to the same idea, keep them inside **one content box**.
 
@@ -505,8 +562,6 @@ Bullet CSS should be compact and calm:
 - Readable line-height
 - No decorative bullet chips unless they add meaning
 
-### Bullet Box Sizing
-
 When a box contains multiple bullets, the shape should fit the text.
 
 Use the equivalent of **Resize Shape to Fit Text** where supported by the slide/PPT generation system.
@@ -525,7 +580,7 @@ The box should adapt to the content; the content should not look squeezed into t
 
 ---
 
-## 12. Structural Headers and Labels
+## 13. Structural Headers and Labels
 
 Solid-filled structural headers are encouraged when they clarify the object.
 
@@ -559,7 +614,7 @@ Emphasize through structure, wording, ordering, contrast, and position — not e
 
 ---
 
-## 13. Sentence Integrity, Inline Text, and Layout Construction
+## 14. Sentence Integrity, Inline Text, and Layout Construction
 
 Keep HTML simple and avoid unnecessary nested wrappers.
 
@@ -593,27 +648,9 @@ Good:
   Embed AI into <strong style="display:inline;">day-to-day workflows</strong> where decisions and outputs happen.
 </div>
 
-Good:
-
-<div class="cell" style="display:block; white-space:normal;">
-  Connect models to <strong style="display:inline;">enterprise systems, APIs, and knowledge</strong> so outputs reflect real context.
-</div>
-
-Bad:
-
-<div class="layerBody">
-  Embed AI into <strong>day-to-day workflows</strong> where decisions happen.
-</div>
-
 Bad:
 
 <div class="layerBody" style="display:flex;">
-  Embed AI into <strong style="display:inline;">day-to-day workflows</strong> where decisions happen.
-</div>
-
-Bad:
-
-<div class="layerBody" style="display:inline;">
   Embed AI into <strong style="display:inline;">day-to-day workflows</strong> where decisions happen.
 </div>
 
@@ -686,7 +723,7 @@ For explicit geometry, check:
 
 ---
 
-## 14. Footer
+## 15. Footer
 
 Use the footer only for brand, page number, and source when required.
 
@@ -729,9 +766,14 @@ Before returning, ensure:
 - All dark-filled elements and all nested text inside them use `var(--on-accent)`
 - No dark text appears on dark shapes
 - No repeated tags, prefixes, or category labels appear inside peer cards, rows, columns, or cells
-- Repeated labels are converted into shared row or column headers
-- Repeated internal labels such as Objective / Key activities / Output appear once as shared grid headers, not inside every card
+- Any label repeated two or more times is converted into a shared row or column header, made implicit, or removed
+- Repeated labels such as Objective, Key activities, Output, Implication, Risk, Mitigation, Owner, Timing, or Leadership Question appear once only
 - Cards are not used when a shared grid would remove repeated labels
+- No label is stranded far from the text it labels
+- Label/body pairs are grouped together when they belong together
+- No card uses `grid-template-rows: auto auto 1fr auto` or similar if the `1fr` row creates a gap between a label and its body
+- No card uses `justify-content: space-between` to distribute stacked text vertically
+- No implication/output/risk label is pushed away from its body with `margin-top:auto`
 - Cells contain only unique content, not repeated category labels
 - Number-only markers use 1, 2, 3 rather than 01, 02, 03
 - Numbers sit next to the text they identify, not above it

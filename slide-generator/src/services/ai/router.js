@@ -1979,7 +1979,7 @@ export async function aiRouteRequest(userPrompt, context, settings) {
   // Unified router: single model for all routing (chatRouterModel kept for backward compat)
   const effectiveRouterModel = useBigModel ? bigModel
     : (settings.routerModel || settings.chatRouterModel || defaultRouterModel);
-  const effectiveReasoningEffort = settings.routerReasoningEffort || settings.chatRouterReasoningEffort || 'medium';
+  const effectiveReasoningEffort = settings.routerReasoningEffort || settings.chatRouterReasoningEffort || 'low';
   const effectiveMaxTokens = !agentMode
     ? (settings.chatRouterMaxTokens || 16384)
     : (settings.routerMaxTokens || 16384);

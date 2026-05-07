@@ -35,6 +35,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Slide preview includes a source inspector for evidence-backed slides: router/per-step search URLs, raw URLs, and in-slide links are shown as clickable verification cards; generic footer source labels are ignored unless no URL-backed source exists
 - Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md` and now enforces a strict allowed-template set (`cover`, `sectionDivider`, `outcomeApproach`, `chevronFlow`, `projectStepDetail`, `freestyle`) with stronger tracker hierarchy, layout-density, and storyline sequencing rules
 - Slide HTML generation prompt lives in `slide-generator/src/guides/slide-html-generator-prompt.md` and now uses a minimal executive consulting contract focused on clarity, hierarchy, whitespace, non-overlapping/non-overflowing fit, shared-label reduction, explicit geometry for complex visuals, and strict token-only scoped CSS
+- The slide HTML generator guide is now a single canonical prompt block (legacy duplicate prompt sections removed) so deployed behavior matches one authoritative prompt contract
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Complex chart generation uses fixed-coordinate geometry guidance for waterfall/bridge/bar-style exhibits, with inline numeric positioning allowed only for chart marks
 - Template auto-match now attaches the selected template's extracted CSS consistently across create, insert, fill, and switch paths

@@ -2764,8 +2764,30 @@ USER REQUEST: "${routerPrompt}"`;
           }
         }
 
-        const normalizedSearchQuery = step.searchQuery || null;
-        if (normalizedSearchQuery) {
+        // Per-step searchQuery triggers a second webSearch() during SmartAction. Router prompts say:
+        // omit searchQuery when facts[] already carries grounding from router inline search; keep it for
+        // dependent slides (contextFromStep) where execution needs a narrow follow-up query.
+        let normalizedSearchQuery = step.searchQuery || null;
+        let normalizedSearchGoal = step.searchGoal || null;
+        const routerRanWebSearchDuringPlanning = routerSearchCallCount > 0;
+        const hasGroundingFacts = Array.isArray(step.facts) && step.facts.length > 0;
+        const isDependentStep =
+          step.contextFromStep !== null && step.contextFromStep !== undefined;
+        const stepUsesExecutionSearch =
+          normalizedSearchQuery
+          && ['create_slide', 'create_from_template', 'edit_slide'].includes(step.action || '');
+        if (
+          routerRanWebSearchDuringPlanning
+          && stepUsesExecutionSearch
+          && hasGroundingFacts
+          && !isDependentStep
+        ) {
+          console.log(
+            `[Router Search] Step ${stepIdx}: dropping redundant searchQuery/searchGoal — router already used inline/pre-search; facts[] supplies execution grounding (per router SEARCH GROUNDING rules).`,
+          );
+          normalizedSearchQuery = null;
+          normalizedSearchGoal = null;
+        } else if (normalizedSearchQuery) {
           console.log('[Router Search]', `Step ${stepIdx} (post-merge): searchQuery for slide generation → "${normalizedSearchQuery}"`,
             '(injected into executor prompt as [SEARCH THE WEB for: …] when settings.searchEnabled)');
         }
@@ -2813,7 +2835,7 @@ USER REQUEST: "${routerPrompt}"`;
           contextFromStep: step.contextFromStep ?? null,
           content: typeof step.content === 'string' ? step.content : (step.content ? JSON.stringify(step.content) : null),
           searchQuery: normalizedSearchQuery,
-          searchGoal: step.searchGoal || null,
+          searchGoal: normalizedSearchGoal,
           title: step.title || null,
           subtitle: step.subtitle || null,
           facts: Array.isArray(step.facts) ? step.facts : null,

@@ -1,7 +1,7 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-05-06
+> Last updated: 2026-05-07
 
 ---
 
@@ -617,7 +617,7 @@ az webapp restart -g rg-edwin-slides -n app-edwin-slides
 ### Router Architecture
 
 Two routers operate in tandem:
-1. **AI Router** (`aiRouteRequest`): GPT 5.5 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. The default system prompt lives in `slide-generator/src/guides/router-system-prompt.md`; `getRouterSystemPrompt()` applies runtime date/template substitutions if placeholders are present, and the prompt now enforces a fixed allowed-template set (`cover`, `sectionDivider`, `outcomeApproach`, `chevronFlow`, `projectStepDetail`, `freestyle`) plus stricter storyline, tracker hierarchy, and density rules. Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word noun phrase.
+1. **AI Router** (`aiRouteRequest`): GPT 5.5 reasoning (`reasoning: { effort: 'low' }`) with Structured Outputs (`text.format: { type: 'json_schema' }`) to enforce field population (title, subtitle, sectionTracker). Router web search is conditional: `routerSearchMode='auto'` attaches `web_search_preview` only when triage or the prompt indicates fresh/external evidence is needed. The default system prompt lives in `slide-generator/src/guides/router-system-prompt.md`; `getRouterSystemPrompt()` applies runtime date/template substitutions if placeholders are present, and the prompt now enforces a fixed allowed-template set (`cover`, `sectionDivider`, `outcomeApproach`, `chevronFlow`, `projectStepDetail`, `freestyle`) plus stricter storyline, tracker hierarchy, and density rules. Cover titles: 3-8 word noun-phrase. Body titles: 8-12 word insight with verb. Subtitles: 2-6 word short noun phrase only (not taglines or sentence-like); no em dashes, colons, or clauses.
 2. **Rule-based Router** (`routeRequest`): pattern-matching fallback using regex and keyword mappings
 
 The AI router can ask clarifying questions (returned as `needsClarification` with `questions` array). It produces a `plan` array of steps, each with: `action`, `templateId`, `title`, `subtitle`, `instruction`, `facts`, `sources`, `contextSlides`, `targetSlides`, `referenceSlides`, `position`, `sectionTracker`, `subSectionTracker`, `layoutGuidance`, `searchQuery`, `searchGoal`. The JSON schema is defined in `getRouterOutputSchema()` and enforced at the token level. Triage selects a `contextLevel` (`active_slide`, `reference_slides`, `deck_digest`, `full_text_deck`) so the router receives enough deck context without defaulting to full-deck content on every request. The active page context includes both text digest and full page HTML with CSS stripped (`<style>` blocks and inline `style` attributes removed) so the router can reason about card/pillar/table hierarchy. Rich storyline sync uses the same CSS-stripped full HTML signal for each slide and stores a `contentInventory` so later storyline-aware prompts can see all major pillars, cards, bullets, metrics, labels, and table rows.
@@ -798,6 +798,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 83. **Slide HTML prompt canonicalization**: Removed the legacy duplicated strategy prompt block from `slide-generator/src/guides/slide-html-generator-prompt.md` so the generator uses one canonical minimal executive contract.
 84. **Slide HTML generator prompt refinement**: `slide-html-generator-prompt.md` was expanded and tightened around the Strategy& executive consulting contract (hard canvas/frame rules, token palette, typography ladder, layout archetypes, chart/framework geometry, density and label-economy checks).
 85. **Text-box fit and bullet rhythm (HTML + PPTX prompts)**: Slide HTML guidance tells the model to size text regions to content (avoid arbitrary fixed heights) and to keep bullet spacing uniform (single gap rhythm, no uneven margins). The default PPTX export system prompt maps PowerPoint Text Box modes to PptxGenJS `fit` (`none` / `shrink` / `resize`), prefers `fit: 'resize'` for multi-line body and bullet stacks when layout is content-sized, and requires uniform line/paragraph spacing or constant y-step between bullet `addText` calls.
+86. **Router subtitle style**: `router-system-prompt.md` requires subtitles to stay short noun phrases (up to 6 words), not taglines or sentence-like descriptions, and forbids em dashes, colons, and clauses in subtitles (mirrored in TITLES AND SUBTITLES and FINAL SELF-CHECK).
 
 ---
 

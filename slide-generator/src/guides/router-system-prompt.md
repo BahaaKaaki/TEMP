@@ -219,6 +219,8 @@ Subtitle:
 - noun phrase
 - reinforces context, scope, or analytical lens
 - must not duplicate the title or tracker
+- short noun phrases only — not explanatory taglines or sentence-like descriptions
+- no em dashes, colons, or clauses
 
 Examples:
 - Cover title: `GCC Market Entry Strategy`
@@ -827,3 +829,5 @@ Before returning, verify:
 - no step depends on itself or a future step
 - reorder is not represented as create + delete
 - template changes use `switch_template`
+- subtitles are short noun phrases (up to 6 words), not explanatory taglines or sentence-like descriptions
+- subtitles do not contain em dashes, colons, or clauses

@@ -3059,6 +3059,20 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       if (searchRawContext) {
         console.log('[SmartAction] Router search context available for all slides:', searchRawContext.length, 'chars');
       }
+      // When the router already ran web_search_preview (inline) or legacy pre-search (presearch)
+      // and we have synthesized/raw grounding text, skip the duplicate per-step webSearch() call.
+      const ROUTER_WEB_SOURCES = new Set(['inline', 'presearch']);
+      const routerGroundingChars = (searchRawContext || '').trim().length;
+      const skipDuplicateStepSearch = (
+        ROUTER_WEB_SOURCES.has(routeResult.searchSource)
+        && routerGroundingChars >= 350
+      );
+      if (skipDuplicateStepSearch) {
+        console.log(
+          '[SmartAction] Will skip duplicate per-step webSearch when router already searched:',
+          { searchSource: routeResult.searchSource, routerGroundingChars },
+        );
+      }
       const stepSearchCache = new Map();
       let stepSearchesRun = 0;
       const maxStepSearchesPerPlan = Number.isFinite(Number(settings.maxStepSearchesPerPlan))
@@ -3667,7 +3681,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
 
             setExecutionStatus({
               type: 'generating',
-              message: `Step ${stepIndex + 1}/${totalSteps}: Creating slide${template ? ` (${templateId})` : ` (freestyle${step.layoutGuidance ? `: ${step.layoutGuidance}` : ''})`}${step.searchQuery && settings.searchEnabled ? ' + searching...' : '...'}`,
+              message: `Step ${stepIndex + 1}/${totalSteps}: Creating slide${template ? ` (${templateId})` : ` (freestyle${step.layoutGuidance ? `: ${step.layoutGuidance}` : ''})`}${step.searchQuery && settings.searchEnabled && !skipDuplicateStepSearch ? ' + searching...' : '...'}`,
             });
 
             const pendingSlides = [];
@@ -3676,7 +3690,14 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             // Inject router-level search facts into every slide's prompt for grounding
             let enrichedStepPrompt = stepPrompt + buildSearchFactsBlock(step);
             const effectiveSearchQuery = deriveSearchQuery(step);
-            const shouldRunStepSearch = effectiveSearchQuery && settings.searchEnabled;
+            const shouldRunStepSearch = (
+              effectiveSearchQuery && settings.searchEnabled && !skipDuplicateStepSearch
+            );
+            if (skipDuplicateStepSearch && effectiveSearchQuery && settings.searchEnabled) {
+              console.log(
+                `[SmartAction] Step ${stepIndex}: skipped duplicate pre-search (router already grounded; ${routerGroundingChars} chars)`,
+              );
+            }
             if (shouldRunStepSearch) {
               const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
               const dependencyContext = getDependencyEvidenceContext(step);
@@ -3889,7 +3910,11 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             editContext += buildSearchFactsBlock(step);
 
             const editSearchQuery = deriveSearchQuery(step);
-            if (editSearchQuery && settings.searchEnabled) {
+            if (
+              editSearchQuery
+              && settings.searchEnabled
+              && !skipDuplicateStepSearch
+            ) {
               const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
               const dependencyContext = getDependencyEvidenceContext(step);
               const datedQuery = buildStepEvidenceSearchQuery(editSearchQuery, knownFacts, dependencyContext);
@@ -4599,7 +4624,14 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
             // Inject router-level search facts into every slide's prompt for grounding
             let enrichedPrompt = stepPromptLocal + buildSearchFactsBlock(step);
             const effectiveBatchQuery = deriveSearchQuery(step);
-            const shouldRunBatchSearch = effectiveBatchQuery && settings.searchEnabled;
+            const shouldRunBatchSearch = (
+              effectiveBatchQuery && settings.searchEnabled && !skipDuplicateStepSearch
+            );
+            if (skipDuplicateStepSearch && effectiveBatchQuery && settings.searchEnabled) {
+              console.log(
+                `[SmartAction] Batch step ${actualIndex}: skipped duplicate pre-search (router already grounded; ${routerGroundingChars} chars)`,
+              );
+            }
             if (shouldRunBatchSearch) {
               const knownFacts = (step.facts || []).slice(0, 3).map(f => f.substring(0, 80)).join('; ');
               const dependencyContext = getDependencyEvidenceContext(step);

@@ -120,8 +120,6 @@ Do not invent generic consulting subtitles such as:
 - Framework overview
 - Strategic lens
 
-Do not use the subtitle to explain the purpose of the slide.
-
 Subtitles must not contain:
 
 - Em dashes
@@ -474,6 +472,7 @@ Tags are allowed only when they clearly define the structure and earn the space 
 Most of the time, a clear title is enough.
 
 ---
+
 ## 11. Bullet and List Treatment
 
 When bullets belong to the same idea, keep them inside **one content box**.
@@ -570,41 +569,63 @@ Do not split one sentence across multiple `div`, `span`, grid cells, or flex chi
 Do not use separate spans or divs just to control line breaks.  
 Do not use grid or flex on a normal sentence text container.
 
+### Inline sentence flow — hard rule
+
+For every `div` that contains continuous sentence text with `<strong>` or `<em>`, force normal text flow directly on that `div`:
+
+<div class="cell" style="display:block; white-space:normal;">
+  Sentence text with <strong style="display:inline;">inline emphasis</strong> continuing normally.
+</div>
+
+Rules:
+
+- Any `div` containing a continuous sentence with `<strong>` or `<em>` must include `style="display:block; white-space:normal;"`
+- Every `<strong>` and `<em>` must include `style="display:inline;"`
+- Do not set sentence divs to `display:flex`, `display:grid`, or `display:inline`
+- Use grid/flex only on parent structural rows, columns, cards, or wrappers
+- Keep the full sentence inside one div
+- Put literal spaces before and after inline emphasis where needed
+- If emphasis creates awkward wrapping, rewrite the sentence instead of splitting it into elements
+
 Good:
 
-<div class="cell">Embed AI into <strong>day-to-day workflows</strong> where decisions and outputs actually happen.</div>
+<div class="layerBody" style="display:block; white-space:normal;">
+  Embed AI into <strong style="display:inline;">day-to-day workflows</strong> where decisions and outputs happen.
+</div>
 
 Good:
 
-<div class="layerBody">Connect models to <strong>enterprise systems, APIs, and knowledge</strong> so outputs reflect real context.</div>
+<div class="cell" style="display:block; white-space:normal;">
+  Connect models to <strong style="display:inline;">enterprise systems, APIs, and knowledge</strong> so outputs reflect real context.
+</div>
+
+Bad:
+
+<div class="layerBody">
+  Embed AI into <strong>day-to-day workflows</strong> where decisions happen.
+</div>
+
+Bad:
+
+<div class="layerBody" style="display:flex;">
+  Embed AI into <strong style="display:inline;">day-to-day workflows</strong> where decisions happen.
+</div>
+
+Bad:
+
+<div class="layerBody" style="display:inline;">
+  Embed AI into <strong style="display:inline;">day-to-day workflows</strong> where decisions happen.
+</div>
 
 Bad:
 
 <div class="cell">
   <div>Embed AI into</div>
-  <strong>day-to-day workflows</strong>
+  <strong style="display:inline;">day-to-day workflows</strong>
   <div>where decisions happen.</div>
 </div>
 
-Bad:
-
-<div class="cell">Embed AI into<strong>day-to-day workflows</strong>where decisions happen.</div>
-
-Bad:
-
-<div class="sentenceGrid">
-  <span>Connect models to</span>
-  <strong>enterprise systems</strong>
-  <span>so outputs reflect context.</span>
-</div>
-
-Rules:
-
-- Put literal spaces before and after inline tags where needed
-- Use `<strong>` and `<em>` only for inline emphasis within the same sentence
-- Do not use `<strong>` as a separate title box, tag, or header
-- If emphasis creates awkward wrapping, rewrite the sentence instead of splitting it into elements
-- Use nesting only when it serves real structure: grid columns, rows, cells, headers, number markers, chart elements, or connectors
+Use nesting only when it serves real structure: grid columns, rows, cells, headers, number markers, chart elements, or connectors.
 
 Always include:
 
@@ -613,7 +634,7 @@ Always include:
   display: inline;
 }
 
-For sentence containers, explicitly use normal text flow. Include relevant classes you create:
+For sentence containers, also include relevant classes you create:
 
 .slide .frame .cell,
 .slide .frame .bodyText,
@@ -625,8 +646,6 @@ For sentence containers, explicitly use normal text flow. Include relevant class
 }
 
 Use grid or flex on the **parent structural row**, not on sentence text containers.
-
-**Critical — flex + inline emphasis:** If you set `display: flex` or `inline-flex` on a container whose **direct** children would be loose text and `<strong>` / `<em>` (and optional `<span>`), the browser treats each text node and each emphasis tag as **separate flex items**, which fragments sentences into columns. Put the full sentence inside **one** child first (for example a single `<p>` or `<span>` wrapping text and emphasis), so only that block is the flex item — or avoid flex on that prose container entirely.
 
 Good:
 
@@ -724,11 +743,12 @@ Before returning, ensure:
 - Multiple bullets are not squeezed into fixed-height boxes
 - No bullet text is clipped, hidden, or forced into tiny type
 - If equal-height cards are used, the tallest bullet group has enough space
-- `<strong>` and `<em>` are explicitly set to `display: inline`
+- Every `<strong>` and `<em>` includes inline `style="display:inline;"`
+- Every sentence div containing `<strong>` or `<em>` includes inline `style="display:block; white-space:normal;"`
+- Parent sentence divs are not set to `display:inline`, `display:flex`, or `display:grid`
 - Inline emphasis stays inside continuous sentence flow
 - Literal spaces exist before and after inline emphasis where needed
 - No sentence is split across multiple divs, spans, flex children, or grid cells
-- Sentence text containers are explicitly `display: block`, not flex or grid
 - Grid/flex is used on structural parents only, not on text-flow elements
 - Text inside content boxes is written directly in the box wherever possible
 - Nested divs are used only for real structure, not for splitting phrases

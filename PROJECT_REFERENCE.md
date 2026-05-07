@@ -802,6 +802,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 86. **Router subtitle style**: `router-system-prompt.md` requires subtitles to stay short noun phrases (up to 6 words), not taglines or sentence-like descriptions, and forbids em dashes, colons, and clauses in subtitles (mirrored in TITLES AND SUBTITLES and FINAL SELF-CHECK).
 87. **Slide HTML generator prompt overhaul**: `slide-html-generator-prompt.md` was rewritten with a dedicated Subtitle Discipline section (blank allowed, forbidden generic taglines), Hard Constraints including no inline styles on `.frame`, Sentence Integrity / inline layout rules, Bullet Box Sizing (resize-to-fit behavior), expanded Final Check, and parent-based centering instead of flex/grid on sentence containers.
 88. **Flex + prose DOM fix (preview)**: `slide-generator/src/utils/slideDomNormalize.js` wraps mixed direct children (text + `<strong>` / `<em>`) inside `display:flex` containers in `.slide .frame` into a single block wrapper so sentences do not fragment into columns; `slides.css` adds `display: inline !important` for emphasis inside `.frame`. Applied after mount in main slide preview, fullscreen preview, and slide list thumbnails/hover.
+89. **Slide HTML prompt inline prose rule**: `slide-html-generator-prompt.md` adds a hard rule that sentence-bearing divs with `<strong>` / `<em>` use inline `display:block; white-space:normal` on the container and `display:inline` on emphasis tags (examples updated); removes the duplicate subtitle line about explaining slide purpose.
 
 ---
 

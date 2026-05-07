@@ -22,6 +22,32 @@ import 'frontend-comps/styles.css';
 import './styles/app.css';
 import './styles/slides.css';
 
+// Capture handoff ID at module level so it survives React StrictMode double-mount.
+// The ID is also persisted to sessionStorage so it survives MSAL login redirects
+// (first visit: URL has ?handoff= -> MSAL redirects to Microsoft -> comes back
+// without the param -> sessionStorage still has it).
+const _pendingHandoffId = (() => {
+  const HANDOFF_KEY = 'pendingHandoffId';
+  const params = new URLSearchParams(window.location.search);
+  let id = params.get('handoff');
+
+  if (id) {
+    window.history.replaceState({}, '', window.location.pathname);
+    try { sessionStorage.setItem(HANDOFF_KEY, id); } catch { /* noop */ }
+  } else {
+    try { id = sessionStorage.getItem(HANDOFF_KEY); } catch { /* noop */ }
+  }
+
+  if (id) {
+    try {
+      sessionStorage.removeItem(HANDOFF_KEY);
+      localStorage.removeItem('slideGeneratorState');
+    } catch { /* noop */ }
+  }
+
+  return id;
+})();
+
 // Auto-reload on new deployment — polls /health for buildId changes
 function useAutoReload() {
   useEffect(() => {
@@ -49,14 +75,30 @@ function EditorContent() {
   useAutoReload();
   const { state, isPanelOpen, togglePanel, actions } = useSlides();
   const activeClientDesignProfileId = state.settings?.clientDesignProfileId || 'strategy';
+  const [handoffData, setHandoffData] = useState(null);
+
+  // Fetch handoff context using the ID captured at module level (before React mounted).
+  const handoffFetchedRef = useRef(false);
+  useEffect(() => {
+    if (!_pendingHandoffId || handoffFetchedRef.current) return;
+    handoffFetchedRef.current = true;
+
+    (async () => {
+      try {
+        const res = await authFetch(`/api/handoffs/${_pendingHandoffId}`);
+        if (!res.ok) {
+          console.warn('[Handoff] fetch failed:', res.status);
+          return;
+        }
+        const data = await res.json();
+        setHandoffData(data);
+      } catch (err) {
+        console.warn('[Handoff] fetch error:', err?.message || err);
+      }
+    })();
+  }, []);
 
   // Hydrate the consulting skills catalogue once when the editor mounts.
-  // Bodies stay on the server; only metadata (id, name, category, order)
-  // lands here and powers the skill dropdown in the AI Assistant panel.
-  //
-  // `actions` is re-created on every SlideProvider render, so we keep it in a
-  // ref and fire the fetch with empty deps to guarantee a single request per
-  // session instead of a render-loop hammering the backend.
   const actionsRef = useRef(actions);
   actionsRef.current = actions;
   useEffect(() => {
@@ -99,7 +141,7 @@ function EditorContent() {
       <div className="app-main">
         <SlideList />
         <MainContent />
-        <AIChatbot />
+        <AIChatbot initialHandoff={handoffData} />
       </div>
       {!isPanelOpen && (
         <button className="chatbot-fab" onClick={togglePanel} title="AI Assistant">

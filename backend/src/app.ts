@@ -22,6 +22,7 @@ import themesRoutes from './modules/themes/themes.routes';
 import templatesRoutes, { pptxMasterTemplatesRouter } from './modules/templates/templates.routes';
 import aiProxyRoutes from './modules/ai-proxy/ai-proxy.routes';
 import skillsRoutes from './modules/skills/skills.routes';
+import handoffsRoutes from './modules/handoffs/handoffs.routes';
 
 const app = express();
 
@@ -100,6 +101,10 @@ app.get('/api/whoami', entraAuthMiddleware, (req, res) => {
     allowlistSize: status.size,
   });
 });
+
+// Handoff endpoints sit outside the Entra gate — the short-lived UUID is the
+// access token, and the creating app (e.g. FDI Tracker) is trusted.
+app.use('/api/handoffs', handoffsRoutes);
 
 // All /api/* traffic below this line is gated by Entra JWT + staff allowlist.
 // When ALLOWLIST_MODE=off (the default), both middlewares short-circuit and

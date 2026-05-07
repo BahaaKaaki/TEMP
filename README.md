@@ -206,7 +206,7 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
 | PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
 
-Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. The router uses GPT 5.5; per-step evidence search defaults to GPT 5.4 mini, while premium slide generation and PPTX export default to Claude Opus 4.7. The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. The router uses GPT 5.5 with reasoning effort defaulting to low (including code fallback when router reasoning settings are missing); per-step evidence search defaults to GPT 5.4 mini, while premium slide generation and PPTX export default to Claude Opus 4.7. The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 
 ## Linting
 

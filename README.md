@@ -146,6 +146,7 @@ The frontend never touches the PwC API directly. All AI calls go through the bac
 | `AZURE_TENANT_ID` | No | Entra ID tenant id (or `common` / `organizations`). Required when `ALLOWLIST_MODE` is `log` or `enforce`. |
 | `ALLOWLIST_MODE` | No | `off` (default), `log` (verify JWT + log violations, never block), or `enforce` (verify JWT + 403 unlisted users). See "Staff Allowlist" below. |
 | `ALLOWLIST_PATH` | No | Path to the newline-delimited allowlist file, relative to the backend cwd. Defaults to `config/allowlist.txt`. |
+| `FRONTEND_URL` | No | Public origin for CORS and absolute links (default: `http://localhost:5173`). For `POST /api/handoffs`, if this still points at localhost in production, the returned `url` is derived from the incoming request host instead so handoff links match the deployed site. |
 
 ### Frontend
 
@@ -160,7 +161,7 @@ No environment variables needed. The frontend talks to the backend proxy.
 | `GET /api/ai/models` | PwC `/models` | List available models |
 | `GET /api/skills` | (local) | Consulting-skill catalogue metadata -- id, name, description, category, order (bodies stay server-side) |
 | `GET /api/whoami` | (local) | Returns the caller's identity + allowlist verdict. Bypasses `allowlistMiddleware` so the frontend can render a branded "Access Denied" screen instead of a blank 403. |
-| `POST /api/handoffs` | (local) | FDI Tracker handoff: store payload in memory (24h TTL). |
+| `POST /api/handoffs` | (local) | FDI Tracker handoff: store payload in memory (24h TTL). Response includes `url` with `?handoff=`; production uses request host when `FRONTEND_URL` is still localhost. |
 | `GET /api/handoffs/:id` | (local) | Fetch and consume handoff by id (one-time read). Frontend loads `?handoff=` after clearing persisted deck state; id survives MSAL redirect via `sessionStorage`. |
 
 ## Staff Allowlist (off by default)
@@ -263,6 +264,7 @@ DNS A records required in the centrally managed Private DNS Zone `privatelink.az
 | `BASIC_AUTH_USER` | (set in App Service settings) |
 | `BASIC_AUTH_PASS` | (set in App Service settings) |
 | `SCM_DO_BUILD_DURING_DEPLOYMENT` | `true` |
+| `FRONTEND_URL` | Optional | Set to the public site URL (e.g. `https://app-edwin-slides.azurewebsites.net`) for CORS when the SPA origin must differ from the API; handoff URLs still resolve correctly without it when API and UI share the same host. |
 
 ## Tech Stack
 

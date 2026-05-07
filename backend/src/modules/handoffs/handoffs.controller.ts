@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
+import { resolveFrontendBaseUrl } from '../../common/frontendUrl';
 import { createHandoff, consumeHandoff } from './handoffs.service';
-import { env } from '../../config/env';
 
 export function create(req: Request, res: Response) {
   const { question, answer, citations, tables, conversation, brief, suggestedPrompt, source } = req.body;
@@ -10,7 +10,7 @@ export function create(req: Request, res: Response) {
   }
 
   const { id } = createHandoff({ question, answer, citations, tables, conversation, brief, suggestedPrompt, source });
-  const url = `${env.FRONTEND_URL}/?handoff=${id}`;
+  const url = `${resolveFrontendBaseUrl(req)}/?handoff=${id}`;
 
   res.status(201).json({ id, url });
 }

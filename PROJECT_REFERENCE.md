@@ -36,6 +36,7 @@ slide-themes-main/
 │   │   │   │   ├── error.middleware.ts# Global error handler
 │   │   │   │   └── rate-limit.middleware.ts # Rate limiter
 │   │   │   └── types/index.ts        # Shared TypeScript types
+│   │   │   └── frontendUrl.ts        # resolveFrontendBaseUrl() for public absolute links
 │   │   ├── modules/
 │   │   │   ├── ai-proxy/             # Core: proxies AI calls to PwC Shared Services
 │   │   │   │   ├── ai-proxy.controller.ts  # proxyChat, proxyResponses, proxyModels
@@ -478,7 +479,7 @@ The `settings` slice is versioned via `SETTINGS_VERSION` in `SlideContext.jsx`. 
 | `POST /api/ai/responses` | Proxy to PwC `/v1/responses` (search). Same `_skillId` injection semantics as `/chat`. |
 | `GET /api/ai/models` | Proxy to PwC `/models` |
 | `GET /api/skills` | Consulting-skill catalogue metadata (id, name, description, category, order). Bodies stay server-side. |
-| `POST /api/handoffs` | FDI Tracker handoff: store payload (in-memory, 24h TTL). |
+| `POST /api/handoffs` | FDI Tracker handoff: store payload (in-memory, 24h TTL). Returned `url` uses `resolveFrontendBaseUrl(req)` when `FRONTEND_URL` is loopback so production does not emit localhost links. |
 | `GET /api/handoffs/:id` | Fetch and consume handoff by id (one-time read). Frontend entry: `?handoff=` id in URL; `App.jsx` clears persisted deck state, survives MSAL redirect via `sessionStorage`, passes payload to `AIChatbot`. |
 | `/api/v1/auth` | User auth (register, login, JWT) |
 | `/api/v1/organizations` | Organization CRUD |

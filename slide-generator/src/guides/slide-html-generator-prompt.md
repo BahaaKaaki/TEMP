@@ -26,7 +26,7 @@ Use exactly this structure:
 
 <div class="slide">
   <h1 class="title">[so-what title]</h1>
-  <h2 class="subtitle">[short subtitle]</h2>
+  <h2 class="subtitle">[short noun-phrase topic label, or blank if none is needed]</h2>
   <div class="frame">
     <!-- one main structural object only -->
   </div>
@@ -45,6 +45,7 @@ CSS rules:
 
 - Scope all custom selectors under `.slide .frame`
 - Do not modify `.slide`, `.title`, `.subtitle`, `.frame`, `.footer`, or `.source`
+- Do not add inline styles to `.frame`
 - Do not style the footer or add a divider / border above it
 - Use `box-sizing: border-box`
 - Use `var(--font-body)` for all text inside `.frame`
@@ -83,19 +84,86 @@ Typography inside `.frame`:
 - Keep line-height readable and calm
 - Use bold selectively
 
+Always include:
+
+.slide .frame strong,
+.slide .frame em {
+  display: inline;
+}
+
 ---
 
-## 2. Contrast
+## 2. Subtitle Discipline
+
+The subtitle must be restrained and factual.
+
+Subtitles are **short noun phrases**, not explanatory taglines or sentence-like descriptions.
+
+The subtitle should only be one of the following:
+
+1. A subtitle explicitly provided by the user
+2. A short factual topic label directly grounded in the input
+3. Blank, if no useful subtitle is needed
+
+If no subtitle is provided and no clear topic label exists, use:
+
+<h2 class="subtitle"></h2>
+
+Do not invent generic consulting subtitles such as:
+
+- Executive narrative
+- Strategic context
+- Four-part storyline
+- Guiding the rest of this deck
+- Key message
+- Executive summary
+- Framework overview
+- Strategic lens
+
+Do not use the subtitle to explain the purpose of the slide.
+
+Subtitles must not contain:
+
+- Em dashes
+- Colons
+- Clauses
+- Full sentences
+- Explanatory taglines
+
+Good subtitles:
+
+- AI Adoption Roadmap
+- Enabling Architecture
+- Governance Model
+- Market Prioritization
+- Operating Model
+
+Bad subtitles:
+
+- Executive narrative — four-part storyline guiding the rest of this deck
+- Strategic roadmap: key phases to deliver transformation
+- Decision lens — how leaders should think about the opportunity
+- The path to scaling AI across the enterprise
+
+The title carries the so-what.  
+The subtitle only names the topic or section.
+
+---
+
+## 3. Contrast
 
 Solve contrast explicitly.
 
 Any element with a dark or saturated fill using `var(--accent)`, `var(--accent-hover)`, `var(--heading)`, `var(--success)`, `var(--warning)`, or `var(--danger)` must use `color: var(--on-accent)`.
 
-This applies to all nested text too.
+This applies to all nested text too, including `strong`, `em`, `span`, `div`, `p`, `li`, and labels.
 
 When creating a dark-filled class, always include a descendant selector:
 
-`.slide .frame .darkHeader, .slide .frame .darkHeader * { color: var(--on-accent); }`
+.slide .frame .darkHeader,
+.slide .frame .darkHeader * {
+  color: var(--on-accent);
+}
 
 Do not rely on inheritance for contrast.  
 Do not place dark text on dark fills.
@@ -108,19 +176,20 @@ For light fills, use:
 
 ---
 
-## 3. Core Slide Logic
+## 4. Core Slide Logic
 
 The slide title and subtitle are already the top of the pyramid.
 
 - The title states the so-what
-- The subtitle frames the topic
+- The subtitle names the topic or section
 - The frame proves or explains the title through one clear structure
 - Main labels inside the frame should carry the logic
 - Supporting text should add only what is needed
 
 Do not add another headline, banner, conclusion, takeaway, or explanatory strip inside the frame.
 
-Inside `.frame`, create **one self-contained structural object only**.  
+Inside `.frame`, create **one self-contained structural object only**.
+
 The direct child of `.frame` should normally be one wrapper, such as:
 
 <div class="matrix">...</div>
@@ -137,7 +206,7 @@ Do not add standalone text blocks before or after the main object.
 
 ---
 
-## 4. Consulting Design Judgment
+## 5. Consulting Design Judgment
 
 Before writing HTML, silently plan the slide.
 
@@ -169,7 +238,7 @@ Avoid generic AI-slide artifacts:
 
 ---
 
-## 5. Balance, Spacing, and Executive Density
+## 6. Balance, Spacing, and Executive Density
 
 The slide must feel balanced both:
 
@@ -203,8 +272,7 @@ Internal shape balance:
 - Similar cards or cells should feel visually consistent
 - Multi-line text should have enough height and readable line spacing
 
-**Text boxes should match their text (not overflow-only fixes):**  
-Avoid arbitrary fixed `height` on stacks of body lines or bullet lists when the intent is “box wraps content.” Prefer natural flow (`min-height` where needed, consistent padding, flex/grid `gap`) so the colored or bordered region does not end up visibly taller or shorter than the text block inside it. Equal-height card shells are fine when peer columns must align; inside each shell, body copy should still sit in a region sized to the copy.
+Important: center text containers through parent layout, padding, or alignment of the cell itself. Do **not** make normal sentence text containers flex/grid just to center text.
 
 Aim for **executive density**: enough content to make the slide valuable, with enough whitespace to read quickly.
 
@@ -226,7 +294,7 @@ Do not invent facts, figures, dates, sources, benchmarks, or named examples.
 
 ---
 
-## 6. Shapes, Fills, and Borders
+## 7. Shapes, Fills, and Borders
 
 Do not leave important content floating on a transparent background.
 
@@ -242,7 +310,7 @@ Use shapes, fills, and borders to clarify structure, not to decorate.
 Good:
 
 - Table cells with subtle fill and thin borders
-- Pillar cards with a dark header and light body
+- Pillar cards with dark header and light body
 - Row structures with compact number markers and bordered content cells
 - Matrix cells with light fills and clear boundaries
 - Roadmap phases with filled headers and clean connectors
@@ -259,7 +327,7 @@ If a div has a background, the text should usually live directly inside that sam
 
 ---
 
-## 7. Repeated Labels Must Become Shared Headers
+## 8. Repeated Labels Must Become Shared Headers
 
 Before designing, scan for repeated labels, tags, prefixes, category names, or section titles.
 
@@ -303,7 +371,7 @@ Wide space should be reserved for content that changes, not repeated labels.
 
 ---
 
-## 8. Repeated Internal Labels Force a Shared Grid
+## 9. Repeated Internal Labels Force a Shared Grid
 
 Before choosing the layout, scan peer items for repeated internal labels.
 
@@ -361,7 +429,7 @@ Only use separate cards when each card has a different internal structure or whe
 
 ---
 
-## 9. Numbering and Title Hygiene
+## 10. Numbering and Title Hygiene
 
 Use simple numbering: **1, 2, 3**, not **01, 02, 03**, unless the input explicitly requires leading zeros.
 
@@ -406,8 +474,7 @@ Tags are allowed only when they clearly define the structure and earn the space 
 Most of the time, a clear title is enough.
 
 ---
-
-## 10. Bullet and List Treatment
+## 11. Bullet and List Treatment
 
 When bullets belong to the same idea, keep them inside **one content box**.
 
@@ -439,12 +506,27 @@ Bullet CSS should be compact and calm:
 - Readable line-height
 - No decorative bullet chips unless they add meaning
 
-**Equal spacing between bullets:**  
-Use one rhythm for the whole list — for example `display: flex; flex-direction: column; gap: Npx` on `ul`, or uniform spacing between `li` only (e.g. `li + li { margin-top: Npx; }` with the same `N` everywhere). Use the same `line-height` on every bullet line. Do not mix large `margin-top` on some items with different inner padding on others, do not insert extra `<br>` between bullets instead of separate `<li>` rows, and do not combine paragraph margins with list margins in ways that make gaps uneven across columns.
+### Bullet Box Sizing
+
+When a box contains multiple bullets, the shape should fit the text.
+
+Use the equivalent of **Resize Shape to Fit Text** where supported by the slide/PPT generation system.
+
+For HTML/CSS:
+
+- Prefer `height: auto` for bullet containers
+- Use `min-height` only when needed for alignment
+- Avoid fixed heights that cause bullet overflow or cramped text
+- Let the bullet box expand to fit its content, then rebalance the surrounding layout
+- If equal-height cards are required, allocate enough height for the longest bullet group
+- Do not hide overflow, clip bullets, shrink text excessively, or compress line spacing to force fit
+
+Bullets should feel contained, calm, and readable.  
+The box should adapt to the content; the content should not look squeezed into the box.
 
 ---
 
-## 11. Structural Headers and Labels
+## 12. Structural Headers and Labels
 
 Solid-filled structural headers are encouraged when they clarify the object.
 
@@ -478,16 +560,96 @@ Emphasize through structure, wording, ordering, contrast, and position — not e
 
 ---
 
-## 12. HTML and Layout Construction
+## 13. Sentence Integrity, Inline Text, and Layout Construction
 
-Avoid unnecessary nested wrappers.
+Keep HTML simple and avoid unnecessary nested wrappers.
 
-Use nesting only when it improves structure or styling.  
-If a div has a background, text should usually live directly inside that div.
+A sentence must remain one continuous text flow inside one parent element.
 
-You may use inline `<strong>`, but keep it inline:
+Do not split one sentence across multiple `div`, `span`, grid cells, or flex children.  
+Do not use separate spans or divs just to control line breaks.  
+Do not use grid or flex on a normal sentence text container.
 
-`.slide .frame strong { display: inline; }`
+Good:
+
+<div class="cell">Embed AI into <strong>day-to-day workflows</strong> where decisions and outputs actually happen.</div>
+
+Good:
+
+<div class="layerBody">Connect models to <strong>enterprise systems, APIs, and knowledge</strong> so outputs reflect real context.</div>
+
+Bad:
+
+<div class="cell">
+  <div>Embed AI into</div>
+  <strong>day-to-day workflows</strong>
+  <div>where decisions happen.</div>
+</div>
+
+Bad:
+
+<div class="cell">Embed AI into<strong>day-to-day workflows</strong>where decisions happen.</div>
+
+Bad:
+
+<div class="sentenceGrid">
+  <span>Connect models to</span>
+  <strong>enterprise systems</strong>
+  <span>so outputs reflect context.</span>
+</div>
+
+Rules:
+
+- Put literal spaces before and after inline tags where needed
+- Use `<strong>` and `<em>` only for inline emphasis within the same sentence
+- Do not use `<strong>` as a separate title box, tag, or header
+- If emphasis creates awkward wrapping, rewrite the sentence instead of splitting it into elements
+- Use nesting only when it serves real structure: grid columns, rows, cells, headers, number markers, chart elements, or connectors
+
+Always include:
+
+.slide .frame strong,
+.slide .frame em {
+  display: inline;
+}
+
+For sentence containers, explicitly use normal text flow. Include relevant classes you create:
+
+.slide .frame .cell,
+.slide .frame .bodyText,
+.slide .frame .layerBody,
+.slide .frame .description,
+.slide .frame .sentence {
+  display: block;
+  white-space: normal;
+}
+
+Use grid or flex on the **parent structural row**, not on sentence text containers.
+
+Good:
+
+.slide .frame .layer {
+  display: grid;
+  grid-template-columns: 180px 1fr 220px;
+  align-items: center;
+}
+
+.slide .frame .layerBody {
+  display: block;
+  white-space: normal;
+}
+
+Bad:
+
+.slide .frame .layerBody {
+  display: flex;
+  align-items: center;
+}
+
+If vertical centering is needed, center the sentence container as a grid item using the parent row, padding, or `align-self`, while keeping the sentence container itself as normal block text.
+
+If a div has a background, text should usually live directly inside that div.  
+Use `display: inline-block` only for true structural elements such as compact number markers or controlled small labels that genuinely add value.
 
 Use CSS grid or flex for simple pillars, rows, cards, and tables.  
 Use explicit pixel geometry for matrices, charts, roadmaps, process flows, org charts, arrows, connectors, or any layout with overlap risk.
@@ -503,7 +665,7 @@ For explicit geometry, check:
 
 ---
 
-## 13. Footer
+## 14. Footer
 
 Use the footer only for brand, page number, and source when required.
 
@@ -531,6 +693,8 @@ Before returning, ensure:
 - No elements overlap
 - No labels are clipped
 - The title and subtitle serve as the top of the pyramid
+- The subtitle is a short noun phrase or blank
+- The subtitle has no em dash, colon, clause, tagline, or sentence-like explanation
 - The frame contains one main structural object
 - There is no extra heading, intro, conclusion, note, or bottom band inside the frame
 - The main object is balanced in the overall frame
@@ -554,6 +718,19 @@ Before returning, ensure:
 - Tags are removed unless they clearly earn their space
 - Wide space is reserved for unique content, not repeated labels
 - Bullets that belong to one idea are kept in one content box, not split into many mini-boxes
+- Bullet boxes resize to fit their text where possible
+- Multiple bullets are not squeezed into fixed-height boxes
+- No bullet text is clipped, hidden, or forced into tiny type
+- If equal-height cards are used, the tallest bullet group has enough space
+- `<strong>` and `<em>` are explicitly set to `display: inline`
+- Inline emphasis stays inside continuous sentence flow
+- Literal spaces exist before and after inline emphasis where needed
+- No sentence is split across multiple divs, spans, flex children, or grid cells
+- Sentence text containers are explicitly `display: block`, not flex or grid
+- Grid/flex is used on structural parents only, not on text-flow elements
+- Text inside content boxes is written directly in the box wherever possible
+- Nested divs are used only for real structure, not for splitting phrases
+- Inline emphasis inside dark-filled shapes still uses `var(--on-accent)`
 - Content is rich enough to be meaningful but concise enough to be executive
 - Emphasis is created inside the main object, not through extra callouts
 - No custom footer styling is added

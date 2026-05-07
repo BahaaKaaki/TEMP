@@ -796,6 +796,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 81. **Opus 4.7 default restored for generation/export**: Default premium slide generation (`settings.model`) and PPTX export code generation (`settings.pptxModel` plus `DEFAULT_PPTX_MODEL` fallback) were reverted to `pwc:bedrock.anthropic.claude-opus-4-7`; router and search defaults remain GPT 5.5.
 82. **Client profile guardrail carry-over**: Client-profile prompt-section overrides now append shared core generator guardrails so theme/profile switches retain inline sentence-flow handling, repeated-label grid de-duplication, one-dominant-structure discipline, and strict no-overlap/no-overflow frame fit rules.
 83. **Slide HTML prompt canonicalization**: Removed the legacy duplicated strategy prompt block from `slide-generator/src/guides/slide-html-generator-prompt.md` so the generator uses one canonical minimal executive contract.
+84. **Slide HTML generator prompt refinement**: `slide-html-generator-prompt.md` was expanded and tightened around the Strategy& executive consulting contract (hard canvas/frame rules, token palette, typography ladder, layout archetypes, chart/framework geometry, density and label-economy checks).
 
 ---
 

@@ -160,6 +160,8 @@ No environment variables needed. The frontend talks to the backend proxy.
 | `GET /api/ai/models` | PwC `/models` | List available models |
 | `GET /api/skills` | (local) | Consulting-skill catalogue metadata -- id, name, description, category, order (bodies stay server-side) |
 | `GET /api/whoami` | (local) | Returns the caller's identity + allowlist verdict. Bypasses `allowlistMiddleware` so the frontend can render a branded "Access Denied" screen instead of a blank 403. |
+| `POST /api/handoffs` | (local) | FDI Tracker handoff: store payload in memory (24h TTL). |
+| `GET /api/handoffs/:id` | (local) | Fetch and consume handoff by id (one-time read). Frontend loads `?handoff=` after clearing persisted deck state; id survives MSAL redirect via `sessionStorage`. |
 
 ## Staff Allowlist (off by default)
 

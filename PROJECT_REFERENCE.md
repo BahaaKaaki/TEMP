@@ -48,6 +48,10 @@ slide-themes-main/
 │   │   │   ├── config/                # Server-managed configuration
 │   │   │   │   ├── config.controller.ts  # buildConfig(), getConfig() -- model defaults + feature flags
 │   │   │   │   └── config.routes.ts      # GET /api/config (no auth required)
+│   │   │   ├── handoffs/             # FDI Tracker handoff bridge (in-memory, 24h TTL, one-time read)
+│   │   │   │   ├── handoffs.controller.ts
+│   │   │   │   ├── handoffs.routes.ts
+│   │   │   │   └── handoffs.service.ts
 │   │   │   ├── organizations/        # Multi-org support (scaffolded)
 │   │   │   ├── themes/               # Theme CRUD (scaffolded)
 │   │   │   └── templates/            # Template CRUD (scaffolded)
@@ -474,6 +478,8 @@ The `settings` slice is versioned via `SETTINGS_VERSION` in `SlideContext.jsx`. 
 | `POST /api/ai/responses` | Proxy to PwC `/v1/responses` (search). Same `_skillId` injection semantics as `/chat`. |
 | `GET /api/ai/models` | Proxy to PwC `/models` |
 | `GET /api/skills` | Consulting-skill catalogue metadata (id, name, description, category, order). Bodies stay server-side. |
+| `POST /api/handoffs` | FDI Tracker handoff: store payload (in-memory, 24h TTL). |
+| `GET /api/handoffs/:id` | Fetch and consume handoff by id (one-time read). Frontend entry: `?handoff=` id in URL; `App.jsx` clears persisted deck state, survives MSAL redirect via `sessionStorage`, passes payload to `AIChatbot`. |
 | `/api/v1/auth` | User auth (register, login, JWT) |
 | `/api/v1/organizations` | Organization CRUD |
 | `/api/v1/themes` | Theme CRUD |

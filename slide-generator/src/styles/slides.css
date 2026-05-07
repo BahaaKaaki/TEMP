@@ -160,6 +160,26 @@
   box-sizing: border-box;
 }
 
+/*
+ * AI-generated HTML often sets display:flex on prose blocks. Flex items are
+ * direct children only — so raw text + <strong> become separate columns.
+ * Keep emphasis inline; DOM normalization also wraps mixed prose (slideDomNormalize.js).
+ */
+.slide .frame strong,
+.slide .frame em,
+.slide .frame b,
+.slide .frame i {
+  display: inline !important;
+}
+
+.slide .frame .slide-prose-flow-wrap {
+  display: block;
+  white-space: normal;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
 /* Headings */
 .slide h1,
 .slide h2,

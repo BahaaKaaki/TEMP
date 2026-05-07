@@ -138,11 +138,12 @@ slide-themes-main/
 │   │   │   ├── clientProfileValidation.js # Client-profile demo readiness checks for colors, fonts, footer, and layout contract
 │   │   │   ├── templateCss.js         # Template CSS resolution helper
 │   │   │   ├── slideIds.js            # Compact slide ID generation helper
+│   │   │   ├── slideDomNormalize.js   # Post-mount DOM fix: wrap flex + prose so strong/em are not separate flex items
 │   │   │   ├── vibes.js              # Legacy design variants (retained for backward compat)
 │   │   │   ├── debugLog.js            # Debug logging utility
 │   │   │   └── auditLog.js            # Audit logging utility
 │   │   ├── styles/
-│   │   │   ├── slides.css             # **CORE**: minimal shell CSS (~134 lines), base tokens and structure
+│   │   │   ├── slides.css             # **CORE**: minimal shell CSS, base tokens, frame prose / emphasis overrides
 │   │   │   ├── app.css                # Application shell styles
 │   │   │   └── simple.css             # Simple variant styles
 │   │   ├── guides/
@@ -800,6 +801,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 85. **Text-box fit and bullet rhythm (HTML + PPTX prompts)**: Slide HTML guidance tells the model to size text regions to content (avoid arbitrary fixed heights) and to keep bullet spacing uniform (single gap rhythm, no uneven margins). The default PPTX export system prompt maps PowerPoint Text Box modes to PptxGenJS `fit` (`none` / `shrink` / `resize`), prefers `fit: 'resize'` for multi-line body and bullet stacks when layout is content-sized, and requires uniform line/paragraph spacing or constant y-step between bullet `addText` calls.
 86. **Router subtitle style**: `router-system-prompt.md` requires subtitles to stay short noun phrases (up to 6 words), not taglines or sentence-like descriptions, and forbids em dashes, colons, and clauses in subtitles (mirrored in TITLES AND SUBTITLES and FINAL SELF-CHECK).
 87. **Slide HTML generator prompt overhaul**: `slide-html-generator-prompt.md` was rewritten with a dedicated Subtitle Discipline section (blank allowed, forbidden generic taglines), Hard Constraints including no inline styles on `.frame`, Sentence Integrity / inline layout rules, Bullet Box Sizing (resize-to-fit behavior), expanded Final Check, and parent-based centering instead of flex/grid on sentence containers.
+88. **Flex + prose DOM fix (preview)**: `slide-generator/src/utils/slideDomNormalize.js` wraps mixed direct children (text + `<strong>` / `<em>`) inside `display:flex` containers in `.slide .frame` into a single block wrapper so sentences do not fragment into columns; `slides.css` adds `display: inline !important` for emphasis inside `.frame`. Applied after mount in main slide preview, fullscreen preview, and slide list thumbnails/hover.
 
 ---
 

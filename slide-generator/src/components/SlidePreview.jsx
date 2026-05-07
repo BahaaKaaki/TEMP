@@ -1,4 +1,4 @@
-import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+import { useMemo, useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import { useSlides } from '../context/SlideContext';
 import { transformElementToWidget, hasAnyApiKey } from '../services/aiService';
@@ -8,6 +8,7 @@ import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
 import { themeToCSS } from '../utils/themeUtils';
 import { authFetch } from '../services/authFetch';
 import CommentPanel from './CommentPanel';
+import { normalizeFlexProseInSlideMount } from '../utils/slideDomNormalize';
 
 const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
 const DEFAULT_ZOOM = 1;
@@ -610,19 +611,23 @@ export default function SlidePreview({ onSwitchToCode }) {
       }
       html = injectClientProfileChrome(html, activeClientProfile, clientLogoUrl);
       slideRef.current.innerHTML = html;
-      slideRef.current.querySelectorAll('a[href]').forEach(anchor => {
-        const href = anchor.getAttribute('href') || '';
-        if (!/^https?:\/\//i.test(href)) return;
-        anchor.classList.add('slide-source-link');
-        anchor.setAttribute('data-source-preview-enhanced', 'true');
-        anchor.setAttribute('target', '_blank');
-        anchor.setAttribute('rel', 'noopener noreferrer');
-        anchor.setAttribute('data-no-edit', 'true');
-        anchor.setAttribute('title', `Open source: ${anchor.textContent?.trim() || href}`);
+      requestAnimationFrame(() => {
+        if (!slideRef.current) return;
+        normalizeFlexProseInSlideMount(slideRef.current);
+        slideRef.current.querySelectorAll('a[href]').forEach(anchor => {
+          const href = anchor.getAttribute('href') || '';
+          if (!/^https?:\/\//i.test(href)) return;
+          anchor.classList.add('slide-source-link');
+          anchor.setAttribute('data-source-preview-enhanced', 'true');
+          anchor.setAttribute('target', '_blank');
+          anchor.setAttribute('rel', 'noopener noreferrer');
+          anchor.setAttribute('data-no-edit', 'true');
+          anchor.setAttribute('title', `Open source: ${anchor.textContent?.trim() || href}`);
+        });
+        if (isEditMode) {
+          makeEditable(slideRef.current);
+        }
       });
-      if (isEditMode) {
-        makeEditable(slideRef.current);
-      }
     }
   }, [activeSlide?.id, activeSlide?.html, isEditMode, state.darkMode, state.slides, activeClientProfile, clientLogoUrl]);
 
@@ -1935,6 +1940,15 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, activeCli
   }
   slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length);
   slideHtml = injectClientProfileChrome(slideHtml, activeClientProfile, clientLogoUrl);
+  const fullscreenSlideRef = useRef(null);
+
+  useLayoutEffect(() => {
+    if (!fullscreenSlideRef.current || !slideHtml) return;
+    requestAnimationFrame(() => {
+      if (fullscreenSlideRef.current) normalizeFlexProseInSlideMount(fullscreenSlideRef.current);
+    });
+  }, [slideHtml, currentIndex, currentSlide?.id]);
+
   const canGoPrev = currentIndex > 0;
   const canGoNext = currentIndex < slides.length - 1;
 
@@ -2049,6 +2063,7 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, activeCli
         }}
       >
         <div
+          ref={fullscreenSlideRef}
           style={{
             width: 960,
             height: 540,

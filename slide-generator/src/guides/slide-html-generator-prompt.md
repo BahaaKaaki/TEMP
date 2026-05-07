@@ -626,6 +626,8 @@ For sentence containers, explicitly use normal text flow. Include relevant class
 
 Use grid or flex on the **parent structural row**, not on sentence text containers.
 
+**Critical — flex + inline emphasis:** If you set `display: flex` or `inline-flex` on a container whose **direct** children would be loose text and `<strong>` / `<em>` (and optional `<span>`), the browser treats each text node and each emphasis tag as **separate flex items**, which fragments sentences into columns. Put the full sentence inside **one** child first (for example a single `<p>` or `<span>` wrapping text and emphasis), so only that block is the flex item — or avoid flex on that prose container entirely.
+
 Good:
 
 .slide .frame .layer {

@@ -31,7 +31,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - User Settings include generation defaults for slide approach (Auto/Freestyle) and model tier (Fast/Premium); Freestyle mode tells the router to use cover only for cover slides and freestyle for body slides unless the user explicitly requests a named template or layout
 - Voice dictation in the AI chat input uses browser speech recognition to place editable transcript text into the prompt before sending
 - AI plan review cards keep long section trackers, template names, and instructions constrained within the chat panel
-- Router search policy uses GPT 5.5 reasoning by default, but only attaches web search for requests that need current or external evidence; Responses API router failures fall back to Chat Completions planning, router evidence is packaged as structured metadata. Per-step `webSearch()` is skipped when the router already ran inline/pre-search grounding (duplicate avoidance); remaining per-step searches use `openai.gpt-5.4-mini` by default with caching/budgeting while still overriding older router facts when fresher step results conflict
+- Router search policy uses GPT 5.5 reasoning by default, but only attaches web search for requests that need current or external evidence; Responses API router failures fall back to Chat Completions planning, router evidence is packaged as structured metadata, and per-step evidence search uses GPT 5.5 by default with caching/budgeting while still overriding older router facts when current/latest results conflict
 - Slide preview includes a source inspector for evidence-backed slides: router/per-step search URLs, raw URLs, and in-slide links are shown as clickable verification cards; generic footer source labels are ignored unless no URL-backed source exists
 - Slide rendering runs a post-mount normalization (`slideDomNormalize.js`) and frame-level CSS so `display:flex` on prose cannot split loose text and `<strong>` / `<em>` into separate flex columns; emphasis stays inline inside wrapped prose blocks
 - Router planning prompt lives in `slide-generator/src/guides/router-system-prompt.md` and now enforces a strict allowed-template set (`cover`, `sectionDivider`, `outcomeApproach`, `chevronFlow`, `projectStepDetail`, `freestyle`) with stronger tracker hierarchy, layout-density, storyline sequencing rules, and subtitle discipline (short noun phrases up to six words; no em dashes, colons, or clauses)
@@ -201,12 +201,12 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 | Fast generation | `vertex_ai.gemini-3.1-flash-lite-preview` |
 | Classifier | `openai.gpt-5.4-mini` |
 | Router | `openai.gpt-5.5` |
-| Step evidence search | `openai.gpt-5.4-mini` |
+| Step evidence search | `openai.gpt-5.5` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
 | PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
 
-Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. The router uses GPT 5.5; per-step evidence search defaults to GPT 5.4 mini (configurable). Premium slide generation and PPTX export default to Claude Opus 4.7. The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. Router and step evidence search use GPT 5.5, while premium slide generation and PPTX export default to Claude Opus 4.7. The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 
 ## Linting
 

@@ -31,6 +31,7 @@ import { decideTemplateUsage } from './templateMatcher';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { buildClientProfileContext, getActiveClientProfile, getClientProfileFooterBranding } from '../utils/clientDesignProfiles.js';
 import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
+import { rasterizeInlineSvgs } from './svgRasterizer.js';
 import { authFetch } from './authFetch.js';
 import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
 import { omitChatCompletionsTemperature } from './ai/models.js';
@@ -312,7 +313,7 @@ const COMPLETE_TRANSLATION_EXAMPLE = {
   html: `<div class="slide master-standard">
   <h1 class="title">Three strategic pillars drive enterprise AI adoption at scale</h1>
   <h2 class="subtitle">Strategic Framework</h2>
-  <div class="frame"><div class="card-row"><div class="card"><div class="card-header-row"><div class="card-icon-circle">🎯</div><div class="card-num">01</div></div><h3>Foundation Layer</h3><p>Establish robust data infrastructure with unified governance protocols across business units.</p><p>Modern cloud architecture enables seamless integration and real-time analytics.</p><div class="impact-box">Timeline: 6-12 months</div></div><div class="card"><div class="card-header-row"><div class="card-icon-circle">⚙️</div><div class="card-num">02</div></div><h3>Capability Building</h3><p>Deploy AI-powered tools across customer service, operations, and strategic planning functions.</p><p>Center of Excellence model accelerates knowledge transfer and best practices.</p><div class="impact-box">Timeline: 12-18 months</div></div><div class="card"><div class="card-header-row"><div class="card-icon-circle">🚀</div><div class="card-num">03</div></div><h3>Scale & Optimize</h3><p>Enterprise-wide rollout with continuous improvement loops and performance benchmarking.</p><p>Measure ROI through productivity gains, cost savings, and revenue impact.</p><div class="impact-box">Timeline: 18-24 months</div></div></div></div>
+  <div class="frame"><div class="card-row"><div class="card"><div class="card-header-row"><div class="card-icon-circle"><img data-pptx-role="icon" src="data:image/png;base64,PLACEHOLDER_ICON_1" width="24" height="24"></div><div class="card-num">01</div></div><h3>Foundation Layer</h3><p>Establish robust data infrastructure with unified governance protocols across business units.</p><p>Modern cloud architecture enables seamless integration and real-time analytics.</p><div class="impact-box">Timeline: 6-12 months</div></div><div class="card"><div class="card-header-row"><div class="card-icon-circle"><img data-pptx-role="icon" src="data:image/png;base64,PLACEHOLDER_ICON_2" width="24" height="24"></div><div class="card-num">02</div></div><h3>Capability Building</h3><p>Deploy AI-powered tools across customer service, operations, and strategic planning functions.</p><p>Center of Excellence model accelerates knowledge transfer and best practices.</p><div class="impact-box">Timeline: 12-18 months</div></div><div class="card"><div class="card-header-row"><div class="card-icon-circle"><img data-pptx-role="icon" src="data:image/png;base64,PLACEHOLDER_ICON_3" width="24" height="24"></div><div class="card-num">03</div></div><h3>Scale & Optimize</h3><p>Enterprise-wide rollout with continuous improvement loops and performance benchmarking.</p><p>Measure ROI through productivity gains, cost savings, and revenue impact.</p><div class="impact-box">Timeline: 18-24 months</div></div></div></div>
   <footer class="footer"><span>Strategy&</span><span>2</span></footer>
 </div>`,
   code: `function(pptx, slideNum, totalSlides) {
@@ -320,10 +321,11 @@ const COMPLETE_TRANSLATION_EXAMPLE = {
   const c = {main:'111111',secondary:'222222',red:'A32020',maroon:'8E1E1E',zone1:'F7F9FB',rose:'F8E3E3',meta:'4A4F57',coal:'4B4F55',border:'E6E9EE'};
   slide.addText("Three strategic pillars drive enterprise AI adoption at scale", {x:0.48, y:0.42, w:12.36, h:0.8, fontFace:'Georgia', fontSize:28, color:c.main, valign:'top'});
   slide.addText("Strategic Framework", {x:0.48, y:1.40, w:12.36, h:0.4, fontFace:'Arial', fontSize:18, color:c.red, bold:true});
+  // Copy each icon's src data URI verbatim from the HTML <img data-pptx-role="icon"> tags.
   const items = [
-    {icon:'🎯', num:'01', title:'Foundation Layer', body:'Establish robust data infrastructure with unified governance protocols across business units.\\n\\nModern cloud architecture enables seamless integration and real-time analytics.', impact:'Timeline: 6-12 months'},
-    {icon:'⚙️', num:'02', title:'Capability Building', body:'Deploy AI-powered tools across customer service, operations, and strategic planning functions.\\n\\nCenter of Excellence model accelerates knowledge transfer and best practices.', impact:'Timeline: 12-18 months'},
-    {icon:'🚀', num:'03', title:'Scale & Optimize', body:'Enterprise-wide rollout with continuous improvement loops and performance benchmarking.\\n\\nMeasure ROI through productivity gains, cost savings, and revenue impact.', impact:'Timeline: 18-24 months'}
+    {iconData:'data:image/png;base64,PLACEHOLDER_ICON_1', num:'01', title:'Foundation Layer', body:'Establish robust data infrastructure with unified governance protocols across business units.\\n\\nModern cloud architecture enables seamless integration and real-time analytics.', impact:'Timeline: 6-12 months'},
+    {iconData:'data:image/png;base64,PLACEHOLDER_ICON_2', num:'02', title:'Capability Building', body:'Deploy AI-powered tools across customer service, operations, and strategic planning functions.\\n\\nCenter of Excellence model accelerates knowledge transfer and best practices.', impact:'Timeline: 12-18 months'},
+    {iconData:'data:image/png;base64,PLACEHOLDER_ICON_3', num:'03', title:'Scale & Optimize', body:'Enterprise-wide rollout with continuous improvement loops and performance benchmarking.\\n\\nMeasure ROI through productivity gains, cost savings, and revenue impact.', impact:'Timeline: 18-24 months'}
   ];
   const startX = 0.48, cardW = 3.95, cardH = 4.90, gap = 0.25, cardY = 1.90;
   items.forEach((d, i) => {
@@ -331,7 +333,8 @@ const COMPLETE_TRANSLATION_EXAMPLE = {
     slide.addShape('roundRect', {x:xPos, y:cardY, w:cardW, h:cardH, fill:{color:c.zone1}, line:{color:c.border, width:1}, rectRadius:0.05});
     slide.addShape('rect', {x:xPos, y:cardY, w:cardW, h:0.08, fill:{color:c.maroon}});
     slide.addShape('ellipse', {x:xPos + 0.25, y:cardY + 0.25, w:0.5, h:0.5, fill:{color:c.rose}});
-    slide.addText(d.icon, {x:xPos + 0.25, y:cardY + 0.25, w:0.5, h:0.5, fontSize:16, color:c.maroon, align:'center', bold:true});
+    // Rasterized icon: forward the data URI verbatim to slide.addImage.
+    slide.addImage({data:d.iconData, x:xPos + 0.33, y:cardY + 0.33, w:0.34, h:0.34});
     slide.addText(d.num, {x:xPos + cardW - 1.25, y:cardY + 0.25, w:1, h:0.5, fontFace:'Georgia', fontSize:32, color:c.maroon, bold:true, align:'right'});
     slide.addText(d.title, {x:xPos + 0.25, y:cardY + 1.0, w:cardW - 0.5, h:0.4, fontFace:'Arial', fontSize:16, color:c.main, bold:true});
     slide.addText(d.body, {x:xPos + 0.25, y:cardY + 1.5, w:cardW - 0.5, h:2.5, fontFace:'Arial', fontSize:12, color:c.secondary, valign:'top', lineSpacing:18});
@@ -421,6 +424,8 @@ always override example colors with the ACTUAL colors from the CSS/HTML of each 
 
 FOOTNOTES & SOURCES: If HTML contains source/footnote text, render as small text near slide bottom:
   Strategy& source/footer/page chrome is 7.5pt and is handled by addSourceNote/addFooter. Do not use 7.5pt for body content, chart axes, captions, or legends.
+
+ICONS (RASTERIZED): If the HTML contains <img data-pptx-role="icon" src="data:image/png;base64,..." width="W" height="H">, treat it as a pre-rendered icon. Emit slide.addImage({ data: '<the full src data URI, verbatim>', x, y, w, h }) positioned at the same spot the container CSS specifies (typically centered in an .icon circle). Convert W/H from px to inches using the standard formula. NEVER substitute an emoji, unicode glyph, or addText for a rasterized icon — the image is already correct and must be forwarded as-is. Do not truncate or alter the data URI.
 
 BAR CHARTS: Render bar-chart-exhibit as native PptxGenJS shapes (filled rectangles proportional to %).
 
@@ -764,11 +769,24 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
   console.log('[PPTX Prompt] Slide %d hints: %d', slideNum, hints.length);
   const nativeTableIntent = hasNativeTableIntent(html, hints);
 
+  // Rasterize inline <svg> icons → PNG <img> tags before the translator sees
+  // them. PowerPoint has no inline-SVG primitive; without this the model falls
+  // back to emoji glyphs (which render as fuzzy bitmaps in the exported deck).
+  // Runs on the full slide HTML so CSS (stroke/fill/currentColor) resolves.
+  const rasterizedHtml = await rasterizeInlineSvgs(html);
+  const hasRasterIcons = /data-pptx-role="icon"/.test(rasterizedHtml);
+
   const cleanHtml = stripPptxHintComments(
-    html
+    rasterizedHtml
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
       .replace(/<footer[\s\S]*?<\/footer>/gi, '')
-      .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"')
+      // Strip base64 payloads from non-icon images. Keep rasterized icon data
+      // URIs intact so the translator can forward them to slide.addImage().
+      .replace(/<img\b[^>]*\bsrc="data:image\/[^"]*"[^>]*>/gi, (match) => (
+        match.includes('data-pptx-role="icon"')
+          ? match
+          : match.replace(/src="data:image\/[^"]*"/i, 'src="[embedded-image]"')
+      ))
   );
 
   const tplPos = buildPositionBlock(settings?.templatePositions) || buildProfilePositionBlock(activeProfile);
@@ -823,6 +841,7 @@ ${exampleCode}
 ========== SLIDE ${slideNum} OF ${totalSlides} ==========
 ${hintsBlock ? `\n${hintsBlock}\n` : ''}
 ${nativeTableIntent ? `\n========== NATIVE TABLE EXPORT ==========\nThis slide contains row/column table intent. If the visible content is tabular, render it with PptxGenJS slide.addTable(rows, options), not a pile of independent rectangles and text boxes. Preserve header fills, body fills, borders, column widths, row heights, alignment, and per-cell text colors. Scorecard dots, hollow circles, checks, RAG markers, and similar status indicators MUST be table cell text glyphs inside the relevant rows/columns. Do not use slide.addShape('ellipse'), circle shapes, or positioned overlays for table cell markers; they detach when the table is resized. Use shape grids only for non-tabular matrices, charts, heatmaps, or diagrams.\n` : ''}
+${hasRasterIcons ? `\n========== RASTERIZED ICONS ==========\nThis slide contains pre-rendered icon images. Every <img data-pptx-role="icon"> below is a PNG the browser already rasterized from the original SVG. You MUST render it via slide.addImage({ data: '<exact src data URI>', x, y, w, h }) — NEVER substitute an emoji, unicode glyph, or addText. Take x,y from the icon's container (typically the center of an .icon circle) and w,h from the img's width/height attributes converted to inches. Pass the data URI through verbatim; do not shorten or replace it.\n` : ''}
 >>> HTML (extract ALL text EXACTLY) <<<
 ${cleanHtml}
 >>> END HTML <<<

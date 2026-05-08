@@ -383,6 +383,35 @@ If a div has a background, the text should usually live directly inside that sam
 
 ---
 
+## Icons and Symbols
+
+When a slide calls for an icon (pillar card marker, KPI indicator, step glyph, status symbol), use an **inline `<svg>`** element — never an emoji, unicode glyph, or icon-font character.
+
+Good:
+
+<div class="icon">
+  <svg viewBox="0 0 24 24"><polyline points="3 17 9 11 13 15 21 7"></polyline><polyline points="15 7 21 7 21 13"></polyline></svg>
+</div>
+
+Bad:
+
+<div class="icon">🎯</div>
+<div class="icon">⚙️</div>
+<div class="icon">✓</div>
+<div class="icon">→</div>
+
+Why this matters: emoji and unicode symbols render as OS-dependent color bitmaps, break brand consistency, and export as fuzzy rasters in the final PowerPoint deck. Inline SVGs inherit `var(--accent)` / `currentColor` from the containing CSS and export cleanly at any scale.
+
+Rules:
+
+- Always use `viewBox="0 0 24 24"` (or the design's native viewBox) so the icon scales with its container.
+- Use simple line-art strokes (`<path>`, `<polyline>`, `<circle>`) with no explicit `fill` or `stroke` — let the `.icon` CSS control color.
+- One icon per marker slot. Do not combine emoji + SVG, or stack multiple icons in a single slot.
+- For status indicators inside tables or dense lists, prefer small SVG circles/checks over unicode (●, ✓, ○) — unicode is acceptable only when the hint explicitly asks for table cell glyphs.
+- Never use emoji as decorative flourishes in titles, subtitles, bullets, or body copy.
+
+---
+
 ## 9. Shared Grid Rules
 
 Repeated labels must become shared headers.

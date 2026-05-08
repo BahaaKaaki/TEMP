@@ -368,6 +368,8 @@ function loadState() {
       // Model assignments are CODE-MANAGED: always sourced from initialState,
       // never read back from localStorage. Change a default in initialState ->
       // all users pick it up on next page load. No version bump needed.
+      // Includes evidenceSearchModel so per-step webSearch() uses the shipped
+      // default (e.g. gpt-5.4-mini) even if an older build stored gpt-5.5 in localStorage.
       // User-controlled preferences (speedMode, batch sizes, etc.)
       // still persist normally via the ...parsed.settings spread.
       const loadedState = {
@@ -393,6 +395,7 @@ function loadState() {
           deepAnalysisModel: initialState.settings.deepAnalysisModel,
           pptxModel: initialState.settings.pptxModel,
           reportModel: initialState.settings.reportModel,
+          evidenceSearchModel: initialState.settings.evidenceSearchModel,
           // Skill selection is one-shot: it clears after a successful
           // generation and also on every app load, so a refresh never
           // silently reuses a previously picked playbook.
@@ -406,6 +409,7 @@ function loadState() {
         routerModel: loadedState.settings.routerModel,
         pptxModel: loadedState.settings.pptxModel,
         reportModel: loadedState.settings.reportModel,
+        evidenceSearchModel: loadedState.settings.evidenceSearchModel,
         speedMode: loadedState.settings.speedMode,
       });
       // Legacy labels from older builds

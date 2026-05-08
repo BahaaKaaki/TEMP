@@ -1,7 +1,7 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-05-07
+> Last updated: 2026-05-08
 
 ---
 
@@ -120,6 +120,9 @@ slide-themes-main/
 │   │   │   ├── pptxService.js         # PPTX export via PptxGenJS
 │   │   │   ├── pptxRenderers.js       # PPTX rendering helpers
 │   │   │   ├── pptxTemplateService.js # Apply uploaded .pptx templates
+│   │   │   ├── pptxMediaContentTypes.js # [Content_Types].xml defaults for embedded media (merge + sanitation)
+│   │   │   ├── pptxSvgIconInjector.js # Measure icon-sized inline SVG hosts; overlay hi-DPI PNGs on exported slides
+│   │   │   ├── slidePreviewMeasureCss.js # Shared CSS for off-DOM slide measurement (PPTX icon pass)
 │   │   │   ├── pptxTransformService.js# PPTX transformations
 │   │   │   ├── exportService.js       # HTML, JSON, PDF export
 │   │   │   ├── reportService.js       # HTML report generation (Chart.js)
@@ -343,7 +346,8 @@ Slides in state (HTML + CSS)
   │   ├── Table-intent HTML/hints are prompted and retried toward native slide.addTable output
   │   ├── Section tracker chrome is measured, capped, and kept single-line with shrink/ellipsis fallback
   │   ├── PptxGenJS renders .pptx file
-  │   ├── pptxTemplateService.js sanitizes slide XML for duplicate cNvPr IDs and zero/non-positive extents
+  │   ├── pptxTemplateService.js sanitizes slide XML for duplicate cNvPr IDs and zero/non-positive extents; ensures ZIP media content types on merge/sanitation
+  │   ├── pptxSvgIconInjector.js post-pass overlays transparent PNGs for small inline SVG icon hosts (preview-measured)
   │   └── Batch processing with parallel API calls
   ├── PDF: jsPDF + html2canvas
   │   └── Renders each slide to canvas, then to PDF pages

@@ -34,6 +34,7 @@ import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './p
 import { authFetch } from './authFetch.js';
 import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
 import { omitChatCompletionsTemperature } from './ai/models.js';
+import { injectRasterizedSvgIcons } from './pptxSvgIconInjector.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -428,6 +429,8 @@ AUTO-CHARTS: If you see <div class="auto-chart" data-chart='JSON'>, extract char
 If unsure how to use addChart, render bars as rectangles instead — that always works.
 
 NATIVE TABLES: If the HTML contains a real <table>, or a hinted/native table element, prefer slide.addTable(rows, options) instead of drawing every cell as rectangles and text boxes. Use one table object with column widths, row height, borders, fills, and per-cell text styles. Use shapes only when the visual is a non-tabular matrix, chart, heatmap, or process layout. For scorecard/status tables, render dots, checks, RAG markers, and other cell indicators as table cell text glyphs (for example ●, ◐, ○, ✓) with per-cell text color and alignment. Do NOT draw those markers as separate ellipse/circle shapes over the table.
+
+INLINE SVG ICONS: Small decorative inline <svg> pictograms are rasterized from the rendered HTML and placed automatically after your code runs. Do not redraw those small SVG path icons as emoji, placeholder text, or embedded base64 images. Still render their surrounding cards, icon chips/backgrounds, borders, and all text from the HTML/CSS.
 
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
 
@@ -1601,6 +1604,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
           if (lastSlide) {
             addSourceNote(lastSlide, slide.html);
             normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+            await injectRasterizedSvgIcons(lastSlide, slide, settings);
           }
           if (result.cached) console.log(`[PPTX] Slide ${slideNum}: rendered from cache`);
           else if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
@@ -1614,7 +1618,10 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       if (!rendered) {
         generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile);
         const lastSlide = pptx.slides?.[pptx.slides.length - 1];
-        if (lastSlide) normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+        if (lastSlide) {
+          normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+          await injectRasterizedSvgIcons(lastSlide, slide, settings);
+        }
       }
 
       if (slide.sectionLabel || slide.subSectionLabel) {
@@ -1642,6 +1649,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
             if (lastSlide) {
               addSourceNote(lastSlide, slide.html);
               normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+              await injectRasterizedSvgIcons(lastSlide, slide, settings);
             }
             if (result.attempts > 1) console.log(`[PPTX] Slide ${slideNum} succeeded after ${result.attempts} attempts`);
           } else {
@@ -1656,7 +1664,10 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
     if (!rendered) {
         generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile);
         const lastSlide = pptx.slides?.[pptx.slides.length - 1];
-        if (lastSlide) normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+        if (lastSlide) {
+          normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+          await injectRasterizedSvgIcons(lastSlide, slide, settings);
+        }
       }
 
     if (slide.sectionLabel || slide.subSectionLabel) {
@@ -1746,6 +1757,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
         if (lastSlide) {
           addSourceNote(lastSlide, slide.html);
           normalizeGeneratedSlideForProfile(lastSlide, slide, slideNumber, activeProfile, activeProfilePositions);
+          await injectRasterizedSvgIcons(lastSlide, slide, settings);
         }
       } else {
         recordFailure(result?.error || 'AI generation failed');
@@ -1759,7 +1771,10 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   if (!rendered) {
     generateFallbackSlide(pptx, slide, slideNumber, totalSlides, activeProfile);
     const lastSlide = pptx.slides?.[pptx.slides.length - 1];
-    if (lastSlide) normalizeGeneratedSlideForProfile(lastSlide, slide, slideNumber, activeProfile, activeProfilePositions);
+    if (lastSlide) {
+      normalizeGeneratedSlideForProfile(lastSlide, slide, slideNumber, activeProfile, activeProfilePositions);
+      await injectRasterizedSvgIcons(lastSlide, slide, settings);
+    }
   }
 
     if (slide.sectionLabel || slide.subSectionLabel) {

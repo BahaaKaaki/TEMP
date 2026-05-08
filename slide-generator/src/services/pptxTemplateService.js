@@ -6,6 +6,9 @@ import JSZip from 'jszip';
 import { extractBranding } from './brandingExtractor.js';
 import { authFetch } from './authFetch.js';
 import { getClientDesignProfile, getClientProfileTemplateStorageKey } from '../utils/clientDesignProfiles.js';
+import { ensureMediaContentType, ensureZipMediaContentTypes } from './pptxMediaContentTypes.js';
+
+export { getPptxMediaContentTypeDiagnostics } from './pptxMediaContentTypes.js';
 
 /**
  * Store for the loaded template data.
@@ -394,19 +397,6 @@ function addLogoRelationship(relsXml, rId, relTarget) {
   );
 }
 
-function ensureMediaContentType(contentTypesXml, ext) {
-  if (!contentTypesXml || !ext) return contentTypesXml;
-  if (new RegExp(`<Default[^>]*Extension="${ext}"`).test(contentTypesXml)) return contentTypesXml;
-  const contentType = ext === 'svg'
-    ? 'image/svg+xml'
-    : ext === 'jpg' || ext === 'jpeg'
-      ? 'image/jpeg'
-      : ext === 'gif'
-        ? 'image/gif'
-        : 'image/png';
-  return contentTypesXml.replace('</Types>', `<Default Extension="${ext}" ContentType="${contentType}"/></Types>`);
-}
-
 function normalizeHexColor(value) {
   const raw = String(value || '').trim().replace(/^#/, '');
   if (/^[0-9a-f]{3}$/i.test(raw)) {
@@ -547,6 +537,8 @@ function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
 }
 
 async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
+  await ensureZipMediaContentTypes(zip, label);
+
   const slideFiles = Object.keys(zip.files)
     .filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f))
     .sort((a, b) => {
@@ -882,6 +874,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
     tplZip.file(ctPath, ctXml);
   }
+  await ensureZipMediaContentTypes(tplZip, 'template merge media');
 
   // ── Done: produce final arraybuffer ─────────────────────────────────────
   await sanitizePptxZipForPowerPoint(tplZip, 'template merge export');

@@ -9,6 +9,12 @@ import { themeToCSS } from '../utils/themeUtils';
 import { authFetch } from '../services/authFetch';
 import CommentPanel from './CommentPanel';
 import { normalizeFlexProseInSlideMount } from '../utils/slideDomNormalize';
+import {
+  getSlideMeasureContainerCss as getBaseCSS,
+  getSlideMeasureClientChromeCss as getClientChromeCSS,
+} from '../services/slidePreviewMeasureCss.js';
+
+export { getBaseCSS };
 
 const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
 const DEFAULT_ZOOM = 1;
@@ -1751,82 +1757,6 @@ function getVisualEditModeCSS(isVisualEditMode) {
 .slide-render-container.visual-edit-mode .draggable-element:hover::before,
 .slide-render-container.visual-edit-mode .draggable-element.selected-element::before {
   opacity: 0.7;
-}
-`;
-}
-
-// SIMPLIFIED: Only container CSS - all slide styling from globally imported slides.css
-// This prevents CSS duplication and ensures vibes work correctly in both
-// main preview and thumbnails
-export function getBaseCSS() {
-  return `
-/* Container sizing only - slides.css handles all .slide content styling */
-.slide-render-container {
-  width: 960px;
-  height: 540px;
-  position: relative;
-  overflow: hidden;
-}
-
-/* Fallback for content without .slide wrapper */
-.slide-render-container:not(:has(.slide)) {
-  background: #fff;
-  padding: 35px;
-  font-family: Arial, sans-serif;
-  color: #111111;
-}
-`;
-}
-
-function getClientChromeCSS() {
-  return `
-.slide[data-client-profile="stc"] .client-chrome {
-  position: absolute;
-  z-index: 8;
-  pointer-events: none;
-  user-select: none;
-}
-
-.slide[data-client-profile="stc"] .client-chrome-stc-logo {
-  left: 14px;
-  top: 2px;
-  width: 35px;
-  height: 18px;
-  object-fit: contain;
-}
-
-.slide[data-client-profile="stc"] .client-chrome-stc-wordmark {
-  left: 14px;
-  top: 2px;
-  width: 35px;
-  height: 18px;
-  font: 700 16px/1 "STC Forward", Arial, sans-serif;
-  color: var(--accent);
-  letter-spacing: -1px;
-}
-
-.slide[data-client-profile="pif"] .client-chrome {
-  position: absolute;
-  z-index: 8;
-  pointer-events: none;
-  user-select: none;
-}
-
-.slide[data-client-profile="pif"] .client-chrome-pif-logo {
-  left: 35px;
-  top: 23px;
-  width: 80px;
-  height: 36px;
-  object-fit: contain;
-}
-
-.slide[data-client-profile="pif"] .client-chrome-pif-wordmark {
-  left: 35px;
-  top: 23px;
-  width: 80px;
-  height: 36px;
-  font: 400 24px/1 "Fund Light", "Fund Regular", Arial, sans-serif;
-  color: #005C4D;
 }
 `;
 }

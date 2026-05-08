@@ -1,7 +1,7 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-05-08
+> Last updated: 2026-05-07
 
 ---
 
@@ -10,7 +10,7 @@
 **Edwin Slides Creator** is an AI-powered presentation generator that creates professional slide decks in a Strategy& / PwC consulting style, with V1 client design profiles for client-specific theming and prompt guidance. It uses PwC Shared Services GenAI API for AI capabilities.
 
 - **Repository:** `https://github.com/pwc-me-adv-strategyand/edwin-slides-creator.git`
-- **Branch:** `main`
+- **Branch:** `feature/bugfixes-and-enhancements`
 - **Stack:** React 19 + Vite 7 (frontend), Express + TypeScript (backend)
 - **AI Provider:** PwC Shared Services GenAI API (`genai-sharedservice-emea.pwcinternal.com`)
 - **Deployment:** Azure App Service via `deploy.ps1`
@@ -118,7 +118,6 @@ slide-themes-main/
 │   │   │   ├── templateMatcher.js     # Template selection for PPTX
 │   │   │   ├── templateValidation.js  # Template validation
 │   │   │   ├── pptxService.js         # PPTX export via PptxGenJS
-│   │   │   ├── svgRasterizer.js       # Inline SVG → PNG for PPTX translator
 │   │   │   ├── pptxRenderers.js       # PPTX rendering helpers
 │   │   │   ├── pptxTemplateService.js # Apply uploaded .pptx templates
 │   │   │   ├── pptxTransformService.js# PPTX transformations
@@ -340,7 +339,6 @@ The agent uses a budget system, supports live user input during execution, and c
 ```
 Slides in state (HTML + CSS)
   ├── PPTX: pptxService.js
-  │   ├── svgRasterizer.js rasterizes inline `<svg>` icons to PNG `<img>` before translation
   │   ├── AI generates PptxGenJS code from HTML
   │   ├── Table-intent HTML/hints are prompted and retried toward native slide.addTable output
   │   ├── Section tracker chrome is measured, capped, and kept single-line with shrink/ellipsis fallback

@@ -8,9 +8,6 @@ import { saveTemplateToStorage, loadTemplateFromStorage, clearTemplateFromStorag
 import { extractBranding } from '../services/brandingExtractor';
 import { authFetch } from '../services/authFetch.js';
 import {
-  CLIENT_DESIGN_PROFILE_OPTIONS,
-  buildClientLayoutContractBlock,
-  buildClientValidationBlock,
   getClientDesignProfile,
 } from '../utils/clientDesignProfiles.js';
 
@@ -644,91 +641,6 @@ export default function SettingsModal({ onClose }) {
     }
     setExtractedBranding(null);
   };
-  const handleClientProfileChange = (profileId) => {
-    const profile = getClientDesignProfile(profileId);
-    setSettings(s => ({
-      ...s,
-      clientDesignProfileId: profile.id,
-      clientProfileVersion: profile.status || String(profile.schemaVersion || ''),
-      footerBranding: Object.prototype.hasOwnProperty.call(profile, 'footerBranding')
-        ? (profile.footerBranding ?? '')
-        : s.footerBranding,
-    }));
-  };
-
-  const renderClientDesignProfile = (compact = false) => {
-    const selectedProfileId = settings.clientDesignProfileId || 'strategy';
-    const selectedProfile = getClientDesignProfile(selectedProfileId);
-    const swatches = Object.values(selectedProfile.theme?.colors || {}).slice(0, compact ? 6 : 8);
-    const layoutBlock = buildClientLayoutContractBlock(selectedProfile);
-    const validationBlock = buildClientValidationBlock(selectedProfile);
-
-    return (
-      <div style={{ padding: compact ? 14 : 20, background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
-        <div style={{ fontSize: compact ? 12 : 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Client Design Profile</div>
-        <div style={{ fontSize: compact ? 10 : 12, color: 'var(--meta, #888)', marginBottom: 12 }}>
-          Selecting a profile is enough to test it: colors, fonts, canvas positions, prompt sections, footer branding, and PPTX export defaults are applied automatically. PPTX upload is optional for a specific master.
-        </div>
-        <div className="form-group" style={{ marginBottom: 10 }}>
-          <select
-            value={selectedProfileId}
-            onChange={(e) => handleClientProfileChange(e.target.value)}
-            style={{ width: '100%', fontSize: compact ? 12 : undefined }}
-          >
-            {CLIENT_DESIGN_PROFILE_OPTIONS.map(profile => (
-              <option key={profile.id} value={profile.id}>{profile.name}</option>
-            ))}
-          </select>
-        </div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-          {swatches.map((color, index) => (
-            <div key={`${color}-${index}`} style={{ width: 18, height: 18, borderRadius: 4, background: color, border: '1px solid var(--border)' }} />
-          ))}
-        </div>
-        <div style={{ fontSize: compact ? 10 : 11, color: 'var(--meta, #888)', lineHeight: 1.4 }}>
-          {selectedProfile.description}
-        </div>
-        {!compact && (
-          <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
-            <div style={{ padding: 10, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--page, #fff)' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Profile assets</div>
-              <div style={{ fontSize: 10, color: 'var(--meta)', lineHeight: 1.5 }}>
-                Version: {selectedProfile.status || 'default'}<br />
-                Default variant: {selectedProfile.theme?.defaultVariant || 'default'}<br />
-                Template slot: {selectedProfile.pptxMaster?.templateId || 'default'}<br />
-                Template storage: {selectedProfile.pptxMaster?.mode || 'user-uploaded'}<br />
-                Footer/source: {selectedProfile.footerBranding || settings.footerBranding || 'blank by default'}
-              </div>
-            </div>
-            <div style={{ padding: 10, border: '1px solid var(--border)', borderRadius: 6, background: 'var(--page, #fff)' }}>
-              <div style={{ fontSize: 11, fontWeight: 600, marginBottom: 4 }}>Demo readiness</div>
-              <div style={{ fontSize: 10, color: 'var(--meta)', lineHeight: 1.5 }}>
-                {selectedProfile.validationRules?.requiredColors?.length
-                  ? `Checks: ${selectedProfile.validationRules.requiredColors.join(', ')}`
-                  : 'Default Strategy& checks'}
-                <br />
-                Layout: {selectedProfile.layoutContract?.standardContent ? 'title/body/footer bands active' : 'default shell'}
-                <br />
-                {selectedProfile.evidence?.generationTest
-                  ? `Generation test: ${selectedProfile.evidence.generationTest.verdict}`
-                  : 'No client-specific test artifact'}
-              </div>
-            </div>
-            {(layoutBlock || validationBlock) && (
-              <details style={{ gridColumn: '1 / -1', fontSize: 10, color: 'var(--meta)' }}>
-                <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Profile contract details</summary>
-                <pre style={{ whiteSpace: 'pre-wrap', margin: '8px 0 0', fontFamily: 'monospace', fontSize: 10 }}>
-                  {[layoutBlock, validationBlock].filter(Boolean).join('\n\n')}
-                </pre>
-              </details>
-            )}
-          </div>
-        )}
-      </div>
-    );
-  };
-
-  // ─── Role helpers ──────────────────────────────────────────────────────────
   const updateRole = (roleKey, field, value) => {
     setSettings(s => ({ ...s, roleSettings: { ...s.roleSettings, [roleKey]: { ...(s.roleSettings?.[roleKey] || {}), [field]: value } } }));
   };
@@ -1538,11 +1450,11 @@ export default function SettingsModal({ onClose }) {
             {pptxTemplateName && (
             <div style={{ marginBottom: 16 }}>
               <label style={labelSmall}>Base Template</label>
-              <div style={{ ...hint, marginBottom: 8 }}>PowerPoint template used for slide masters, theme, and fonts for the active {activeClientProfile.name} profile.</div>
+              <div style={{ ...hint, marginBottom: 8 }}>PowerPoint template used for slide masters, theme, and fonts for the active {activeClientProfile.navLabel || activeClientProfile.name} profile.</div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--zone1)', borderRadius: 6, border: '1px solid var(--border)' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
-                  <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active for {activeClientProfile.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active for {activeClientProfile.navLabel || activeClientProfile.name}</div>
                 </div>
                 <button
                   onClick={async () => {
@@ -1962,7 +1874,6 @@ export default function SettingsModal({ onClose }) {
         </div>
       </div>
 
-      {renderClientDesignProfile(true)}
     </>
   );
 
@@ -2006,8 +1917,6 @@ export default function SettingsModal({ onClose }) {
         </div>
       </div>
 
-      {renderClientDesignProfile()}
-
       {/* Design Style */}
       <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
         <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Design Style</div>
@@ -2042,11 +1951,11 @@ export default function SettingsModal({ onClose }) {
       {pptxTemplateName && (
         <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
           <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4, color: 'var(--text-primary)' }}>Template</div>
-          <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>PowerPoint template used for slide masters, theme colors, and fonts for the active {activeClientProfile.name} profile.</div>
+          <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>PowerPoint template used for slide masters, theme colors, and fonts for the active {activeClientProfile.navLabel || activeClientProfile.name} profile.</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 14px', background: 'var(--page, #fff)', borderRadius: 6, border: '1px solid var(--border)' }}>
             <div style={{ flex: 1 }}>
               <div style={{ fontWeight: 600, fontSize: 13 }}>{pptxTemplateName}</div>
-              <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active for {activeClientProfile.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--meta)' }}>Active for {activeClientProfile.navLabel || activeClientProfile.name}</div>
             </div>
             <button
               onClick={async () => {

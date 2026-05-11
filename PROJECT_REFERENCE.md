@@ -69,7 +69,8 @@ slide-themes-main/
 │   │   ├── SimpleApp.jsx             # Simplified variant (unused in main flow)
 │   │   ├── components/               # 40+ React components
 │   │   │   ├── AIChatbot.jsx         # **CORE**: chatbot UI, routing, execution engine
-│   │   │   ├── Header.jsx            # Deck name, export (PPTX/PDF/HTML), settings
+│   │   │   ├── Header.jsx            # Deck name, client profile switch, export, settings
+│   │   │   ├── ClientDesignProfileSwitch.jsx # Template picker (header; locked after slides exist)
 │   │   │   ├── MainContent.jsx       # Preview vs editor toggle
 │   │   │   ├── SlidePreview.jsx      # Slide preview, sources inspector, comments, zoom, fullscreen, widget menu
 │   │   │   ├── SlideEditor.jsx       # Monaco HTML/CSS editor
@@ -770,6 +771,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 58. **STC section tracker alignment**: STC canvas trackers now render after the top-left logo as text-only chrome, using `#9E21FF` tracker text without arrow/chevron markers. The STC profile exposes the same tracker geometry to PPTX export so generated decks avoid logo overlap and keep canvas/export chrome aligned.
 
 59. **Auth session expiry UX**: MSAL silent token refresh failures and unrecovered backend 401s now surface a visible "Your session expired" prompt with a Microsoft sign-in action. Repeated `/api/whoami` 401s after automatic redirect no longer fall through to the editor as allowed; active-use failures appear as a persistent top-center banner styled from `app.css`.
+
+60. **Client profile in header**: Strategy&, STC, and PIF selection lives in `Header.jsx` as `ClientDesignProfileSwitch.jsx` (searchable dropdown, scales to many profiles). Template is **locked** once `slides.length > 0` (`UPDATE_SETTINGS` in `SlideContext.jsx`). User-facing PIF naming is **PIF**.
 
 60. **Cross-slide visual reference and GPT 5.5 router defaults**: AIChatbot now classifies slide/page mentions as targets versus visual references so requests like "make this slide like slide 3" keep the current slide as the edit target while passing slide 3 as reference HTML plus unscoped `customCSS`; the SmartAction target label and executed `slideIndex` are forced to stay aligned. Router planning defaults use `pwc:openai.gpt-5.5`.
 

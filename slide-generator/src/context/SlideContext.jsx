@@ -1042,12 +1042,19 @@ function slideReducer(state, action) {
     }
 
     case ACTIONS.UPDATE_SETTINGS: {
-      const nextSettings = {
-        ...state.settings,
-        ...action.payload.settings,
-      };
-      const profileProvided = Object.prototype.hasOwnProperty.call(action.payload.settings || {}, 'clientDesignProfileId');
-      const profileChanged = profileProvided && nextSettings.clientDesignProfileId !== state.settings.clientDesignProfileId;
+      const incoming = action.payload.settings || {};
+      const prevProfileId = state.settings.clientDesignProfileId || 'strategy';
+      let merged = { ...state.settings, ...incoming };
+      // Once the deck has slides, client template profile cannot change (pick before generation).
+      if (state.slides.length > 0) {
+        merged = {
+          ...merged,
+          clientDesignProfileId: prevProfileId,
+          clientProfileVersion: state.settings.clientProfileVersion ?? '',
+        };
+      }
+      const profileChanged = merged.clientDesignProfileId !== prevProfileId;
+      const nextSettings = { ...merged };
       const activeProfile = profileChanged ? getClientDesignProfile(nextSettings.clientDesignProfileId) : null;
       if (activeProfile) {
         nextSettings.clientProfileVersion = activeProfile.status || String(activeProfile.schemaVersion || '');
@@ -1064,7 +1071,7 @@ function slideReducer(state, action) {
           }))
           : state.slides,
         settings: nextSettings,
-        theme: profileProvided ? getClientProfileTheme(nextSettings.clientDesignProfileId) : state.theme,
+        theme: profileChanged ? getClientProfileTheme(nextSettings.clientDesignProfileId) : state.theme,
       };
     }
 

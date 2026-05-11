@@ -70,7 +70,7 @@ slide-themes-main/
 │   │   ├── components/               # 40+ React components
 │   │   │   ├── AIChatbot.jsx         # **CORE**: chatbot UI, routing, execution engine
 │   │   │   ├── Header.jsx            # Deck name, client profile switch, export, settings
-│   │   │   ├── ClientDesignProfileSwitch.jsx # Template picker (header; locked after slides exist)
+│   │   │   ├── ClientDesignProfileSwitch.jsx # Template picker (header dropdown; switchable any time)
 │   │   │   ├── MainContent.jsx       # Preview vs editor toggle
 │   │   │   ├── SlidePreview.jsx      # Slide preview, sources inspector, comments, zoom, fullscreen, widget menu
 │   │   │   ├── SlideEditor.jsx       # Monaco HTML/CSS editor

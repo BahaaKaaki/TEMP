@@ -16,8 +16,6 @@ import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from '../services/templateMatcher';
 import SettingsModal from './SettingsModal';
 import ClientDesignProfileSwitch from './ClientDesignProfileSwitch';
-import TemplateManager from './TemplateManager';
-// import WidgetBrowser from './WidgetBrowser'; // UI declutter: widgets hidden
 import AuditLogViewer from './AuditLogViewer';
 import FeaturesLanding from './FeaturesLanding';
 import PptxTransformer from './PptxTransformer';
@@ -33,10 +31,8 @@ const postAssistantMessage = (content) => {
 
 export default function Header() {
   const { instance } = useMsal();
-  const { state, actions, historyState } = useSlides();
+  const { state, actions } = useSlides();
   const [showSettings, setShowSettings] = useState(false);
-  const [showTemplateManager, setShowTemplateManager] = useState(false);
-  // const [showWidgetBrowser, setShowWidgetBrowser] = useState(false); // UI declutter: widgets hidden
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showGptMenu, setShowGptMenu] = useState(false);
   const [isDownloadingSlide, setIsDownloadingSlide] = useState(false);
@@ -548,12 +544,8 @@ ${previewParts.join('\n\n')}`;
               </button>
             )}
           </div>
-        </div>
 
-        <ClientDesignProfileSwitch />
-
-        <div className="header-actions">
-          {/* NEW DECK */}
+          {/* NEW DECK — sits next to the deck name as a deck-level setup control */}
           <div className="header-action-group">
             <button
               className="header-action-btn"
@@ -569,6 +561,11 @@ ${previewParts.join('\n\n')}`;
               <span className="header-btn-label">New</span>
             </button>
           </div>
+        </div>
+
+        <div className="header-actions">
+          {/* CLIENT TEMPLATE */}
+          <ClientDesignProfileSwitch />
 
           {/* EXPORT */}
           <div className="header-action-group">
@@ -833,63 +830,6 @@ ${previewParts.join('\n\n')}`;
             </div>
           </div>
 
-          {/* EDIT ACTIONS */}
-          <div className="header-action-group">
-            <button
-              className="header-action-btn header-action-btn-icon"
-              onClick={() => actions.undo()}
-              disabled={!historyState?.canUndo}
-              title={`Undo (Ctrl+Z)${historyState?.historyLength ? ` - ${historyState.historyLength} steps` : ''}`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 7v6h6" />
-                <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6.36 2.64L3 13" />
-              </svg>
-            </button>
-            <button
-              className="header-action-btn header-action-btn-icon"
-              onClick={() => actions.redo()}
-              disabled={!historyState?.canRedo}
-              title={`Redo (Ctrl+Shift+Z)${historyState?.futureLength ? ` - ${historyState.futureLength} steps` : ''}`}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M21 7v6h-6" />
-                <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6.36 2.64L21 13" />
-              </svg>
-            </button>
-          </div>
-
-          {/* DESIGN ACTIONS */}
-          <div className="header-action-group">
-            <button
-              className="header-action-btn header-action-btn-icon"
-              onClick={() => setShowTemplateManager(true)}
-              title="Templates"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" />
-                <rect x="14" y="3" width="7" height="7" />
-                <rect x="14" y="14" width="7" height="7" />
-                <rect x="3" y="14" width="7" height="7" />
-              </svg>
-            </button>
-
-            {/* UI declutter: Widgets button hidden
-            <button
-              className="header-action-btn"
-              onClick={() => setShowWidgetBrowser(true)}
-              title="Widgets"
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="3" y="3" width="7" height="7" rx="1" />
-                <rect x="14" y="3" width="7" height="7" rx="1" />
-                <rect x="3" y="14" width="7" height="7" rx="1" />
-                <path d="M17 14v7M14 17.5h7" />
-              </svg>
-            </button>
-            */}
-          </div>
-
           {/* TOOLS */}
           <div className="header-action-group header-action-group-tools">
             {/* UI declutter: Transform, Info, Docs hidden
@@ -962,12 +902,6 @@ ${previewParts.join('\n\n')}`;
       {showAuditLog && <AuditLogViewer isOpen={showAuditLog} onClose={() => setShowAuditLog(false)} />}
 
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-
-      {showTemplateManager && <TemplateManager onClose={() => setShowTemplateManager(false)} />}
-
-      {/* UI declutter: WidgetBrowser hidden
-      <WidgetBrowser isOpen={showWidgetBrowser} onClose={() => setShowWidgetBrowser(false)} />
-      */}
 
       {showFeatures && <FeaturesLanding onClose={() => setShowFeatures(false)} />}
 

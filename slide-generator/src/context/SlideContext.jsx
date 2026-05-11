@@ -1044,15 +1044,7 @@ function slideReducer(state, action) {
     case ACTIONS.UPDATE_SETTINGS: {
       const incoming = action.payload.settings || {};
       const prevProfileId = state.settings.clientDesignProfileId || 'strategy';
-      let merged = { ...state.settings, ...incoming };
-      // Once the deck has slides, client template profile cannot change (pick before generation).
-      if (state.slides.length > 0) {
-        merged = {
-          ...merged,
-          clientDesignProfileId: prevProfileId,
-          clientProfileVersion: state.settings.clientProfileVersion ?? '',
-        };
-      }
+      const merged = { ...state.settings, ...incoming };
       const profileChanged = merged.clientDesignProfileId !== prevProfileId;
       const nextSettings = { ...merged };
       const activeProfile = profileChanged ? getClientDesignProfile(nextSettings.clientDesignProfileId) : null;

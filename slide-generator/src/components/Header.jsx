@@ -15,6 +15,7 @@ import {
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from '../services/templateMatcher';
 import SettingsModal from './SettingsModal';
+import ClientDesignProfileSwitch from './ClientDesignProfileSwitch';
 import TemplateManager from './TemplateManager';
 // import WidgetBrowser from './WidgetBrowser'; // UI declutter: widgets hidden
 import AuditLogViewer from './AuditLogViewer';
@@ -548,6 +549,8 @@ ${previewParts.join('\n\n')}`;
             )}
           </div>
         </div>
+
+        <ClientDesignProfileSwitch />
 
         <div className="header-actions">
           {/* NEW DECK */}

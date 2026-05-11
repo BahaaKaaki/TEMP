@@ -129,8 +129,8 @@ function getProfilePptxSystemGuidance(profile) {
   if (profile?.id === 'pif') {
     return `
 
-ACTIVE CLIENT PROFILE OVERRIDE -- PIF LDC:
-- Use the verified PIF LDC master shell, not generic Strategy& geometry.
+ACTIVE CLIENT PROFILE OVERRIDE -- PIF:
+- Use the verified PIF master shell, not generic Strategy& geometry.
 - PIF PPTX canvas is 10 x 5.625 inches. HTML 960 x 540 px maps with px * 10 / 960.
 - PIF colors: title/rules/page block C3984D/C4995B, dark green 00332A, PIF green 005C4D, mint 02CC99, white/light-neutral surfaces, gray 7F7F7F.
 - If you define a c palette, use: main:'C3984D', secondary:'00332A', accent:'005C4D', gold:'C3984D', mint:'02CC99', surface:'FFFCF2', surfaceAlt:'F4EBDD', border:'D9C6A3', meta:'7F7F7F'.

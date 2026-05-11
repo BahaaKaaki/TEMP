@@ -263,7 +263,7 @@ const stcStandardInches = {
 };
 
 const PIF_THEME = {
-  name: 'PIF LDC',
+  name: 'PIF',
   defaultVariant: 'pif_ldc_implementation_guide',
   colors: {
     accent: '#005C4D',
@@ -416,7 +416,7 @@ const PIF_PPTX_CONTRACT = {
   borderWeightPt: { min: 0.5, max: 1.25 },
 };
 
-const PIF_PROMPT_CONTRACT = `# PIF LDC Client Design Contract
+const PIF_PROMPT_CONTRACT = `# PIF Client Design Contract
 
 ## Master
 - Use one LDC implementation-guide master shell. Do not invent alternate PIF master families.
@@ -462,7 +462,8 @@ export const CLIENT_DESIGN_PROFILES = {
   strategy: {
     schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
     id: 'strategy',
-    name: 'Strategy& Default',
+    navLabel: 'Strategy&',
+    name: 'Strategy&',
     description: 'Use the default Edwin Strategy& consulting style.',
     status: 'default',
     footerBranding: 'Strategy&',
@@ -491,8 +492,9 @@ export const CLIENT_DESIGN_PROFILES = {
   stc: {
     schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
     id: 'stc',
+    navLabel: 'STC',
     name: 'STC',
-    description: 'Use STC purple, dense exhibit layouts, and STC TMT reference-deck behavior.',
+    description: 'STC purple palette and dense exhibit layouts.',
     status: 'sandbox-0.1',
     footerBranding: '',
     theme: STC_THEME,
@@ -615,8 +617,9 @@ export const CLIENT_DESIGN_PROFILES = {
   pif: {
     schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
     id: 'pif',
-    name: 'PIF LDC',
-    description: 'Use the PIF LDC implementation-guide master shell with Fund typography, PIF green/gold/mint colors, and blank footer/source text by default.',
+    navLabel: 'PIF',
+    name: 'PIF',
+    description: 'Public Investment Fund style: Fund typography, green and gold palette, implementation-guide layout.',
     status: 'ldc-0.1',
     footerBranding: '',
     theme: PIF_THEME,
@@ -713,6 +716,7 @@ export const CLIENT_DESIGN_PROFILES = {
 export const CLIENT_DESIGN_PROFILE_OPTIONS = Object.values(CLIENT_DESIGN_PROFILES).map(profile => ({
   id: profile.id,
   name: profile.name,
+  navLabel: profile.navLabel || profile.name,
   description: profile.description,
   status: profile.status,
 }));

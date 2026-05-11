@@ -126,7 +126,7 @@ function ellipsizeTrackerLabel(label, availableTextW, options = {}) {
   return next ? `${next}${marker}` : marker;
 }
 
-function resolveTrackerTabs(tabs, { startX = 0, safeRight = PPTX_SLIDE_W - 0.48, gap = 0.03 } = {}) {
+function resolveTrackerTabs(tabs, { startX = 0, safeRight = PPTX_SLIDE_W - 0.48, gap = 0.03, placement = 'left', canvasW = PPTX_SLIDE_W } = {}) {
   const visibleTabs = tabs.filter(tab => tab?.label);
   if (visibleTabs.length === 0) return [];
   const available = Math.max(0, safeRight - startX - gap * (visibleTabs.length - 1));
@@ -147,9 +147,20 @@ function resolveTrackerTabs(tabs, { startX = 0, safeRight = PPTX_SLIDE_W - 0.48,
     });
   }
 
-  let x = startX;
+  // Compute final widths (clamped to minW), then derive an effective startX
+  // when placement is 'center' so the resolved tab group centers on the slide.
+  const finalWidths = measured.map((tab, index) =>
+    Number(Math.max(tab.minW || 0.7, widths[index]).toFixed(3))
+  );
+  let effectiveStartX = startX;
+  if (placement === 'center') {
+    const totalW = finalWidths.reduce((sum, w) => sum + w, 0) + gap * Math.max(0, finalWidths.length - 1);
+    effectiveStartX = Number(Math.max(0, (canvasW - totalW) / 2).toFixed(3));
+  }
+
+  let x = effectiveStartX;
   return measured.map((tab, index) => {
-    const w = Number(Math.max(tab.minW || 0.7, widths[index]).toFixed(3));
+    const w = finalWidths[index];
     const textW = Math.max(0, w - (tab.paddingX || 0.22));
     const resolved = {
       ...tab,
@@ -174,7 +185,7 @@ function addTrackerTab(slide, tab) {
   if (tab.line) shapeOptions.line = tab.line;
   slide.addShape('rect', shapeOptions);
   const inset = tab.textInset ?? 0.04;
-  slide.addText(tab.text, {
+  const textOptions = {
     x: tab.x + inset,
     y: tab.y,
     w: Math.max(0.05, tab.w - inset * 2),
@@ -187,7 +198,9 @@ function addTrackerTab(slide, tab) {
     margin: 0,
     fit: 'shrink',
     breakLine: false,
-  });
+  };
+  if (tab.align) textOptions.align = tab.align;
+  slide.addText(tab.text, textOptions);
 }
 
 function addStcBreadcrumbTracker(slide, sectionLabel, subSectionLabel, tracker) {
@@ -245,32 +258,62 @@ export function addSectionTracker(slide, sectionLabel, subSectionLabel) {
     return;
   }
 
+  // Profile-driven default tab tracker. Strategy& uses the original maroon defaults;
+  // PIF (and any other profile) can override colors/font/geometry/placement via
+  // chrome.positions.sectionTracker without needing a code branch.
+  const cfg = positions?.sectionTracker || {};
+  const colors = cfg.colors || {};
+  const font = cfg.font || {};
+  const placement = cfg.placement || 'left';
+  const canvasW = cfg.canvasW || PPTX_SLIDE_W;
+  const startX = cfg.x ?? 0;
+  const tabY = cfg.y ?? 0;
+  const tabH = cfg.h ?? 0.23;
+  const subTabH = cfg.subH ?? Math.max(0, tabH - 0.02);
+  const fontFace = font.fontFace;
+  const fontSize = font.fontSize ?? 8;
+  const bold = font.bold ?? true;
+  const align = cfg.align;
+  const safeRight = (cfg.safeRight ?? canvasW - 0.48);
+
   const tabs = resolveTrackerTabs([
     {
       label: sectionLabel,
-      fill: COLORS.maroon,
-      y: 0,
-      h: 0.23,
-      fontSize: 8,
-      bold: true,
-      minW: 0.92,
-      maxW: 5.6,
-      paddingX: 0.22,
-      textInset: 0.05,
+      fill: colors.fill || COLORS.maroon,
+      color: colors.text || COLORS.white,
+      y: tabY,
+      h: tabH,
+      fontFace,
+      fontSize,
+      bold,
+      align,
+      minW: cfg.minW ?? 0.92,
+      maxW: cfg.maxW ?? 5.6,
+      paddingX: cfg.paddingX ?? 0.22,
+      textInset: cfg.textInset ?? 0.05,
     },
     {
       label: subSectionLabel,
-      fill: COLORS.coal,
-      y: 0,
-      h: 0.21,
-      fontSize: 8,
-      bold: true,
+      fill: colors.subFill || COLORS.coal,
+      color: colors.subText || COLORS.white,
+      y: tabY,
+      h: subTabH,
+      fontFace,
+      fontSize,
+      bold,
+      align,
       minW: 0.78,
       maxW: 5.3,
       paddingX: 0.2,
       textInset: 0.05,
     },
-  ], { startX: 0, safeRight: PPTX_SLIDE_W - 0.48, gap: sectionLabel && subSectionLabel ? 0.03 : 0 });
+  ], {
+    startX,
+    safeRight,
+    placement,
+    canvasW,
+    gap: sectionLabel && subSectionLabel ? 0.03 : 0,
+  });
 
   for (const tab of tabs) {
     addTrackerTab(slide, tab);

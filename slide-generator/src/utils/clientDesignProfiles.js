@@ -347,6 +347,12 @@ const PIF_LAYOUT_CONTRACT = {
     body: { x: 35, y: 81, w: 891, h: 397 },
     source: { x: 35, y: 506, w: 720, h: 16 },
     slideNumber: { x: 890, y: 506, w: 43, h: 29 },
+    // Centered top tab matching LDC reference deck (slide 22+).
+    // Measured from the actual PPTX: pill is x=4.022 y=0.002 w=1.957 h=0.186
+    // inches on a 10in canvas — so it sits horizontally centered. Width is
+    // auto-fit to the label by resolveTrackerTabs; final x is recomputed from
+    // placement: 'center' so any label length stays centered.
+    sectionTracker: { x: 0, y: 0, w: 188, h: 18 },
   },
   cover: {
     logo: { x: 34, y: 23, w: 80, h: 36 },
@@ -456,6 +462,17 @@ const pifStandardInches = {
   body: { ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.body, PIF_LAYOUT_CONTRACT.canvas), font: PIF_PPTX_FONTS.body },
   footer: { ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.source, PIF_LAYOUT_CONTRACT.canvas), font: PIF_PPTX_FONTS.footer },
   slideNum: { ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.slideNumber, PIF_LAYOUT_CONTRACT.canvas), font: PIF_PPTX_FONTS.slideNum },
+  sectionTracker: {
+    ...pxRectToInches(PIF_LAYOUT_CONTRACT.standardContent.sectionTracker, PIF_LAYOUT_CONTRACT.canvas),
+    colors: { fill: '00332A', text: 'FFFFFF', subFill: '005C4D', subText: 'FFFFFF' },
+    // Match the LDC reference: Fund Light, ~7.88pt, NOT bold.
+    font: { fontFace: 'Fund Light', fontSize: 8, bold: false },
+    placement: 'center',
+    canvasW: PIF_LAYOUT_CONTRACT.canvas.widthIn, // 10in — pill centers on this width, not Strategy&'s 13.333
+    align: 'center',
+    paddingX: 0.32,
+    textInset: 0.08,
+  },
 };
 
 export const CLIENT_DESIGN_PROFILES = {

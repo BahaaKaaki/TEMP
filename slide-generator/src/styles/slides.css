@@ -587,3 +587,61 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* PIF: centered dark-green pill at the very top of the slide. Geometry matches
+   the LDC Implementation Guide (slide 22+): pill at x≈4.022in y≈0in w≈1.957in
+   h≈0.186in on a 10in canvas — so it sits horizontally centered. Font is Fund
+   Light at ~8pt, not bold. Sub-section pill, when present, sits centered next
+   to the section pill for canvas/export parity; the LDC's separate top-right
+   "step indicator" chrome is a follow-up. */
+.slide[data-client-profile="pif"][data-section]::before {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 14px;
+  background: #00332A;
+  color: #fff;
+  font: 500 8px/14px "Fund Light", "Fund Regular", Georgia, serif;
+  letter-spacing: 0.2px;
+  border-radius: 0;
+  height: 16px;
+  max-width: 360px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.slide[data-client-profile="pif"][data-section][data-subsection]::before {
+  border-radius: 0;
+  /* When both pills are present, the centered "pair" still anchors the section
+     pill near center-left so the sub-section pill renders to its right. */
+  left: calc(50% - var(--tracker-offset, 90px));
+  transform: none;
+}
+
+.slide[data-client-profile="pif"][data-section][data-subsection]::after,
+.slide[data-client-profile="pif"]:not([data-section])[data-subsection]::after {
+  top: 0;
+  background: #005C4D;
+  color: #fff;
+  font: 500 8px/14px "Fund Light", "Fund Regular", Georgia, serif;
+  letter-spacing: 0.2px;
+  padding: 1px 12px;
+  height: 16px;
+  border-radius: 0;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.slide[data-client-profile="pif"][data-section][data-subsection]::after {
+  left: calc(50% + 6px);
+}
+
+.slide[data-client-profile="pif"]:not([data-section])[data-subsection]::after {
+  left: 50%;
+  transform: translateX(-50%);
+}

@@ -212,28 +212,17 @@ function shouldUseIconHostBox(host, svg, hostRect, svgRect) {
   const hostArea = Math.max(1, (hostRect?.width || 0) * (hostRect?.height || 0));
   if (hostArea / svgArea > MAX_ICON_HOST_TO_SVG_AREA_RATIO) return false;
 
-  const className = typeof host.className === 'string' ? host.className : '';
-  const isExplicitChip = /\b(card-icon-circle|icon-chip|icon-circle|icon-badge)\b/i.test(className);
-
-  // Explicit chip containers (e.g. .card-icon-circle) are owned by the LLM
-  // as a native PptxGenJS ellipse. Capturing the host here would double the
-  // chip on top of that vector shape and produce the fuzzy-halo artefact
-  // (#FIFA-export-2026-05). Only fall back to host-box when the SVG itself
-  // has unusable dimensions, otherwise the icon would be silently dropped.
-  if (isExplicitChip) {
-    return !isIconSizedRect(svgRect);
-  }
-
-  const style = getComputedStyle(host);
-  const hasVisibleFill = style.backgroundColor && !['transparent', 'rgba(0, 0, 0, 0)'].includes(style.backgroundColor);
-  const hasVisibleBorder = style.borderStyle !== 'none' && Number.parseFloat(style.borderWidth || '0') > 0;
-  if (hasVisibleFill || hasVisibleBorder) return true;
-
-  // Icon-class host with no fill/border: prefer the SVG rect for alignment
-  // when it's measurable, but fall back to the host so we don't silently
-  // drop the icon. This catches `.stopIcon` and other LLM-invented camelCase
-  // classes where the inner <svg> has no explicit width/height and renders
-  // at 0x0 or the 300x150 SVG default in the offscreen measure DOM.
+  // Core principle: if the SVG has measurable dimensions, prefer SVG-only
+  // capture. The LLM owns chip backgrounds (filled circles, borders, chrome)
+  // as native PptxGenJS shapes — they're drawn from the resolved CSS the LLM
+  // sees. Capturing the host on top would stack a rasterized copy of those
+  // same backgrounds over the LLM's vector shape and produce the fuzzy-halo
+  // artefact (#FIFA-export-2026-05).
+  //
+  // Host-box capture is only a fallback for cases where the SVG itself has
+  // no usable rect (LLM-invented camelCase host classes like .stopIcon with
+  // no CSS, where the inner <svg> renders at 0x0 / 300x150 default in the
+  // offscreen measure DOM and would otherwise be silently dropped).
   return !isIconSizedRect(svgRect);
 }
 

@@ -27,55 +27,9 @@ const ICON_HOST_SELECTOR = [
   '.kpi-icon',
   '.card-icon-circle',
   '.bullet-icon',
-  '[data-ppt-rasterize]',
 ].join(',');
 
-// Match an icon-host class name. The LLM emits a wide variety of class
-// patterns for icon containers (e.g. .icon, .card-icon, .card-icon-circle,
-// but also LLM-invented names like .cIcon, .bandIcon, .iconBox, .kpiIcon).
-// All four cases must match so findIconHost recognizes the chip as the host;
-// otherwise the rasterizer captures only the bare SVG and the chip
-// background ends up missing in the PPTX (the system prompt tells the LLM
-// to skip drawing chip ellipses when an <svg> is inside).
-//
-// Branches:
-//   1. (?:^|[\s_-])icon       -> "icon" / "Icon" / "ICON" preceded by start
-//      (?=$|[\s_-]|[A-Z])        or a separator, followed by end / separator
-//                                / camelCase boundary (e.g. iconBox, IconBox).
-//                                The trailing-uppercase lookahead is what
-//                                lets `iconBox` match while `iconography`
-//                                does not.
-//   2. [a-z]Icon(?=$|[\s_-])  -> camelCase suffix like cIcon, bandIcon,
-//                                kpiIcon. Requires a lowercase letter
-//                                immediately before "Icon" so an isolated
-//                                "IconButton" (component name, not a chip)
-//                                does NOT match.
-const ICON_CLASS_RE = /(?:^|[\s_-])[Ii]con(?=$|[\s_-]|[A-Z])|[a-z]Icon(?=$|[\s_-])/;
-
-// Classes used by icon-font libraries that may emit a glyph alongside an
-// inline SVG (Material Icons, FontAwesome, etc.). When one of these sits
-// inside a known icon host, skip it so the PPTX export doesn't render both
-// the SVG and the fallback glyph for the same logical icon. See
-// docs/.../svg_ppt_renderer_fix_instructions.md section 3.
-const ICON_FONT_FALLBACK_SELECTOR = [
-  '.material-icons',
-  '.material-symbols-outlined',
-  '.material-symbols-rounded',
-  '.material-symbols-sharp',
-  '[class~="fa"]',
-  '[class~="fas"]',
-  '[class~="far"]',
-  '[class~="fal"]',
-  '[class~="fab"]',
-  '[class~="fa-solid"]',
-  '[class~="fa-regular"]',
-  '[class~="fa-brands"]',
-].join(',');
-
-// Debug flag — set to true to overlay semi-transparent red rectangles in the
-// exported PPTX at the position of every rasterized icon. Used to verify the
-// coordinate-conversion path matches the rendered DOM. Off by default.
-const DEBUG_PPT_BOUNDS = false;
+const ICON_CLASS_RE = /(?:^|[\s_-])icon(?:$|[\s_-])/i;
 
 const PREVIEW_PARITY_CSS = `
 [data-pptx-svg-icon-measure] .slide-render-container,
@@ -431,19 +385,6 @@ export async function injectRasterizedSvgIcons(pptxSlide, slide, settings) {
     const outermostSvgs = allSvgs.filter(svg => !allSvgs.some(other => other !== svg && other.contains(svg)));
 
     for (const svg of outermostSvgs) {
-      // Honor explicit author overrides per the SVG-PPT renderer fix doc:
-      //  - [data-ppt-skip]       : do not rasterize this subtree at all
-      //  - [data-ppt-rasterized] : an ancestor was already captured atomically
-      //                            (e.g. a wrapping icon badge); skip to avoid
-      //                            re-emitting the same pixels
-      if (svg.closest('[data-ppt-skip]')) continue;
-      if (svg.closest('[data-ppt-rasterized]')) continue;
-
-      // Icon-font glyph fallback inside an icon host — drop it so we don't
-      // render both the SVG and the fallback character on top of each other.
-      if (svg.closest(ICON_FONT_FALLBACK_SELECTOR)
-        && svg.closest(ICON_HOST_SELECTOR)) continue;
-
       const target = resolveIconRasterTarget(svg, rootRect);
       if (!target) continue;
 
@@ -479,20 +420,6 @@ export async function injectRasterizedSvgIcons(pptxSlide, slide, settings) {
       try {
         pptxSlide.addImage({ data, x: box.x, y: box.y, w: box.w, h: box.h });
         injected += 1;
-        // Mark the captured element so any nested SVGs / icon-font fallbacks
-        // detected in subsequent passes know they were already rasterized.
-        try {
-          target.captureElement.setAttribute('data-ppt-rasterized', '1');
-        } catch { /* attribute write is best-effort */ }
-        if (DEBUG_PPT_BOUNDS) {
-          try {
-            pptxSlide.addShape('rect', {
-              x: box.x, y: box.y, w: box.w, h: box.h,
-              line: { color: 'FF0000', transparency: 20, width: 0.5 },
-              fill: { color: 'FF0000', transparency: 90 },
-            });
-          } catch { /* debug overlay best-effort */ }
-        }
       } catch (error) {
         console.warn('[PPTX] slide.addImage for SVG icon failed:', error?.message || error);
       }

@@ -47,69 +47,8 @@ function getSourceHost(url) {
   }
 }
 
-// Search engine results pages must never be rendered as citations -- they are
-// discovery queries, not validated sources. See
-// docs/.../link_source_generation_bug_fix_instructions.md.
-function isSearchEngineResultsUrl(rawUrl) {
-  if (typeof rawUrl !== 'string' || !rawUrl.trim()) return false;
-  try {
-    const url = new URL(rawUrl);
-    const host = url.hostname.replace(/^www\./, '').toLowerCase();
-    const path = url.pathname.toLowerCase();
-    if (host === 'google.com' && path.startsWith('/search')) return true;
-    if (host === 'bing.com' && path.startsWith('/search')) return true;
-    if (host === 'duckduckgo.com' && (path === '/' || path === '')) return true;
-    if (host === 'search.yahoo.com') return true;
-    if (host === 'search.brave.com') return true;
-    if (host.endsWith('.google.com') && path.startsWith('/search')) return true;
-    return false;
-  } catch {
-    return false;
-  }
-}
-
-// Marker text the LLM / authoring pipeline may have left on candidate sources.
-// These never represent a real, verified citation and must not reach the deck.
-const NON_RENDERABLE_SOURCE_MARKERS = [
-  'search web',
-  'search this source',
-  'generated from slide source text',
-  'use as source for',
-  'use as general contextual anchor',
-  'needs source',
-  'needs_source',
-  'web_search_query',
-];
-
-function hasNonRenderableMarker(value) {
-  if (typeof value !== 'string') return false;
-  const lower = value.toLowerCase();
-  return NON_RENDERABLE_SOURCE_MARKERS.some(marker => lower.includes(marker));
-}
-
-function isRenderableSource(source) {
-  if (!source || typeof source !== 'object') return false;
-  // Explicit non-renderable signals win.
-  if (source.renderable === false) return false;
-  const kind = source.sourceKind || source.kind || source.type;
-  if (kind === 'web_search'
-    || kind === 'web_search_query'
-    || kind === 'generated_from_slide_text'
-    || kind === 'user_provided'
-    || kind === 'needs_source'
-    || kind === 'unknown') return false;
-  if (source.generatedFrom === 'slide_text') return false;
-  // Must have a real http(s) URL. fileId/documentId are not used by the
-  // current renderer, so URL is the only currently-renderable channel.
-  const url = typeof source.url === 'string' ? source.url.trim() : '';
-  if (!/^https?:\/\//i.test(url)) return false;
-  if (isSearchEngineResultsUrl(url)) return false;
-  // Reject objects whose label/note/title leaks internal authoring metadata.
-  if (hasNonRenderableMarker(source.label)
-    || hasNonRenderableMarker(source.title)
-    || hasNonRenderableMarker(source.note)
-    || hasNonRenderableMarker(source.context)) return false;
-  return true;
+function toSearchUrl(label) {
+  return `https://www.google.com/search?q=${encodeURIComponent(label)}`;
 }
 
 function cleanSourceLabel(value = '') {
@@ -153,37 +92,25 @@ function extractSlideSources(html = '', metadataSources = []) {
     const cleanUrl = typeof url === 'string' && /^https?:\/\//i.test(url.trim())
       ? url.trim()
       : '';
-    // A source must have a real http(s) URL that is NOT a search-engine
-    // results page. We no longer synthesize Google search URLs for entries
-    // that lack a URL -- those are research candidates, not citations.
-    if (!cleanUrl) return;
-    if (isSearchEngineResultsUrl(cleanUrl)) return;
-    if (hasNonRenderableMarker(cleanLabel) || hasNonRenderableMarker(context)) return;
-    const key = cleanUrl;
-    if (seen.has(key)) return;
+    const key = cleanUrl || cleanLabel.toLowerCase();
+    if (!key || seen.has(key)) return;
     seen.add(key);
     sources.push({
       id: `source-${sources.length + 1}`,
       label: cleanLabel,
       url: cleanUrl,
-      host: getSourceHost(cleanUrl),
+      host: cleanUrl ? getSourceHost(cleanUrl) : '',
       context: normalizeWhitespace(context || ''),
-      type,
+      type: cleanUrl ? type : 'search',
     });
   };
 
   metadataSources.forEach(source => {
     if (!source) return;
     if (typeof source === 'string') {
-      // Bare strings from the metadata channel cannot be validated as real
-      // sources -- they have no URL and no kind -- so drop them. The LLM
-      // must provide a real URL or it's a research candidate, not a citation.
+      addSource({ label: source, context: source, type: 'metadata' });
       return;
     }
-    // Reject candidates that the upstream pipeline already flagged as non-
-    // renderable (web_search, user_provided, generated_from_slide_text, etc.)
-    // or that lack a real URL.
-    if (!isRenderableSource(source)) return;
     addSource({
       label: source.label || source.title || source.url || 'Source',
       url: source.url || '',
@@ -1333,30 +1260,36 @@ export default function SlidePreview({ onSwitchToCode }) {
             </button>
           </div>
           <div className="slide-sources-list">
-            {slideSources.map((source, index) => (
-              <article className="slide-source-card" key={source.id}>
-                <div className="slide-source-index">{index + 1}</div>
-                <div className="slide-source-body">
-                  <div className="slide-source-title">{source.label}</div>
-                  <div className="slide-source-meta">{source.host}</div>
-                  {source.context && source.context !== source.label && (
-                    <p className="slide-source-context">{source.context}</p>
-                  )}
-                  <a
-                    className="slide-source-open"
-                    href={source.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    Open source
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M7 17L17 7" />
-                      <path d="M7 7h10v10" />
-                    </svg>
-                  </a>
-                </div>
-              </article>
-            ))}
+            {slideSources.map((source, index) => {
+              const href = source.url || toSearchUrl(source.label);
+              return (
+                <article className="slide-source-card" key={source.id}>
+                  <div className="slide-source-index">{index + 1}</div>
+                  <div className="slide-source-body">
+                    <div className="slide-source-title">{source.label}</div>
+                    <div className="slide-source-meta">
+                      {source.host || 'Search web'}
+                      {source.type === 'search' && <span>Generated from slide source text</span>}
+                    </div>
+                    {source.context && source.context !== source.label && (
+                      <p className="slide-source-context">{source.context}</p>
+                    )}
+                    <a
+                      className="slide-source-open"
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {source.url ? 'Open original source' : 'Search this source'}
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M7 17L17 7" />
+                        <path d="M7 7h10v10" />
+                      </svg>
+                    </a>
+                  </div>
+                </article>
+              );
+            })}
           </div>
         </aside>
       )}

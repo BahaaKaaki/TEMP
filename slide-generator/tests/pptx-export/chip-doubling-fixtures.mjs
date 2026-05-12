@@ -90,6 +90,59 @@ function dedupeShapesUnderImages(slide, opts = {}) {
   return removed;
 }
 
+// Inlined production function: shifts text shapes that overlap a rasterized
+// icon to start after the icon's right edge. Mirror of shiftTextAroundIcons
+// in pptxSvgIconInjector.js — keep in sync.
+function shiftTextAroundIcons(slide, opts = {}) {
+  const horizontalGap = opts.horizontalGap ?? 0.08;
+  const minTextWidthRatio = opts.minTextWidthRatio ?? 1.5;
+  const verticalOverlapMin = opts.verticalOverlapMin ?? 0.5;
+  const objs = slide?._slideObjects;
+  if (!Array.isArray(objs)) return 0;
+  const imageBoxes = [];
+  for (const obj of objs) {
+    if (obj?._type !== 'image') continue;
+    const o = obj.options || {};
+    if (typeof o.x !== 'number' || typeof o.y !== 'number'
+      || typeof o.w !== 'number' || typeof o.h !== 'number') continue;
+    imageBoxes.push({ x: o.x, y: o.y, w: o.w, h: o.h });
+  }
+  if (imageBoxes.length === 0) return 0;
+
+  let shifted = 0;
+  for (const obj of objs) {
+    if (obj?._type !== 'text') continue;
+    const hasText = (typeof obj.text === 'string')
+      ? obj.text.trim().length > 0
+      : (Array.isArray(obj.text) && obj.text.length > 0);
+    if (!hasText) continue;
+    const o = obj.options || {};
+    if (typeof o.x !== 'number' || typeof o.y !== 'number'
+      || typeof o.w !== 'number' || typeof o.h !== 'number') continue;
+    for (const img of imageBoxes) {
+      const vTop = Math.max(o.y, img.y);
+      const vBot = Math.min(o.y + o.h, img.y + img.h);
+      if (vBot <= vTop) continue;
+      const vOverlap = vBot - vTop;
+      const minHeight = Math.min(o.h, img.h);
+      if (minHeight <= 0) continue;
+      if (vOverlap / minHeight < verticalOverlapMin) continue;
+      if (o.w < img.w * minTextWidthRatio) continue;
+      if (o.x > img.x + 0.05) continue;
+      const textRight = o.x + o.w;
+      const imgRight = img.x + img.w;
+      if (textRight <= imgRight + 0.1) continue;
+      const newX = imgRight + horizontalGap;
+      const newW = Math.max(textRight - newX, 0.1);
+      o.x = newX;
+      o.w = newW;
+      shifted += 1;
+      break;
+    }
+  }
+  return shifted;
+}
+
 // ── Test fixtures ───────────────────────────────────────────────────────────
 const FIXTURES = [
   {
@@ -204,6 +257,75 @@ const FIXTURES = [
   },
 ];
 
+// ── Text-shift fixtures (the V30 ai-enabled-growth-strategy export bug) ─────
+// Inputs derived from binary inspection of slide 5 (Operating Model). Each
+// fixture sets up an LLM-drawn text + a rasterized icon at the documented
+// coordinates and asserts whether shiftTextAroundIcons fires.
+const TEXT_SHIFT_FIXTURES = [
+  {
+    name: 'V30 slide 5 row 1: text "Business ownership" overlapping person icon',
+    setup(slide) {
+      // Real coordinates from V30 XML
+      slide.addText('Business ownership', { x: 1.36, y: 1.83, w: 2.53, h: 0.5, fontSize: 14 });
+      slide.addImage({ data: PIXEL_DATA, x: 1.37, y: 2.03, w: 0.39, h: 0.39 });
+    },
+    expectShifts: 1,
+    expectFinalTextX: 1.84,        // imgRight (1.76) + gap (0.08)
+    expectFinalTextW: 2.05,        // preserves right edge: 3.89 - 1.84
+  },
+  {
+    name: 'V30 slide 5 row 2: text "Data foundation" overlapping database icon',
+    setup(slide) {
+      slide.addText('Data foundation', { x: 1.36, y: 2.87, w: 2.53, h: 0.5, fontSize: 14 });
+      slide.addImage({ data: PIXEL_DATA, x: 1.37, y: 3.07, w: 0.39, h: 0.39 });
+    },
+    expectShifts: 1,
+  },
+  {
+    name: 'NEG: emoji on chip — text and image same size, must NOT shift',
+    setup(slide) {
+      // Chip with emoji centered on it: text and image should have similar bounds
+      slide.addText('🎯', { x: 1.0, y: 1.5, w: 0.5, h: 0.5, fontSize: 16 });
+      slide.addImage({ data: PIXEL_DATA, x: 1.0, y: 1.5, w: 0.5, h: 0.5 });
+    },
+    expectShifts: 0,
+  },
+  {
+    name: 'NEG: numbered circle with "1" inside — small text, must NOT shift',
+    setup(slide) {
+      slide.addText('1', { x: 1.0, y: 1.5, w: 0.4, h: 0.4, fontSize: 14, shape: 'ellipse' });
+      slide.addImage({ data: PIXEL_DATA, x: 1.0, y: 1.5, w: 0.5, h: 0.5 });
+    },
+    expectShifts: 0,
+  },
+  {
+    name: 'NEG: caption below icon (different row) — must NOT shift',
+    setup(slide) {
+      slide.addText('Tournament', { x: 1.0, y: 3.0, w: 1.5, h: 0.4, fontSize: 12 });
+      slide.addImage({ data: PIXEL_DATA, x: 1.2, y: 1.5, w: 0.5, h: 0.5 });
+    },
+    expectShifts: 0,
+  },
+  {
+    name: 'NEG: text already to the right of icon — no shift needed',
+    setup(slide) {
+      slide.addText('Already aligned', { x: 2.0, y: 1.5, w: 2.5, h: 0.5, fontSize: 14 });
+      slide.addImage({ data: PIXEL_DATA, x: 1.0, y: 1.5, w: 0.5, h: 0.5 });
+    },
+    expectShifts: 0,
+  },
+  {
+    name: 'EDGE: idempotency — running shift twice must give the same result',
+    setup(slide) {
+      slide.addText('Business ownership', { x: 1.36, y: 1.83, w: 2.53, h: 0.5, fontSize: 14 });
+      slide.addImage({ data: PIXEL_DATA, x: 1.37, y: 2.03, w: 0.39, h: 0.39 });
+    },
+    expectShifts: 1,
+    runShiftTwice: true,           // shift first time, then again — second call must be 0
+    expectFinalTextX: 1.84,
+  },
+];
+
 // ── Test runner ─────────────────────────────────────────────────────────────
 function describeSlide(slide) {
   const objs = slide._slideObjects || [];
@@ -256,7 +378,63 @@ for (const fix of FIXTURES) {
 }
 
 console.log('\n' + '='.repeat(60));
-console.log(`RESULT: ${totalPass}/${totalPass + totalFail} fixtures pass`);
+console.log(`DEDUPE RESULT: ${totalPass}/${totalPass + totalFail} fixtures pass`);
+
+// ── Text-shift fixtures ─────────────────────────────────────────────────────
+console.log('\n' + '='.repeat(60));
+console.log('TEXT-SHIFT FIXTURES (V30 ai-enabled-growth-strategy bug)');
+console.log('='.repeat(60));
+
+let shiftPass = 0;
+let shiftFail = 0;
+const tol = 0.005; // 0.005in tolerance for float comparison
+
+for (const fix of TEXT_SHIFT_FIXTURES) {
+  const pres = new PptxGenJS();
+  pres.defineSlideMaster({ title: 'BLANK', objects: [] });
+  const slide = pres.addSlide({ masterName: 'BLANK' });
+  fix.setup(slide);
+
+  const textObjBefore = slide._slideObjects.find(o => o._type === 'text' && (typeof o.text === 'string' ? o.text.trim() : (Array.isArray(o.text) && o.text.length)));
+  const beforeX = textObjBefore?.options?.x;
+  const beforeW = textObjBefore?.options?.w;
+
+  const shifts = shiftTextAroundIcons(slide);
+  const secondPass = fix.runShiftTwice ? shiftTextAroundIcons(slide) : null;
+
+  const textObjAfter = slide._slideObjects.find(o => o._type === 'text' && (typeof o.text === 'string' ? o.text.trim() : (Array.isArray(o.text) && o.text.length)));
+  const afterX = textObjAfter?.options?.x;
+  const afterW = textObjAfter?.options?.w;
+
+  console.log(`\n=== ${fix.name} ===`);
+  console.log(`  before: text x=${beforeX?.toFixed(2)} w=${beforeW?.toFixed(2)}`);
+  console.log(`  after : text x=${afterX?.toFixed(2)} w=${afterW?.toFixed(2)}`);
+  console.log(`  shifts: ${shifts}${secondPass !== null ? `, second pass: ${secondPass}` : ''}`);
+
+  let pass = true;
+  if (shifts !== fix.expectShifts) {
+    console.log(`  FAIL: expected ${fix.expectShifts} shifts, got ${shifts}`);
+    pass = false;
+  }
+  if (fix.expectFinalTextX !== undefined && Math.abs(afterX - fix.expectFinalTextX) > tol) {
+    console.log(`  FAIL: expected final text x=${fix.expectFinalTextX}, got ${afterX}`);
+    pass = false;
+  }
+  if (fix.expectFinalTextW !== undefined && Math.abs(afterW - fix.expectFinalTextW) > tol) {
+    console.log(`  FAIL: expected final text w=${fix.expectFinalTextW}, got ${afterW}`);
+    pass = false;
+  }
+  if (fix.runShiftTwice && secondPass !== 0) {
+    console.log(`  FAIL: idempotency violation -- second pass shifted ${secondPass} times (must be 0)`);
+    pass = false;
+  }
+  if (pass) { shiftPass += 1; console.log(`  PASS ✓`); }
+  else      { shiftFail += 1; }
+}
+
+console.log('\n' + '='.repeat(60));
+console.log(`TEXT-SHIFT RESULT: ${shiftPass}/${shiftPass + shiftFail} fixtures pass`);
+console.log(`OVERALL: ${totalPass + shiftPass}/${totalPass + totalFail + shiftPass + shiftFail} fixtures pass`);
 
 // ── XML-level verification: write a real .pptx and inspect slide XML ────────
 console.log('\n' + '='.repeat(60));
@@ -320,4 +498,4 @@ if (after.ellipseCount === 0 && after.pinkFillCount === 0 && after.picCount === 
   process.exit(1);
 }
 
-process.exit(totalFail > 0 ? 1 : 0);
+process.exit((totalFail + shiftFail) > 0 ? 1 : 0);

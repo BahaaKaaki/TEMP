@@ -427,12 +427,7 @@ export async function injectRasterizedSvgIcons(pptxSlide, slide, settings) {
 
     if (injected > 0) {
       console.info(`[PPTX] Injected ${injected} rasterized SVG icon(s) for slide ${slide?.id || '(unknown)'}`);
-      // Deterministic post-pass: remove any LLM-emitted primitive shapes
-      // (rect / ellipse / roundRect) that are mostly covered by an injected
-      // image. This is the "once and for all" fix for chip-doubling — the
-      // LLM may still draw a chip ellipse from the CSS it sees, but the
-      // dedupe pass cleanly removes redundant shapes regardless. See
-      // /tmp/chip-doubling-test/repro.mjs for the 8-fixture test suite.
+      // Deterministic post-passes: see comments on each function.
       try {
         const removed = dedupeShapesUnderImages(pptxSlide);
         if (removed > 0) {
@@ -440,6 +435,14 @@ export async function injectRasterizedSvgIcons(pptxSlide, slide, settings) {
         }
       } catch (error) {
         console.warn('[PPTX] Shape-dedupe pass failed:', error?.message || error);
+      }
+      try {
+        const shifted = shiftTextAroundIcons(pptxSlide);
+        if (shifted > 0) {
+          console.info(`[PPTX] Shifted ${shifted} text shape(s) clear of rasterized icons.`);
+        }
+      } catch (error) {
+        console.warn('[PPTX] Text-shift pass failed:', error?.message || error);
       }
     }
   } finally {
@@ -540,6 +543,98 @@ export function dedupeShapesUnderImages(pptxSlide, opts = {}) {
     }
   }
   return removed;
+}
+
+/**
+ * Shift LLM-drawn text shapes that overlap a rasterized icon image to start
+ * after the icon's right edge.
+ *
+ * The export LLM commonly drew a row title text shape using the row's
+ * outer cell bbox (e.g. x=1.36, w=2.53), even when the row also contains
+ * an icon at the cell's left edge (x=1.37, w=0.39). The text rendered on
+ * top of the icon — visible in slide 5 of the V30 ai-enabled-growth-strategy
+ * export. The DOM-positions block in the prompt didn't fix it (the LLM
+ * either ignored the inner-text element's bbox or the inner text element
+ * had no class to be picked up by the measurement walker).
+ *
+ * This pass deterministically restores the canvas layout: any text shape
+ * that flows left-to-right past a rasterized icon gets its x shifted to
+ * `icon.x + icon.w + gap`, with `w` adjusted to preserve the right edge.
+ *
+ * Heuristics — text is shifted iff ALL of:
+ *   - text and image overlap vertically by >= 50% of the smaller height
+ *     (same row, not a caption below the icon)
+ *   - text is at least 1.5× the image's width (it's a label flowing past
+ *     the icon, not a chip with text centered on the image)
+ *   - text's left edge sits at or before the image's left edge (within 0.05in)
+ *   - text's right edge extends past the image's right edge by 0.1in
+ *
+ * Skipped: text that is centered on the image (chip + emoji glyph),
+ * text smaller than the image (e.g. "1" inside a numbered ellipse),
+ * text in a different row (no vertical overlap), or text fully to the
+ * right of the image (no overlap → no shift needed).
+ *
+ * @returns {number} count of text shapes shifted
+ */
+export function shiftTextAroundIcons(pptxSlide, opts = {}) {
+  const horizontalGap = opts.horizontalGap ?? 0.08; // inches between icon right edge and text start
+  const minTextWidthRatio = opts.minTextWidthRatio ?? 1.5;
+  const verticalOverlapMin = opts.verticalOverlapMin ?? 0.5;
+
+  const objs = pptxSlide?._slideObjects;
+  if (!Array.isArray(objs) || objs.length === 0) return 0;
+
+  const imageBoxes = [];
+  for (const obj of objs) {
+    if (obj?._type !== 'image') continue;
+    const o = obj.options || {};
+    if (typeof o.x !== 'number' || typeof o.y !== 'number'
+      || typeof o.w !== 'number' || typeof o.h !== 'number') continue;
+    imageBoxes.push({ x: o.x, y: o.y, w: o.w, h: o.h });
+  }
+  if (imageBoxes.length === 0) return 0;
+
+  let shifted = 0;
+  for (const obj of objs) {
+    // Only text-bearing shapes; primitive shapes without text are chip
+    // backgrounds (handled by dedupeShapesUnderImages above).
+    if (obj?._type !== 'text') continue;
+    if (!_hasMeaningfulText(obj)) continue;
+    const o = obj.options || {};
+    if (typeof o.x !== 'number' || typeof o.y !== 'number'
+      || typeof o.w !== 'number' || typeof o.h !== 'number') continue;
+
+    for (const img of imageBoxes) {
+      // Vertical overlap (same-row check)
+      const vTop = Math.max(o.y, img.y);
+      const vBot = Math.min(o.y + o.h, img.y + img.h);
+      if (vBot <= vTop) continue;
+      const vOverlap = vBot - vTop;
+      const minHeight = Math.min(o.h, img.h);
+      if (minHeight <= 0) continue;
+      if (vOverlap / minHeight < verticalOverlapMin) continue;
+
+      // Text must be a "label" (much wider than icon), not a chip + glyph
+      if (o.w < img.w * minTextWidthRatio) continue;
+
+      // Text's left edge at or before image's left edge
+      if (o.x > img.x + 0.05) continue;
+
+      // Text extends past image's right edge (otherwise no shift would help)
+      const textRight = o.x + o.w;
+      const imgRight = img.x + img.w;
+      if (textRight <= imgRight + 0.1) continue;
+
+      // Shift! Preserve right edge.
+      const newX = imgRight + horizontalGap;
+      const newW = Math.max(textRight - newX, 0.1);
+      o.x = newX;
+      o.w = newW;
+      shifted += 1;
+      break;
+    }
+  }
+  return shifted;
 }
 
 // ── DOM-position measurement (for export-LLM grounding) ─────────────────────

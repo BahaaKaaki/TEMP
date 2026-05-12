@@ -35,6 +35,26 @@ import { authFetch } from './authFetch.js';
 import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
 import { omitChatCompletionsTemperature } from './ai/models.js';
 import { injectRasterizedSvgIcons } from './pptxSvgIconInjector.js';
+import { resolveIconTokens } from './icons/iconResolver.js';
+
+// Pre-resolve <icon name="..."/> tokens to inline <svg> for every slide once,
+// before either the LLM or the SVG injector reads slide.html. Returns a new
+// array of slide objects with replaced html (originals are not mutated).
+async function preResolveSlideIcons(slides) {
+  if (!Array.isArray(slides) || slides.length === 0) return slides;
+  return Promise.all(
+    slides.map(async (slide) => {
+      const src = slide?.html || '';
+      if (!src.includes('<icon')) return slide;
+      try {
+        const resolved = await resolveIconTokens(src);
+        return resolved === src ? slide : { ...slide, html: resolved };
+      } catch {
+        return slide;
+      }
+    }),
+  );
+}
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -1489,6 +1509,10 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
 export async function exportToPPTX(slides, filename = 'presentation.pptx', settings = null, onProgress = null) {
   if (!slides || slides.length === 0) throw new Error('No slides to export');
 
+  // Pre-expand <icon name="..."/> tokens once so both the LLM and the SVG
+  // injector see real <svg> markup downstream.
+  slides = await preResolveSlideIcons(slides);
+
   const activeProfile = getActiveClientProfile(settings || {});
   const pptx = new PptxGenJS();
   applyPptxLayout(pptx, activeProfile);
@@ -1714,6 +1738,10 @@ export async function exportToPPTXStatic(slides, filename = 'presentation.pptx')
 
 export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, filename, settings = null, onProgress = null) {
   if (!slide) throw new Error('No slide to export');
+
+  // Pre-expand <icon name="..."/> tokens before LLM / SVG injector see them.
+  const [resolvedSlide] = await preResolveSlideIcons([slide]);
+  slide = resolvedSlide;
 
   const activeProfile = getActiveClientProfile(settings || {});
   const pptx = new PptxGenJS();

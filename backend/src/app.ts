@@ -185,6 +185,40 @@ app.get('/api/assets/client-templates/:profileId/:fileName', (req, res, next) =>
   });
 });
 
+// Strategy& icon library — manifest + per-icon SVGs extracted from the
+// VCS Middle East icon-compilation deck. See backend/scripts/extract-strategy-icons.py.
+const ICONS_ASSETS_DIR = path.join(process.cwd(), 'assets', 'icons', 'strategy');
+const ICON_NAME_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/i;
+
+app.get('/api/assets/icons/strategy/manifest.json', (_req, res, next) => {
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'private, max-age=86400');
+  res.sendFile(path.join(ICONS_ASSETS_DIR, 'manifest.json'), (err) => {
+    if (err) next(err);
+  });
+});
+
+app.get('/api/assets/icons/strategy/:category/:fileName', (req, res, next) => {
+  const { category, fileName } = req.params;
+  if (!ICON_NAME_RE.test(category) || !/^[a-z0-9][a-z0-9_-]{0,63}\.svg$/i.test(fileName)) {
+    res.status(404).json({ error: 'ICON_NOT_FOUND' });
+    return;
+  }
+  res.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+  res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
+  res.sendFile(path.join(ICONS_ASSETS_DIR, category, fileName), (err) => {
+    if (!err) return;
+    // Missing icon file -- treat as 404 instead of leaking the path through
+    // the global error handler.
+    const code = (err as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT' || code === 'ENOTDIR') {
+      if (!res.headersSent) res.status(404).json({ error: 'ICON_NOT_FOUND' });
+      return;
+    }
+    next(err);
+  });
+});
+
 // Consulting skills registry (metadata only; bodies stay server-side and are
 // injected by the AI proxy when a router call includes `_skillId`).
 app.use('/api/skills', skillsRoutes);

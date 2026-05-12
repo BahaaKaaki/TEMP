@@ -27,9 +27,24 @@ const ICON_HOST_SELECTOR = [
   '.kpi-icon',
   '.card-icon-circle',
   '.bullet-icon',
+  '.stopIcon',
+  '.stop-icon',
+  '.stepIcon',
+  '.step-icon',
+  '.timelineIcon',
+  '.timeline-icon',
+  '.iconBox',
+  '.icon-box',
 ].join(',');
 
-const ICON_CLASS_RE = /(?:^|[\s_-])icon(?:$|[\s_-])/i;
+// Match an icon-host class. Three cases:
+//   - whole-token "icon" (any case): "icon", "Icon", "ICON", "card-icon"
+//   - camelCase suffix ending in Icon: "stopIcon", "timelineIcon"
+//   - kebab/underscore suffix: "card-icon", "bullet_icon"
+// The `i` flag handles ICON / Icon for the first alternation; the second
+// alternation requires a letter immediately before "Icon" so an isolated
+// "IconButton" does NOT match.
+const ICON_CLASS_RE = /(?:^|[\s_-])icon(?:$|[\s_-])|[a-z]Icon(?=$|[\s_-])/i;
 
 const PREVIEW_PARITY_CSS = `
 [data-pptx-svg-icon-measure] .slide-render-container,
@@ -197,13 +212,29 @@ function shouldUseIconHostBox(host, svg, hostRect, svgRect) {
   const hostArea = Math.max(1, (hostRect?.width || 0) * (hostRect?.height || 0));
   if (hostArea / svgArea > MAX_ICON_HOST_TO_SVG_AREA_RATIO) return false;
 
-  const style = getComputedStyle(host);
-  const hasVisibleFill = style.backgroundColor && !['transparent', 'rgba(0, 0, 0, 0)'].includes(style.backgroundColor);
-  const hasVisibleBorder = style.borderStyle !== 'none' && Number.parseFloat(style.borderWidth || '0') > 0;
   const className = typeof host.className === 'string' ? host.className : '';
   const isExplicitChip = /\b(card-icon-circle|icon-chip|icon-circle|icon-badge)\b/i.test(className);
 
-  return hasVisibleFill || hasVisibleBorder || isExplicitChip;
+  // Explicit chip containers (e.g. .card-icon-circle) are owned by the LLM
+  // as a native PptxGenJS ellipse. Capturing the host here would double the
+  // chip on top of that vector shape and produce the fuzzy-halo artefact
+  // (#FIFA-export-2026-05). Only fall back to host-box when the SVG itself
+  // has unusable dimensions, otherwise the icon would be silently dropped.
+  if (isExplicitChip) {
+    return !isIconSizedRect(svgRect);
+  }
+
+  const style = getComputedStyle(host);
+  const hasVisibleFill = style.backgroundColor && !['transparent', 'rgba(0, 0, 0, 0)'].includes(style.backgroundColor);
+  const hasVisibleBorder = style.borderStyle !== 'none' && Number.parseFloat(style.borderWidth || '0') > 0;
+  if (hasVisibleFill || hasVisibleBorder) return true;
+
+  // Icon-class host with no fill/border: prefer the SVG rect for alignment
+  // when it's measurable, but fall back to the host so we don't silently
+  // drop the icon. This catches `.stopIcon` and other LLM-invented camelCase
+  // classes where the inner <svg> has no explicit width/height and renders
+  // at 0x0 or the 300x150 SVG default in the offscreen measure DOM.
+  return !isIconSizedRect(svgRect);
 }
 
 function resolveIconRasterTarget(svg, rootRect) {

@@ -30,7 +30,27 @@ const ICON_HOST_SELECTOR = [
   '[data-ppt-rasterize]',
 ].join(',');
 
-const ICON_CLASS_RE = /(?:^|[\s_-])icon(?:$|[\s_-])/i;
+// Match an icon-host class name. The LLM emits a wide variety of class
+// patterns for icon containers (e.g. .icon, .card-icon, .card-icon-circle,
+// but also LLM-invented names like .cIcon, .bandIcon, .iconBox, .kpiIcon).
+// All four cases must match so findIconHost recognizes the chip as the host;
+// otherwise the rasterizer captures only the bare SVG and the chip
+// background ends up missing in the PPTX (the system prompt tells the LLM
+// to skip drawing chip ellipses when an <svg> is inside).
+//
+// Branches:
+//   1. (?:^|[\s_-])icon       -> "icon" / "Icon" / "ICON" preceded by start
+//      (?=$|[\s_-]|[A-Z])        or a separator, followed by end / separator
+//                                / camelCase boundary (e.g. iconBox, IconBox).
+//                                The trailing-uppercase lookahead is what
+//                                lets `iconBox` match while `iconography`
+//                                does not.
+//   2. [a-z]Icon(?=$|[\s_-])  -> camelCase suffix like cIcon, bandIcon,
+//                                kpiIcon. Requires a lowercase letter
+//                                immediately before "Icon" so an isolated
+//                                "IconButton" (component name, not a chip)
+//                                does NOT match.
+const ICON_CLASS_RE = /(?:^|[\s_-])[Ii]con(?=$|[\s_-]|[A-Z])|[a-z]Icon(?=$|[\s_-])/;
 
 // Classes used by icon-font libraries that may emit a glyph alongside an
 // inline SVG (Material Icons, FontAwesome, etc.). When one of these sits

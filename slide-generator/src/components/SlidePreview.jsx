@@ -7,7 +7,6 @@ import { exportSingleSlideToPDF, generateFileName } from '../services/exportServ
 import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
 import { themeToCSS } from '../utils/themeUtils';
 import { authFetch } from '../services/authFetch';
-import { resolveIconTokens } from '../services/icons/iconResolver.js';
 import CommentPanel from './CommentPanel';
 import { normalizeFlexProseInSlideMount } from '../utils/slideDomNormalize';
 import {
@@ -576,7 +575,6 @@ export default function SlidePreview({ onSwitchToCode }) {
   // Set up the slide HTML when activeSlide changes
   useEffect(() => {
     if (slideRef.current && activeSlide) {
-      let cancelled = false;
       // Ensure HTML is wrapped in a .slide div
       let html = activeSlide.html || '';
       if (!/class=["']slide[\s"']/i.test(html)) {
@@ -618,38 +616,24 @@ export default function SlidePreview({ onSwitchToCode }) {
         html = injectPageNumber(html, slideIndex + 1, state.slides.length);
       }
       html = injectClientProfileChrome(html, activeClientProfile, clientLogoUrl);
-
-      // Expand <icon name="..."/> tokens to inline SVG before mounting. The
-      // resolver is idempotent and short-circuits when no tokens are present,
-      // so non-icon slides only pay a microtask. Stale results from a prior
-      // activeSlide are dropped via the `cancelled` flag.
-      const mount = (resolvedHtml) => {
-        if (cancelled || !slideRef.current) return;
-        slideRef.current.innerHTML = resolvedHtml;
-        requestAnimationFrame(() => {
-          if (cancelled || !slideRef.current) return;
-          normalizeFlexProseInSlideMount(slideRef.current);
-          slideRef.current.querySelectorAll('a[href]').forEach(anchor => {
-            const href = anchor.getAttribute('href') || '';
-            if (!/^https?:\/\//i.test(href)) return;
-            anchor.classList.add('slide-source-link');
-            anchor.setAttribute('data-source-preview-enhanced', 'true');
-            anchor.setAttribute('target', '_blank');
-            anchor.setAttribute('rel', 'noopener noreferrer');
-            anchor.setAttribute('data-no-edit', 'true');
-            anchor.setAttribute('title', `Open source: ${anchor.textContent?.trim() || href}`);
-          });
-          if (isEditMode) {
-            makeEditable(slideRef.current);
-          }
+      slideRef.current.innerHTML = html;
+      requestAnimationFrame(() => {
+        if (!slideRef.current) return;
+        normalizeFlexProseInSlideMount(slideRef.current);
+        slideRef.current.querySelectorAll('a[href]').forEach(anchor => {
+          const href = anchor.getAttribute('href') || '';
+          if (!/^https?:\/\//i.test(href)) return;
+          anchor.classList.add('slide-source-link');
+          anchor.setAttribute('data-source-preview-enhanced', 'true');
+          anchor.setAttribute('target', '_blank');
+          anchor.setAttribute('rel', 'noopener noreferrer');
+          anchor.setAttribute('data-no-edit', 'true');
+          anchor.setAttribute('title', `Open source: ${anchor.textContent?.trim() || href}`);
         });
-      };
-      if (html.includes('<icon')) {
-        resolveIconTokens(html).then(mount).catch(() => mount(html));
-      } else {
-        mount(html);
-      }
-      return () => { cancelled = true; };
+        if (isEditMode) {
+          makeEditable(slideRef.current);
+        }
+      });
     }
   }, [activeSlide?.id, activeSlide?.html, isEditMode, state.darkMode, state.slides, activeClientProfile, clientLogoUrl]);
 

@@ -27,24 +27,9 @@ const ICON_HOST_SELECTOR = [
   '.kpi-icon',
   '.card-icon-circle',
   '.bullet-icon',
-  '.stopIcon',
-  '.stop-icon',
-  '.stepIcon',
-  '.step-icon',
-  '.timelineIcon',
-  '.timeline-icon',
-  '.iconBox',
-  '.icon-box',
 ].join(',');
 
-// Match an icon-host class. Three cases:
-//   - whole-token "icon" (any case): "icon", "Icon", "ICON", "card-icon"
-//   - camelCase suffix ending in Icon: "stopIcon", "timelineIcon"
-//   - kebab/underscore suffix: "card-icon", "bullet_icon"
-// The `i` flag handles ICON / Icon for the first alternation; the second
-// alternation requires a letter immediately before "Icon" so an isolated
-// "IconButton" does NOT match.
-const ICON_CLASS_RE = /(?:^|[\s_-])icon(?:$|[\s_-])|[a-z]Icon(?=$|[\s_-])/i;
+const ICON_CLASS_RE = /(?:^|[\s_-])icon(?:$|[\s_-])/i;
 
 const PREVIEW_PARITY_CSS = `
 [data-pptx-svg-icon-measure] .slide-render-container,
@@ -212,18 +197,13 @@ function shouldUseIconHostBox(host, svg, hostRect, svgRect) {
   const hostArea = Math.max(1, (hostRect?.width || 0) * (hostRect?.height || 0));
   if (hostArea / svgArea > MAX_ICON_HOST_TO_SVG_AREA_RATIO) return false;
 
-  // Core principle: if the SVG has measurable dimensions, prefer SVG-only
-  // capture. The LLM owns chip backgrounds (filled circles, borders, chrome)
-  // as native PptxGenJS shapes — they're drawn from the resolved CSS the LLM
-  // sees. Capturing the host on top would stack a rasterized copy of those
-  // same backgrounds over the LLM's vector shape and produce the fuzzy-halo
-  // artefact (#FIFA-export-2026-05).
-  //
-  // Host-box capture is only a fallback for cases where the SVG itself has
-  // no usable rect (LLM-invented camelCase host classes like .stopIcon with
-  // no CSS, where the inner <svg> renders at 0x0 / 300x150 default in the
-  // offscreen measure DOM and would otherwise be silently dropped).
-  return !isIconSizedRect(svgRect);
+  const style = getComputedStyle(host);
+  const hasVisibleFill = style.backgroundColor && !['transparent', 'rgba(0, 0, 0, 0)'].includes(style.backgroundColor);
+  const hasVisibleBorder = style.borderStyle !== 'none' && Number.parseFloat(style.borderWidth || '0') > 0;
+  const className = typeof host.className === 'string' ? host.className : '';
+  const isExplicitChip = /\b(card-icon-circle|icon-chip|icon-circle|icon-badge)\b/i.test(className);
+
+  return hasVisibleFill || hasVisibleBorder || isExplicitChip;
 }
 
 function resolveIconRasterTarget(svg, rootRect) {

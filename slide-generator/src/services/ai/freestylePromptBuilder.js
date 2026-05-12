@@ -3,9 +3,8 @@ import DEFAULT_THEME from '../../guides/freestyle-theme.md?raw';
 import DEFAULT_VIBE from '../../guides/freestyle-vibe.md?raw';
 import DEFAULT_WRITING from '../../guides/freestyle-writing.md?raw';
 import DEFAULT_PPTX_HINTS from '../../guides/freestyle-pptx-hints.md?raw';
-import { appendClientDesignContract, applyClientProfilePromptSections, rewritePromptGeometryForClientProfile, getActiveClientProfile } from '../../utils/clientDesignProfiles.js';
+import { appendClientDesignContract, applyClientProfilePromptSections, rewritePromptGeometryForClientProfile } from '../../utils/clientDesignProfiles.js';
 import DEFAULT_SLIDE_HTML_GENERATOR_PROMPT from '../../guides/slide-html-generator-prompt.md?raw';
-import { getCatalog as getIconCatalogState, formatCatalogForPrompt } from '../icons/iconCatalog.js';
 
 export {
   DEFAULT_SHELL,
@@ -117,41 +116,6 @@ export function getPreset(presetId) {
   return FREESTYLE_PRESETS[presetId] || FREESTYLE_PRESETS.default;
 }
 
-/**
- * Build the Strategy& icon-catalog prompt section. Returns '' when:
- *   - the catalog isn't loaded yet (first session before manifest fetch)
- *   - the active client profile isn't Strategy& (other clients ship their own
- *     icon libraries via this same hook in the future)
- */
-function buildIconCatalogSection(settings) {
-  const profile = getActiveClientProfile(settings || {});
-  if (!profile || profile.id !== 'strategy') return '';
-  const catalog = getIconCatalogState();
-  if (!catalog || !catalog.iconCount) return '';
-  const list = formatCatalogForPrompt({ categories: ['generic-large', 'generic-small'] });
-  if (!list) return '';
-  return [
-    '## Strategy& icon library (brand-compliant line-art icons)',
-    '',
-    'Use these icons whenever a slide calls for a small pictogram (KPI badges,',
-    'card icons, bullet markers, etc.). Reference an icon by emitting:',
-    '',
-    '    <icon name="slug-here"/>',
-    '',
-    'inside any container with a class like `card-icon-circle`, `bullet-icon`,',
-    '`card-icon`, or `icon`. The runtime expands the token to inline SVG before',
-    'render. Icons inherit color via `currentColor`, so set the surrounding',
-    'container\'s `color: var(--accent)` (already the default for `.icon`).',
-    '',
-    'Do NOT paste raw `<svg>` markup -- always use the token form. Do NOT make',
-    'up slugs that are not in the list below; pick the closest match.',
-    '',
-    'Available slugs (slug — keywords):',
-    '',
-    list,
-  ].join('\n');
-}
-
 export function buildFreestyleSystemPrompt(settings = {}) {
   const preset = settings.freestylePreset ? getPreset(settings.freestylePreset) : null;
 
@@ -177,9 +141,6 @@ export function buildFreestyleSystemPrompt(settings = {}) {
   if (theme) extraSections.push(theme);
   if (vibe) extraSections.push(vibe);
   if (writing) extraSections.push(writing);
-
-  const iconCatalogSection = buildIconCatalogSection(settings);
-  if (iconCatalogSection) extraSections.push(iconCatalogSection);
 
   const basePrompt = rewritePromptGeometryForClientProfile(DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, settings);
   const assembled = appendClientDesignContract(

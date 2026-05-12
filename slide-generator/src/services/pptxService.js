@@ -40,6 +40,58 @@ import { injectRasterizedSvgIcons } from './pptxSvgIconInjector.js';
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
 const DEFAULT_PPTX_MODEL = 'pwc:bedrock.anthropic.claude-opus-4-7';
+
+// ── Rasterizer-owned chip marker preprocessor ────────────────────────────────
+// The pptxSvgIconInjector post-pass captures icon-host containers as one
+// atomic image (chip background + the inline <svg> together). To stop the
+// LLM from also drawing a duplicate chip ellipse / rect, we mark those
+// containers with `data-ppt-rasterize="1"` BEFORE the LLM ever sees the HTML.
+// The system prompt then keys on that marker with a hard, non-conditional
+// rule (no "if there's an svg inside" inference required by the model).
+//
+// The host-detection logic mirrors pptxSvgIconInjector.findIconHost so the
+// same elements that get rasterized are also flagged here -- single source
+// of truth.
+const _CHIP_HOST_SELECTOR = '.icon, .card-icon, .kpi-icon, .card-icon-circle, .bullet-icon, [data-ppt-rasterize]';
+const _CHIP_CLASS_RE = /(?:^|[\s_-])[Ii]con(?=$|[\s_-]|[A-Z])|[a-z]Icon(?=$|[\s_-])/;
+
+export function markRasterizerOwnedChips(html) {
+  if (typeof DOMParser === 'undefined') return html;
+  if (typeof html !== 'string' || !html.includes('<svg')) return html;
+  let doc;
+  try {
+    doc = new DOMParser().parseFromString(html, 'text/html');
+  } catch {
+    return html;
+  }
+  if (!doc?.body) return html;
+  const svgs = doc.querySelectorAll('svg');
+  if (svgs.length === 0) return html;
+
+  for (const svg of svgs) {
+    // Mirror pptxSvgIconInjector.findIconHost: prefer .closest() on the
+    // explicit selector list, then walk up to 5 ancestors looking for a
+    // class that matches the icon-class regex.
+    let host = svg.closest(_CHIP_HOST_SELECTOR);
+    if (!host) {
+      let node = svg.parentElement;
+      for (let depth = 0; depth < 5 && node && node !== doc.body; depth += 1, node = node.parentElement) {
+        const cls = typeof node.getAttribute === 'function' ? (node.getAttribute('class') || '') : '';
+        if (_CHIP_CLASS_RE.test(cls)) {
+          host = node;
+          break;
+        }
+      }
+    }
+    // Reject obviously-not-a-chip hosts: don't mark large containers (the
+    // injector also rejects them via isIconSizedRect at runtime, but we
+    // do a structural check here -- the host should not be the root .slide).
+    if (host && host !== svg && !host.classList?.contains('slide')) {
+      host.setAttribute('data-ppt-rasterize', '1');
+    }
+  }
+  return doc.body.innerHTML;
+}
 const PROFILE_PPTX_FONT_FACE = {
   stc: 'STC Forward',
   pif: 'Fund Light',
@@ -430,11 +482,15 @@ If unsure how to use addChart, render bars as rectangles instead — that always
 
 NATIVE TABLES: If the HTML contains a real <table>, or a hinted/native table element, prefer slide.addTable(rows, options) instead of drawing every cell as rectangles and text boxes. Use one table object with column widths, row height, borders, fills, and per-cell text styles. Use shapes only when the visual is a non-tabular matrix, chart, heatmap, or process layout. For scorecard/status tables, render dots, checks, RAG markers, and other cell indicators as table cell text glyphs (for example ●, ◐, ○, ✓) with per-cell text color and alignment. Do NOT draw those markers as separate ellipse/circle shapes over the table.
 
-INLINE SVG ICONS: Small decorative inline <svg> pictograms are rasterized from the rendered HTML and placed automatically after your code runs. The post-pass captures the icon AND its immediate badge/chip wrapper (.card-icon-circle, .icon-circle, .icon-chip, .icon-badge, .bullet-icon, .kpi-icon, .card-icon, [data-ppt-rasterize]) as ONE atomic image. Therefore:
-- Do NOT redraw those small SVG path icons as emoji, placeholder text, or embedded base64 images.
-- Do NOT draw an addShape('ellipse'/'rect'/etc.) for the chip/circle BACKGROUND of any container that already contains an inline <svg> icon. Your shape would land underneath the rasterized image and produce a visible halo / off-center fringe (#FIFA-export-2026-05).
-- DO render the OUTER card frame, dividers, numbering, body text, titles, and every other non-icon element from the HTML/CSS.
-- For containers WITHOUT an inline <svg> (e.g. emoji-as-icon or text-glyph chips) the rasterizer does not fire, so draw both the chip ellipse AND the glyph addText as the reference example shows.
+RASTERIZER-OWNED ELEMENTS (data-ppt-rasterize):
+Any HTML element annotated with data-ppt-rasterize="1" (or just data-ppt-rasterize) is a chip / icon-host that the post-pass captures as a SINGLE atomic image — its background fill, border, and the inline <svg> inside it all land together as one PNG.
+
+Hard rule, no conditionals:
+- For every element that has data-ppt-rasterize, emit ZERO PptxGenJS calls. No addShape('ellipse'/'rect'/'roundRect'/etc.) for the chip background. No addText for any icon glyph (emoji or otherwise) inside it. No addImage. The rasterizer handles 100% of the visual.
+- The data-ppt-rasterize markers are added automatically before you see the HTML; you only need to honor them.
+- Any inline <svg> that is NOT inside a data-ppt-rasterize ancestor is still rasterized as just-the-glyph (transparent background), placed at the SVG's own bounding box. Do not redraw those either.
+- DO render the OUTER card frame, dividers, numbering text, body text, titles, banners, and every other element that does NOT have data-ppt-rasterize.
+- For chips WITHOUT an inline <svg> (e.g. emoji-as-icon or text-glyph chips) the marker will not be set, so draw both the chip ellipse AND the glyph addText exactly as the reference example shows.
 
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
 
@@ -771,8 +827,15 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
   console.log('[PPTX Prompt] Slide %d hints: %d', slideNum, hints.length);
   const nativeTableIntent = hasNativeTableIntent(html, hints);
 
+  // Pre-decorate chip hosts with data-ppt-rasterize so the LLM knows
+  // unambiguously which containers the rasterizer will own. Mirrors the
+  // host-detection logic in pptxSvgIconInjector.findIconHost. Without this,
+  // the LLM sometimes drew an addShape('ellipse'/'rect') for chip
+  // backgrounds even when an <svg> was inside, causing the doubled-halo
+  // artefact (FIFA / Customer-expectations / Cost-and-quality exports).
+  const decoratedHtml = markRasterizerOwnedChips(html);
   const cleanHtml = stripPptxHintComments(
-    html
+    decoratedHtml
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
       .replace(/<footer[\s\S]*?<\/footer>/gi, '')
       .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"')

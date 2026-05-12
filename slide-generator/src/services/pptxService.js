@@ -430,7 +430,11 @@ If unsure how to use addChart, render bars as rectangles instead — that always
 
 NATIVE TABLES: If the HTML contains a real <table>, or a hinted/native table element, prefer slide.addTable(rows, options) instead of drawing every cell as rectangles and text boxes. Use one table object with column widths, row height, borders, fills, and per-cell text styles. Use shapes only when the visual is a non-tabular matrix, chart, heatmap, or process layout. For scorecard/status tables, render dots, checks, RAG markers, and other cell indicators as table cell text glyphs (for example ●, ◐, ○, ✓) with per-cell text color and alignment. Do NOT draw those markers as separate ellipse/circle shapes over the table.
 
-INLINE SVG ICONS: Small decorative inline <svg> pictograms are rasterized from the rendered HTML and placed automatically after your code runs. Do not redraw those small SVG path icons as emoji, placeholder text, or embedded base64 images. Still render their surrounding cards, icon chips/backgrounds, borders, and all text from the HTML/CSS.
+INLINE SVG ICONS: Small decorative inline <svg> pictograms are rasterized from the rendered HTML and placed automatically after your code runs. The post-pass captures the icon AND its immediate badge/chip wrapper (.card-icon-circle, .icon-circle, .icon-chip, .icon-badge, .bullet-icon, .kpi-icon, .card-icon, [data-ppt-rasterize]) as ONE atomic image. Therefore:
+- Do NOT redraw those small SVG path icons as emoji, placeholder text, or embedded base64 images.
+- Do NOT draw an addShape('ellipse'/'rect'/etc.) for the chip/circle BACKGROUND of any container that already contains an inline <svg> icon. Your shape would land underneath the rasterized image and produce a visible halo / off-center fringe (#FIFA-export-2026-05).
+- DO render the OUTER card frame, dividers, numbering, body text, titles, and every other non-icon element from the HTML/CSS.
+- For containers WITHOUT an inline <svg> (e.g. emoji-as-icon or text-glyph chips) the rasterizer does not fire, so draw both the chip ellipse AND the glyph addText as the reference example shows.
 
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
 

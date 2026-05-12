@@ -332,6 +332,27 @@ export function addSubtitle(slide, text) {
 
 // ── Source note ──────────────────────────────────────────────────────────────
 
+// Authoring/research metadata that must never reach the final deck. If any of
+// these appear in the source text scraped from slide HTML, drop the entry.
+// Mirrors the SlidePreview-side filter so the bug-fix guard applies even if
+// the upstream channel changes.
+const NON_RENDERABLE_SOURCE_MARKERS = [
+  'search web',
+  'search this source',
+  'generated from slide source text',
+  'use as source for',
+  'use as general contextual anchor',
+  'needs source',
+  'needs_source',
+  'web_search_query',
+];
+
+function isLeakedSourceText(value) {
+  if (typeof value !== 'string') return false;
+  const lower = value.toLowerCase();
+  return NON_RENDERABLE_SOURCE_MARKERS.some(marker => lower.includes(marker));
+}
+
 export function addSourceNote(slide, html) {
   if (!html) return;
   const parser = new DOMParser();
@@ -345,7 +366,9 @@ export function addSourceNote(slide, html) {
   for (const sel of selectors) {
     doc.querySelectorAll(sel).forEach(el => {
       const t = el.textContent?.trim();
-      if (t && !texts.includes(t)) texts.push(t);
+      if (!t || texts.includes(t)) return;
+      if (isLeakedSourceText(t)) return;
+      texts.push(t);
     });
   }
   if (texts.length === 0) return;

@@ -35,6 +35,10 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 MANUAL_EXTRAS: frozenset[str] = frozenset({
     "amr.shalaby@pwc.com",
     "gautam.c.sharma@pwc.com",
+    "karan.tolani@pwc.com",
+    "marianne.alhaj@pwc.com",
+    "mina.alyahyai@pwc.com",
+    "mohamed.alhajeri@pwc.com",
     "mounir.d.doumani@pwc.com",
     "musab.a.banaamah@pwc.com",
     "tarek.sultanem@pwc.com",

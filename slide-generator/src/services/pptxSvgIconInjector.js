@@ -427,8 +427,261 @@ export async function injectRasterizedSvgIcons(pptxSlide, slide, settings) {
 
     if (injected > 0) {
       console.info(`[PPTX] Injected ${injected} rasterized SVG icon(s) for slide ${slide?.id || '(unknown)'}`);
+      // Deterministic post-pass: remove any LLM-emitted primitive shapes
+      // (rect / ellipse / roundRect) that are mostly covered by an injected
+      // image. This is the "once and for all" fix for chip-doubling — the
+      // LLM may still draw a chip ellipse from the CSS it sees, but the
+      // dedupe pass cleanly removes redundant shapes regardless. See
+      // /tmp/chip-doubling-test/repro.mjs for the 8-fixture test suite.
+      try {
+        const removed = dedupeShapesUnderImages(pptxSlide);
+        if (removed > 0) {
+          console.info(`[PPTX] Removed ${removed} LLM shape(s) covered by rasterized icons (dedupe).`);
+        }
+      } catch (error) {
+        console.warn('[PPTX] Shape-dedupe pass failed:', error?.message || error);
+      }
     }
   } finally {
     host.remove();
   }
+}
+
+// Primitive shapes added via PptxGenJS slide.addShape are stored with
+// _type='text' and a `shape` field. We treat these names as "chip-like"
+// for the purposes of the dedupe pass.
+const _DEDUPE_PRIMITIVE_SHAPES = new Set([
+  'rect', 'roundRect', 'ellipse', 'oval', 'roundedRect',
+]);
+
+function _hasMeaningfulText(obj) {
+  // A primitive shape carrying real text content (e.g. numbered roadmap stop,
+  // titled banner) is content -- never remove it even if an image overlaps.
+  if (typeof obj.text === 'string') return obj.text.trim().length > 0;
+  if (Array.isArray(obj.text) && obj.text.length > 0) return true;
+  return false;
+}
+
+/**
+ * Remove primitive shapes that are mostly covered by a rasterized image.
+ *
+ * Rationale: the LLM PPTX-export prompt instructs the model to "render
+ * surrounding cards, icon chips/backgrounds" -- so it draws e.g. an
+ * addShape('ellipse', { fill: rose }) for chip backgrounds. The runtime
+ * pptxSvgIconInjector ALSO captures the same chip + svg as a single
+ * atomic raster image. Both layers stack, producing the fuzzy-halo /
+ * misaligned-chip artefact (#FIFA-export-2026-05, V31, V33).
+ *
+ * Three previous prompt-side fixes (PRs #117, #118, #119, #120, #121)
+ * relied on the LLM following conditional rules; binary inspection of
+ * V33 export proved the LLM still drew chips a fraction of the time.
+ *
+ * This pass works deterministically AFTER both renderers have run:
+ *   - Iterate slide._slideObjects
+ *   - For each rasterized image, find primitive shapes (rect / ellipse /
+ *     roundRect) whose bounding box overlaps the image by >= 50%, and
+ *     whose area is within 5x of the image's area
+ *   - Skip shapes that carry text (numbered circles, titled banners)
+ *   - Splice removed shapes out of the array in place
+ *
+ * Tuning notes (see /tmp/chip-doubling-test/repro.mjs):
+ *   - 50% overlap threshold catches the V31 ~0.25in CSS-vs-DOM drift case
+ *     while keeping small icon glyphs inside larger chips (rasterizer
+ *     SVG-only path produces ~37% overlap, intentionally below threshold).
+ *   - 5x area-ratio cap prevents removing card frames or full-bleed
+ *     backgrounds when an icon happens to sit somewhere inside them.
+ *
+ * @param {*} pptxSlide PptxGenJS slide instance with _slideObjects array
+ * @param {object} [opts]
+ * @param {number} [opts.minOverlapFraction=0.5] fraction of shape covered
+ * @param {number} [opts.maxAreaRatio=5] cap on image-vs-shape area ratio
+ * @returns {number} count of shapes removed
+ */
+export function dedupeShapesUnderImages(pptxSlide, opts = {}) {
+  const minOverlapFraction = opts.minOverlapFraction ?? 0.5;
+  const maxAreaRatio = opts.maxAreaRatio ?? 5;
+  const objs = pptxSlide?._slideObjects;
+  if (!Array.isArray(objs) || objs.length === 0) return 0;
+
+  const imageBoxes = [];
+  for (const obj of objs) {
+    if (obj?._type !== 'image') continue;
+    const o = obj.options || {};
+    if (typeof o.x !== 'number' || typeof o.y !== 'number'
+      || typeof o.w !== 'number' || typeof o.h !== 'number') continue;
+    imageBoxes.push({ x: o.x, y: o.y, w: o.w, h: o.h });
+  }
+  if (imageBoxes.length === 0) return 0;
+
+  let removed = 0;
+  for (let i = objs.length - 1; i >= 0; i -= 1) {
+    const obj = objs[i];
+    if (obj?._type !== 'text') continue;
+    if (!obj.shape || !_DEDUPE_PRIMITIVE_SHAPES.has(obj.shape)) continue;
+    if (_hasMeaningfulText(obj)) continue;
+    const o = obj.options || {};
+    if (typeof o.x !== 'number' || typeof o.y !== 'number'
+      || typeof o.w !== 'number' || typeof o.h !== 'number') continue;
+    const shapeArea = Math.max(o.w * o.h, 1e-6);
+    for (const img of imageBoxes) {
+      const ox = Math.max(o.x, img.x);
+      const oy = Math.max(o.y, img.y);
+      const ex = Math.min(o.x + o.w, img.x + img.w);
+      const ey = Math.min(o.y + o.h, img.y + img.h);
+      if (ex <= ox || ey <= oy) continue;
+      const overlap = (ex - ox) * (ey - oy);
+      const imgArea = Math.max(img.w * img.h, 1e-6);
+      if (overlap / shapeArea < minOverlapFraction) continue;
+      if (imgArea > shapeArea * maxAreaRatio) continue;
+      if (imgArea * maxAreaRatio < shapeArea) continue;
+      objs.splice(i, 1);
+      removed += 1;
+      break;
+    }
+  }
+  return removed;
+}
+
+// ── DOM-position measurement (for export-LLM grounding) ─────────────────────
+// Render the slide HTML in the same offscreen measure-DOM the rasterizer
+// uses, walk every classed element, and emit a compact list of pixel
+// bounding boxes. The export LLM then uses those exact coordinates instead
+// of trying to derive them from CSS rules (which drifts ~0.1-0.3in for any
+// CSS that uses flex / grid / centering).
+//
+// Same pipeline as injectRasterizedSvgIcons up to the awaitFonts barrier;
+// kept separate to keep the call sites independent (raster injection and
+// position measurement can be combined later if helpful).
+
+const _DOM_POSITION_INTERESTING_TAGS = new Set([
+  'div', 'section', 'article', 'aside', 'header', 'footer', 'nav',
+  'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+  'p', 'span', 'a', 'li', 'ul', 'ol',
+  'figure', 'figcaption', 'img', 'svg',
+  'table', 'thead', 'tbody', 'tr', 'td', 'th',
+]);
+
+/**
+ * Measure every classed element in the slide's offscreen render and return
+ * (cls, tag, x, y, w, h) tuples in pixels relative to the slide top-left.
+ *
+ * Returns [] if document is unavailable, the slide has no HTML, or
+ * measurement fails — caller should treat empty as "fall back to legacy
+ * CSS-derived positions".
+ */
+export async function measureSlideDomElementPositions(slide, settings) {
+  if (typeof document === 'undefined') return [];
+  if (!slide?.html || typeof slide.html !== 'string') return [];
+
+  const meta = getCanvasMeta(settings);
+  const host = document.createElement('div');
+  host.setAttribute('data-pptx-dom-position-measure', '1');
+  Object.assign(host.style, {
+    position: 'fixed',
+    left: '-12000px',
+    top: '0',
+    width: `${meta.widthPx}px`,
+    height: `${meta.heightPx}px`,
+    opacity: '1',
+    pointerEvents: 'none',
+    overflow: 'hidden',
+    margin: '0',
+    padding: '0',
+    zIndex: '1',
+    background: '#fff',
+  });
+
+  const styleEl = document.createElement('style');
+  styleEl.textContent = buildMeasureStylesheet(slide, settings);
+  host.appendChild(styleEl);
+
+  const renderWrap = document.createElement('div');
+  renderWrap.className = 'slide-render-container';
+  renderWrap.style.cssText = `width:${meta.widthPx}px;height:${meta.heightPx}px;position:relative;overflow:hidden;margin:0;padding:0;`;
+  renderWrap.innerHTML = prepareSlideMarkupForMeasure(slide.html, slide, settings);
+  host.appendChild(renderWrap);
+
+  document.body.appendChild(host);
+
+  try {
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    if (document.fonts?.ready) {
+      try { await document.fonts.ready; } catch { /* font readiness is best-effort */ }
+    }
+
+    const rootRect = renderWrap.getBoundingClientRect();
+    const positions = [];
+    const seenTuples = new Set();
+
+    for (const el of renderWrap.querySelectorAll('[class]')) {
+      // Skip svg internals — the rasterizer captures the icon as one unit;
+      // exposing every <path>/<circle> inside it would just bloat the prompt.
+      if (el.closest('svg') && el.tagName.toLowerCase() !== 'svg') continue;
+      const tag = el.tagName.toLowerCase();
+      if (!_DOM_POSITION_INTERESTING_TAGS.has(tag)) continue;
+      const rect = el.getBoundingClientRect();
+      if (rect.width < 4 || rect.height < 4) continue;
+      const cls = (el.getAttribute('class') || '').trim();
+      if (!cls) continue;
+      const x = Math.round(rect.left - rootRect.left);
+      const y = Math.round(rect.top - rootRect.top);
+      const w = Math.round(rect.width);
+      const h = Math.round(rect.height);
+      // Drop elements positioned outside the visible slide area
+      // (offscreen scroll containers, helper measure nodes, etc).
+      if (x + w < 0 || y + h < 0) continue;
+      if (x > meta.widthPx || y > meta.heightPx) continue;
+      // Dedupe identical (cls, tag, x, y, w, h) tuples — common when CSS
+      // wraps a single child, producing a parent and child with the same
+      // box.
+      const key = `${tag}.${cls}|${x},${y},${w},${h}`;
+      if (seenTuples.has(key)) continue;
+      seenTuples.add(key);
+      positions.push({ tag, cls, x, y, w, h });
+    }
+
+    return positions;
+  } catch (err) {
+    console.warn('[PPTX] measureSlideDomElementPositions failed:', err?.message || err);
+    return [];
+  } finally {
+    host.remove();
+  }
+}
+
+/**
+ * Format the position list as a compact prompt block. Caps the number of
+ * lines so prompt growth stays bounded for slides with hundreds of nodes.
+ */
+export function formatDomPositionsForPrompt(positions, opts = {}) {
+  const maxEntries = opts.maxEntries ?? 80;
+  if (!Array.isArray(positions) || positions.length === 0) return '';
+
+  // Prioritise: keep top-level layout containers first, then drill down.
+  // Sort by y then x so the list reads roughly top-to-bottom.
+  const sorted = positions.slice().sort((a, b) => (a.y - b.y) || (a.x - b.x));
+  const trimmed = sorted.slice(0, maxEntries);
+
+  const lines = trimmed.map(p => {
+    // Compact selector: tag + first 2-3 class tokens.
+    const sel = (p.cls || '').split(/\s+/).filter(Boolean).slice(0, 3).join('.');
+    const selStr = sel ? `${p.tag}.${sel}` : p.tag;
+    return `${selStr.padEnd(40, ' ')} ${String(p.w).padStart(4)}x${String(p.h).padStart(3)} @ ${String(p.x).padStart(4)},${String(p.y).padStart(3)}`;
+  });
+
+  const truncatedNote = positions.length > maxEntries
+    ? `\n(${positions.length - maxEntries} additional smaller elements omitted)`
+    : '';
+
+  return [
+    'DOM POSITIONS (canvas px, top-left origin, slide is 960x540):',
+    'These are the actual rendered positions from the slide HTML — they reflect the',
+    'real flex / grid / padding / centring layout, not just the static CSS rules.',
+    'For every element you draw, USE THESE EXACT pixel coordinates instead of',
+    'recomputing from CSS. Convert px to inches: x_in = x_px * 13.333 / 960,',
+    'y_in = y_px * 7.5 / 540, w_in = w_px * 13.333 / 960, h_in = h_px * 7.5 / 540.',
+    '',
+    ...lines,
+    truncatedNote,
+  ].filter(Boolean).join('\n');
 }

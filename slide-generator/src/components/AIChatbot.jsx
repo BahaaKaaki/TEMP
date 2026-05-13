@@ -12,6 +12,7 @@ import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { getTemplateCustomCSS } from '../utils/templateCss';
 import { VIBES } from '../utils/vibes';
 import { debugLog, LogLevel } from '../utils/debugLog';
+import { isSearchEngineResultsUrl, isResearchCandidateSource } from '../utils/sourceRendering.js';
 import TemplatePicker from './TemplatePicker';
 import ExecutionPlan from './ExecutionPlan';
 import StorylinePanel from './StorylinePanel';
@@ -3321,6 +3322,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         const add = (label, url, note = 'Per-step web search result') => {
           const cleanUrl = String(url || '').replace(/[).,;:]+$/, '').trim();
           if (!/^https?:\/\//i.test(cleanUrl) || seenUrls.has(cleanUrl)) return;
+          if (isSearchEngineResultsUrl(cleanUrl)) return;
           seenUrls.add(cleanUrl);
           let hostname = '';
           try {
@@ -3349,14 +3351,28 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
         const seen = new Set();
         const add = (source) => {
           if (!source) return;
-          const normalized = typeof source === 'string'
-            ? { label: source, url: '', note: '' }
-            : {
-                label: source.label || source.title || source.url || 'Source',
-                url: source.url || '',
-                note: source.note || source.snippet || '',
-              };
-          const key = normalized.url || String(normalized.label).toLowerCase();
+          if (typeof source === 'string') {
+            const t = source.trim();
+            if (!/^https?:\/\//i.test(t) || isSearchEngineResultsUrl(t)) return;
+            const key = t;
+            if (seen.has(key)) return;
+            seen.add(key);
+            merged.push({ label: t, url: t, note: '' });
+            return;
+          }
+          const normalized = {
+            label: source.label || source.title || source.url || 'Source',
+            url: String(source.url || '').trim(),
+            note: source.note || source.snippet || '',
+            type: source.type || source.sourceKind || '',
+            generatedFrom: source.generatedFrom,
+            fileId: source.fileId,
+            documentId: source.documentId,
+          };
+          if (isResearchCandidateSource(normalized)) return;
+          if (normalized.url && isSearchEngineResultsUrl(normalized.url)) return;
+          if (!normalized.url && !normalized.fileId && !normalized.documentId) return;
+          const key = normalized.url || normalized.fileId || normalized.documentId || String(normalized.label).toLowerCase();
           if (!key || seen.has(key)) return;
           seen.add(key);
           merged.push(normalized);

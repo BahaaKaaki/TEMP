@@ -13,18 +13,17 @@ import {
   getSlideMeasureContainerCss as getBaseCSS,
   getSlideMeasureClientChromeCss as getClientChromeCSS,
 } from '../services/slidePreviewMeasureCss.js';
+import {
+  filterRenderableSlideSources,
+  isSearchEngineResultsUrl,
+  isResearchCandidateSource,
+} from '../utils/sourceRendering.js';
 
 export { getBaseCSS };
 
 const ZOOM_LEVELS = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
 const DEFAULT_ZOOM = 1;
 const DEBUG_MODE = typeof window !== 'undefined' && localStorage.getItem('DEBUG_MODE') === 'true';
-const SOURCE_TEXT_SELECTORS = [
-  '.source',
-  'cite',
-  '[data-source]',
-  '[data-citation]',
-].join(',');
 
 function decodeHtmlEntities(value = '') {
   if (typeof document === 'undefined') return String(value || '');
@@ -47,35 +46,12 @@ function getSourceHost(url) {
   }
 }
 
-function toSearchUrl(label) {
-  return `https://www.google.com/search?q=${encodeURIComponent(label)}`;
-}
-
 function cleanSourceLabel(value = '') {
   return normalizeWhitespace(value)
     .replace(/^\s*(sources?|references?|citation)\s*[:\-\u2013]\s*/i, '')
     .replace(/\s*\(?https?:\/\/\S+\)?/gi, '')
     .replace(/\s+/g, ' ')
     .trim();
-}
-
-function splitSourceText(text = '') {
-  const cleaned = cleanSourceLabel(text);
-  if (!cleaned) return [];
-  return cleaned
-    .split(/\s*(?:\||;|\n|\u2022)\s*/g)
-    .map(part => cleanSourceLabel(part))
-    .filter(part => part.length > 2 && !/^\d+$/.test(part));
-}
-
-function isUsefulTextSource(label = '') {
-  const text = cleanSourceLabel(label);
-  if (!text || /^(strategy&|pwc|source|sources|references?)$/i.test(text)) return false;
-  const commaCount = (text.match(/,/g) || []).length;
-  if (text.length > 90 || commaCount >= 2) return false;
-  if (commaCount > 0 && /\bofficial docs?\b/i.test(text)) return false;
-  if (commaCount > 0 && /\b(OpenAI|Anthropic|Google|Meta|xAI|Mistral|DeepSeek)\b/i.test(text)) return false;
-  return true;
 }
 
 function extractSlideSources(html = '', metadataSources = []) {
@@ -86,13 +62,36 @@ function extractSlideSources(html = '', metadataSources = []) {
   const sources = [];
   const seen = new Set();
 
-  const addSource = ({ label, url, context, type = 'link' }) => {
+  const addSource = ({
+    label,
+    url,
+    context,
+    type = 'link',
+    fileId,
+    documentId,
+    generatedFrom,
+    sourceKind,
+  } = {}) => {
     const cleanLabel = cleanSourceLabel(label) || getSourceHost(url) || 'Source';
-    if (!cleanLabel && !url) return;
     const cleanUrl = typeof url === 'string' && /^https?:\/\//i.test(url.trim())
       ? url.trim()
       : '';
-    const key = cleanUrl || cleanLabel.toLowerCase();
+    const hasAttachment = !!(fileId || documentId);
+    if (!cleanUrl && !hasAttachment) {
+      if (DEBUG_MODE && (label || url)) {
+        // eslint-disable-next-line no-console
+        console.warn('[sources] skipping non-renderable citation (no http(s) URL or document id)', { label, url, type });
+      }
+      return;
+    }
+    if (cleanUrl && isSearchEngineResultsUrl(cleanUrl)) {
+      if (DEBUG_MODE) {
+        // eslint-disable-next-line no-console
+        console.warn('[sources] rejecting search-engine results URL', cleanUrl);
+      }
+      return;
+    }
+    const key = cleanUrl || String(fileId || documentId || '').toLowerCase() || cleanLabel.toLowerCase();
     if (!key || seen.has(key)) return;
     seen.add(key);
     sources.push({
@@ -101,21 +100,48 @@ function extractSlideSources(html = '', metadataSources = []) {
       url: cleanUrl,
       host: cleanUrl ? getSourceHost(cleanUrl) : '',
       context: normalizeWhitespace(context || ''),
-      type: cleanUrl ? type : 'search',
+      type: cleanUrl || hasAttachment ? type : 'metadata',
+      fileId,
+      documentId,
+      generatedFrom,
+      sourceKind,
     });
   };
 
   metadataSources.forEach(source => {
     if (!source) return;
     if (typeof source === 'string') {
-      addSource({ label: source, context: source, type: 'metadata' });
+      const t = source.trim();
+      if (/^https?:\/\//i.test(t)) {
+        addSource({ label: t, url: t, context: t, type: 'metadata' });
+      }
       return;
     }
+    if (isResearchCandidateSource(source)) {
+      if (DEBUG_MODE) {
+        // eslint-disable-next-line no-console
+        console.warn('[sources] skipping research-candidate metadata', source);
+      }
+      return;
+    }
+    const u = String(source.url || '').trim();
+    if (u && isSearchEngineResultsUrl(u)) {
+      if (DEBUG_MODE) {
+        // eslint-disable-next-line no-console
+        console.warn('[sources] rejecting SERP in slide metadata', u);
+      }
+      return;
+    }
+    if (!u && !source.fileId && !source.documentId) return;
     addSource({
-      label: source.label || source.title || source.url || 'Source',
-      url: source.url || '',
+      label: source.label || source.title || u || 'Source',
+      url: u,
       context: source.note || source.snippet || source.label || '',
       type: 'metadata',
+      fileId: source.fileId,
+      documentId: source.documentId,
+      generatedFrom: source.generatedFrom,
+      sourceKind: source.sourceKind,
     });
   });
 
@@ -137,21 +163,6 @@ function extractSlideSources(html = '', metadataSources = []) {
     const url = match[0].replace(/[.,;:]+$/, '');
     addSource({ label: getSourceHost(url) || url, url, context: url, type: 'url' });
   }
-
-  if (sources.some(source => source.url)) {
-    return sources.slice(0, 20);
-  }
-
-  doc.querySelectorAll(SOURCE_TEXT_SELECTORS).forEach(el => {
-    const text = normalizeWhitespace(el.textContent || '');
-    if (!/(^|\b)(sources?|references?|citation)\b/i.test(text) && !el.matches('[class*="source"], [data-source], [data-citation], cite')) {
-      return;
-    }
-    splitSourceText(text).forEach(part => {
-      if (!isUsefulTextSource(part)) return;
-      addSource({ label: part, context: text, type: 'text' });
-    });
-  });
 
   return sources.slice(0, 20);
 }
@@ -565,7 +576,8 @@ export default function SlidePreview({ onSwitchToCode }) {
   }, [activeSlide?.customCSS]);
 
   const slideSources = useMemo(() => {
-    return extractSlideSources(activeSlide?.html || '', activeSlide?.sources || []);
+    const raw = extractSlideSources(activeSlide?.html || '', activeSlide?.sources || []);
+    return filterRenderableSlideSources(raw);
   }, [activeSlide?.html, activeSlide?.sources]);
 
   useEffect(() => {
@@ -1261,31 +1273,32 @@ export default function SlidePreview({ onSwitchToCode }) {
           </div>
           <div className="slide-sources-list">
             {slideSources.map((source, index) => {
-              const href = source.url || toSearchUrl(source.label);
+              const href = source.url;
               return (
                 <article className="slide-source-card" key={source.id}>
                   <div className="slide-source-index">{index + 1}</div>
                   <div className="slide-source-body">
                     <div className="slide-source-title">{source.label}</div>
                     <div className="slide-source-meta">
-                      {source.host || 'Search web'}
-                      {source.type === 'search' && <span>Generated from slide source text</span>}
+                      {source.host || (source.fileId || source.documentId ? 'Attached document' : '')}
                     </div>
                     {source.context && source.context !== source.label && (
                       <p className="slide-source-context">{source.context}</p>
                     )}
-                    <a
-                      className="slide-source-open"
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {source.url ? 'Open original source' : 'Search this source'}
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M7 17L17 7" />
-                        <path d="M7 7h10v10" />
-                      </svg>
-                    </a>
+                    {href ? (
+                      <a
+                        className="slide-source-open"
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Open original source
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M7 17L17 7" />
+                          <path d="M7 7h10v10" />
+                        </svg>
+                      </a>
+                    ) : null}
                   </div>
                 </article>
               );

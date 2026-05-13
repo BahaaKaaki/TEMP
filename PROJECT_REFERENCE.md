@@ -148,6 +148,7 @@ slide-themes-main/
 │   │   │   ├── templateCss.js         # Template CSS resolution helper
 │   │   │   ├── slideIds.js            # Compact slide ID generation helper
 │   │   │   ├── slideDomNormalize.js   # Post-mount DOM fix: wrap flex + prose so strong/em are not separate flex items
+│   │   │   ├── sourceRendering.js     # SERP / research-candidate filtering; which slide.sources are renderable as citations
 │   │   │   ├── vibes.js              # Legacy design variants (retained for backward compat)
 │   │   │   ├── debugLog.js            # Debug logging utility
 │   │   │   └── auditLog.js            # Audit logging utility
@@ -822,6 +823,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 92. **STC minimal prompt contract (live test)**: Shortened `STC_PROMPT_CONTRACT` and aligned `STC_FREESTYLE_OVERRIDES.vibe` with executive-whitespace guidance in `slide-generator/src/utils/clientDesignProfiles.js` so the base Slide HTML Generator dominates density; STC theme, layout appendix, freestyle override sections, and PPTX contracts unchanged.
 93. **Gemini 3.1 Pro for premium slide generation and PPTX export**: Code-managed defaults in `SlideContext.jsx` and `pptxService.js` (`DEFAULT_PPTX_MODEL`) now use `pwc:vertex_ai.gemini-3.1-pro-preview` for `settings.model` and `settings.pptxModel`; router/search models unchanged.
+94. **Slide sources citation guardrail**: `slide-generator/src/utils/sourceRendering.js` centralizes SERP URL rejection, research-candidate metadata (`web_search`, `generatedFrom: slide_text`, user-provided labels), and renderable-source rules. `SlidePreview.jsx` `extractSlideSources` no longer fabricates Google search links from footer text; the sources panel only lists renderable items and omits synthetic search links. `AIChatbot.jsx` `mergeStepSources` / `extractSourcesFromSearchResult` drop SERPs and label-only step sources before persisting `slide.sources`.
 
 ---
 

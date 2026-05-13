@@ -112,6 +112,7 @@ npm run dev             # Runs on http://localhost:3001
 cd slide-generator
 npm install
 npm run dev             # Runs on http://localhost:5173
+npm run test:sources    # Node unit tests for slide source / SERP filtering (optional)
 ```
 
 Open `http://localhost:5173` in your browser. The app is ready to use -- no settings configuration needed.

@@ -34,7 +34,7 @@ import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './p
 import { authFetch } from './authFetch.js';
 import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
 import { omitChatCompletionsTemperature } from './ai/models.js';
-import { injectRasterizedSvgIcons, measureSlideDomElementPositions, formatDomPositionsForPrompt } from './pptxSvgIconInjector.js';
+import { injectRasterizedSvgIcons } from './pptxSvgIconInjector.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -432,13 +432,6 @@ NATIVE TABLES: If the HTML contains a real <table>, or a hinted/native table ele
 
 INLINE SVG ICONS: Small decorative inline <svg> pictograms are rasterized from the rendered HTML and placed automatically after your code runs. Do not redraw those small SVG path icons as emoji, placeholder text, or embedded base64 images. Still render their surrounding cards, icon chips/backgrounds, borders, and all text from the HTML/CSS.
 
-DOM POSITIONS BLOCK (highest priority for placement):
-The user prompt may include a "DOM POSITIONS" block with the actual rendered pixel coordinates of every classed element on the slide. When present, treat it as ground truth for placement:
-- For every element you draw, look it up in the block by its tag + class and USE THOSE EXACT pixel values (after px->inches conversion) for x, y, w, h. The conversion factors are listed in the block header.
-- The DOM positions reflect real flex / grid / centering / padding layout that CSS rules alone do not fully describe. They override anything you would compute from the CSS.
-- If an element is not in the block (e.g. it has no class, or was below the cap), fall back to deriving from CSS rules and the standard px->inches conversion.
-- Centering/alignment heuristics ("centered in card") are NOT needed when the DOM block has the exact box — just use the supplied x, y, w, h.
-
 FOOTER: Do NOT render any <footer> HTML content. DO call addFooter(slide, slideNum, totalSlides) once per slide — EXCEPT on cover slides (skip addFooter for covers; render cover branding and date as direct addText calls instead).
 
 TEXT BOX AUTOFIT (PowerPoint: Format Shape > Text Box — maps to PptxGenJS option \`fit\`):
@@ -781,21 +774,6 @@ export async function buildSlidePrompt(slide, slideNum, totalSlides, settings, e
       .replace(/src="data:image\/[^"]*"/gi, 'src="[embedded-image]"')
   );
 
-  // Measure the slide's actual rendered DOM positions in an offscreen
-  // measure-DOM (same one the rasterizer uses) and pass them to the LLM as
-  // ground-truth coordinates. This stops the LLM from re-deriving positions
-  // from CSS rules -- a derivation that drifts ~0.1-0.3in for any layout
-  // using flex / grid / centering and is the root of the "icons positioned
-  // wrong vs canvas" feedback. The LLM still picks shape types, colors, and
-  // text, but uses these exact pixel boxes for placement.
-  let domPositionsBlock = '';
-  try {
-    const domPositions = await measureSlideDomElementPositions(slide, settings);
-    domPositionsBlock = formatDomPositionsForPrompt(domPositions);
-  } catch (err) {
-    console.warn('[PPTX] DOM position measurement failed; falling back to CSS-derived positions only:', err?.message || err);
-  }
-
   const tplPos = buildPositionBlock(settings?.templatePositions) || buildProfilePositionBlock(activeProfile);
   const profileFontFace = getProfilePptxFontFace(activeProfile);
   const profileTypographyGuidance = getProfilePptxTypographyGuidance(activeProfile);
@@ -856,7 +834,7 @@ ${cleanHtml}
 ${allCSS || '/* No specific CSS */'}
 >>> END CSS <<<
 
-${domPositionsBlock ? `>>> ${domPositionsBlock}\n>>> END DOM POSITIONS <<<\n\n` : ''}MANDATORY -- EXACT COLOR FIDELITY:
+MANDATORY -- EXACT COLOR FIDELITY:
 You MUST reproduce the EXACT colors from BOTH the CSS rules AND inline styles.
 The CSS RULES section above is the RESOLVED stylesheet for this slide -- treat it as ground truth.
 1. Check the CSS RULES for each class (e.g. .card-num { color: #8E1E1E }) -> use that exact hex

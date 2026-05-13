@@ -497,14 +497,14 @@ const DGE_THEME = {
       '--title-font-size': '30px',
       '--title-font-weight': '700',
       '--title-line-height': '1.15',
-      '--subtitle-y': '75px',
+      '--subtitle-y': '108px',
       '--subtitle-w': '720px',
       '--subtitle-color': '#000000',
       '--subtitle-font-size': '12px',
       '--subtitle-font-weight': '400',
-      '--frame-y': '127px',
+      '--frame-y': '132px',
       '--frame-w': '894px',
-      '--frame-h': '366px',
+      '--frame-h': '351px',
       '--footer-x': '33px',
       '--footer-y': '493px',
       '--footer-bottom': 'auto',
@@ -532,9 +532,9 @@ const DGE_LAYOUT_CONTRACT = {
   },
   standardContent: {
     logo: { x: 763, y: 31, w: 164, h: 38 },
-    title: { x: 33, y: 30, w: 718, h: 44 },
-    subtitle: { x: 33, y: 75, w: 720, h: 22 },
-    body: { x: 33, y: 127, w: 894, h: 366 },
+    title: { x: 33, y: 30, w: 718, h: 72 },
+    subtitle: { x: 33, y: 108, w: 720, h: 22 },
+    body: { x: 33, y: 132, w: 894, h: 351 },
     source: { x: 33, y: 493, w: 79, h: 18 },
     slideNumber: { x: 900, y: 493, w: 40, h: 18 },
   },
@@ -571,15 +571,15 @@ const DGE_LAYOUT_CONTRACT = {
 const DGE_FREESTYLE_OVERRIDES = {
   shell: `DGE Abu Dhabi government communications shell on 960x540:
 - Top-right DGE / Abu Dhabi lockup (reserved band ~x=763 y=31 w=164 h=38); do not place content over it.
-- h1.title: x=33 y=30 w=718 h=44, Noto Sans Bold ~30px, text color black #000000 (matches template slide 7 chrome; brand blues are for panels/accents inside .frame, not the slide title band).
-- h2.subtitle: x=33 y=75 w=720 h=22, Noto Sans Regular ~12px, black #000000 (optional kicker; same template reference).
-- div.frame: x=33 y=127 w=894 h=366 — full-width body band under the subtitle, clearing the lockup and staying above the footer row (y≈493) and classification strip (y=526–540). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
+- h1.title: x=33 y=30 w=718, max two lines at ~30px/1.15 (ellipsis if longer), Noto Sans Bold, black #000000. Native short-title decks use a tight band; long consulting headlines must not push into the subtitle—keep title concise or accept a two-line clamp.
+- h2.subtitle: x=33 y=108 w=720 h=22, Noto Sans Regular ~12px, black #000000 (sits below a two-line title cap so it never collides with wrapped h1 text).
+- div.frame: x=33 y=132 w=894 h=351 — body band below subtitle, clearing the lockup and staying above the footer row (y≈493) and classification strip (y=526–540). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
 - footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
 - slide number: bottom-right ~x=900 y=493.
 - Bottom classification strip zone y=526–540 is reserved for OPEN | مفتوحة style chrome; keep frame content above y≈500.`,
   theme: `Primary #063360, structural blue #215A9E, highlight #2B5799, light panels #7DA1C4, white page, pale neutrals #E7E6E6 / #F2F2F2. Do not let generic Office theme accents (orange, bright green, cyan, magenta) dominate. Ignore Aptos theme slots for color decisions.`,
   vibe: `Modern government brand: calm, enabling, trusted, bilingual-friendly, spacious, image-led heroes, rounded cards, soft blue panels, minimal noise.`,
-  writing: `Short declarative titles, concise institutional copy, minimal bullets, brand and mission language rather than consulting-jargon density unless the user changes the brief.`,
+  writing: `Prefer a single-line slide title when possible (native DGE masters assume a short headline); if the title must run long, keep it to two lines max so the subtitle band at y≈108px stays clear. Short declarative titles, concise institutional copy, minimal bullets.`,
   css: `Rounded cards, thin blue outlines, soft blue fills, white reverse text on #063360 panels, generous margins, large photographic hero bands when appropriate.`,
   pptx: `16:9 widescreen (13.333 x 7.5 in). Hard-code Noto Sans for body English text; prefer bundled master chrome over raw theme slots. Preserve top-right lockup and bottom classification strip from the DGE master when merging templates.`,
 };
@@ -625,8 +625,8 @@ const DGE_PPTX_CONTRACT = {
   logoPolicy: 'Top-right DGE / Abu Dhabi lockup on standard interior slides.',
   sourcePolicy: 'Footer topic label bottom-left; blank unless real source text exists.',
   pageNumberPolicy: 'Bottom-right near footer band; do not collide with classification strip.',
-  titlePolicy: 'Standard interior title band: black #000000, Noto Sans Bold ~30pt (template slide 7 reference).',
-  subtitlePolicy: 'Subtitle band: black #000000, Noto Sans Regular ~12pt; optional on dense slides.',
+  titlePolicy: 'Standard interior title band: black #000000, Noto Sans Bold ~30pt; prefer one line (template slide 7); long titles may use at most two lines before ellipsis so the subtitle row does not overlap.',
+  subtitlePolicy: 'Subtitle band: black #000000, Noto Sans Regular ~12pt at y≈108px below the title block; optional on dense slides.',
   hiddenPlaceholderPolicy: 'Do not surface dormant Office placeholder labels or generic click-to-edit prompts from unused masters.',
   themeTrustLevel: 'low',
   borderWeightPt: { min: 0.5, max: 1.25 },
@@ -636,7 +636,7 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 
 ## Master and trust
 - Treat the bundled DGE template as the chrome authority: top-right lockup, bottom classification strip, and hero geometry override generic Office theme slots (Aptos colors are not authoritative).
-- Standard white content: title 33,30 (black, Noto Sans Bold ~30pt) / subtitle 33,75 (black, Noto Sans Regular ~12pt) / body frame **33,127 size 894x366** (full-width band; template slide 7 uses the same black title/subtitle chrome with a wider timeline drawn inside the body area) / top-right lockup 763,31,164x38 / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
+- Standard white content: title 33,30 (black, Noto Sans Bold ~30pt; reserve up to **two lines** then ellipsis—subtitle is fixed at **y=108** so it never overlaps wrapped titles) / subtitle 33,108 (black, Noto Sans Regular ~12pt) / body frame **33,132 size 894x351** / top-right lockup 763,31,164x38 / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
 
 ## Theme
 - Primary #063360, structural #215A9E, highlight #2B5799, light panels #7DA1C4, neutrals #E7E6E6 and #F2F2F2, white backgrounds.

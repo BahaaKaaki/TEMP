@@ -766,6 +766,16 @@ export function getFallbackModels(settings, providerId, failedModel, role) {
   });
 }
 
+/**
+ * When the primary model is Claude Opus 4.7 (Bedrock or Vertex), map to the same-provider
+ * Sonnet 4.6 id for a single recovery attempt after Opus fails (timeouts, 504/502, etc.).
+ */
+export function getOpus47ToSonnet46FallbackRef(modelRef) {
+  if (!modelRef || typeof modelRef !== 'string') return null;
+  if (!/claude-opus-4-7/i.test(modelRef)) return null;
+  return modelRef.replace(/claude-opus-4-7/gi, 'claude-sonnet-4-6');
+}
+
 export async function callWithModelFallback(settings, systemPrompt, userPrompt, opts = {}) {
   const modelRef = settings.model;
   const { providerId, modelName } = parseModelRef(modelRef);
@@ -775,10 +785,26 @@ export async function callWithModelFallback(settings, systemPrompt, userPrompt, 
   } catch (err) {
     if (err.isRateLimit || err.name === 'AbortError') throw err;
 
+    const sonnetRef = getOpus47ToSonnet46FallbackRef(modelRef);
+    if (sonnetRef && sonnetRef !== modelRef) {
+      try {
+        console.warn(
+          `[ModelFallback] Primary Opus 4.7 failed (${(err.message || String(err)).slice(0, 160)}); retrying once with Sonnet 4.6: ${sonnetRef}`
+        );
+        const sonnetSettings = { ...settings, model: sonnetRef };
+        return await callGeminiAPI(sonnetSettings, systemPrompt, userPrompt, opts);
+      } catch (sonnetErr) {
+        if (sonnetErr.isRateLimit || sonnetErr.name === 'AbortError') throw sonnetErr;
+        console.warn(
+          `[ModelFallback] Sonnet 4.6 fallback also failed: ${(sonnetErr.message || String(sonnetErr)).slice(0, 160)}`
+        );
+      }
+    }
+
     const fallbacks = getFallbackModels(settings, providerId, modelName, opts.role);
     if (fallbacks.length === 0) throw err;
 
-    console.warn(`[ModelFallback] Primary model "${modelName}" failed: ${err.message.slice(0, 150)}`);
+    console.warn(`[ModelFallback] Primary model "${modelName}" failed: ${(err.message || String(err)).slice(0, 150)}`);
 
     for (const fallbackModel of fallbacks) {
       try {

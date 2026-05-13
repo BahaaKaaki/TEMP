@@ -821,6 +821,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 91. **Evidence search model reload**: `settings.evidenceSearchModel` is code-managed on load like `model` and `routerModel`, so the shipped default overrides stale localStorage values from older builds (per-step `webSearch()` always reflects current `initialState`).
 
 92. **STC minimal prompt contract (live test)**: Shortened `STC_PROMPT_CONTRACT` and aligned `STC_FREESTYLE_OVERRIDES.vibe` with executive-whitespace guidance in `slide-generator/src/utils/clientDesignProfiles.js` so the base Slide HTML Generator dominates density; STC theme, layout appendix, freestyle override sections, and PPTX contracts unchanged.
+93. **Opus 4.7 → Sonnet 4.6 automatic fallback**: After the primary Claude Opus 4.7 request fails (including exhausted 5xx retries inside `callGeminiAPI`), `callWithModelFallback` issues one recovery call to Claude Sonnet 4.6 on the same provider before the existing `/models` fallback list runs (`slide-generator/src/services/ai/apiClient.js`).
 
 ---
 

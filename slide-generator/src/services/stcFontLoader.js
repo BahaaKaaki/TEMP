@@ -13,8 +13,16 @@ const PIF_FONT_FACES = [
   { file: 'Fund-SemiBold.ttf', family: 'Fund SemBd', weight: '600', route: 'pif-fund' },
 ];
 
+const DGE_FONT_FACES = [
+  { file: 'NotoSans-Light.ttf', family: 'Noto Sans', weight: '300', route: 'dge-noto' },
+  { file: 'NotoSans-Regular.ttf', family: 'Noto Sans', weight: '400', route: 'dge-noto' },
+  { file: 'NotoSans-Medium.ttf', family: 'Noto Sans', weight: '500', route: 'dge-noto' },
+  { file: 'NotoSans-SemiBold.ttf', family: 'Noto Sans', weight: '600', route: 'dge-noto' },
+];
+
 let stcLoadPromise = null;
 let pifLoadPromise = null;
+let dgeLoadPromise = null;
 
 function loadFontFaces(fontFaces, label) {
   if (typeof window === 'undefined' || typeof FontFace === 'undefined' || !document.fonts) {
@@ -68,8 +76,22 @@ export function loadPifFundFonts() {
   return pifLoadPromise;
 }
 
+export function loadDgeNotoFonts() {
+  if (dgeLoadPromise) return dgeLoadPromise;
+
+  dgeLoadPromise = loadFontFaces(DGE_FONT_FACES, 'DGE Noto Sans')
+    .catch((err) => {
+      console.warn('[Fonts] DGE Noto Sans could not be loaded:', err.message);
+      dgeLoadPromise = null;
+      return false;
+    });
+
+  return dgeLoadPromise;
+}
+
 export function loadClientProfileFonts(profileId) {
   if (profileId === 'stc') return loadStcForwardFonts();
   if (profileId === 'pif') return loadPifFundFonts();
+  if (profileId === 'dge') return loadDgeNotoFonts();
   return Promise.resolve(false);
 }

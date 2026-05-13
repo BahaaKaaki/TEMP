@@ -273,7 +273,7 @@
   white-space: nowrap;
 }
 
-.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]) footer.footer:has(span.source) > span:last-child {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]) footer.footer:has(span.source) > span:last-child {
   position: static;
   left: auto;
   top: auto;
@@ -291,7 +291,7 @@
   text-align: left;
 }
 
-.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]) footer.footer:has(span.source) .source {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]) footer.footer:has(span.source) .source {
   min-width: 0;
   padding: 0 4px;
   overflow: hidden;
@@ -427,6 +427,88 @@
   font: 400 8px/1 "Fund Regular", "Fund Light", Arial, sans-serif;
   text-align: center;
   white-space: nowrap;
+}
+
+/* DGE profile: Abu Dhabi government editorial shell */
+.slide[data-client-profile="dge"] {
+  font-family: "Noto Sans", "Noto Kufi Arabic", "Segoe UI", Arial, sans-serif;
+  color: #1A1A1A;
+}
+
+.slide[data-client-profile="dge"] .title {
+  left: 33px;
+  top: 30px;
+  width: 690px;
+  min-height: 44px;
+  font: 600 30px/1.15 "Noto Sans", "Segoe UI", Arial, sans-serif;
+  color: #063360;
+}
+
+.slide[data-client-profile="dge"] .subtitle {
+  left: 33px;
+  top: 75px;
+  width: 400px;
+  min-height: 22px;
+  font: 400 13px/1.2 "Noto Sans", "Segoe UI", Arial, sans-serif;
+  color: #2B5799;
+}
+
+.slide[data-client-profile="dge"] .frame {
+  left: 33px;
+  top: 154px;
+  width: 466px;
+  height: 234px;
+}
+
+.slide[data-client-profile="dge"] footer.footer:has(span.source),
+.slide[data-client-profile="dge"] footer.footer {
+  display: block;
+  font-family: "Noto Sans", "Segoe UI", Arial, sans-serif;
+}
+
+.slide[data-client-profile="dge"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="dge"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #4A5568;
+}
+
+.slide[data-client-profile="dge"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #4A5568;
+  font: 400 9px/1 "Noto Sans", "Segoe UI", Arial, sans-serif;
+  white-space: nowrap;
+}
+
+.slide[data-client-profile="dge"][data-section]::before {
+  background: #215A9E;
+  color: #fff;
+  font: 600 8px/1.35 "Noto Sans", "Segoe UI", Arial, sans-serif;
+}
+
+.slide[data-client-profile="dge"][data-section][data-subsection]::after,
+.slide[data-client-profile="dge"]:not([data-section])[data-subsection]::after {
+  background: #7DA1C4;
+  color: #063360;
+  font: 600 8px/1.35 "Noto Sans", "Segoe UI", Arial, sans-serif;
 }
 
 .slide footer.footer:not(:has(span.source)) .source {

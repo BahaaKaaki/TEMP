@@ -43,6 +43,7 @@ const DEFAULT_PPTX_MODEL = 'pwc:vertex_ai.gemini-3.1-pro-preview';
 const PROFILE_PPTX_FONT_FACE = {
   stc: 'STC Forward',
   pif: 'Fund Light',
+  dge: 'Noto Sans',
 };
 
 async function writeSanitizedPptxFile(pptx, filename, label = 'direct export') {
@@ -121,6 +122,9 @@ function getProfilePptxTypographyGuidance(profile) {
   if (profile?.id === 'pif') {
     return '- PIF typography: use Fund Light for titles/body and Fund Regular only for page numbers or limited emphasis. Content title is 11pt in PPTX, dense matrix/detail text may be 8-10pt, and footer/source/page chrome may be 7-8pt. There is no broad subtitle band on standard PIF body slides.\n';
   }
+  if (profile?.id === 'dge') {
+    return '- DGE typography: Noto Sans for titles, subtitles, body, and footer. Prefer ~30pt titles, ~12pt kickers, ~10pt body, 9pt footer/page chrome on standard interior slides.\n';
+  }
   if (profile?.id !== 'stc') return '';
   return '- STC typography: use title 24pt regular, subtitle 18pt regular, body 12pt regular, local labels/card titles 500-equivalent only when bold is needed, and footer/source/page numbers 8pt regular.\n- For STC Forward, avoid bold:true on normal body leads, subtitles, card titles, stage titles, and labels unless the CSS explicitly requires strong emphasis.\n';
 }
@@ -138,6 +142,18 @@ ACTIVE CLIENT PROFILE OVERRIDE -- PIF:
 - Follow the LDC master geometry: title x=1.375 y=0.281 w=6.219 h=0.260, body x=0.365 y=0.844 w=9.281 h=4.135, footer/source x=0.365 y=5.271, page block x=9.271 y=5.271.
 - Do not add a broad subtitle under the title. If a lens is needed, use a compact top-right label or in-exhibit label.
 - Keep footer/source text blank unless the user explicitly provides it. Do not surface National Development Division labels, Arabic labels, review notes, scratch pages, or hidden think-cell artifacts.
+`;
+  }
+  if (profile?.id === 'dge') {
+    return `
+
+ACTIVE CLIENT PROFILE OVERRIDE -- DGE:
+- Use the DGE government template shell, not Strategy& maroon geometry.
+- Canvas is 13.333 x 7.5 in (standard 16:9 from 960 x 540 px).
+- Primary text blue #063360, structural blue #215A9E, highlight #2B5799, light panels #7DA1C4, pale surfaces #E7E6E6 / #F2F2F2.
+- If you define a c palette, favor: main:'063360', secondary:'215A9E', accent:'2B5799', surface:'F2F2F2', border:'7DA1C4', meta:'4A5568'.
+- Use Noto Sans for every generated text box; do not default to Aptos, Calibri, Georgia, STC Forward, or Fund fonts.
+- Keep the top-right lockup area clear of body content; footer topic label stays bottom-left unless omitted.
 `;
   }
   if (profile?.id !== 'stc') return '';
@@ -246,6 +262,21 @@ function enforcePptxColorsForProfile(codeString, profile) {
       ['4A4F57', '515360'],
       ['4B4F55', '1D252D'],
       ['E6E9EE', 'DBB8F3'],
+    ]);
+  } else if (profile?.id === 'dge') {
+    replacements = new Map([
+      ['111111', '063360'],
+      ['222222', '1A1A1A'],
+      ['A32020', '2B5799'],
+      ['8E1E1E', '063360'],
+      ['4F008C', '215A9E'],
+      ['FF375E', '2B5799'],
+      ['F7F9FB', 'F2F2F2'],
+      ['EEF2F6', 'E7E6E6'],
+      ['F8E3E3', 'E8EEF5'],
+      ['4A4F57', '4A5568'],
+      ['4B4F55', '1A1A1A'],
+      ['E6E9EE', '7DA1C4'],
     ]);
   }
   if (!replacements) return codeString;

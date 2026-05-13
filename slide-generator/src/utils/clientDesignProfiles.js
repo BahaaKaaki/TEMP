@@ -454,6 +454,220 @@ const pifStandardInches = {
   },
 };
 
+const DGE_THEME = {
+  name: 'DGE',
+  defaultVariant: 'dge_blue_brand',
+  colors: {
+    accent: '#063360',
+    accentHover: '#215A9E',
+    accentSoft: '#E8EEF5',
+    onAccent: '#FFFFFF',
+    heading: '#063360',
+    body: '#1A1A1A',
+    muted: '#4A5568',
+    page: '#FFFFFF',
+    surface: '#F2F2F2',
+    surfaceAlt: '#E7E6E6',
+    border: '#7DA1C4',
+    success: '#215A9E',
+    successSoft: '#D4E2F0',
+    warning: '#2B5799',
+    warningSoft: '#E8EEF5',
+    danger: '#B21D41',
+    dangerSoft: '#F7E1DD',
+    info: '#215A9E',
+    neutral: '#6B7280',
+    coverDark: '#063360',
+    kicker: '#2B5799',
+    dgePrimaryBlue: '#063360',
+    dgeStructuralBlue: '#215A9E',
+    dgeLightBlue: '#7DA1C4',
+    dgeHighlightBlue: '#2B5799',
+  },
+  fonts: {
+    title: '"Noto Sans", "Noto Kufi Arabic", "Segoe UI", Arial, sans-serif',
+    heading: '"Noto Sans", "Noto Kufi Arabic", "Segoe UI", Arial, sans-serif',
+    body: '"Noto Sans", "Noto Kufi Arabic", "Segoe UI", Arial, sans-serif',
+  },
+  layout: {
+    cssVars: {
+      '--left-x': '33px',
+      '--title-y': '30px',
+      '--title-w': '690px',
+      '--title-font-size': '30px',
+      '--title-font-weight': '600',
+      '--title-line-height': '1.15',
+      '--subtitle-y': '75px',
+      '--subtitle-w': '400px',
+      '--subtitle-color': '#2B5799',
+      '--subtitle-font-size': '13px',
+      '--subtitle-font-weight': '400',
+      '--frame-y': '154px',
+      '--frame-w': '466px',
+      '--frame-h': '234px',
+      '--footer-x': '33px',
+      '--footer-y': '493px',
+      '--footer-bottom': 'auto',
+      '--footer-w': '894px',
+      '--footer-font-size': '9px',
+      '--footer-padding-bottom': '0',
+      '--source-x': '33px',
+      '--source-y': '493px',
+      '--source-w': '79px',
+      '--source-h': '18px',
+      '--slide-num-x': '900px',
+      '--slide-num-y': '493px',
+      '--slide-num-w': '40px',
+      '--slide-num-h': '18px',
+    },
+  },
+};
+
+const DGE_LAYOUT_CONTRACT = {
+  canvas: {
+    widthPx: 960,
+    heightPx: 540,
+    widthIn: 13.333,
+    heightIn: 7.5,
+  },
+  standardContent: {
+    logo: { x: 763, y: 31, w: 164, h: 38 },
+    title: { x: 33, y: 30, w: 690, h: 44 },
+    subtitle: { x: 33, y: 75, w: 400, h: 22 },
+    body: { x: 33, y: 154, w: 466, h: 234 },
+    source: { x: 33, y: 493, w: 79, h: 18 },
+    slideNumber: { x: 900, y: 493, w: 40, h: 18 },
+  },
+  heroCover: {
+    heroImageBand: { x: 0, y: 0, w: 960, h: 325 },
+    title: { x: 33, y: 345, w: 437, h: 46 },
+    subtitle: { x: 33, y: 430, w: 203, h: 32 },
+    meta: { x: 33, y: 493, w: 110, h: 18 },
+    brandLockup: { x: 709, y: 450, w: 218, h: 51 },
+    classificationStrip: { x: 0, y: 526, w: 960, h: 14 },
+  },
+  sectionDivider: {
+    topImageBand: { x: 0, y: 0, w: 960, h: 319 },
+    sectionLabel: { x: 33, y: 345, w: 210, h: 80 },
+  },
+  timeline: {
+    title: { x: 33, y: 30, w: 232, h: 46 },
+    subtitle: { x: 33, y: 75, w: 200, h: 24 },
+    railY: 146,
+    cardGroups: [
+      { x: 38, y: 184, w: 185, h: 271 },
+      { x: 264, y: 184, w: 185, h: 271 },
+      { x: 501, y: 184, w: 185, h: 271 },
+      { x: 733, y: 184, w: 185, h: 271 },
+    ],
+  },
+  imagePanel: {
+    panel: { x: 524, y: 107, w: 404, h: 327 },
+    panelTitle: { x: 554, y: 168, w: 344, h: 44 },
+    panelBody: { x: 552, y: 233, w: 336, h: 160 },
+  },
+};
+
+const DGE_FREESTYLE_OVERRIDES = {
+  shell: `DGE Abu Dhabi government communications shell on 960x540:
+- Top-right DGE / Abu Dhabi lockup (reserved band ~x=763 y=31 w=164 h=38); do not place content over it.
+- h1.title: x=33 y=30 w=690 h=44, Noto Sans semibold ~30px, primary blue #063360.
+- h2.subtitle: x=33 y=75, compact kicker in #2B5799 ~13px.
+- div.frame: x=33 y=154 w=466 h=234 (editorial body column; hero and image-panel layouts may expand differently when the user asks).
+- footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
+- slide number: bottom-right ~x=900 y=493.
+- Bottom classification strip zone y=526–540 is reserved for OPEN | مفتوحة style chrome; keep frame content above y≈500.`,
+  theme: `Primary #063360, structural blue #215A9E, highlight #2B5799, light panels #7DA1C4, white page, pale neutrals #E7E6E6 / #F2F2F2. Do not let generic Office theme accents (orange, bright green, cyan, magenta) dominate. Ignore Aptos theme slots for color decisions.`,
+  vibe: `Modern government brand: calm, enabling, trusted, bilingual-friendly, spacious, image-led heroes, rounded cards, soft blue panels, minimal noise.`,
+  writing: `Short declarative titles, concise institutional copy, minimal bullets, brand and mission language rather than consulting-jargon density unless the user changes the brief.`,
+  css: `Rounded cards, thin blue outlines, soft blue fills, white reverse text on #063360 panels, generous margins, large photographic hero bands when appropriate.`,
+  pptx: `16:9 widescreen (13.333 x 7.5 in). Hard-code Noto Sans for body English text; prefer bundled master chrome over raw theme slots. Preserve top-right lockup and bottom classification strip from the DGE master when merging templates.`,
+};
+
+const DGE_COMPONENT_PATTERNS = [
+  {
+    name: 'hero_banner',
+    structure: 'Top image band plus lower-left title, subtitle, and meta.',
+    useWhen: 'Cover and closing hero slides.',
+    avoid: ['Dense bullets or charts inside the hero band'],
+  },
+  {
+    name: 'white_editorial_content',
+    structure: 'Headline, subline, single main text column.',
+    useWhen: 'Narrative and explanatory interior slides.',
+    avoid: ['Data-heavy matrices in the narrow default column unless the user asks'],
+  },
+  {
+    name: 'section_divider',
+    structure: 'Top image band plus large section numeral/label.',
+    useWhen: 'Chapter breaks only.',
+    avoid: ['Long paragraphs under the section label'],
+  },
+  {
+    name: 'timeline_4step',
+    structure: 'Horizontal rail with four rounded cards; one active card emphasized.',
+    useWhen: 'Roadmaps and phased journeys.',
+    avoid: ['More than five steps on the same shell'],
+  },
+  {
+    name: 'image_overlay_panel',
+    structure: 'Full-bleed image with right-side blue panel for title and short copy.',
+    useWhen: 'Vision, mission, who we are.',
+    avoid: ['Charts inside the narrow panel'],
+  },
+];
+
+const DGE_PPTX_CONTRACT = {
+  slideSize: '16:9 widescreen (13.333 x 7.5 in from 960 x 540 px)',
+  fontPolicy: 'Use Noto Sans as the explicit fontFace for English body and titles. Do not use Aptos, Calibri, Georgia, STC Forward, or Fund fonts unless mixing a quoted hero line in Cairo where the user requests it.',
+  defaultFontFace: 'Noto Sans',
+  allowedFontFaces: ['Noto Sans', 'Noto Kufi Arabic', 'Cairo'],
+  logoPolicy: 'Top-right DGE / Abu Dhabi lockup on standard interior slides.',
+  sourcePolicy: 'Footer topic label bottom-left; blank unless real source text exists.',
+  pageNumberPolicy: 'Bottom-right near footer band; do not collide with classification strip.',
+  titlePolicy: 'Primary blue #063360 in the standard title band.',
+  subtitlePolicy: 'Compact kicker in #2B5799; optional on dense slides.',
+  hiddenPlaceholderPolicy: 'Do not surface dormant Office placeholder labels or generic click-to-edit prompts from unused masters.',
+  themeTrustLevel: 'low',
+  borderWeightPt: { min: 0.5, max: 1.25 },
+};
+
+const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
+
+## Master and trust
+- Treat the bundled DGE template as the chrome authority: top-right lockup, bottom classification strip, and hero geometry override generic Office theme slots (Aptos colors are not authoritative).
+- Standard white content: title 33,30 / subtitle 33,75 / body frame 33,154 size 466x234 / lockup 763,31 / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
+
+## Theme
+- Primary #063360, structural #215A9E, highlight #2B5799, light panels #7DA1C4, neutrals #E7E6E6 and #F2F2F2, white backgrounds.
+- Forbidden as dominant fills: Office orange #E97132, bright green #196B24, cyan #0F9ED5, magenta #A02B93, lime #4EA72E.
+
+## Typography
+- Default: Noto Sans (English) with Noto Kufi Arabic in the stack for bilingual decks. Cairo is an optional hero/process accent only when the user explicitly requests that variant.
+
+## Writing
+- Government communications tone: short headlines, minimal bullets, future-oriented, institutional optimism.
+
+## Patterns
+- Reference hero cover, section divider, four-step timeline, and image+right-panel layouts from the profile component list; keep slides airy.`;
+
+const DGE_PPTX_FONTS = {
+  title: { fontFace: 'Noto Sans', fontSize: 30, bold: true, color: '063360' },
+  subtitle: { fontFace: 'Noto Sans', fontSize: 12, bold: false, color: '2B5799' },
+  body: { fontFace: 'Noto Sans', fontSize: 10, bold: false, color: '1A1A1A' },
+  footer: { fontFace: 'Noto Sans', fontSize: 9, italic: false, bold: false, color: '4A5568' },
+  slideNum: { fontFace: 'Noto Sans', fontSize: 9, bold: false, color: '4A5568' },
+};
+
+const dgeStandardInches = {
+  logo: pxRectToInches(DGE_LAYOUT_CONTRACT.standardContent.logo, DGE_LAYOUT_CONTRACT.canvas),
+  title: { ...pxRectToInches(DGE_LAYOUT_CONTRACT.standardContent.title, DGE_LAYOUT_CONTRACT.canvas), font: DGE_PPTX_FONTS.title },
+  subtitle: { ...pxRectToInches(DGE_LAYOUT_CONTRACT.standardContent.subtitle, DGE_LAYOUT_CONTRACT.canvas), font: DGE_PPTX_FONTS.subtitle },
+  body: { ...pxRectToInches(DGE_LAYOUT_CONTRACT.standardContent.body, DGE_LAYOUT_CONTRACT.canvas), font: DGE_PPTX_FONTS.body },
+  footer: { ...pxRectToInches(DGE_LAYOUT_CONTRACT.standardContent.source, DGE_LAYOUT_CONTRACT.canvas), font: DGE_PPTX_FONTS.footer },
+  slideNum: { ...pxRectToInches(DGE_LAYOUT_CONTRACT.standardContent.slideNumber, DGE_LAYOUT_CONTRACT.canvas), font: DGE_PPTX_FONTS.slideNum },
+};
+
 export const CLIENT_DESIGN_PROFILES = {
   strategy: {
     schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
@@ -697,6 +911,92 @@ export const CLIENT_DESIGN_PROFILES = {
         maxBulletsStandard: 6,
         maxModulesStandard: 6,
         minBodyPt: 8,
+      },
+      chrome: {
+        requireLogo: true,
+        requirePageNumberNonCover: true,
+        requireSourceNonCover: false,
+        forbidHeavyFooterBar: true,
+        forbidAccidentalAppendixNavigation: true,
+      },
+    },
+  },
+  dge: {
+    schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
+    id: 'dge',
+    navLabel: 'DGE',
+    name: 'Department of Government Enablement',
+    description: 'DGE Abu Dhabi template: Noto Sans, blue government palette, top-right lockup, editorial body column.',
+    status: 'brand-0.1',
+    footerBranding: '',
+    theme: DGE_THEME,
+    layoutContract: DGE_LAYOUT_CONTRACT,
+    freestyleOverrides: DGE_FREESTYLE_OVERRIDES,
+    componentPatterns: DGE_COMPONENT_PATTERNS,
+    pptxContract: DGE_PPTX_CONTRACT,
+    promptContract: DGE_PROMPT_CONTRACT,
+    designContract: DGE_PROMPT_CONTRACT,
+    pptxMaster: {
+      mode: 'profile-bound',
+      templateId: PROFILE_TEMPLATE_SLOT.DEFAULT,
+      bundled: true,
+      storageKey: 'client-template:dge:default',
+      serverSync: 'backend-profile-default',
+      serverProfileId: 'dge',
+      forceBundledDefault: true,
+      useProfileChrome: true,
+      notes: 'Bundled DGE master from backend assets; uploads stay profile-bound in local storage.',
+    },
+    chrome: {
+      footerText: '',
+      positions: dgeStandardInches,
+    },
+    evidence: {
+      sourceDecks: [
+        {
+          label: 'DGE Presentation Template (Edwin)',
+          fileName: '20260512_DGE_PPT Presentation Template_Edwin.pptx',
+          role: 'bundled master; hybrid Aptos theme slots with direct-formatted DGE visuals',
+        },
+      ],
+      keyObservedLayouts: ['1_Title Slide', 'Title Slide', '1_Comparison', '1_Content with Caption'],
+      keyObservedRisks: [
+        'Embedded themes remain generic Office Aptos',
+        'Multiple master families in one file',
+        'Cairo appears on some hero slides alongside Noto',
+      ],
+      notes: [
+        'Treat master chrome and shape system as higher trust than raw theme XML.',
+        'Bundled Noto Sans TTFs ship for canvas/PPTX; add Noto Kufi Arabic files to assets when available.',
+      ],
+    },
+    validationRules: {
+      requiredColors: ['#063360', '#215A9E', '#7DA1C4', '#FFFFFF'],
+      preferredSurfaceColors: ['#E7E6E6', '#F2F2F2', '#E8EEF5'],
+      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D'],
+      forbiddenDominantColors: ['#E97132', '#196B24', '#0F9ED5', '#A02B93', '#4EA72E'],
+      disallowedFonts: ['Aptos', 'Calibri', 'Georgia', 'STC Forward', 'Fund Light'],
+      disallowedFooterText: ['Strategy&'],
+      minFontPx: 9,
+      targetBodyFontPx: 14,
+      fontSizesPt: {
+        titleStandard: { min: 28, max: 32 },
+        titleCover: { min: 30, max: 34 },
+        subtitle: { min: 12, max: 14 },
+        body: { min: 10, max: 11 },
+        bodyDense: { min: 9, max: 10 },
+        footer: { min: 9, max: 9 },
+      },
+      layoutBands: {
+        logoSafeRightPct: 20,
+        titleMaxBottomPct: 14,
+        contentStartPct: 28,
+        footerStartPct: 91,
+      },
+      density: {
+        maxBulletsStandard: 4,
+        maxModulesStandard: 6,
+        minBodyPt: 9,
       },
       chrome: {
         requireLogo: true,

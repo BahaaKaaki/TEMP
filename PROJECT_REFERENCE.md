@@ -773,7 +773,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 59. **Auth session expiry UX**: MSAL silent token refresh failures and unrecovered backend 401s now surface a visible "Your session expired" prompt with a Microsoft sign-in action. Repeated `/api/whoami` 401s after automatic redirect no longer fall through to the editor as allowed; active-use failures appear as a persistent top-center banner styled from `app.css`.
 
-60. **Client profile in header**: Strategy&, STC, and PIF selection lives in `Header.jsx` as `ClientDesignProfileSwitch.jsx` (searchable dropdown, scales to many profiles). Template is **locked** once `slides.length > 0` (`UPDATE_SETTINGS` in `SlideContext.jsx`). User-facing PIF naming is **PIF**.
+60. **Client profile in header**: Strategy&, STC, PIF, and DGE selection lives in `Header.jsx` as `ClientDesignProfileSwitch.jsx` (searchable dropdown, scales to many profiles). Template is **locked** once `slides.length > 0` (`UPDATE_SETTINGS` in `SlideContext.jsx`). User-facing PIF naming is **PIF**.
 
 60. **Cross-slide visual reference and GPT 5.5 router defaults**: AIChatbot now classifies slide/page mentions as targets versus visual references so requests like "make this slide like slide 3" keep the current slide as the edit target while passing slide 3 as reference HTML plus unscoped `customCSS`; the SmartAction target label and executed `slideIndex` are forced to stay aligned. Router planning defaults use `pwc:openai.gpt-5.5`.
 
@@ -824,6 +824,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 92. **STC minimal prompt contract (live test)**: Shortened `STC_PROMPT_CONTRACT` and aligned `STC_FREESTYLE_OVERRIDES.vibe` with executive-whitespace guidance in `slide-generator/src/utils/clientDesignProfiles.js` so the base Slide HTML Generator dominates density; STC theme, layout appendix, freestyle override sections, and PPTX contracts unchanged.
 93. **Gemini 3.1 Pro for premium slide generation and PPTX export**: Code-managed defaults in `SlideContext.jsx` and `pptxService.js` (`DEFAULT_PPTX_MODEL`) now use `pwc:vertex_ai.gemini-3.1-pro-preview` for `settings.model` and `settings.pptxModel`; router/search models unchanged.
 94. **Slide sources citation guardrail**: `slide-generator/src/utils/sourceRendering.js` centralizes SERP URL rejection, research-candidate metadata (`web_search`, `generatedFrom: slide_text`, user-provided labels), and renderable-source rules. `SlidePreview.jsx` `extractSlideSources` no longer fabricates Google search links from footer text; the sources panel only lists renderable items and omits synthetic search links. `AIChatbot.jsx` `mergeStepSources` / `extractSourcesFromSearchResult` drop SERPs and label-only step sources before persisting `slide.sources`.
+95. **DGE client template profile**: Department of Government Enablement (Abu Dhabi) profile in `clientDesignProfiles.js` with blue palette (#063360 / #215A9E / #7DA1C4), Noto Sans stack, bundled `backend/assets/client-templates/dge/default-master.pptx` and `logo.png`, Noto TTFs under `backend/assets/fonts/dge-noto/`, backend routes `?profileId=dge` and `/api/assets/fonts/dge-noto/`, canvas chrome and `slides.css` rules for `data-client-profile="dge"`, and PPTX hints (`pptxService.js`) aligned to the DGE shell.
 
 ---
 

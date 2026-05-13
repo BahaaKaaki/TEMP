@@ -234,11 +234,9 @@ export default function SlidePreview({ onSwitchToCode }) {
   }, [activeSlide?.id]);
 
   useEffect(() => {
-    const logoAsset = activeClientProfile?.id === 'stc'
-      ? '/api/assets/client-templates/stc/logo.png'
-      : activeClientProfile?.id === 'pif'
-        ? '/api/assets/client-templates/pif/logo.png'
-        : null;
+    const logoAsset = ['stc', 'pif', 'dge'].includes(activeClientProfile?.id)
+      ? `/api/assets/client-templates/${activeClientProfile.id}/logo.png`
+      : null;
 
     if (!logoAsset) {
       setClientLogoUrl(null);
@@ -1795,10 +1793,8 @@ function estimateTrackerOffset(sectionLabel, activeProfile = null) {
 
 function stripClientProfileChrome(html = '') {
   return html
-    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-stc-logo\b[^"]*"[^>]*>/gi, '')
-    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-pif-logo\b[^"]*"[^>]*>/gi, '')
-    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-stc-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
-    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-pif-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-logo\b[^"]*"[^>]*>/gi, '')
+    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
     .replace(/\s*data-client-profile="[^"]*"/gi, '');
 }
 
@@ -1814,9 +1810,10 @@ function injectClientProfileChrome(html, profile, logoUrl) {
   );
   if (isSpecialMaster) return withProfile;
 
+  const wordmarkLabel = profile.id === 'pif' ? 'PIF' : profile.id === 'stc' ? 'stc' : (profile.navLabel || profile.name || profile.id);
   const logoMarkup = logoUrl
     ? `<img class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="${escapeHtmlAttr(profile.name || profile.id)}" />`
-    : `<div class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-wordmark" data-no-edit>${profile.id === 'pif' ? 'PIF' : 'stc'}</div>`;
+    : `<div class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-wordmark" data-no-edit>${escapeHtmlAttr(wordmarkLabel)}</div>`;
   return withProfile.replace(/(<div\b[^>]*class="[^"]*\bslide\b[^"]*"[^>]*>)/i, `$1${logoMarkup}`);
 }
 

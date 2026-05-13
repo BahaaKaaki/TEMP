@@ -285,6 +285,7 @@ function ProtectedRoute({ children }) {
           await Promise.all([
             loadClientProfileFonts('stc'),
             loadClientProfileFonts('pif'),
+            loadClientProfileFonts('dge'),
           ]);
           if (cancelled) return;
         }

@@ -134,6 +134,13 @@ const PIF_FONT_FILES: Record<string, string> = {
   'Fund-Medium.ttf': 'Fund-Medium.ttf',
   'Fund-SemiBold.ttf': 'Fund-SemiBold.ttf',
 };
+const DGE_FONT_ASSETS_DIR = path.join(process.cwd(), 'assets', 'fonts', 'dge-noto');
+const DGE_FONT_FILES: Record<string, string> = {
+  'NotoSans-Light.ttf': 'NotoSans-Light.ttf',
+  'NotoSans-Regular.ttf': 'NotoSans-Regular.ttf',
+  'NotoSans-Medium.ttf': 'NotoSans-Medium.ttf',
+  'NotoSans-SemiBold.ttf': 'NotoSans-SemiBold.ttf',
+};
 const CLIENT_TEMPLATE_IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -165,6 +172,20 @@ app.get('/api/assets/fonts/pif-fund/:fileName', (req, res, next) => {
   res.setHeader('Content-Type', 'font/ttf');
   res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
   res.sendFile(path.join(PIF_FONT_ASSETS_DIR, safeFileName), (err) => {
+    if (err) next(err);
+  });
+});
+
+app.get('/api/assets/fonts/dge-noto/:fileName', (req, res, next) => {
+  const safeFileName = DGE_FONT_FILES[req.params.fileName];
+  if (!safeFileName) {
+    res.status(404).json({ error: 'FONT_NOT_FOUND' });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'font/ttf');
+  res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
+  res.sendFile(path.join(DGE_FONT_ASSETS_DIR, safeFileName), (err) => {
     if (err) next(err);
   });
 });

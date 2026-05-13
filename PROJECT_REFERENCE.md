@@ -828,6 +828,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 96. **Opus 4.7 defaults restored (premium/report/PPTX)**: Code-managed defaults in `SlideContext.jsx` (`settings.model`, `settings.reportModel`, `settings.pptxModel`) and `pptxService.js` (`DEFAULT_PPTX_MODEL`) use `pwc:bedrock.anthropic.claude-opus-4-7` again; `fastModel` and router/search defaults unchanged.
 97. **DGE chrome vs native template**: Slide title and subtitle default to black #000000 with Noto Sans Bold 30px / Regular 12px (per `20260512_DGE_PPT Presentation Template_Edwin.pptx` slide 7 XML); brand blues remain for body/panels. Standard interior body band and chrome positions live in `DGE_LAYOUT_CONTRACT.standardContent` and `slides.css` `[data-client-profile="dge"]`; `DGE_LAYOUT_CONTRACT.timeline` keeps exact four-card positions from that slide.
 98. **DGE title/subtitle vertical stack**: Wrapped long titles overlapped the subtitle (subtitle was anchored for a single-line headline). DGE shell now uses a two-line title clamp with ellipsis, subtitle at y=108px, frame at y=132px (894x351), and updated layout contract / prompts so HTML preview and PPTX chrome hints stay consistent.
+99. **Slide Editor Rendered tab parity**: `SlideEditor.jsx` injects `data-client-profile` on the slide root for non-strategy profiles (matching `SlidePreview` chrome injection) and passes `activeSlide.customCSS` into `extractRelevantCSS` so the dump matches preview and includes component rules; comments no longer claim "only rules used by this slide."
 
 ---
 

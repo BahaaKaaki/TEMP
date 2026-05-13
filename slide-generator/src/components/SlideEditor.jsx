@@ -11,8 +11,26 @@ import {
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from '../services/templateMatcher';
 
+/**
+ * Stored slide HTML usually has no data-client-profile; SlidePreview injects it
+ * at render time. Mirror that here so the Rendered tab matches live preview.
+ */
+function htmlWithClientProfileForRenderedView(html, profileId) {
+  if (!html || !profileId || profileId === 'strategy') return html;
+  const safe = String(profileId)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+  const stripped = html.replace(/\s*data-client-profile="[^"]*"/gi, '');
+  return stripped.replace(
+    /class="slide([^"]*)"/i,
+    `class="slide$1" data-client-profile="${safe}"`,
+  );
+}
+
 export default function SlideEditor({ onSwitchToPreview }) {
-  const { activeSlide, actions, state } = useSlides();
+  const { activeSlide, actions, state, activeClientProfile } = useSlides();
   const [activeTab, setActiveTab] = useState('rendered'); // Default to rendered view
   const [localHTML, setLocalHTML] = useState('');
   const [localCSS, setLocalCSS] = useState('');
@@ -50,26 +68,26 @@ export default function SlideEditor({ onSwitchToPreview }) {
     }
   }, [activeSlide?.id, activeSlide?.html, activeSlide?.customCSS, activeSlide?.title]);
 
-  // Compute rendered content (HTML + only relevant CSS from theme)
-  // Note: We only show extracted CSS here, not customCSS (which is shown in Custom CSS tab)
-  // This prevents duplication since customCSS often already contains extracted CSS
+  // Compute rendered content (HTML + full slides.css shell from extractRelevantCSS)
+  // Note: We only show shell CSS here, not customCSS (which is shown in Custom CSS tab)
   const renderedContent = useMemo(() => {
     if (!activeSlide?.html) return '';
 
-    // Extract only the CSS rules that apply to this slide's classes from the theme
-    const relevantCSS = extractRelevantCSS(activeSlide.html);
+    const profileId = activeClientProfile?.id || 'strategy';
+    const htmlForView = htmlWithClientProfileForRenderedView(activeSlide.html, profileId);
+    const relevantCSS = extractRelevantCSS(activeSlide.html, activeSlide.customCSS || '');
 
     return `<!-- ===== RENDERED SLIDE ===== -->
-<!-- This shows exactly what CSS applies to this slide from the theme -->
+<!-- Full slides.css shell + slide HTML. data-client-profile is injected for non-strategy profiles so DGE/STC/PIF overrides match SlidePreview (stored HTML often omits it). Add per-slide custom CSS from the other tab. -->
 
 <!-- HTML -->
-${activeSlide.html}
+${htmlForView}
 
-<!-- ===== CSS (only rules used by this slide) ===== -->
+<!-- ===== CSS (slides.css shell + slide custom CSS if passed to extractRelevantCSS) ===== -->
 <style>
 ${relevantCSS || '/* No CSS rules found for this slide */'}
 </style>`;
-  }, [activeSlide?.html]);
+  }, [activeSlide?.html, activeSlide?.customCSS, activeClientProfile?.id]);
 
   // Compute JS code for PPTX rendering using SMART MATCHING
   // Analyzes HTML structure to find the best template match

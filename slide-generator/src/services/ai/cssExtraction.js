@@ -3,14 +3,16 @@ import SHELL_CSS from '../../styles/slides.css?raw';
 import { DEFAULT_THEME } from '../../utils/themeUtils';
 
 /**
- * Extract relevant CSS for an LLM editing context.
+ * Build CSS context for LLM editing and the Slide Editor "Rendered" tab.
  *
- * With the minimal shell-only slides.css, the slide's own customCSS is now
- * the primary source of layout rules. This function returns:
- *   1. The slide's customCSS (where all layout/component styles live)
- *   2. A small shell excerpt from slides.css (base .slide vars and rules)
+ * Returns, in order:
+ *   1. The slide's `customCSS` when non-empty (matrix, card, template-specific rules)
+ *   2. The full `slides.css` shell (base `.slide` rules plus STC/PIF/DGE profile blocks)
  *
- * @param {string} html - The slide's HTML
+ * The `html` argument is reserved for future selective extraction; callers may
+ * pass it for logging consistency.
+ *
+ * @param {string} html - The slide's HTML (unused for filtering today)
  * @param {string} [customCSS=''] - The slide's per-slide custom CSS
  */
 export function extractRelevantCSS(html, customCSS = '') {

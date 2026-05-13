@@ -129,7 +129,8 @@ const STC_FREESTYLE_OVERRIDES = {
 - footer: source at bottom-left around x=15 y=494 and slide number bottom-right around x=935 y=519, both STC Forward 8px.
 Use structured content in the middle band and keep the bottom footer band clear. Use the standard content bands exactly unless the user explicitly asks for a cover, divider, appendix, or editorial variant.`,
   theme: `Use STC purple (#4F008C) for titles, structural headers, major bars, and primary emphasis. Use tracker lavender (#9E21FF) for section tracker chrome without arrow or chevron markers. Use coral (#FF375E) as the subtitle/kicker accent, vivid lavender (#A54EE1 family) only for small markers, pale lilac surfaces (#EDD5FF to #FBF8FE), charcoal body text (#1D252D), and white backgrounds. Do not let the content topic override the brand palette; even ocean/science topics should remain STC purple/coral/lilac rather than blue-led. Do not use Office blue/orange or raw theme yellow/green/cyan as dominant colors. Treat the serif black/red outlook style as an explicit alternate editorial variant, not the default.`,
-  vibe: `Board-ready, strategy-consulting, precise, modular, high-clarity, low-decoration. Use strong hierarchy, tight alignment, restrained accents, generous white space in the header, denser structured content in the middle, and tiny unobtrusive footer chrome. Avoid playful UI, consumer-product styling, heavy shadows, and decorative gradients except on approved photo covers.`,
+  // Testing live: align with base slide-html-generator (executive whitespace, not packed exhibits).
+  vibe: `Board-ready, strategy-consulting, precise, modular, high-clarity, low-decoration. Use strong hierarchy, tight alignment, restrained accents, generous white space in the header, balanced structured content in the middle band (avoid crowding; prefer the base generator's executive density guidance), and tiny unobtrusive footer chrome. Avoid playful UI, consumer-product styling, heavy shadows, and decorative gradients except on approved photo covers.`,
   writing: `Write conclusion-led titles. Use short analytical subtitles that name the lens, not the takeaway. Keep copy executive, factual, and directive. Use selective emphasis only for the highest-value words; do not bold every lead phrase by default. Avoid slogans, fluff, generic headings, and marketing language.`,
   css: `Use square-cornered boxes by default, thin 0.75-1.25pt borders, purple header bars, lilac body panels, dark body text, and reversed white text on dark fills. STC Forward reads heavy: use font-weight 400 for body copy, 500 for local headings, card titles, stage titles, labels, and subtitles, and reserve 700 for step numbers, KPIs, or rare emphasis only. Use chevrons, tabs, trackers, and thin connector lines for structure. Avoid default chart palettes, rounded consumer cards, strong shadows, and gradient fills except on photo covers.`,
   pptx: `Export with explicit shape positioning, not theme-only assumptions. Preserve title/subtitle/source/page coordinates, keep logo as a real asset, suppress hidden master placeholders unless intentionally used, maintain footer/page chrome on non-cover slides, and do not surface dormant labels such as Confidential, Public, or Back to Main unless the chosen layout specifically requires them.`,
@@ -186,45 +187,23 @@ const STC_PPTX_CONTRACT = {
   borderWeightPt: { min: 0.75, max: 1.25 },
 };
 
-const STC_PROMPT_CONTRACT = `# STC Client Design Contract
+// Live test (2026-05): minimal STC contract so the base slide-html-generator prompt drives
+// whitespace and consulting judgment; STC stays mostly tokens + layout appendix + overrides below.
+const STC_PROMPT_CONTRACT = `# STC profile — minimal generation contract (testing)
 
-## Theme
-- Use STC purple (#4F008C) as the primary accent. Do NOT treat PowerPoint accent1 yellow as the primary brand accent.
-- Use white backgrounds for content slides, with pale violet surfaces (#FBF8FE / #EDD5FF) and thin violet borders (#DBB8F3) for grouping.
-- Use dark navy (#1D252D) for titles and body text.
-- Use red/pink (#FF375E) for subtitles, warning emphasis, and selected labels.
-- Use green (#00C48C) for recommendations, positive options, or approved status.
-- Use yellow (#FFDD40), orange (#FF6A39), cyan (#1BCED8), and gray (#8E9AA0) as secondary accents only.
+Follow the base Slide HTML Generator for balance, whitespace, contrast (including \`var(--on-accent)\` on dark fills), and executive density. STC-specific additions only:
 
-## Typography
-- Use STC Forward for titles, headings, labels, tables, and body copy. Do not declare Arial or generic fallback families in generated STC HTML/CSS.
-- Do not use Georgia for STC slides.
-- Content-slide titles use STC Forward 24px regular in purple #4F008C. Subtitles use STC Forward 18px regular in #FF375E. Footer/source and page numbers use STC Forward 8px.
-- Keep visible text at 10px or larger except footer/source, page numbers, trackers, and compact tags may use 8px. Body/table text should target 12px and section/card titles 14px+.
-- STC Forward reads heavy: use 400 for body copy, 500 for local headings/labels/card titles, and 700 only for step numbers, KPIs, or rare emphasis.
+## Brand and typography
+- Use semantic theme tokens only inside \`.slide .frame\` (no ad-hoc hex); active theme encodes STC purple primary, coral subtitle accent, charcoal body, lilac surfaces.
+- STC Forward for typography in generated CSS; do not use Georgia or Strategy& maroon styling cues.
 
 ## Layout and chrome
-- STC slides use a 960x540 canvas mapped from 13.33x7.5 in.
-- Content-slide title band: title around x=15, y=29, w=931, h=71.
-- Section tracker band: logo-safe text-only tracker around x=57, y=10, 9px text, color #9E21FF. Never place tracker chrome at x=0 over the logo, and do not add arrow/chevron markers.
-- Subtitle band: around x=15, y=105, w=931, h=19.
-- Main content band: around x=15, y=134, w=931, h=340.
-- Source/footer band: bottom-left around x=15, y=495; slide number bottom-right around x=935, y=519.
-- Content slides should keep title/subtitle in the top band, dense exhibit content in the middle band, and source/legend/page number in the bottom band.
-- Cover slides may use dark purple/blue photographic or abstract backgrounds with white logo and large white title blocks.
-
-## Component patterns
-- Prefer compact consulting exhibits: dense matrices, tables, org-chart boxes, value-chain groupings, chevron process flows, and long-list columns.
-- Use numbered purple header cards for sections and workstreams.
-- Use tables with purple row or column headers and white content cells.
-- Use small icons sparingly as visual indicators, not decorative clutter.
-- Maintain high information density, but use precise grid/table alignment so the slide remains readable.
+- Respect the STC layout contract appended below (title, subtitle, frame, footer bands and tracker placement). Keep tracker text-only and logo-safe as in the CLIENT LAYOUT CONTRACT.
 
 ## Avoid
-- Do not use Strategy& maroon (#8E1E1E / #A32020), Strategy& footer branding, or Georgia titles.
-- Do not make yellow the dominant slide color.
-- Do not create sparse marketing slides for analytical STC content.
-- Do not place source notes or legends randomly inside the main content area unless they are part of a table or matrix.`;
+- Strategy& footer branding or maroon-forward palette as the dominant look.
+- Yellow as a dominant slide color.
+- Random source/legend placement outside the footer band unless part of a structured exhibit inside the frame.`;
 
 function pxRectToInches(rect, canvas = STC_LAYOUT_CONTRACT.canvas) {
   if (!rect || !canvas?.widthPx || !canvas?.widthIn) return null;

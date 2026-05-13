@@ -820,6 +820,8 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 90. **Slide HTML prompt consolidation**: `slide-html-generator-prompt.md` adds a **Mandatory Content Normalization Before Design** section (peer items vs repeated labels vs unique content; repeated labels as shared axes), merges the old repeated-label material into **Shared Grid Rules**, and tightens balance/spacing guidance (related label/body proximity; no filler for empty space).
 91. **Evidence search model reload**: `settings.evidenceSearchModel` is code-managed on load like `model` and `routerModel`, so the shipped default overrides stale localStorage values from older builds (per-step `webSearch()` always reflects current `initialState`).
 
+92. **STC minimal prompt contract (live test)**: Shortened `STC_PROMPT_CONTRACT` and aligned `STC_FREESTYLE_OVERRIDES.vibe` with executive-whitespace guidance in `slide-generator/src/utils/clientDesignProfiles.js` so the base Slide HTML Generator dominates density; STC theme, layout appendix, freestyle override sections, and PPTX contracts unchanged.
+
 ---
 
 ## 11. Pending / In Discussion

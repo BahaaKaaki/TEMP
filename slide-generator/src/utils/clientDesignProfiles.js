@@ -498,7 +498,7 @@ const DGE_THEME = {
       '--title-font-weight': '600',
       '--title-line-height': '1.15',
       '--subtitle-y': '75px',
-      '--subtitle-w': '400px',
+      '--subtitle-w': '82px',
       '--subtitle-color': '#2B5799',
       '--subtitle-font-size': '13px',
       '--subtitle-font-weight': '400',
@@ -533,7 +533,7 @@ const DGE_LAYOUT_CONTRACT = {
   standardContent: {
     logo: { x: 763, y: 31, w: 164, h: 38 },
     title: { x: 33, y: 30, w: 690, h: 44 },
-    subtitle: { x: 33, y: 75, w: 400, h: 22 },
+    subtitle: { x: 33, y: 75, w: 82, h: 22 },
     body: { x: 33, y: 154, w: 466, h: 234 },
     source: { x: 33, y: 493, w: 79, h: 18 },
     slideNumber: { x: 900, y: 493, w: 40, h: 18 },
@@ -573,7 +573,7 @@ const DGE_FREESTYLE_OVERRIDES = {
 - Top-right DGE / Abu Dhabi lockup (reserved band ~x=763 y=31 w=164 h=38); do not place content over it.
 - h1.title: x=33 y=30 w=690 h=44, Noto Sans semibold ~30px, primary blue #063360.
 - h2.subtitle: x=33 y=75, compact kicker in #2B5799 ~13px.
-- div.frame: x=33 y=154 w=466 h=234 (editorial body column; hero and image-panel layouts may expand differently when the user asks).
+- div.frame: x=33 y=154 w=466 h=234 (measured from the DGE template “Headline” / standard white content layout; editorial column — wide tables belong on a different layout or split slides).
 - footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
 - slide number: bottom-right ~x=900 y=493.
 - Bottom classification strip zone y=526–540 is reserved for OPEN | مفتوحة style chrome; keep frame content above y≈500.`,
@@ -636,7 +636,7 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 
 ## Master and trust
 - Treat the bundled DGE template as the chrome authority: top-right lockup, bottom classification strip, and hero geometry override generic Office theme slots (Aptos colors are not authoritative).
-- Standard white content: title 33,30 / subtitle 33,75 / body frame 33,154 size 466x234 / lockup 763,31 / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
+- Standard white content: title 33,30 / subtitle 33,75 / body frame 33,154 size **466x234** (template) / top-right lockup 763,31,164x38 / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
 
 ## Theme
 - Primary #063360, structural #215A9E, highlight #2B5799, light panels #7DA1C4, neutrals #E7E6E6 and #F2F2F2, white backgrounds.

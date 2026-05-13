@@ -88,6 +88,7 @@ export function getSlideMeasureClientChromeCss() {
   width: 164px;
   height: 38px;
   object-fit: contain;
+  object-position: right center;
 }
 
 .slide[data-client-profile="dge"] .client-chrome-dge-wordmark {

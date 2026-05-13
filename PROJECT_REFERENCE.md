@@ -455,11 +455,11 @@ Core state shape:
     clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
     clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
     // Model/search defaults
-    model: 'pwc:bedrock.anthropic.claude-opus-4-7',  // Premium generation
+    model: 'pwc:vertex_ai.gemini-3.1-pro-preview',  // Premium generation (Vertex Gemini 3.1 Pro)
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
     routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
-    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7', // PPTX export code generation
+    pptxModel: 'pwc:vertex_ai.gemini-3.1-pro-preview', // PPTX export code generation
     searchModel: 'openai.gpt-5.4-mini',              // Dedicated lightweight search model
     evidenceSearchModel: 'openai.gpt-5.4-mini',           // Per-step evidence search enrichment
     providers: [...],            // Provider registry (PwC Shared Services)
@@ -819,6 +819,9 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 89. **Slide HTML prompt inline prose rule**: `slide-html-generator-prompt.md` adds a hard rule that sentence-bearing divs with `<strong>` / `<em>` use inline `display:block; white-space:normal` on the container and `display:inline` on emphasis tags (examples updated); removes the duplicate subtitle line about explaining slide purpose.
 90. **Slide HTML prompt consolidation**: `slide-html-generator-prompt.md` adds a **Mandatory Content Normalization Before Design** section (peer items vs repeated labels vs unique content; repeated labels as shared axes), merges the old repeated-label material into **Shared Grid Rules**, and tightens balance/spacing guidance (related label/body proximity; no filler for empty space).
 91. **Evidence search model reload**: `settings.evidenceSearchModel` is code-managed on load like `model` and `routerModel`, so the shipped default overrides stale localStorage values from older builds (per-step `webSearch()` always reflects current `initialState`).
+
+92. **STC minimal prompt contract (live test)**: Shortened `STC_PROMPT_CONTRACT` and aligned `STC_FREESTYLE_OVERRIDES.vibe` with executive-whitespace guidance in `slide-generator/src/utils/clientDesignProfiles.js` so the base Slide HTML Generator dominates density; STC theme, layout appendix, freestyle override sections, and PPTX contracts unchanged.
+93. **Gemini 3.1 Pro for premium slide generation and PPTX export**: Code-managed defaults in `SlideContext.jsx` and `pptxService.js` (`DEFAULT_PPTX_MODEL`) now use `pwc:vertex_ai.gemini-3.1-pro-preview` for `settings.model` and `settings.pptxModel`; router/search models unchanged.
 
 ---
 

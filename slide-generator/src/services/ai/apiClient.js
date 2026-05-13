@@ -778,7 +778,7 @@ export async function callWithModelFallback(settings, systemPrompt, userPrompt, 
     const fallbacks = getFallbackModels(settings, providerId, modelName, opts.role);
     if (fallbacks.length === 0) throw err;
 
-    console.warn(`[ModelFallback] Primary model "${modelName}" failed: ${err.message.slice(0, 150)}`);
+    console.warn(`[ModelFallback] Primary model "${modelName}" failed: ${(err.message || String(err)).slice(0, 150)}`);
 
     for (const fallbackModel of fallbacks) {
       try {
@@ -788,7 +788,7 @@ export async function callWithModelFallback(settings, systemPrompt, userPrompt, 
         return await callGeminiAPI(fbSettings, systemPrompt, userPrompt, opts);
       } catch (fbErr) {
         if (fbErr.isRateLimit || fbErr.name === 'AbortError') throw fbErr;
-        console.warn(`[ModelFallback] "${fallbackModel}" also failed: ${fbErr.message.slice(0, 100)}`);
+        console.warn(`[ModelFallback] "${fallbackModel}" also failed: ${(fbErr.message || String(fbErr)).slice(0, 100)}`);
       }
     }
     throw err;

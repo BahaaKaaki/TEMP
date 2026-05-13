@@ -15,7 +15,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 
 ## Features
 
-- AI slide generation via PwC Shared Services (premium model: `bedrock.anthropic.claude-opus-4-7`)
+- AI slide generation via PwC Shared Services (premium model: `vertex_ai.gemini-3.1-pro-preview`)
 - Backend AI proxy -- API key stays server-side, never exposed to browser
 - Basic HTTP authentication (credentials set via environment variables)
 - Agentic workflow (consulting team agent with manager/worker roles)
@@ -197,16 +197,16 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 
 | Role | Model |
 |---|---|
-| Thinking (main generation) | `bedrock.anthropic.claude-opus-4-7` |
+| Thinking (main generation) | `vertex_ai.gemini-3.1-pro-preview` |
 | Fast generation | `vertex_ai.gemini-3.1-flash-lite-preview` |
 | Classifier | `openai.gpt-5.4-mini` |
 | Router | `openai.gpt-5.5` |
 | Step evidence search | `openai.gpt-5.4-mini` |
 | Image | `vertex_ai.gemini-3-pro-image-preview` |
 | Report | `vertex_ai.gemini-3.1-pro-preview` |
-| PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
+| PPTX (export) | `vertex_ai.gemini-3.1-pro-preview` |
 
-Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. The router uses GPT 5.5 with reasoning effort defaulting to low (including code fallback when router reasoning settings are missing); per-step evidence search defaults to GPT 5.4 mini, while premium slide generation and PPTX export default to Claude Opus 4.7. The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
+Model assignments are server-controlled. The Settings modal shows which model is assigned to each role. The router uses GPT 5.5 with reasoning effort defaulting to low (including code fallback when router reasoning settings are missing); per-step evidence search defaults to GPT 5.4 mini, while premium slide generation and PPTX export default to Vertex **Gemini 3.1 Pro** (`vertex_ai.gemini-3.1-pro-preview`). The shared gateway rejects custom `temperature` values for `openai.gpt-5.5`; the client omits `temperature` for that model so LiteLLM uses the provider default. In debug mode, the Prompts section also exposes `promptOverrides` for individual prompt surfaces; empty overrides fall back to the code defaults.
 
 ## Linting
 
@@ -217,6 +217,8 @@ The frontend ESLint config keeps undefined symbols and parse-level issues as blo
 The main header includes a **Template** control styled like the other header action buttons (icon + active profile name + chevron). Opening it reveals a compact dropdown listing the available client profiles. Switching applies the new theme/footer immediately and clears cached PPTX export code on existing slides so the next export uses the new profile; HTML content is preserved. PPTX master upload remains in Settings.
 
 The default profile is Strategy&, while STC and PIF apply audited client-deck behavior. Uploaded PPTX masters are stored by profile/template slot in IndexedDB, so an STC or PIF upload does not overwrite the default Strategy& template. The backend `/api/templates/pptx-master` endpoint serves the legacy Strategy& default, the built-in STC Playbook master through `?profileId=stc`, and the built-in PIF Implementation Guide master through `?profileId=pif`; user-uploaded client templates remain local profile-bound overrides. Client demo checks are available through `clientProfileValidation.js` for color/font/footer/layout readiness.
+
+**STC generation (testing):** The STC `STC_PROMPT_CONTRACT` block in `slide-generator/src/utils/clientDesignProfiles.js` is intentionally minimal so the base Slide HTML Generator (`slide-html-generator-prompt.md`) drives whitespace and consulting judgment; STC theme tokens, layout appendix, freestyle override sections, and PPTX behavior are unchanged.
 
 STC leaves the footer/source text blank by default; sources should appear only when a real citation exists. The backend stores `STC Forward` regular, medium, and bold fonts under `backend/assets/fonts/stc-forward/` and the extracted STC logo under `backend/assets/client-templates/stc/logo.png`; the frontend loads them through authenticated `/api/assets/...` routes. When STC is the active profile, the app warms the bundled STC PPTX master/chrome on editor startup so users do not need to open Settings to restore stale or deleted local template metadata. STC canvas typography follows the master notes: content titles are 24px regular, subtitles are 18px regular, and footer/source/page numbers are 8px. STC section trackers render as logo-safe, text-only chrome using the reference deck's placement and `#9E21FF` tracker color in both canvas preview and PPTX export. PPTX export forces the active STC profile theme, clears/skips stale cached PPTX code, enforces `fontFace: 'STC Forward'`, normalizes generated title/subtitle/body/source/page geometry to the STC contract, strips emoji artifacts, and applies controlled logo chrome without copying the fragile full STC template shell into generated decks.
 

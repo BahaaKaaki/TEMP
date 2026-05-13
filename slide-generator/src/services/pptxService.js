@@ -123,7 +123,7 @@ function getProfilePptxTypographyGuidance(profile) {
     return '- PIF typography: use Fund Light for titles/body and Fund Regular only for page numbers or limited emphasis. Content title is 11pt in PPTX, dense matrix/detail text may be 8-10pt, and footer/source/page chrome may be 7-8pt. There is no broad subtitle band on standard PIF body slides.\n';
   }
   if (profile?.id === 'dge') {
-    return '- DGE typography: Noto Sans for titles, subtitles, body, and footer. Prefer ~30pt titles, ~12pt kickers, ~10pt body, 9pt footer/page chrome on standard interior slides.\n';
+    return '- DGE typography: Noto Sans for titles, subtitles, body, and footer. Slide chrome title/subtitle: black #000000, ~30pt bold title, ~12pt regular subtitle. Body/footer use the profile greys and brand blues only inside content—not for the top title bands.\n';
   }
   if (profile?.id !== 'stc') return '';
   return '- STC typography: use title 24pt regular, subtitle 18pt regular, body 12pt regular, local labels/card titles 500-equivalent only when bold is needed, and footer/source/page numbers 8pt regular.\n- For STC Forward, avoid bold:true on normal body leads, subtitles, card titles, stage titles, and labels unless the CSS explicitly requires strong emphasis.\n';
@@ -150,7 +150,7 @@ ACTIVE CLIENT PROFILE OVERRIDE -- PIF:
 ACTIVE CLIENT PROFILE OVERRIDE -- DGE:
 - Use the DGE government template shell, not Strategy& maroon geometry.
 - Canvas is 13.333 x 7.5 in (standard 16:9 from 960 x 540 px).
-- Primary text blue #063360, structural blue #215A9E, highlight #2B5799, light panels #7DA1C4, pale surfaces #E7E6E6 / #F2F2F2.
+- Brand palette for in-slide content and panels: primary #063360, structural #215A9E, highlight #2B5799, light panels #7DA1C4, pale surfaces #E7E6E6 / #F2F2F2. Slide chrome title and subtitle text must be black #000000 (see native template slide 7), not brand blue.
 - If you define a c palette, favor: main:'063360', secondary:'215A9E', accent:'2B5799', surface:'F2F2F2', border:'7DA1C4', meta:'4A5568'.
 - Use Noto Sans for every generated text box; do not default to Aptos, Calibri, Georgia, STC Forward, or Fund fonts.
 - Keep the top-right lockup area clear of body content; footer topic label stays bottom-left unless omitted.

@@ -493,18 +493,18 @@ const DGE_THEME = {
     cssVars: {
       '--left-x': '33px',
       '--title-y': '30px',
-      '--title-w': '690px',
+      '--title-w': '718px',
       '--title-font-size': '30px',
-      '--title-font-weight': '600',
+      '--title-font-weight': '700',
       '--title-line-height': '1.15',
       '--subtitle-y': '75px',
-      '--subtitle-w': '82px',
-      '--subtitle-color': '#2B5799',
-      '--subtitle-font-size': '13px',
+      '--subtitle-w': '720px',
+      '--subtitle-color': '#000000',
+      '--subtitle-font-size': '12px',
       '--subtitle-font-weight': '400',
-      '--frame-y': '154px',
-      '--frame-w': '466px',
-      '--frame-h': '234px',
+      '--frame-y': '127px',
+      '--frame-w': '894px',
+      '--frame-h': '366px',
       '--footer-x': '33px',
       '--footer-y': '493px',
       '--footer-bottom': 'auto',
@@ -532,9 +532,9 @@ const DGE_LAYOUT_CONTRACT = {
   },
   standardContent: {
     logo: { x: 763, y: 31, w: 164, h: 38 },
-    title: { x: 33, y: 30, w: 690, h: 44 },
-    subtitle: { x: 33, y: 75, w: 82, h: 22 },
-    body: { x: 33, y: 154, w: 466, h: 234 },
+    title: { x: 33, y: 30, w: 718, h: 44 },
+    subtitle: { x: 33, y: 75, w: 720, h: 22 },
+    body: { x: 33, y: 127, w: 894, h: 366 },
     source: { x: 33, y: 493, w: 79, h: 18 },
     slideNumber: { x: 900, y: 493, w: 40, h: 18 },
   },
@@ -551,8 +551,8 @@ const DGE_LAYOUT_CONTRACT = {
     sectionLabel: { x: 33, y: 345, w: 210, h: 80 },
   },
   timeline: {
-    title: { x: 33, y: 30, w: 232, h: 46 },
-    subtitle: { x: 33, y: 75, w: 200, h: 24 },
+    title: { x: 33, y: 30, w: 244, h: 44 },
+    subtitle: { x: 33, y: 75, w: 64, h: 22 },
     railY: 146,
     cardGroups: [
       { x: 38, y: 184, w: 185, h: 271 },
@@ -571,9 +571,9 @@ const DGE_LAYOUT_CONTRACT = {
 const DGE_FREESTYLE_OVERRIDES = {
   shell: `DGE Abu Dhabi government communications shell on 960x540:
 - Top-right DGE / Abu Dhabi lockup (reserved band ~x=763 y=31 w=164 h=38); do not place content over it.
-- h1.title: x=33 y=30 w=690 h=44, Noto Sans semibold ~30px, primary blue #063360.
-- h2.subtitle: x=33 y=75, compact kicker in #2B5799 ~13px.
-- div.frame: x=33 y=154 w=466 h=234 (measured from the DGE template “Headline” / standard white content layout; editorial column — wide tables belong on a different layout or split slides).
+- h1.title: x=33 y=30 w=718 h=44, Noto Sans Bold ~30px, text color black #000000 (matches template slide 7 chrome; brand blues are for panels/accents inside .frame, not the slide title band).
+- h2.subtitle: x=33 y=75 w=720 h=22, Noto Sans Regular ~12px, black #000000 (optional kicker; same template reference).
+- div.frame: x=33 y=127 w=894 h=366 — full-width body band under the subtitle, clearing the lockup and staying above the footer row (y≈493) and classification strip (y=526–540). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
 - footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
 - slide number: bottom-right ~x=900 y=493.
 - Bottom classification strip zone y=526–540 is reserved for OPEN | مفتوحة style chrome; keep frame content above y≈500.`,
@@ -593,9 +593,9 @@ const DGE_COMPONENT_PATTERNS = [
   },
   {
     name: 'white_editorial_content',
-    structure: 'Headline, subline, single main text column.',
+    structure: 'Headline, subline, full-width body band under the subtitle.',
     useWhen: 'Narrative and explanatory interior slides.',
-    avoid: ['Data-heavy matrices in the narrow default column unless the user asks'],
+    avoid: ['Letting body content collide with the top-right lockup or the bottom classification strip'],
   },
   {
     name: 'section_divider',
@@ -625,8 +625,8 @@ const DGE_PPTX_CONTRACT = {
   logoPolicy: 'Top-right DGE / Abu Dhabi lockup on standard interior slides.',
   sourcePolicy: 'Footer topic label bottom-left; blank unless real source text exists.',
   pageNumberPolicy: 'Bottom-right near footer band; do not collide with classification strip.',
-  titlePolicy: 'Primary blue #063360 in the standard title band.',
-  subtitlePolicy: 'Compact kicker in #2B5799; optional on dense slides.',
+  titlePolicy: 'Standard interior title band: black #000000, Noto Sans Bold ~30pt (template slide 7 reference).',
+  subtitlePolicy: 'Subtitle band: black #000000, Noto Sans Regular ~12pt; optional on dense slides.',
   hiddenPlaceholderPolicy: 'Do not surface dormant Office placeholder labels or generic click-to-edit prompts from unused masters.',
   themeTrustLevel: 'low',
   borderWeightPt: { min: 0.5, max: 1.25 },
@@ -636,7 +636,7 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 
 ## Master and trust
 - Treat the bundled DGE template as the chrome authority: top-right lockup, bottom classification strip, and hero geometry override generic Office theme slots (Aptos colors are not authoritative).
-- Standard white content: title 33,30 / subtitle 33,75 / body frame 33,154 size **466x234** (template) / top-right lockup 763,31,164x38 / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
+- Standard white content: title 33,30 (black, Noto Sans Bold ~30pt) / subtitle 33,75 (black, Noto Sans Regular ~12pt) / body frame **33,127 size 894x366** (full-width band; template slide 7 uses the same black title/subtitle chrome with a wider timeline drawn inside the body area) / top-right lockup 763,31,164x38 / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
 
 ## Theme
 - Primary #063360, structural #215A9E, highlight #2B5799, light panels #7DA1C4, neutrals #E7E6E6 and #F2F2F2, white backgrounds.
@@ -652,8 +652,8 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 - Reference hero cover, section divider, four-step timeline, and image+right-panel layouts from the profile component list; keep slides airy.`;
 
 const DGE_PPTX_FONTS = {
-  title: { fontFace: 'Noto Sans', fontSize: 30, bold: true, color: '063360' },
-  subtitle: { fontFace: 'Noto Sans', fontSize: 12, bold: false, color: '2B5799' },
+  title: { fontFace: 'Noto Sans', fontSize: 30, bold: true, color: '000000' },
+  subtitle: { fontFace: 'Noto Sans', fontSize: 12, bold: false, color: '000000' },
   body: { fontFace: 'Noto Sans', fontSize: 10, bold: false, color: '1A1A1A' },
   footer: { fontFace: 'Noto Sans', fontSize: 9, italic: false, bold: false, color: '4A5568' },
   slideNum: { fontFace: 'Noto Sans', fontSize: 9, bold: false, color: '4A5568' },

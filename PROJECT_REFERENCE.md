@@ -456,11 +456,11 @@ Core state shape:
     clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
     clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
     // Model/search defaults
-    model: 'pwc:vertex_ai.gemini-3.1-pro-preview',  // Premium generation (Vertex Gemini 3.1 Pro)
+    model: 'pwc:bedrock.anthropic.claude-opus-4-7',  // Premium generation (Claude Opus 4.7 on Bedrock)
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
     routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
-    pptxModel: 'pwc:vertex_ai.gemini-3.1-pro-preview', // PPTX export code generation
+    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7', // PPTX export code generation
     searchModel: 'openai.gpt-5.4-mini',              // Dedicated lightweight search model
     evidenceSearchModel: 'openai.gpt-5.4-mini',           // Per-step evidence search enrichment
     providers: [...],            // Provider registry (PwC Shared Services)
@@ -825,6 +825,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 93. **Gemini 3.1 Pro for premium slide generation and PPTX export**: Code-managed defaults in `SlideContext.jsx` and `pptxService.js` (`DEFAULT_PPTX_MODEL`) now use `pwc:vertex_ai.gemini-3.1-pro-preview` for `settings.model` and `settings.pptxModel`; router/search models unchanged.
 94. **Slide sources citation guardrail**: `slide-generator/src/utils/sourceRendering.js` centralizes SERP URL rejection, research-candidate metadata (`web_search`, `generatedFrom: slide_text`, user-provided labels), and renderable-source rules. `SlidePreview.jsx` `extractSlideSources` no longer fabricates Google search links from footer text; the sources panel only lists renderable items and omits synthetic search links. `AIChatbot.jsx` `mergeStepSources` / `extractSourcesFromSearchResult` drop SERPs and label-only step sources before persisting `slide.sources`.
 95. **DGE client template profile**: Department of Government Enablement (Abu Dhabi) profile in `clientDesignProfiles.js` with blue palette (#063360 / #215A9E / #7DA1C4), Noto Sans stack, bundled `backend/assets/client-templates/dge/default-master.pptx` and `logo.png`, Noto TTFs under `backend/assets/fonts/dge-noto/`, backend routes `?profileId=dge` and `/api/assets/fonts/dge-noto/`, canvas chrome and `slides.css` rules for `data-client-profile="dge"`, and PPTX hints (`pptxService.js`) aligned to the DGE shell.
+96. **Opus 4.7 defaults restored (premium/report/PPTX)**: Code-managed defaults in `SlideContext.jsx` (`settings.model`, `settings.reportModel`, `settings.pptxModel`) and `pptxService.js` (`DEFAULT_PPTX_MODEL`) use `pwc:bedrock.anthropic.claude-opus-4-7` again; `fastModel` and router/search defaults unchanged.
 
 ---
 

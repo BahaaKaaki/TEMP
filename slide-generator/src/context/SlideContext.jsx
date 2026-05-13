@@ -77,7 +77,7 @@ const initialState = {
     // ── Unified chat: speed mode ──
     speedMode: 'premium',        // 'fast' | 'premium' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
-    model: 'pwc:vertex_ai.gemini-3.1-pro-preview',          // "Thinking" generation (Vertex Gemini 3.1 Pro)
+    model: 'pwc:bedrock.anthropic.claude-opus-4-7',          // Premium slide generation (Claude Opus 4.7 on Bedrock)
     fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
     classifierModel: 'pwc:openai.gpt-5.4-mini',             // Tier 1 quick classifier (always fast)
     // Router / planner
@@ -99,7 +99,7 @@ const initialState = {
     reasoningEffort: 'low',
     verbosity: '',
     // PPTX Export settings
-    pptxModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
+    pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7',
     pptxSystemPrompt: '',
     pptxCodeExample: '',
     pptxBatchSize: 10, // Number of slides to process per API call
@@ -125,7 +125,7 @@ const initialState = {
     workLevelSlide: 'medium',
     workLevelAgent: 'medium',
     workLevelReport: 'medium',
-    reportModel: 'pwc:vertex_ai.gemini-3.1-pro-preview',
+    reportModel: 'pwc:bedrock.anthropic.claude-opus-4-7',
     reportReasoningEffort: 'low',
     reportMaxTokens: 128000,
     reportSearchEnabled: false,

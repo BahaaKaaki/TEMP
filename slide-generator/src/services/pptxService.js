@@ -39,7 +39,7 @@ import { injectRasterizedSvgIcons } from './pptxSvgIconInjector.js';
 // ── Constants ────────────────────────────────────────────────────────────────
 
 const MAX_RETRIES = 3; // 4 total attempts per slide
-const DEFAULT_PPTX_MODEL = 'pwc:vertex_ai.gemini-3.1-pro-preview';
+const DEFAULT_PPTX_MODEL = 'pwc:bedrock.anthropic.claude-opus-4-7';
 const PROFILE_PPTX_FONT_FACE = {
   stc: 'STC Forward',
   pif: 'Fund Light',

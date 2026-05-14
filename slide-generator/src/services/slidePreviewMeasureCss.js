@@ -96,7 +96,7 @@ export function getSlideMeasureClientChromeCss() {
   top: 31px;
   width: 218px;
   height: 51px;
-  font: 600 14px/1.1 "Noto Sans", "Segoe UI", Arial, sans-serif;
+  font: 700 14px/1.1 "Noto Sans", "Segoe UI", Arial, sans-serif;
   color: #063360;
   text-align: right;
 }

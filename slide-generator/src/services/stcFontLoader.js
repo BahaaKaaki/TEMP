@@ -18,6 +18,7 @@ const DGE_FONT_FACES = [
   { file: 'NotoSans-Regular.ttf', family: 'Noto Sans', weight: '400', route: 'dge-noto' },
   { file: 'NotoSans-Medium.ttf', family: 'Noto Sans', weight: '500', route: 'dge-noto' },
   { file: 'NotoSans-SemiBold.ttf', family: 'Noto Sans', weight: '600', route: 'dge-noto' },
+  { file: 'NotoSans-Bold.ttf', family: 'Noto Sans', weight: '700', route: 'dge-noto' },
 ];
 
 let stcLoadPromise = null;

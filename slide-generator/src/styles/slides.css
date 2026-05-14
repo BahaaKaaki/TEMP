@@ -440,7 +440,7 @@
   top: 30px;
   width: 660px;
   max-height: calc(30px * 1.15 * 2);
-  font: 600 30px/1.15 "Noto Sans", "Segoe UI", Arial, sans-serif;
+  font: 700 30px/1.15 "Noto Sans", "Segoe UI", Arial, sans-serif;
   color: #000000;
   overflow: hidden;
   display: -webkit-box;

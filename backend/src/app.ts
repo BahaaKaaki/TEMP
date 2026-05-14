@@ -140,6 +140,7 @@ const DGE_FONT_FILES: Record<string, string> = {
   'NotoSans-Regular.ttf': 'NotoSans-Regular.ttf',
   'NotoSans-Medium.ttf': 'NotoSans-Medium.ttf',
   'NotoSans-SemiBold.ttf': 'NotoSans-SemiBold.ttf',
+  'NotoSans-Bold.ttf': 'NotoSans-Bold.ttf',
 };
 const CLIENT_TEMPLATE_IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png',

@@ -495,14 +495,14 @@ const FYA_THEME = {
       '--left-x': '26px',
       '--title-y': '41px',
       '--title-w': '867px',
-      '--title-font-size': '31px',
-      '--title-font-weight': '600',
+      '--title-font-size': '22px',
+      '--title-font-weight': '400',
       '--title-line-height': '1.18',
       '--subtitle-y': '119px',
       '--subtitle-w': '867px',
       '--subtitle-color': '#CE9C3E',
-      '--subtitle-font-size': '16px',
-      '--subtitle-font-weight': '600',
+      '--subtitle-font-size': '18px',
+      '--subtitle-font-weight': '400',
       '--frame-y': '145px',
       '--frame-w': '904px',
       '--frame-h': '350px',
@@ -550,8 +550,8 @@ const FYA_LAYOUT_CONTRACT = {
 
 const FYA_FREESTYLE_OVERRIDES = {
   shell: `Use the Federal Youth Authority (FYA) warm institutional master on a 960x540 canvas. These FYA positions replace generic shell defaults:
-- h1.title: left 26px, top 41px, width about 867px, Poppins SemiBold, black, compact institutional headline.
-- h2.subtitle: left 26px, top 119px, width about 867px, Poppins SemiBold 16px, FYA gold #CE9C3E.
+- h1.title: left 26px, top 41px, width about 867px, Poppins regular, 22px, black, compact institutional headline.
+- h2.subtitle: left 26px, top 119px, width about 867px, Poppins regular 18px, FYA gold #CE9C3E.
 - div.frame: left 26px, top 145px, width 904px, height 350px. Keep exhibits inside this body frame.
 - Footer/source/date/page chrome sits in the bottom band around y=500–526. Keep all content clear of the bottom footer band.
 - FYA logo appears bottom-left; do not use Strategy& footer branding on FYA slides.
@@ -618,8 +618,8 @@ const FYA_PROMPT_CONTRACT = `# FYA Client Design Contract
 - Use warm neutral panels, thin gold rules, green/red status markers, and restrained brown/gold icons.`;
 
 const FYA_PPTX_FONTS = {
-  title: { fontFace: 'Poppins', fontSize: 31, bold: true, color: '000000' },
-  subtitle: { fontFace: 'Poppins', fontSize: 16, bold: true, color: 'CE9C3E' },
+  title: { fontFace: 'Poppins', fontSize: 22, bold: false, color: '000000' },
+  subtitle: { fontFace: 'Poppins', fontSize: 18, bold: false, color: 'CE9C3E' },
   body: { fontFace: 'Poppins', fontSize: 10, bold: false, color: '111111' },
   footer: { fontFace: 'Poppins', fontSize: 8, italic: false, bold: false, color: '6F6A5F' },
   slideNum: { fontFace: 'Poppins', fontSize: 8, bold: false, color: '6F6A5F' },
@@ -697,7 +697,7 @@ const DGE_THEME = {
       '--title-y': '30px',
       '--title-w': '660px',
       '--title-font-size': '30px',
-      '--title-font-weight': '600',
+      '--title-font-weight': '400',
       '--title-line-height': '1.15',
       '--subtitle-y': '108px',
       '--subtitle-w': '660px',
@@ -1208,9 +1208,9 @@ export const CLIENT_DESIGN_PROFILES = {
       minFontPx: 8,
       targetBodyFontPx: 12,
       fontSizesPt: {
-        titleStandard: { min: 24, max: 32 },
+        titleStandard: { min: 20, max: 24 },
         titleCover: { min: 34, max: 44 },
-        subtitle: { min: 12, max: 16 },
+        subtitle: { min: 16, max: 19 },
         body: { min: 9, max: 13 },
         bodyDense: { min: 8, max: 10 },
         footer: { min: 7, max: 9 },

@@ -440,8 +440,8 @@
   left: 26px;
   top: 41px;
   width: 867px;
-  max-height: calc(31px * 1.18 * 2);
-  font: 600 31px/1.18 Poppins, Arial, sans-serif;
+  max-height: calc(22px * 1.18 * 2);
+  font: 400 22px/1.18 Poppins, Arial, sans-serif;
   color: #000000;
   overflow: hidden;
 }
@@ -451,7 +451,7 @@
   top: 119px;
   width: 867px;
   min-height: 19px;
-  font: 600 16px/1.18 Poppins, Arial, sans-serif;
+  font: 400 18px/1.18 Poppins, Arial, sans-serif;
   color: #CE9C3E;
 }
 

@@ -451,3 +451,31 @@ export async function exportRenderedSlideElementToPDF(slideElement, filename = '
   pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
   pdf.save(filename);
 }
+
+export async function exportRenderedSlideElementsToPDF(slideElements, filename = 'presentation.pdf', options = {}) {
+  const elements = Array.from(slideElements || []).filter(Boolean);
+  if (elements.length === 0) {
+    throw new Error('No rendered slides found to export');
+  }
+
+  const firstSize = getRenderedSlideSize(elements[0]);
+  const pdf = new jsPDF({
+    orientation: firstSize.width >= firstSize.height ? 'landscape' : 'portrait',
+    unit: 'px',
+    format: [firstSize.width, firstSize.height],
+  });
+
+  for (let i = 0; i < elements.length; i++) {
+    const slideElement = elements[i];
+    const canvas = await captureRenderedSlideCanvas(slideElement, options);
+    const { width, height } = getRenderedSlideSize(slideElement);
+
+    if (i > 0) {
+      pdf.addPage([width, height], width >= height ? 'landscape' : 'portrait');
+    }
+
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
+  }
+
+  pdf.save(filename);
+}

@@ -4,12 +4,17 @@ import { useSlides } from '../context/SlideContext';
 import {
   downloadAsHTML,
   downloadAsJSON,
-  exportRenderedSlideElementToPDF,
-  exportRenderedSlideElementToPNG,
+  exportRenderedSlideElementsToPDF,
   exportToPDF,
   exportSingleSlideToPDF,
   generateFileName,
 } from '../services/exportService';
+import { themeToCSS } from '../utils/themeUtils';
+import SHELL_CSS from '../styles/slides.css?raw';
+import {
+  getSlideMeasureClientChromeCss,
+  getSlideMeasureContainerCss,
+} from '../services/slidePreviewMeasureCss.js';
 import { extractRelevantCSS } from '../services/aiService';
 import {
   exportToPPTX,
@@ -37,9 +42,93 @@ const postAssistantMessage = (content) => {
   if (typeof post === 'function') post(content);
 };
 
+function estimateTrackerOffset(sectionLabel = '', profile = null) {
+  const activeProfile = profile || {};
+  const labelLength = String(sectionLabel || '').length;
+  const isStc = activeProfile?.id === 'stc';
+  const base = isStc ? 38 : 22;
+  const charWidth = isStc ? 6.1 : 4.8;
+  const min = isStc ? 190 : 0;
+  const max = isStc ? 360 : 360;
+  return Math.min(max, Math.max(min, Math.round(labelLength * charWidth + base)));
+}
+
+function escapeHtmlAttr(value = '') {
+  return String(value)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+function stripClientProfileChrome(html = '') {
+  return html
+    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-logo\b[^"]*"[^>]*>/gi, '')
+    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
+    .replace(/\s*data-client-profile="[^"]*"/gi, '');
+}
+
+function injectClientProfileChrome(html, profile, logoUrl) {
+  const cleanedHtml = stripClientProfileChrome(html || '');
+  if (!profile?.id || profile.id === 'strategy' || !cleanedHtml) return cleanedHtml;
+
+  const isSpecialMaster = /\b(master-cover|master-blank|master-emptyPage)\b/i.test(cleanedHtml)
+    || /cover-slide|cover-branding|section-divider-slide|separator-slide/i.test(cleanedHtml);
+  const withProfile = cleanedHtml.replace(
+    /class="slide([^"]*)"/,
+    `class="slide$1" data-client-profile="${escapeHtmlAttr(profile.id)}"`
+  );
+  if (isSpecialMaster) return withProfile;
+
+  const wordmarkLabel = profile.id === 'pif' ? 'PIF' : profile.id === 'stc' ? 'stc' : (profile.navLabel || profile.name || profile.id);
+  const logoVersion = profile?.pptxMaster?.assetVersion || profile?.status || '1';
+  const logoSrc = logoUrl || (['stc', 'pif', 'dge'].includes(profile.id)
+    ? `/api/assets/client-templates/${profile.id}/logo.png?v=${encodeURIComponent(logoVersion)}`
+    : '');
+  const logoMarkup = logoSrc
+    ? `<img class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-logo" data-no-edit src="${escapeHtmlAttr(logoSrc)}" alt="${escapeHtmlAttr(profile.name || profile.id)}" />`
+    : `<div class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-wordmark" data-no-edit>${escapeHtmlAttr(wordmarkLabel)}</div>`;
+  return withProfile.replace(/(<div\b[^>]*class="[^"]*\bslide\b[^"]*"[^>]*>)/i, `$1${logoMarkup}`);
+}
+
+function injectPageNumber(html = '', pageNumber, totalSlides) {
+  if (!html) return html;
+  const replacement = `<footer class="footer"><span>Strategy&</span><span class="source"></span><span>${pageNumber}</span></footer>`;
+  if (/<footer\b[^>]*class="[^"]*\bfooter\b[^"]*"[^>]*>[\s\S]*?<\/footer>/i.test(html)) {
+    return html.replace(/<footer\b[^>]*class="[^"]*\bfooter\b[^"]*"[^>]*>[\s\S]*?<\/footer>/i, replacement);
+  }
+  return html.replace(/<\/div>\s*$/i, `${replacement}</div>`);
+}
+
+function prepareSlideHtmlForBrowserExport(slide, slideIndex, totalSlides, activeClientProfile) {
+  let html = slide?.html || '';
+  if (!/class=["']slide[\s"']/i.test(html)) {
+    html = `<div class="slide">${html}</div>`;
+  }
+  if ((html.includes('section-divider-slide') || html.includes('separator-slide')) && !html.includes('master-blank')) {
+    html = html.replace(/class="slide([^"]*)"/, 'class="slide master-blank$1"');
+  }
+  if (html.includes('cover-slide') || html.includes('cover-branding')) {
+    html = html.replace(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/gi, '');
+  }
+  if (slide?.sectionLabel) {
+    html = html.replace(/class="slide([^"]*)"/, `class="slide$1" data-section="${escapeHtmlAttr(slide.sectionLabel)}"`);
+  }
+  if (slide?.subSectionLabel) {
+    const trackerOffset = estimateTrackerOffset(slide.sectionLabel, activeClientProfile);
+    html = html.replace(
+      /class="slide([^"]*)"/,
+      `class="slide$1" data-subsection="${escapeHtmlAttr(slide.subSectionLabel)}" style="--tracker-offset: ${trackerOffset}px"`
+    );
+  }
+  html = html.replace(/class="slide([^"]*)"/, `class="slide$1" data-slide-id="${escapeHtmlAttr(slide?.id || `slide-${slideIndex + 1}`)}"`);
+  html = injectPageNumber(html, slideIndex + 1, totalSlides);
+  return injectClientProfileChrome(html, activeClientProfile);
+}
+
 export default function Header() {
   const { instance } = useMsal();
-  const { state, actions } = useSlides();
+  const { state, actions, activeClientProfile } = useSlides();
   const [showSettings, setShowSettings] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [showGptMenu, setShowGptMenu] = useState(false);
@@ -515,44 +604,62 @@ ${previewParts.join('\n\n')}`;
     }
   };
 
-  const getVisibleRenderedSlideElement = () => document.querySelector('.slide-render-container .slide');
-
-  const handleDownloadCurrentSlideBrowser = async (format) => {
-    if (!activeSlide) return;
-    setIsDownloadingSlide(true);
+  const handleDownloadBrowserPDF = async () => {
+    if (!state.slides.length) {
+      alert('No slides to download. Create some slides first!');
+      return;
+    }
+    setIsExporting(true);
     setShowExportMenu(false);
-    setExportProgress({
-      phase: 'starting',
-      title: `Exporting Browser ${format.toUpperCase()}`,
-      message: 'Capturing the visible slide exactly as rendered...',
-    });
+    setExportProgress({ phase: 'starting', title: 'Exporting Browser PDF', message: 'Rendering slides exactly as browser images...' });
+
+    const container = document.createElement('div');
+    container.style.position = 'fixed';
+    container.style.left = '-10000px';
+    container.style.top = '0';
+    container.style.width = '960px';
+    container.style.background = '#ffffff';
+    container.style.pointerEvents = 'none';
+    container.setAttribute('aria-hidden', 'true');
+
+    const styleEl = document.createElement('style');
+    styleEl.textContent = [
+      SHELL_CSS,
+      getSlideMeasureContainerCss(),
+      getSlideMeasureClientChromeCss(),
+      themeToCSS(state.theme),
+      state.sharedCSS || '',
+      ...state.slides.map(slide => slide.customCSS || ''),
+    ].join('\n');
+    container.appendChild(styleEl);
 
     try {
-      const slideElement = getVisibleRenderedSlideElement();
-      if (!slideElement) {
-        throw new Error('No visible slide preview found. Switch to Preview and try again.');
-      }
-
-      const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
-      const filename = generateFileName(`${state.deckName}_Slide${slideIndex + 1}_browser`, format, {
-        useNomenclature: state.settings.useNomenclature ?? true,
-        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
-        version: 1,
+      state.slides.forEach((slide, index) => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'slide-render-container';
+        wrapper.style.margin = '0';
+        wrapper.innerHTML = prepareSlideHtmlForBrowserExport(slide, index, state.slides.length, activeClientProfile);
+        container.appendChild(wrapper);
       });
 
-      if (format === 'png') {
-        await exportRenderedSlideElementToPNG(slideElement, filename);
-      } else {
-        await exportRenderedSlideElementToPDF(slideElement, filename);
-      }
+      document.body.appendChild(container);
+
+      const filename = generateFileName(`${state.deckName}_browser`, 'pdf', {
+        useNomenclature: state.settings.useNomenclature ?? true,
+        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
+        version: state.deckVersions.length + 1,
+      });
+
+      await exportRenderedSlideElementsToPDF(container.querySelectorAll('.slide'), filename);
 
       setExportProgress({ phase: 'complete', message: 'Download complete!' });
       setTimeout(() => setExportProgress(null), 2000);
     } catch (err) {
       setExportProgress(null);
-      alert(`Failed to download browser ${format.toUpperCase()}: ${err.message}`);
+      alert('Failed to export browser PDF: ' + err.message);
     } finally {
-      setIsDownloadingSlide(false);
+      document.body.removeChild(container);
+      setIsExporting(false);
     }
   };
 
@@ -641,7 +748,7 @@ ${previewParts.join('\n\n')}`;
                 <div className="header-dropdown export-dropdown">
                   <button
                     className="export-dropdown-card"
-                    onClick={() => handleDownloadPPTX(false)}
+                    onClick={handleDownloadBrowserPDF}
                     disabled={anyExportBusy}
                   >
                     {isExporting ? (
@@ -663,11 +770,27 @@ ${previewParts.join('\n\n')}`;
                           </svg>
                         </span>
                         <span className="export-dropdown-text">
-                          <span className="export-dropdown-label">Export All Slides</span>
-                          <span className="export-dropdown-hint">Download as PowerPoint</span>
+                          <span className="export-dropdown-label">Export Browser PDF</span>
+                          <span className="export-dropdown-hint">All slides, exact visual capture</span>
                         </span>
                       </>
                     )}
+                  </button>
+                  <button
+                    className="export-dropdown-card"
+                    onClick={() => handleDownloadPPTX(false)}
+                    disabled={anyExportBusy}
+                  >
+                    <span className="export-dropdown-icon">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                        <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
+                        <polyline points="13 2 13 9 20 9" />
+                      </svg>
+                    </span>
+                    <span className="export-dropdown-text">
+                      <span className="export-dropdown-label">Export All Slides PPTX</span>
+                      <span className="export-dropdown-hint">Editable PowerPoint</span>
+                    </span>
                   </button>
                   {activeSlide && (
                     <button
@@ -686,44 +809,6 @@ ${previewParts.join('\n\n')}`;
                         <span className="export-dropdown-hint">Current slide only</span>
                       </span>
                     </button>
-                  )}
-                  {activeSlide && (
-                    <>
-                      <button
-                        className="export-dropdown-card"
-                        onClick={() => handleDownloadCurrentSlideBrowser('png')}
-                        disabled={anyExportBusy}
-                      >
-                        <span className="export-dropdown-icon">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                            <rect x="3" y="5" width="18" height="14" rx="2" />
-                            <circle cx="8.5" cy="10.5" r="1.5" />
-                            <path d="M21 15l-5-5L5 19" />
-                          </svg>
-                        </span>
-                        <span className="export-dropdown-text">
-                          <span className="export-dropdown-label">Export Browser PNG</span>
-                          <span className="export-dropdown-hint">Exact visual capture</span>
-                        </span>
-                      </button>
-                      <button
-                        className="export-dropdown-card"
-                        onClick={() => handleDownloadCurrentSlideBrowser('pdf')}
-                        disabled={anyExportBusy}
-                      >
-                        <span className="export-dropdown-icon">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <rect x="7" y="12" width="10" height="6" rx="1" />
-                          </svg>
-                        </span>
-                        <span className="export-dropdown-text">
-                          <span className="export-dropdown-label">Export Browser PDF</span>
-                          <span className="export-dropdown-hint">Exact image-backed PDF</span>
-                        </span>
-                      </button>
-                    </>
                   )}
                   {selectedCount > 1 && (
                     <button

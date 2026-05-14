@@ -511,14 +511,31 @@ function insertIntoSlideShapeTree(slideXml, markup) {
   return `${slideXml.slice(0, insertAt)}${markup}${slideXml.slice(insertAt)}`;
 }
 
+function allocateShapeIds(slideXml, count) {
+  const existing = new Set((String(slideXml || '').match(/<p:cNvPr\b[^>]*\bid="\d+"/g) || [])
+    .map(match => Number(match.match(/\bid="(\d+)"/)?.[1]))
+    .filter(Number.isFinite));
+  const ids = [];
+  let next = Math.max(1, ...existing) + 1;
+  while (ids.length < count) {
+    if (!existing.has(next)) {
+      ids.push(next);
+      existing.add(next);
+    }
+    next += 1;
+  }
+  return ids;
+}
+
 function injectLogoPic(slideXml, logo, rId) {
   if (!logo || !/<\/p:spTree>/.test(slideXml)) return slideXml;
+  const [shapeId] = allocateShapeIds(slideXml, 1);
   const x = Math.round(logo.x * EMU_PER_INCH);
   const y = Math.round(logo.y * EMU_PER_INCH);
   const cx = Math.round(logo.w * EMU_PER_INCH);
   const cy = Math.round(logo.h * EMU_PER_INCH);
 
-  const pic = `<p:pic><p:nvPicPr><p:cNvPr id="9990" name="TemplateLogo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
+  const pic = `<p:pic><p:nvPicPr><p:cNvPr id="${shapeId}" name="TemplateLogo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
 
   return insertIntoSlideShapeTree(slideXml, pic);
 }
@@ -529,21 +546,19 @@ function emu(valueInches) {
 
 function injectMoSFooterChrome(slideXml, logo, rId, slideNumber) {
   if (!/<\/p:spTree>/.test(slideXml)) return slideXml;
+  const [bandId, sourceId, pageId, logoId] = allocateShapeIds(slideXml, 4);
   const footerY = emu(6.99);
   const footerH = emu(0.51);
-  const band = `<p:sp><p:nvSpPr><p:cNvPr id="9980" name="MoSFooterBand"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="0" y="${footerY}"/><a:ext cx="${emu(13.333)}" cy="${footerH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="073B16"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`;
+  const band = `<p:sp><p:nvSpPr><p:cNvPr id="${bandId}" name="MoSFooterBand"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="0" y="${footerY}"/><a:ext cx="${emu(13.333)}" cy="${footerH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="073B16"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr></p:sp>`;
 
-  const source = `<p:sp><p:nvSpPr><p:cNvPr id="9981" name="MoSSourceText"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(1.84)}" y="${emu(7.10)}"/><a:ext cx="${emu(7.65)}" cy="${emu(0.18)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0" anchor="mid"/><a:lstStyle/><a:p><a:pPr algn="l"/><a:r><a:rPr lang="en-US" sz="800" dirty="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:latin typeface="Sakkal Majalla"/><a:ea typeface="Sakkal Majalla"/><a:cs typeface="Sakkal Majalla"/></a:rPr><a:t>Sources:</a:t></a:r></a:p></p:txBody></p:sp>`;
+  const source = `<p:sp><p:nvSpPr><p:cNvPr id="${sourceId}" name="MoSSourceText"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(1.84)}" y="${emu(7.10)}"/><a:ext cx="${emu(7.65)}" cy="${emu(0.18)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0" anchor="mid"/><a:lstStyle/><a:p><a:pPr algn="l"/><a:r><a:rPr lang="en-US" sz="800"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:latin typeface="Sakkal Majalla"/><a:ea typeface="Sakkal Majalla"/><a:cs typeface="Sakkal Majalla"/></a:rPr><a:t>Sources:</a:t></a:r></a:p></p:txBody></p:sp>`;
 
   const pageText = escapeXmlAttr(String(slideNumber || ''));
-  const page = `<p:sp><p:nvSpPr><p:cNvPr id="9982" name="MoSPageNumber"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(12.69)}" y="${emu(7.10)}"/><a:ext cx="${emu(0.28)}" cy="${emu(0.18)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0" anchor="mid"/><a:lstStyle/><a:p><a:pPr algn="r"/><a:r><a:rPr lang="en-US" sz="1300" dirty="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:latin typeface="Sakkal Majalla"/><a:ea typeface="Sakkal Majalla"/><a:cs typeface="Sakkal Majalla"/></a:rPr><a:t>${pageText}</a:t></a:r></a:p></p:txBody></p:sp>`;
+  const page = `<p:sp><p:nvSpPr><p:cNvPr id="${pageId}" name="MoSPageNumber"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(12.69)}" y="${emu(7.10)}"/><a:ext cx="${emu(0.28)}" cy="${emu(0.18)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0" anchor="mid"/><a:lstStyle/><a:p><a:pPr algn="r"/><a:r><a:rPr lang="en-US" sz="1300"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:latin typeface="Sakkal Majalla"/><a:ea typeface="Sakkal Majalla"/><a:cs typeface="Sakkal Majalla"/></a:rPr><a:t>${pageText}</a:t></a:r></a:p></p:txBody></p:sp>`;
 
   let chrome = band + source + page;
   if (logo) {
-    chrome += injectLogoPic('<p:spTree></p:spTree>', { ...logo, x: 0.25, y: 7.08, w: 1.32, h: 0.35 }, rId)
-      .replace('<p:spTree>', '')
-      .replace('</p:spTree>', '')
-      .replace('TemplateLogo', 'MoSFooterLogo');
+    chrome += `<p:pic><p:nvPicPr><p:cNvPr id="${logoId}" name="MoSFooterLogo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${emu(0.25)}" y="${emu(7.08)}"/><a:ext cx="${emu(1.32)}" cy="${emu(0.35)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
   }
   return insertIntoSlideShapeTree(slideXml, chrome);
 }
@@ -604,7 +619,9 @@ async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
   const presentationPath = 'ppt/presentation.xml';
   if (zip.files[presentationPath]) {
     const presentationXml = await zip.files[presentationPath].async('string');
-    const cleanedPresentationXml = presentationXml.replace(/<p:notesMasterIdLst\b[\s\S]*?<\/p:notesMasterIdLst>/g, '');
+    const cleanedPresentationXml = presentationXml
+      .replace(/<p:notesMasterIdLst\b[\s\S]*?<\/p:notesMasterIdLst>/g, '')
+      .replace(/<p:notesSz\b[^>]*\/>/g, '');
     if (cleanedPresentationXml !== presentationXml) zip.file(presentationPath, cleanedPresentationXml);
   }
 

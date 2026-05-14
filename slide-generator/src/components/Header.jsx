@@ -82,7 +82,8 @@ function injectClientProfileChrome(html, profile, logoUrl) {
 
   const wordmarkLabel = profile.id === 'pif' ? 'PIF' : profile.id === 'stc' ? 'stc' : (profile.navLabel || profile.name || profile.id);
   const logoVersion = profile?.pptxMaster?.assetVersion || profile?.status || '1';
-  const logoSrc = logoUrl || (['stc', 'pif', 'dge'].includes(profile.id)
+  const hasBundledLogo = profile?.chrome?.positions?.logo && profile?.pptxMaster?.serverSync === 'backend-profile-default';
+  const logoSrc = logoUrl || (hasBundledLogo
     ? `/api/assets/client-templates/${profile.id}/logo.png?v=${encodeURIComponent(logoVersion)}`
     : '');
   const logoMarkup = logoSrc

@@ -100,5 +100,30 @@ export function getSlideMeasureClientChromeCss() {
   color: #005393;
   text-align: right;
 }
+
+.slide[data-client-profile="fya"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="fya"] .client-chrome-fya-logo {
+  left: 26px;
+  top: 500px;
+  width: 139px;
+  height: 26px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="fya"] .client-chrome-fya-wordmark {
+  left: 26px;
+  top: 500px;
+  width: 139px;
+  height: 26px;
+  font: 600 10px/1.1 Poppins, Arial, sans-serif;
+  color: #111111;
+}
 `;
 }

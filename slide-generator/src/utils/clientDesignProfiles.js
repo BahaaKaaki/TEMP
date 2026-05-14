@@ -454,6 +454,193 @@ const pifStandardInches = {
   },
 };
 
+const FYA_THEME = {
+  name: 'FYA',
+  defaultVariant: 'fya_warm_institutional',
+  colors: {
+    accent: '#CE9C3E',
+    accentHover: '#92732A',
+    accentSoft: '#EFE4C8',
+    onAccent: '#000000',
+    heading: '#000000',
+    body: '#111111',
+    muted: '#6F6A5F',
+    page: '#F9F7ED',
+    surface: '#F9F7ED',
+    surfaceAlt: '#F0E8D8',
+    border: '#D8C890',
+    success: '#3F8E50',
+    successSoft: '#E5F0E2',
+    warning: '#CE9C3E',
+    warningSoft: '#EFE4C8',
+    danger: '#D83731',
+    dangerSoft: '#F3D8D4',
+    info: '#92732A',
+    neutral: '#767171',
+    coverDark: '#6E4527',
+    kicker: '#CE9C3E',
+    fyaGold: '#CE9C3E',
+    fyaGreen: '#3F8E50',
+    fyaRed: '#D83731',
+    fyaBrown: '#6E4527',
+    fyaSand: '#F0E8D8',
+  },
+  fonts: {
+    title: 'Poppins, Arial, sans-serif',
+    heading: 'Poppins, Arial, sans-serif',
+    body: 'Poppins, Arial, sans-serif',
+  },
+  layout: {
+    cssVars: {
+      '--left-x': '26px',
+      '--title-y': '41px',
+      '--title-w': '867px',
+      '--title-font-size': '31px',
+      '--title-font-weight': '600',
+      '--title-line-height': '1.18',
+      '--subtitle-y': '119px',
+      '--subtitle-w': '867px',
+      '--subtitle-color': '#CE9C3E',
+      '--subtitle-font-size': '16px',
+      '--subtitle-font-weight': '600',
+      '--frame-y': '145px',
+      '--frame-w': '904px',
+      '--frame-h': '350px',
+      '--footer-x': '26px',
+      '--footer-y': '500px',
+      '--footer-bottom': 'auto',
+      '--footer-w': '904px',
+      '--footer-font-size': '8px',
+      '--footer-padding-bottom': '0',
+      '--source-x': '190px',
+      '--source-y': '500px',
+      '--source-w': '560px',
+      '--source-h': '14px',
+      '--slide-num-x': '792px',
+      '--slide-num-y': '511px',
+      '--slide-num-w': '138px',
+      '--slide-num-h': '12px',
+    },
+  },
+};
+
+const FYA_LAYOUT_CONTRACT = {
+  canvas: {
+    widthPx: 960,
+    heightPx: 540,
+    widthIn: 13.333,
+    heightIn: 7.5,
+  },
+  standardContent: {
+    logo: { x: 26, y: 500, w: 139, h: 26 },
+    title: { x: 26, y: 41, w: 867, h: 56 },
+    subtitle: { x: 26, y: 119, w: 867, h: 19 },
+    body: { x: 26, y: 145, w: 904, h: 350 },
+    source: { x: 190, y: 500, w: 560, h: 14 },
+    date: { x: 820, y: 500, w: 110, h: 14 },
+    slideNumber: { x: 792, y: 511, w: 138, h: 12 },
+    sectionTracker: { x: 0, y: 0, w: 134, h: 17 },
+  },
+  cover: {
+    logo: { x: 26, y: 500, w: 139, h: 26 },
+    title: { x: 26, y: 92, w: 860, h: 95 },
+    subtitle: { x: 26, y: 202, w: 760, h: 28 },
+  },
+};
+
+const FYA_FREESTYLE_OVERRIDES = {
+  shell: `Use the Federal Youth Authority (FYA) warm institutional master on a 960x540 canvas. These FYA positions replace generic shell defaults:
+- h1.title: left 26px, top 41px, width about 867px, Poppins SemiBold, black, compact institutional headline.
+- h2.subtitle: left 26px, top 119px, width about 867px, Poppins SemiBold 16px, FYA gold #CE9C3E.
+- div.frame: left 26px, top 145px, width 904px, height 350px. Keep exhibits inside this body frame.
+- Footer/source/date/page chrome sits in the bottom band around y=500–526. Keep all content clear of the bottom footer band.
+- FYA logo appears bottom-left; do not use Strategy& footer branding on FYA slides.
+Use the FYA standard content slide as the default. Cover/divider variants are allowed only when explicitly requested.`,
+  theme: `Use FYA warm cream (#F9F7ED), gold (#CE9C3E), green (#3F8E50), brown (#6E4527), red (#D83731), sand neutrals, and black text. Keep the page warm and institutional. Do not use Strategy& maroon, STC purple/coral, PIF green/gold combinations, or DGE blue as the dominant palette.`,
+  vibe: `Federal government youth-agenda style: optimistic, warm, official, structured, and polished. Use rounded institutional panels, warm sand surfaces, compact tables, gold rules, and restrained iconography. Avoid dark consulting slides, generic SaaS dashboards, neon gradients, and playful consumer cards.`,
+  writing: `Write in concise government-strategy language for youth policy, engagement, governance, initiatives, and national agenda content. Keep labels short and executive.`,
+  css: `Use Poppins throughout. Prefer warm cream backgrounds, gold dividers, green or red status accents, and subtle brown icon strokes. Keep borders thin and modules clean.`,
+  pptx: `Export on a 13.333 x 7.5 in canvas using Poppins, FYA warm cream/gold/green/brown/red palette, the bundled FYA master, bottom-left FYA logo asset, editable footer/page chrome, and no Strategy& branding.`,
+};
+
+const FYA_COMPONENT_PATTERNS = [
+  {
+    name: 'pillar_cards',
+    structure: 'Warm rounded cards with gold heading strips, compact body copy, and brown or gold icons.',
+    useWhen: 'Youth pillars, initiatives, strategic priorities, and policy themes.',
+    avoid: ['cold gray cards', 'Strategy& maroon bars', 'oversized decorative icons'],
+  },
+  {
+    name: 'engagement_map',
+    structure: 'Structured stakeholder bands or swimlanes using gold separators, green highlights, and warm neutral panels.',
+    useWhen: 'Stakeholder engagement, phase planning, governance, and consultation flows.',
+    avoid: ['rainbow stakeholder colors', 'dense unbounded lists', 'content in footer band'],
+  },
+  {
+    name: 'governance_matrix',
+    structure: 'Compact matrix with warm cream cells, gold rules, black headings, and green/red responsibility markers.',
+    useWhen: 'Governance structures, cadence, roles, approvals, and decision rights.',
+    avoid: ['blue government palette', 'PIF dark green master', 'large empty generic cards'],
+  },
+];
+
+const FYA_PPTX_CONTRACT = {
+  slideSize: { w: 13.333, h: 7.5 },
+  defaultFontFace: 'Poppins',
+  allowedFontFaces: ['Poppins'],
+  logoPolicy: 'FYA logo bottom-left on standard slides.',
+  sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',
+  pageNumberPolicy: 'Bottom-right page number/date chrome in Poppins, dark neutral text.',
+  titlePolicy: 'Content title at x=26 y=41 w=867 on the 960x540 canvas, Poppins SemiBold, black.',
+  subtitlePolicy: 'Use a compact gold subtitle at x=26 y=119 when the slide has a meaningful lens label; otherwise keep the body frame aligned to the standard band.',
+  hiddenPlaceholderPolicy: 'Do not surface hidden template scratch content, think-cell artifacts, or unrelated stakeholder logos unless explicitly part of the requested content.',
+  borderWeightPt: { min: 0.5, max: 1.25 },
+};
+
+const FYA_PROMPT_CONTRACT = `# FYA Client Design Contract
+
+## Master
+- Use one Federal Youth Authority warm institutional master shell. Do not invent a Strategy&, STC, PIF, or DGE variant.
+- Use the body frame at x=26 y=145 w=904 h=350 on the 960x540 canvas.
+- Keep the bottom footer/logo/date/page band clear.
+- Do not render Strategy& footer branding.
+
+## Theme
+- Use FYA warm cream (#F9F7ED), gold (#CE9C3E), green (#3F8E50), brown (#6E4527), red (#D83731), sand neutrals, and black text.
+- Avoid blue-led, purple-led, or maroon-led slide systems.
+
+## Typography
+- Use Poppins for title, headings, labels, and body copy.
+- Keep titles compact and official; use dense but legible exhibit copy.
+
+## Components
+- Prefer pillar cards, engagement maps, governance matrices, phase plans, compact timelines, and stakeholder grids inside the body frame.
+- Use warm neutral panels, thin gold rules, green/red status markers, and restrained brown/gold icons.`;
+
+const FYA_PPTX_FONTS = {
+  title: { fontFace: 'Poppins', fontSize: 31, bold: true, color: '000000' },
+  subtitle: { fontFace: 'Poppins', fontSize: 16, bold: true, color: 'CE9C3E' },
+  body: { fontFace: 'Poppins', fontSize: 10, bold: false, color: '111111' },
+  footer: { fontFace: 'Poppins', fontSize: 8, italic: false, bold: false, color: '6F6A5F' },
+  slideNum: { fontFace: 'Poppins', fontSize: 8, bold: false, color: '6F6A5F' },
+};
+
+const fyaStandardInches = {
+  logo: pxRectToInches(FYA_LAYOUT_CONTRACT.standardContent.logo, FYA_LAYOUT_CONTRACT.canvas),
+  title: { ...pxRectToInches(FYA_LAYOUT_CONTRACT.standardContent.title, FYA_LAYOUT_CONTRACT.canvas), font: FYA_PPTX_FONTS.title },
+  subtitle: { ...pxRectToInches(FYA_LAYOUT_CONTRACT.standardContent.subtitle, FYA_LAYOUT_CONTRACT.canvas), font: FYA_PPTX_FONTS.subtitle },
+  body: { ...pxRectToInches(FYA_LAYOUT_CONTRACT.standardContent.body, FYA_LAYOUT_CONTRACT.canvas), font: FYA_PPTX_FONTS.body },
+  footer: { ...pxRectToInches(FYA_LAYOUT_CONTRACT.standardContent.source, FYA_LAYOUT_CONTRACT.canvas), font: FYA_PPTX_FONTS.footer },
+  slideNum: { ...pxRectToInches(FYA_LAYOUT_CONTRACT.standardContent.slideNumber, FYA_LAYOUT_CONTRACT.canvas), font: FYA_PPTX_FONTS.slideNum },
+  sectionTracker: {
+    ...pxRectToInches(FYA_LAYOUT_CONTRACT.standardContent.sectionTracker, FYA_LAYOUT_CONTRACT.canvas),
+    colors: { fill: 'CE9C3E', subFill: '92732A', text: '000000', subText: 'FFFFFF' },
+    font: { fontFace: 'Poppins', fontSize: 8, bold: true },
+    paddingX: 0.18,
+    textInset: 0.05,
+  },
+};
+
 const DGE_THEME = {
   name: 'DGE',
   defaultVariant: 'dge_blue_brand',
@@ -939,6 +1126,101 @@ export const CLIENT_DESIGN_PROFILES = {
         titleMaxBottomPct: 16,
         contentStartPct: 15,
         footerStartPct: 93,
+      },
+      density: {
+        maxBulletsStandard: 6,
+        maxModulesStandard: 6,
+        minBodyPt: 8,
+      },
+      chrome: {
+        requireLogo: true,
+        requirePageNumberNonCover: true,
+        requireSourceNonCover: false,
+        forbidHeavyFooterBar: true,
+        forbidAccidentalAppendixNavigation: true,
+      },
+    },
+  },
+  fya: {
+    schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
+    id: 'fya',
+    navLabel: 'FYA',
+    name: 'Federal Youth Authority',
+    description: 'Federal Youth Authority template: Poppins, warm cream canvas, gold/green institutional palette.',
+    status: 'brand-0.1',
+    footerBranding: '',
+    theme: FYA_THEME,
+    layoutContract: FYA_LAYOUT_CONTRACT,
+    freestyleOverrides: FYA_FREESTYLE_OVERRIDES,
+    componentPatterns: FYA_COMPONENT_PATTERNS,
+    pptxContract: FYA_PPTX_CONTRACT,
+    promptContract: FYA_PROMPT_CONTRACT,
+    designContract: FYA_PROMPT_CONTRACT,
+    pptxMaster: {
+      mode: 'profile-bound',
+      templateId: PROFILE_TEMPLATE_SLOT.DEFAULT,
+      bundled: true,
+      storageKey: 'client-template:fya:default',
+      serverSync: 'backend-profile-default',
+      serverProfileId: 'fya',
+      forceBundledDefault: true,
+      useProfileChrome: true,
+      assetVersion: 'fya-logo-native-v1',
+      notes: 'Default FYA master is served from backend assets; uploads stay profile-bound in local storage.',
+    },
+    chrome: {
+      footerText: '',
+      positions: fyaStandardInches,
+    },
+    evidence: {
+      sourceDecks: [
+        {
+          label: 'FYA Template for Edwin',
+          fileName: 'FYA Template for Edwin.pptx',
+          slides: 5,
+          layouts: 11,
+          masters: 4,
+          role: 'bundled master and canonical FYA visual system',
+        },
+      ],
+      rawThemeSlots: {
+        lt1: '#F9F7ED',
+        dk1: '#000000',
+        accent1: '#CE9C3E',
+        accent2: '#3F8E50',
+        accent3: '#92732A',
+        accent4: '#D83731',
+        accent5: '#6E4527',
+      },
+      notes: [
+        'The bundled FYA deck is 13.333 x 7.5in widescreen mapped to 960 x 540px for canvas preview.',
+        'Visible theme font is Poppins; fallback Office Aptos/Calibri slots are not authoritative.',
+        'Logo asset is extracted from the native template media image11.png.',
+      ],
+    },
+    validationRules: {
+      requiredColors: ['#F9F7ED', '#CE9C3E', '#3F8E50', '#6E4527', '#D83731', '#000000'],
+      preferredSurfaceColors: ['#F9F7ED', '#F0E8D8', '#EFE4C8', '#E8E0C8'],
+      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#005393', '#00332A', '#005C4D'],
+      forbiddenDominantColors: ['#8E1E1E', '#A32020', '#4F008C', '#005393', '#00332A'],
+      disallowedFonts: ['Georgia', 'STC Forward', 'Fund Light', 'Noto Sans', 'Aptos', 'Calibri'],
+      disallowedFooterText: ['Strategy&', 'Department of Government Enablement', 'National Development Division'],
+      minFontPx: 8,
+      targetBodyFontPx: 12,
+      fontSizesPt: {
+        titleStandard: { min: 24, max: 32 },
+        titleCover: { min: 34, max: 44 },
+        subtitle: { min: 12, max: 16 },
+        body: { min: 9, max: 13 },
+        bodyDense: { min: 8, max: 10 },
+        footer: { min: 7, max: 9 },
+      },
+      layoutBands: {
+        logoSafeBottomPct: 8,
+        titleMaxBottomPct: 20,
+        subtitleMaxBottomPct: 26,
+        contentStartPct: 27,
+        footerStartPct: 92,
       },
       density: {
         maxBulletsStandard: 6,

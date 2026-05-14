@@ -235,7 +235,8 @@ export default function SlidePreview({ onSwitchToCode }) {
 
   useEffect(() => {
     const logoVersion = activeClientProfile?.pptxMaster?.assetVersion || activeClientProfile?.status || '1';
-    const logoAsset = ['stc', 'pif', 'dge'].includes(activeClientProfile?.id)
+    const hasBundledLogo = activeClientProfile?.chrome?.positions?.logo && activeClientProfile?.pptxMaster?.serverSync === 'backend-profile-default';
+    const logoAsset = hasBundledLogo
       ? `/api/assets/client-templates/${activeClientProfile.id}/logo.png?v=${encodeURIComponent(logoVersion)}`
       : null;
 

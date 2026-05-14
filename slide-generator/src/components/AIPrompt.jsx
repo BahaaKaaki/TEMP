@@ -1,6 +1,6 @@
 import { useState, useMemo, useRef } from 'react';
 import { useSlides } from '../context/SlideContext';
-import { generateSlides, generatePptxRendererCode, fillTemplateWithAI, selectTemplateWithAI, hasAnyApiKey, improveSlideWithSearch } from '../services/aiService';
+import { generateSlides, fillTemplateWithAI, selectTemplateWithAI, improveSlideWithSearch } from '../services/aiService';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { getTemplateCustomCSS } from '../utils/templateCss';
 import TemplatePicker from './TemplatePicker';
@@ -95,30 +95,13 @@ export default function AIPrompt() {
         slides = await generateSlides(prompt, settings, slideCount, currentState.slides, selectedTemplate, customTemplate);
       }
 
-      // Generate PPTX code for each slide if setting is enabled
-      const shouldGeneratePptx = settings.pptxGenerateOnCreate && hasAnyApiKey(settings);
-
       for (const slide of slides) {
-        let pptxRendererCode = null;
-
-        if (shouldGeneratePptx) {
-          try {
-            pptxRendererCode = await generatePptxRendererCode(
-              slide.html,
-              slide.title || 'Slide',
-              settings
-            );
-          } catch (err) {
-            console.warn('Failed to generate PPTX code for slide:', err);
-          }
-        }
-
         actions.addSlide({
           title: slide.title,
           type: slide.type,
           html: slide.html,
           summary: slide.summary,
-          pptxRendererCode,
+          pptxRendererCode: null,
           templateId: slide.templateId,
         });
       }

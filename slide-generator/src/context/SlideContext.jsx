@@ -1,7 +1,6 @@
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
-import { preGeneratePptxCode, hasAnyCredentials } from '../services/pptxService';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { getClientDesignProfile, getClientProfileTheme } from '../utils/clientDesignProfiles';
 import { normalizeSlideTypographyHTML, scopeCSS, unscopeCSS } from '../utils/cssScoping';
@@ -104,7 +103,7 @@ const initialState = {
     pptxCodeExample: '',
     pptxBatchSize: 10, // Number of slides to process per API call
     pptxParallelBatches: 5, // Number of batches to process in parallel (concurrent API calls)
-    pptxGenerateOnCreate: false, // If true, generate PPTX code when slide is created (caches it)
+    pptxGenerateOnCreate: false, // Disabled: PPTX code is generated only on explicit export.
     // AI Chatbot settings
     editAllBatchSize: 3, // Number of slides to process per batch in Edit All mode
     // Agent workflow settings
@@ -1878,32 +1877,8 @@ export function SlideProvider({ children }) {
     }
   }, [state.settings?.apiMaxConcurrent]);
 
-  // Background PPTX code pre-generation: when a slide has HTML but no cached
-  // pptxCode, fire LLM generation in the background so export is instant.
-  const pptxPreGenRef = useRef(new Set());
-  useEffect(() => {
-    if (!hasAnyCredentials(state.settings)) return;
-    const slides = state.slides || [];
-    const totalSlides = slides.length;
-    if (totalSlides === 0) return;
-
-    for (let i = 0; i < totalSlides; i++) {
-      const slide = slides[i];
-      if (!slide.html || slide.pptxCode || pptxPreGenRef.current.has(slide.id)) continue;
-      pptxPreGenRef.current.add(slide.id);
-
-      preGeneratePptxCode(slide, i + 1, totalSlides, state.settings).then(code => {
-        if (code) {
-          dispatch({ type: ACTIONS.UPDATE_SLIDE, payload: { id: slide.id, updates: { pptxCode: code } } });
-        }
-      }).catch((err) => {
-        // Background pre-gen: failure here is not user-visible because
-        // exportToPPTX re-generates on demand. Log so it is not a true
-        // silent swallow, but do not surface to the chat.
-        console.warn('[PPTX Pre-gen] Background code generation failed for slide', slide.id, err);
-      });
-    }
-  }, [state.slides, state.settings]);
+  // PPTX code pre-generation is intentionally disabled. AI rendering code is
+  // generated only when the user explicitly exports to PPTX.
 
   // Also save on page unload to ensure no data loss. Mirrors the debounced
   // saver above: strip selectedSlideIds (UI selection) and availableSkills

@@ -1515,10 +1515,9 @@ export default function SettingsModal({ onClose }) {
                 </select>
               </div>
             </div>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', marginTop: 12, fontSize: 12 }}>
-              <input type="checkbox" checked={settings.pptxGenerateOnCreate || false} onChange={(e) => setSettings({ ...settings, pptxGenerateOnCreate: e.target.checked })} style={{ width: 'auto' }} />
-              Pre-generate PPTX code when creating slides
-            </label>
+            <div style={{ marginTop: 12, fontSize: 12, color: '#64748B' }}>
+              PPTX renderer code is generated only when exporting; background pre-generation is disabled.
+            </div>
             <div className="form-group" style={{ marginTop: 16 }}>
               <label>System Prompt</label>
               <textarea value={settings.pptxSystemPrompt || DEFAULT_PPTX_SYSTEM_PROMPT} onChange={(e) => setSettings({ ...settings, pptxSystemPrompt: e.target.value })} style={{ width: '100%', minHeight: 120, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4 }} />

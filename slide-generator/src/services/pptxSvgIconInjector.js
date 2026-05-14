@@ -153,6 +153,127 @@ function pxRectToSlideInches(xPx, yPx, wPx, hPx, meta) {
   };
 }
 
+function rectRight(rect) {
+  return (Number(rect?.x) || 0) + (Number(rect?.w) || 0);
+}
+
+function rectBottom(rect) {
+  return (Number(rect?.y) || 0) + (Number(rect?.h) || 0);
+}
+
+function padRect(rect, pad) {
+  return {
+    x: rect.x - pad,
+    y: rect.y - pad,
+    w: rect.w + pad * 2,
+    h: rect.h + pad * 2,
+  };
+}
+
+function rectArea(rect) {
+  return Math.max(0, Number(rect?.w) || 0) * Math.max(0, Number(rect?.h) || 0);
+}
+
+function rectIntersectionArea(a, b) {
+  const x1 = Math.max(Number(a?.x) || 0, Number(b?.x) || 0);
+  const y1 = Math.max(Number(a?.y) || 0, Number(b?.y) || 0);
+  const x2 = Math.min(rectRight(a), rectRight(b));
+  const y2 = Math.min(rectBottom(a), rectBottom(b));
+  return Math.max(0, x2 - x1) * Math.max(0, y2 - y1);
+}
+
+function rectCenter(rect) {
+  return {
+    x: (Number(rect?.x) || 0) + (Number(rect?.w) || 0) / 2,
+    y: (Number(rect?.y) || 0) + (Number(rect?.h) || 0) / 2,
+  };
+}
+
+function centerDistance(a, b) {
+  const ac = rectCenter(a);
+  const bc = rectCenter(b);
+  return Math.hypot(ac.x - bc.x, ac.y - bc.y);
+}
+
+function containsPoint(rect, point) {
+  return point.x >= rect.x && point.x <= rectRight(rect) && point.y >= rect.y && point.y <= rectBottom(rect);
+}
+
+function getPptxObjectRect(obj) {
+  const opts = obj?.options || {};
+  const x = Number(opts.x);
+  const y = Number(opts.y);
+  const w = Number(opts.w);
+  const h = Number(opts.h);
+  if (![x, y, w, h].every(Number.isFinite) || w <= 0 || h <= 0) return null;
+  return { x, y, w, h };
+}
+
+function isLikelyNativeIconGlyphObject(obj, objRect, iconRect) {
+  const paddedIcon = padRect(iconRect, 0.06);
+  const objArea = rectArea(objRect);
+  if (!objArea) return false;
+
+  const overlapRatio = rectIntersectionArea(objRect, paddedIcon) / objArea;
+  const centerInside = containsPoint(paddedIcon, rectCenter(objRect));
+  if (!centerInside && overlapRatio < 0.65) return false;
+
+  const maxGlyphW = Math.max(iconRect.w * 2.25, 0.48);
+  const maxGlyphH = Math.max(iconRect.h * 2.25, 0.48);
+  const isSmallGlyphBox = objRect.w <= maxGlyphW && objRect.h <= maxGlyphH;
+  if (!isSmallGlyphBox) return false;
+
+  const isChipSizedShape = Boolean(obj?.shape)
+    && (objRect.w > iconRect.w * 1.55 || objRect.h > iconRect.h * 1.55)
+    && overlapRatio < 0.9;
+  if (isChipSizedShape) return false;
+
+  return ['text', 'shape', 'image'].includes(obj?._type);
+}
+
+function removeGeneratedIconGlyphObjects(pptxSlide, iconRect) {
+  if (!Array.isArray(pptxSlide?._slideObjects)) return 0;
+  const before = pptxSlide._slideObjects.length;
+  pptxSlide._slideObjects = pptxSlide._slideObjects.filter((obj) => {
+    const objRect = getPptxObjectRect(obj);
+    return !objRect || !isLikelyNativeIconGlyphObject(obj, objRect, iconRect);
+  });
+  return before - pptxSlide._slideObjects.length;
+}
+
+function isLikelyIconHostPlaceholder(obj, objRect, iconRect, hostRect) {
+  if (!objRect || obj?.text != null || !obj?.shape) return false;
+  const hostArea = rectArea(hostRect);
+  if (!hostArea) return false;
+
+  const largerThanGlyph = objRect.w >= iconRect.w * 1.35 && objRect.h >= iconRect.h * 1.35;
+  const hostSized = objRect.w <= hostRect.w * 1.7 && objRect.h <= hostRect.h * 1.7;
+  const nearExpectedHost = centerDistance(objRect, hostRect) <= Math.max(hostRect.w, hostRect.h, 0.35);
+  const nearGlyph = centerDistance(objRect, iconRect) <= Math.max(hostRect.w, hostRect.h, 0.35);
+  return largerThanGlyph && hostSized && (nearExpectedHost || nearGlyph);
+}
+
+function findGeneratedIconHostRect(pptxSlide, iconRect, hostRect) {
+  if (!Array.isArray(pptxSlide?._slideObjects)) return null;
+  let best = null;
+  for (const obj of pptxSlide._slideObjects) {
+    const objRect = getPptxObjectRect(obj);
+    if (!isLikelyIconHostPlaceholder(obj, objRect, iconRect, hostRect)) continue;
+    const distance = Math.min(centerDistance(objRect, hostRect), centerDistance(objRect, iconRect));
+    if (!best || distance < best.distance) best = { rect: objRect, distance };
+  }
+  return best?.rect || null;
+}
+
+function centerRectInside(rect, container) {
+  return {
+    x: container.x + (container.w - rect.w) / 2,
+    y: container.y + (container.h - rect.h) / 2,
+    w: rect.w,
+    h: rect.h,
+  };
+}
+
 function isIconSizedRect(rect) {
   const width = Number(rect?.width);
   const height = Number(rect?.height);
@@ -197,13 +318,7 @@ function shouldUseIconHostBox(host, svg, hostRect, svgRect) {
   const hostArea = Math.max(1, (hostRect?.width || 0) * (hostRect?.height || 0));
   if (hostArea / svgArea > MAX_ICON_HOST_TO_SVG_AREA_RATIO) return false;
 
-  const style = getComputedStyle(host);
-  const hasVisibleFill = style.backgroundColor && !['transparent', 'rgba(0, 0, 0, 0)'].includes(style.backgroundColor);
-  const hasVisibleBorder = style.borderStyle !== 'none' && Number.parseFloat(style.borderWidth || '0') > 0;
-  const className = typeof host.className === 'string' ? host.className : '';
-  const isExplicitChip = /\b(card-icon-circle|icon-chip|icon-circle|icon-badge)\b/i.test(className);
-
-  return hasVisibleFill || hasVisibleBorder || isExplicitChip;
+  return !isIconSizedRect(svgRect);
 }
 
 function resolveIconRasterTarget(svg, rootRect) {
@@ -223,6 +338,8 @@ function resolveIconRasterTarget(svg, rootRect) {
 
   return {
     boxRect,
+    hostRect,
+    usesHostBox: useHostBox,
     captureElement: useHostBox ? host : svg,
     sourceW: Math.max(1, svgRect.width || boxRect.width),
     sourceH: Math.max(1, svgRect.height || boxRect.height),
@@ -416,9 +533,29 @@ export async function injectRasterizedSvgIcons(pptxSlide, slide, settings) {
         target.boxRect.height,
         meta,
       );
+      const hostBox = pxRectToSlideInches(
+        target.hostRect.left - rootRect.left,
+        target.hostRect.top - rootRect.top,
+        target.hostRect.width,
+        target.hostRect.height,
+        meta,
+      );
+      const generatedHostBox = findGeneratedIconHostRect(pptxSlide, box, hostBox);
+      const placementBox = generatedHostBox && !target.usesHostBox
+        ? centerRectInside(box, generatedHostBox)
+        : box;
 
       try {
-        pptxSlide.addImage({ data, x: box.x, y: box.y, w: box.w, h: box.h });
+        removeGeneratedIconGlyphObjects(pptxSlide, placementBox);
+        pptxSlide.addImage({
+          data,
+          x: placementBox.x,
+          y: placementBox.y,
+          w: placementBox.w,
+          h: placementBox.h,
+          objectName: 'Rasterized SVG icon glyph',
+          altText: 'SVG icon glyph',
+        });
         injected += 1;
       } catch (error) {
         console.warn('[PPTX] slide.addImage for SVG icon failed:', error?.message || error);

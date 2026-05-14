@@ -1,7 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { useMsal } from '@azure/msal-react';
 import { useSlides } from '../context/SlideContext';
-import { downloadAsHTML, downloadAsJSON, exportToPDF, exportSingleSlideToPDF, generateFileName } from '../services/exportService';
+import {
+  downloadAsHTML,
+  downloadAsJSON,
+  exportRenderedSlideElementToPDF,
+  exportRenderedSlideElementToPNG,
+  exportToPDF,
+  exportSingleSlideToPDF,
+  generateFileName,
+} from '../services/exportService';
 import { extractRelevantCSS } from '../services/aiService';
 import {
   exportToPPTX,
@@ -507,6 +515,47 @@ ${previewParts.join('\n\n')}`;
     }
   };
 
+  const getVisibleRenderedSlideElement = () => document.querySelector('.slide-render-container .slide');
+
+  const handleDownloadCurrentSlideBrowser = async (format) => {
+    if (!activeSlide) return;
+    setIsDownloadingSlide(true);
+    setShowExportMenu(false);
+    setExportProgress({
+      phase: 'starting',
+      title: `Exporting Browser ${format.toUpperCase()}`,
+      message: 'Capturing the visible slide exactly as rendered...',
+    });
+
+    try {
+      const slideElement = getVisibleRenderedSlideElement();
+      if (!slideElement) {
+        throw new Error('No visible slide preview found. Switch to Preview and try again.');
+      }
+
+      const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
+      const filename = generateFileName(`${state.deckName}_Slide${slideIndex + 1}_browser`, format, {
+        useNomenclature: state.settings.useNomenclature ?? true,
+        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
+        version: 1,
+      });
+
+      if (format === 'png') {
+        await exportRenderedSlideElementToPNG(slideElement, filename);
+      } else {
+        await exportRenderedSlideElementToPDF(slideElement, filename);
+      }
+
+      setExportProgress({ phase: 'complete', message: 'Download complete!' });
+      setTimeout(() => setExportProgress(null), 2000);
+    } catch (err) {
+      setExportProgress(null);
+      alert(`Failed to download browser ${format.toUpperCase()}: ${err.message}`);
+    } finally {
+      setIsDownloadingSlide(false);
+    }
+  };
+
   return (
     <>
       <header className="app-header">
@@ -637,6 +686,44 @@ ${previewParts.join('\n\n')}`;
                         <span className="export-dropdown-hint">Current slide only</span>
                       </span>
                     </button>
+                  )}
+                  {activeSlide && (
+                    <>
+                      <button
+                        className="export-dropdown-card"
+                        onClick={() => handleDownloadCurrentSlideBrowser('png')}
+                        disabled={anyExportBusy}
+                      >
+                        <span className="export-dropdown-icon">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <rect x="3" y="5" width="18" height="14" rx="2" />
+                            <circle cx="8.5" cy="10.5" r="1.5" />
+                            <path d="M21 15l-5-5L5 19" />
+                          </svg>
+                        </span>
+                        <span className="export-dropdown-text">
+                          <span className="export-dropdown-label">Export Browser PNG</span>
+                          <span className="export-dropdown-hint">Exact visual capture</span>
+                        </span>
+                      </button>
+                      <button
+                        className="export-dropdown-card"
+                        onClick={() => handleDownloadCurrentSlideBrowser('pdf')}
+                        disabled={anyExportBusy}
+                      >
+                        <span className="export-dropdown-icon">
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <rect x="7" y="12" width="10" height="6" rx="1" />
+                          </svg>
+                        </span>
+                        <span className="export-dropdown-text">
+                          <span className="export-dropdown-label">Export Browser PDF</span>
+                          <span className="export-dropdown-hint">Exact image-backed PDF</span>
+                        </span>
+                      </button>
+                    </>
                   )}
                   {selectedCount > 1 && (
                     <button

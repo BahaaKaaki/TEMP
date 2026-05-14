@@ -511,32 +511,38 @@
   left: 35px;
   top: 28px;
   width: 890px;
-  max-height: calc(24px * 1.12 * 2);
-  font: 700 24px/1.12 "Sakkal Majalla", Arial, sans-serif;
+  max-height: calc(28px * 1.12 * 2);
+  font: 700 28px/1.12 "Sakkal Majalla", Arial, sans-serif;
   color: #000000;
   overflow: hidden;
 }
 
 .slide[data-client-profile="mos"] .subtitle {
   left: 35px;
-  top: 100px;
+  top: 104px;
   width: 890px;
-  min-height: 19px;
-  font: 700 14px/1.12 "Sakkal Majalla", Arial, sans-serif;
-  color: #0B5921;
+  min-height: 24px;
+  font: 700 18px/1.12 "Sakkal Majalla", Arial, sans-serif;
+  color: #073B16;
 }
 
 .slide[data-client-profile="mos"] .frame {
   left: 35px;
-  top: 122px;
+  top: 132px;
   width: 890px;
-  height: 372px;
+  height: 349px;
 }
 
 .slide[data-client-profile="mos"] footer.footer:has(span.source),
 .slide[data-client-profile="mos"] footer.footer {
   display: block;
   font-family: "Sakkal Majalla", Arial, sans-serif;
+  left: 0;
+  top: 503px;
+  width: 960px;
+  height: 37px;
+  background: #073B16;
+  color: #FFFFFF;
 }
 
 .slide[data-client-profile="mos"] footer.footer > span:first-child:empty {
@@ -556,7 +562,11 @@
   white-space: nowrap;
   font-style: normal;
   opacity: 1;
-  color: #7F7F7F;
+  color: #FFFFFF;
+}
+
+.slide[data-client-profile="mos"] footer.footer .source:empty::before {
+  content: "Sources:";
 }
 
 .slide[data-client-profile="mos"] footer.footer > span:last-child {
@@ -566,8 +576,8 @@
   width: var(--slide-num-w);
   height: var(--slide-num-h);
   text-align: right;
-  color: #7F7F7F;
-  font: 400 7px/1 "Sakkal Majalla", Arial, sans-serif;
+  color: #FFFFFF;
+  font: 400 13px/1 "Sakkal Majalla", Arial, sans-serif;
   white-space: nowrap;
 }
 

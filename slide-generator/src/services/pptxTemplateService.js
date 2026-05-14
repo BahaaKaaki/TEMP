@@ -514,6 +514,31 @@ function injectLogoPic(slideXml, logo, rId) {
   return slideXml.replace('</p:spTree>', pic + '</p:spTree>');
 }
 
+function emu(valueInches) {
+  return Math.round(Number(valueInches || 0) * EMU_PER_INCH);
+}
+
+function injectMoSFooterChrome(slideXml, logo, rId, slideNumber) {
+  if (!/<\/p:spTree>/.test(slideXml)) return slideXml;
+  const footerY = emu(6.99);
+  const footerH = emu(0.51);
+  const band = `<p:sp><p:nvSpPr><p:cNvPr id="9980" name="MoSFooterBand"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="0" y="${footerY}"/><a:ext cx="${emu(13.333)}" cy="${footerH}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="073B16"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr/><a:lstStyle/><a:p/></p:txBody></p:sp>`;
+
+  const source = `<p:sp><p:nvSpPr><p:cNvPr id="9981" name="MoSSourceText"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(1.84)}" y="${emu(7.10)}"/><a:ext cx="${emu(7.65)}" cy="${emu(0.18)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0" anchor="mid"/><a:lstStyle/><a:p><a:pPr algn="l"/><a:r><a:rPr lang="en-US" sz="800" dirty="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:latin typeface="Sakkal Majalla"/><a:ea typeface="Sakkal Majalla"/><a:cs typeface="Sakkal Majalla"/></a:rPr><a:t>Sources:</a:t></a:r></a:p></p:txBody></p:sp>`;
+
+  const pageText = escapeXmlAttr(String(slideNumber || ''));
+  const page = `<p:sp><p:nvSpPr><p:cNvPr id="9982" name="MoSPageNumber"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(12.69)}" y="${emu(7.10)}"/><a:ext cx="${emu(0.28)}" cy="${emu(0.18)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="square" rtlCol="0" anchor="mid"/><a:lstStyle/><a:p><a:pPr algn="r"/><a:r><a:rPr lang="en-US" sz="1300" dirty="0"><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:latin typeface="Sakkal Majalla"/><a:ea typeface="Sakkal Majalla"/><a:cs typeface="Sakkal Majalla"/></a:rPr><a:t>${pageText}</a:t></a:r></a:p></p:txBody></p:sp>`;
+
+  let chrome = band + source + page;
+  if (logo) {
+    chrome += injectLogoPic('<p:spTree></p:spTree>', { ...logo, x: 0.17, y: 7.03, w: 0.94, h: 0.35 }, rId)
+      .replace('<p:spTree>', '')
+      .replace('</p:spTree>', '')
+      .replace('TemplateLogo', 'MoSFooterLogo');
+  }
+  return slideXml.replace('</p:spTree>', chrome + '</p:spTree>');
+}
+
 function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
   let fixed = String(slideXml || '');
   const seenIds = new Set();
@@ -603,7 +628,11 @@ export async function applyProfileChromeToGenerated(generatedBuf, chrome = null,
     const genSlideRelsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
     let slideXml = await genZip.files[genSlidePath].async('string');
     slideXml = hideMasterShapes(injectSlideBackground(slideXml, profile));
-    if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
+    if (profile?.id === 'mos') {
+      slideXml = injectMoSFooterChrome(slideXml, hasLogo ? chrome.logo : null, LOGO_RID, slideNum);
+    } else if (hasLogo) {
+      slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
+    }
     genZip.file(genSlidePath, slideXml);
 
     if (!hasLogo) continue;
@@ -773,7 +802,11 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
       let slideXml = await genZip.files[genSlidePath].async('string');
       if (!preserveTemplateChrome) slideXml = hideMasterShapes(slideXml);
       slideXml = injectSlideBackground(slideXml, profile);
-      if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
+      if (profile?.id === 'mos') {
+        slideXml = injectMoSFooterChrome(slideXml, hasLogo ? chrome.logo : null, LOGO_RID, slideNum);
+      } else if (hasLogo) {
+        slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
+      }
       tplZip.file(genSlidePath, slideXml);
     }
 

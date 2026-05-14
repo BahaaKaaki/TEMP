@@ -682,31 +682,31 @@ const MOS_THEME = {
       '--left-x': '35px',
       '--title-y': '28px',
       '--title-w': '890px',
-      '--title-font-size': '24px',
+      '--title-font-size': '28px',
       '--title-font-weight': '700',
       '--title-line-height': '1.12',
-      '--subtitle-y': '100px',
+      '--subtitle-y': '104px',
       '--subtitle-w': '890px',
-      '--subtitle-color': '#0B5921',
-      '--subtitle-font-size': '14px',
+      '--subtitle-color': '#073B16',
+      '--subtitle-font-size': '18px',
       '--subtitle-font-weight': '700',
-      '--frame-y': '122px',
+      '--frame-y': '132px',
       '--frame-w': '890px',
-      '--frame-h': '372px',
-      '--footer-x': '24px',
-      '--footer-y': '505px',
+      '--frame-h': '349px',
+      '--footer-x': '0px',
+      '--footer-y': '503px',
       '--footer-bottom': 'auto',
-      '--footer-w': '912px',
-      '--footer-font-size': '7px',
+      '--footer-w': '960px',
+      '--footer-font-size': '10px',
       '--footer-padding-bottom': '0',
-      '--source-x': '75px',
-      '--source-y': '507px',
-      '--source-w': '610px',
-      '--source-h': '14px',
-      '--slide-num-x': '910px',
-      '--slide-num-y': '507px',
-      '--slide-num-w': '18px',
-      '--slide-num-h': '12px',
+      '--source-x': '132px',
+      '--source-y': '518px',
+      '--source-w': '710px',
+      '--source-h': '16px',
+      '--slide-num-x': '914px',
+      '--slide-num-y': '518px',
+      '--slide-num-w': '20px',
+      '--slide-num-h': '16px',
     },
   },
 };
@@ -719,12 +719,12 @@ const MOS_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    logo: { x: 18, y: 506, w: 37, h: 18 },
-    title: { x: 35, y: 28, w: 890, h: 62 },
-    subtitle: { x: 35, y: 100, w: 890, h: 19 },
-    body: { x: 35, y: 122, w: 890, h: 372 },
-    source: { x: 75, y: 507, w: 610, h: 14 },
-    slideNumber: { x: 910, y: 507, w: 18, h: 12 },
+    logo: { x: 18, y: 508, w: 72, h: 35 },
+    title: { x: 35, y: 28, w: 890, h: 72 },
+    subtitle: { x: 35, y: 104, w: 890, h: 24 },
+    body: { x: 35, y: 132, w: 890, h: 349 },
+    source: { x: 132, y: 518, w: 710, h: 16 },
+    slideNumber: { x: 914, y: 518, w: 20, h: 16 },
     sectionTracker: { x: 106, y: 12, w: 110, h: 12 },
   },
   cover: {
@@ -736,16 +736,16 @@ const MOS_LAYOUT_CONTRACT = {
 
 const MOS_FREESTYLE_OVERRIDES = {
   shell: `Use the Ministry of Sport (MoS) performance-management master on a 960x540 canvas. These MoS positions replace generic shell defaults:
-- h1.title: left 35px, top 28px, width about 890px, Sakkal Majalla bold, black, compact one- to two-line headline.
-- h2.subtitle: left 35px, top 100px, width about 890px, Sakkal Majalla bold 14px, MoS green #0B5921.
-- div.frame: left 35px, top 122px, width 890px, height 372px. Keep performance exhibits, tables, chains, and benchmark cards inside this body frame.
-- Footer/source/page chrome sits in the bottom band around y=505–524; keep content clear of the footer.
+- h1.title: left 35px, top 28px, width about 890px, Sakkal Majalla bold 28px, black, compact one- to two-line headline.
+- h2.subtitle: left 35px, top 104px, width about 890px, Sakkal Majalla bold 18px, dark MoS green #073B16.
+- div.frame: left 35px, top 132px, width 890px, height 349px. Keep performance exhibits, tables, chains, and benchmark cards inside this body frame.
+- Footer/source/page chrome sits in the dark-green bottom band around y=503–540; keep content clear of the footer.
 - MoS logo appears bottom-left on standard content pages and larger/top-right on covers where the master uses image-led hero layouts.
-Use standard white content pages by default; reserve stadium/photo covers and section dividers for explicit cover/section requests.`,
-  theme: `Use MoS dark green (#073B16), primary green (#0B5921), bright green (#0E762C), gold (#BD9608), light green (#80C7A7), white, light gray #F2F2F2, and charcoal #2C2C2C. Do not use Strategy& maroon, STC purple, PIF dark green/gold pairing, DGE blue, or FYA cream as the dominant system.`,
+Use standard white content pages with dark-green footer bands by default; reserve stadium/photo covers and section dividers for explicit cover/section requests.`,
+  theme: `Use MoS dark green (#073B16), primary green (#0B5921), bright green (#0E762C), light green #80C7A7, white, light gray #F2F2F2, and charcoal #2C2C2C. Use gold #BD9608 only as a tiny secondary accent when necessary, never as a dominant card/header color. Do not use Strategy& maroon, STC purple, PIF dark green/gold pairing, DGE blue, or FYA cream as the dominant system.`,
   vibe: `Sport-sector performance management: official, analytical, structured, and energetic. Use green benchmark bands, arrow chains, KPI tables, pillar cards, and concise methodology blocks. Avoid decorative consumer sport styling and generic SaaS dashboards.`,
   writing: `Write concise performance-management language: benchmarks, KPI design, governance, data/reporting, operating model, insights, implications, and Ministry of Sport actions.`,
-  css: `Use Sakkal Majalla throughout. Prefer white pages, dark-green bands, light-gray panels, thin green borders, gold highlights, and compact tables. Icons should be simple black or green line icons.`,
+  css: `Use Sakkal Majalla throughout. Prefer white pages, dark-green bands, green headers, light-gray or pale-green panels, thin green borders, and compact tables. Avoid gold except for minor callouts. Icons should be simple black or green line icons.`,
   pptx: `Export on a 13.333 x 7.5 in canvas using Sakkal Majalla, MoS green/gold palette, bundled MoS master, real MoS logo asset, editable footer/page chrome, and no Strategy& branding.`,
 };
 
@@ -777,8 +777,8 @@ const MOS_PPTX_CONTRACT = {
   logoPolicy: 'MoS logo bottom-left on standard slides; larger logo only on cover/photo layouts.',
   sourcePolicy: 'Footer/source text is compact and optional; never collide with bottom-left logo.',
   pageNumberPolicy: 'Small bottom-right page number in Sakkal Majalla.',
-  titlePolicy: 'Standard title at x=35 y=28 w=890 on the 960x540 canvas, Sakkal Majalla bold, black.',
-  subtitlePolicy: 'Compact green subtitle at x=35 y=100 when a section/lens label is useful.',
+  titlePolicy: 'Standard title at x=35 y=28 w=890 on the 960x540 canvas, Sakkal Majalla bold 28pt, black.',
+  subtitlePolicy: 'Dark-green subtitle at x=35 y=104, Sakkal Majalla bold 18pt, when a section/lens label is useful.',
   hiddenPlaceholderPolicy: 'Do not surface hidden think-cell data, scratch placeholders, or unrelated benchmark report artifacts unless explicitly requested.',
   borderWeightPt: { min: 0.5, max: 1.25 },
 };
@@ -787,12 +787,12 @@ const MOS_PROMPT_CONTRACT = `# MoS Client Design Contract
 
 ## Master
 - Use one Ministry of Sport performance-management master shell. Do not invent Strategy&, STC, PIF, DGE, or FYA variants.
-- Use the body frame at x=35 y=122 w=890 h=372 on the 960x540 canvas.
-- Keep the bottom footer/logo/page band clear.
+- Use the body frame at x=35 y=132 w=890 h=349 on the 960x540 canvas.
+- Keep the bottom dark-green footer/logo/page band clear.
 - Do not render Strategy& footer branding.
 
 ## Theme
-- Use MoS dark green (#073B16), primary green (#0B5921), bright green (#0E762C), gold (#BD9608), light green (#80C7A7), white, light gray, and charcoal.
+- Use MoS dark green (#073B16), primary green (#0B5921), bright green (#0E762C), light green (#80C7A7), white, light gray, and charcoal. Gold (#BD9608) is minor accent only.
 - Avoid maroon-led, purple-led, blue-led, or cream-led slide systems.
 
 ## Typography
@@ -801,14 +801,14 @@ const MOS_PROMPT_CONTRACT = `# MoS Client Design Contract
 
 ## Components
 - Prefer benchmark flows, pillar cards, KPI matrices, value-chain maps, comparison tables, and implication panels inside the body frame.
-- Use green bands, pale-green panels, thin borders, and gold highlights sparingly.`;
+- Use green bands, pale-green panels, thin borders, and avoid gold-led layouts.`;
 
 const MOS_PPTX_FONTS = {
-  title: { fontFace: 'Sakkal Majalla', fontSize: 24, bold: true, color: '000000' },
-  subtitle: { fontFace: 'Sakkal Majalla', fontSize: 14, bold: true, color: '0B5921' },
+  title: { fontFace: 'Sakkal Majalla', fontSize: 28, bold: true, color: '000000' },
+  subtitle: { fontFace: 'Sakkal Majalla', fontSize: 18, bold: true, color: '073B16' },
   body: { fontFace: 'Sakkal Majalla', fontSize: 10, bold: false, color: '2C2C2C' },
-  footer: { fontFace: 'Sakkal Majalla', fontSize: 7, italic: false, bold: false, color: '7F7F7F' },
-  slideNum: { fontFace: 'Sakkal Majalla', fontSize: 7, bold: false, color: '7F7F7F' },
+  footer: { fontFace: 'Sakkal Majalla', fontSize: 8, italic: false, bold: false, color: 'FFFFFF' },
+  slideNum: { fontFace: 'Sakkal Majalla', fontSize: 13, bold: false, color: 'FFFFFF' },
 };
 
 const mosStandardInches = {

@@ -135,20 +135,20 @@ export function getSlideMeasureClientChromeCss() {
 
 .slide[data-client-profile="mos"] .client-chrome-mos-logo {
   left: 18px;
-  top: 506px;
-  width: 37px;
-  height: 18px;
+  top: 508px;
+  width: 72px;
+  height: 35px;
   object-fit: contain;
   object-position: left center;
 }
 
 .slide[data-client-profile="mos"] .client-chrome-mos-wordmark {
   left: 18px;
-  top: 506px;
-  width: 37px;
-  height: 18px;
-  font: 700 9px/1 "Sakkal Majalla", Arial, sans-serif;
-  color: #0B5921;
+  top: 508px;
+  width: 72px;
+  height: 35px;
+  font: 700 10px/1 "Sakkal Majalla", Arial, sans-serif;
+  color: #FFFFFF;
 }
 `;
 }

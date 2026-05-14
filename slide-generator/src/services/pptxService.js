@@ -35,6 +35,7 @@ import { authFetch } from './authFetch.js';
 import { applyPromptOverride, recordPromptPayload } from './ai/promptOverrides.js';
 import { omitChatCompletionsTemperature } from './ai/models.js';
 import { injectRasterizedSvgIcons } from './pptxSvgIconInjector.js';
+import { choosePptxRenderMode, renderSlideWithDomMeasurement } from './pptxDomMeasuredRenderer.js';
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -1619,6 +1620,13 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       const slide = slides[i];
       const slideNum = i + 1;
 
+      if (choosePptxRenderMode(slide, settings) === 'dom-measured') {
+        aiResults[i] = { success: false, skipped: true, reason: 'dom-measured' };
+        completed++;
+        if (onProgress) onProgress({ phase: 'rendering', processed: completed, total: totalSlides, message: `Slide ${completed}/${totalSlides} (DOM measured)` });
+        return;
+      }
+
       // Use pre-generated PPTX code if available and valid
       if (slide.pptxCode && canUseCachedPptxCodeForProfile(activeProfile)) {
         try {
@@ -1677,7 +1685,19 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       const result = aiResults[i];
       let rendered = false;
 
-      if (result?.success && result.slideFunctions) {
+      if (choosePptxRenderMode(slide, settings) === 'dom-measured') {
+        try {
+          rendered = await renderSlideWithDomMeasurement(pptx, slide, slideNum, totalSlides, settings, activeProfile);
+          if (rendered) {
+            const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+            if (lastSlide) normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+          }
+        } catch (domErr) {
+          console.warn(`[PPTX DOM] Slide ${slideNum} failed; falling back to AI renderer:`, domErr?.message || domErr);
+        }
+      }
+
+      if (!rendered && result?.success && result.slideFunctions) {
         try {
           result.slideFunctions[0](pptx, slideNum, totalSlides);
           rendered = true;
@@ -1694,6 +1714,28 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
           console.error(`[PPTX] Execution failed for slide ${slideNum}:`, execErr.message);
           slide.pptxCode = null;
           recordFailure(slide, slideNum, execErr.message);
+        }
+      }
+
+      if (!rendered && result?.skipped && useAI) {
+        try {
+          const fallbackResult = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
+          if (fallbackResult.success && fallbackResult.slideFunctions) {
+            fallbackResult.slideFunctions[0](pptx, slideNum, totalSlides);
+            rendered = true;
+            if (fallbackResult.code) slide.pptxCode = fallbackResult.code;
+            const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+            if (lastSlide) {
+              addSourceNote(lastSlide, slide.html);
+              normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+              await injectRasterizedSvgIcons(lastSlide, slide, settings);
+            }
+          } else {
+            recordFailure(slide, slideNum, fallbackResult?.error || 'AI generation failed after DOM renderer fallback');
+          }
+        } catch (err) {
+          console.error(`[PPTX] AI fallback failed for DOM slide ${slideNum}:`, err.message);
+          recordFailure(slide, slideNum, err.message);
         }
       }
 
@@ -1721,7 +1763,19 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
 
     let rendered = false;
 
-      if (useAI) {
+      if (choosePptxRenderMode(slide, settings) === 'dom-measured') {
+        try {
+          rendered = await renderSlideWithDomMeasurement(pptx, slide, slideNum, totalSlides, settings, activeProfile);
+          if (rendered) {
+            const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+            if (lastSlide) normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+          }
+        } catch (domErr) {
+          console.warn(`[PPTX DOM] Slide ${slideNum} failed; falling back to AI renderer:`, domErr?.message || domErr);
+        }
+      }
+
+      if (!rendered && useAI) {
         try {
           const result = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
           if (result.success && result.slideFunctions) {
@@ -1829,7 +1883,19 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
         message: message || 'Unknown error',
       });
     };
-  if (useAI) {
+  if (choosePptxRenderMode(slide, settings) === 'dom-measured') {
+    try {
+      rendered = await renderSlideWithDomMeasurement(pptx, slide, slideNumber, totalSlides, settings, activeProfile);
+      if (rendered) {
+        const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+        if (lastSlide) normalizeGeneratedSlideForProfile(lastSlide, slide, slideNumber, activeProfile, activeProfilePositions);
+      }
+    } catch (domErr) {
+      console.warn('[PPTX DOM] Single slide failed; falling back to AI renderer:', domErr?.message || domErr);
+    }
+  }
+
+  if (!rendered && useAI) {
     try {
       const result = await generateSlideWithRetry(slide, slideNumber, totalSlides, settings, credentials);
       if (result.success && result.slideFunctions) {

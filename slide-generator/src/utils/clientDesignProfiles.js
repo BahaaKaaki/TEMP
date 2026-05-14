@@ -457,39 +457,42 @@ const pifStandardInches = {
 const DGE_THEME = {
   name: 'DGE',
   defaultVariant: 'dge_blue_brand',
-  // Palette anchored to the native DGE master (DGE page_v1.0.pptx):
-  // - #203864 dominates structural shapes (32 occurrences) — primary brand blue
-  // - #0E2841 is theme dk2 — deepest navy
-  // - #32516E mid-tone, #7DA1C4 light, #A6CAEC very light
+  // Palette anchored to the visible blues in the native DGE master (DGE page_v1.0.pptx).
+  // The dominant header/section bands use a gradient #2A70AD -> #005393 -> #00437B.
+  // We pick the middle stop #005393 as the single primary brand blue (closest match to the
+  // perceived gradient color), with #00437B as deepest navy and #2A70AD as the bright top.
+  // #203864 also appears in chrome shapes but is darker than the visible bands; keep it as
+  // a secondary chrome accent only.
   colors: {
-    accent: '#203864',
-    accentHover: '#0E2841',
+    accent: '#005393',
+    accentHover: '#00437B',
     accentSoft: '#E8EEF5',
     onAccent: '#FFFFFF',
-    heading: '#203864',
+    heading: '#005393',
     body: '#1A1A1A',
     muted: '#4A5568',
     page: '#FFFFFF',
     surface: '#F2F2F2',
     surfaceAlt: '#E7E6E6',
     border: '#7DA1C4',
-    success: '#203864',
+    success: '#005393',
     successSoft: '#D4E2F0',
-    warning: '#32516E',
+    warning: '#2A70AD',
     warningSoft: '#E8EEF5',
     danger: '#B21D41',
     dangerSoft: '#F7E1DD',
     info: '#7DA1C4',
     neutral: '#6B7280',
-    coverDark: '#0E2841',
-    kicker: '#32516E',
-    /** Native DGE primary brand blue — used for chrome, scope rows, structural emphasis */
-    dgePrimaryBlue: '#203864',
-    /** Alias retained for older code paths */
+    coverDark: '#00437B',
+    kicker: '#2A70AD',
+    /** Native primary brand blue — middle gradient stop, dominant visible blue on bands */
+    dgePrimaryBlue: '#005393',
+    /** Bright top of the native band gradient */
+    dgeBrightBlue: '#2A70AD',
+    /** Deepest gradient stop — covers and darkest fills */
+    dgeDeepNavy: '#00437B',
+    /** Secondary chrome navy used in small structural shapes */
     dgeChromeBlue: '#203864',
-    /** Native theme dk2 — deepest navy */
-    dgeDeepNavy: '#0E2841',
-    /** Mid-tone navy from native template */
     dgeStructuralBlue: '#32516E',
     dgeLightBlue: '#7DA1C4',
     dgeHighlightBlue: '#A6CAEC',
@@ -541,11 +544,14 @@ const DGE_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    // Lockup measured from native DGE_page_v1.0 master (image3.png at x=763 y=31 w=164 h=38).
-    logo: { x: 763, y: 31, w: 164, h: 38 },
+    // Lockup band sized for visible presence; transparent PNG (4.27:1) fills cleanly.
+    // PowerPoint stretches to fill the box; band aspect is set close to PNG aspect so
+    // the badge isn't distorted: 218/51 = 4.27 matches native PNG.
+    logo: { x: 709, y: 31, w: 218, h: 51 },
     title: { x: 33, y: 30, w: 660, h: 72 },
     subtitle: { x: 33, y: 108, w: 660, h: 22 },
-    body: { x: 33, y: 132, w: 894, h: 351 },
+    // Body band extended to match the native template right margin (~24px).
+    body: { x: 24, y: 132, w: 912, h: 351 },
     source: { x: 33, y: 493, w: 79, h: 18 },
     slideNumber: { x: 900, y: 493, w: 40, h: 18 },
     /** Top-of-slide tab strip (HTML ::before/::after + PPTX addSectionTracker) */
@@ -556,7 +562,7 @@ const DGE_LAYOUT_CONTRACT = {
     title: { x: 33, y: 345, w: 437, h: 46 },
     subtitle: { x: 33, y: 430, w: 203, h: 32 },
     meta: { x: 33, y: 493, w: 110, h: 18 },
-    brandLockup: { x: 763, y: 450, w: 164, h: 38 },
+    brandLockup: { x: 709, y: 450, w: 218, h: 51 },
     classificationStrip: { x: 0, y: 526, w: 960, h: 14 },
   },
   sectionDivider: {
@@ -583,17 +589,17 @@ const DGE_LAYOUT_CONTRACT = {
 
 const DGE_FREESTYLE_OVERRIDES = {
   shell: `DGE Abu Dhabi government communications shell on 960x540:
-- Top-right DGE / Abu Dhabi lockup (reserved band ~x=763 y=31 w=164 h=38, same footprint as native cover lockup); do not place content over it.
+- Top-right DGE / Abu Dhabi lockup (reserved band ~x=709 y=31 w=218 h=51, same footprint as native cover lockup); do not place content over it.
 - h1.title: x=33 y=30 w=660, max two lines at ~30px/1.15 (ellipsis if longer), Noto Sans SemiBold, black #000000. PPTX title chrome: typeface Noto Sans SemiBold with bold enabled. Native short-title decks use a tight band; long consulting headlines must not push into the subtitle—keep title concise or accept a two-line clamp.
 - h2.subtitle: x=33 y=108 w=660 h=22, Noto Sans Medium ~12px (500), black #000000 (sits below a two-line title cap so it never collides with wrapped h1 text).
-- div.frame: x=33 y=132 w=894 h=351 — body band below subtitle, clearing the lockup and staying above the footer row (y≈493) and classification strip (y=526–540). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
+- div.frame: x=24 y=132 w=912 h=351 — body band below subtitle, clearing the lockup and staying above the footer row (y≈493) and classification strip (y=526–540). Frame extends to within ~24px of the slide right edge, matching the native template (no wide white right margin). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
 - footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
 - slide number: bottom-right ~x=900 y=493.
 - Bottom classification strip zone y=526–540 is reserved for OPEN | مفتوحة style chrome; keep frame content above y≈500.`,
-  theme: `Primary brand blue #203864 (native DGE structural blue — used for body panels, top tabs, scope rows, section trackers, and primary emphasis). Deepest navy #0E2841 (theme dk2) for darkest fills and cover backgrounds. Mid-tone #32516E for secondary structural emphasis. Light panel #7DA1C4 for soft sections, very light #A6CAEC for hover/tinted backgrounds, white page, pale neutrals #E7E6E6 / #F2F2F2. Do not use #063360 (not in the native palette). Ignore Aptos theme slots (Office defaults) for color decisions.`,
+  theme: `Primary brand blue **#005393** (the dominant visible blue on native DGE header bands and scope rows — middle stop of the native gradient). Deepest navy **#00437B** (cover backgrounds and darkest fills, deepest gradient stop). Bright top-of-band **#2A70AD**. Secondary chrome navy **#203864** for small structural shapes only (do not use as a dominant fill). Light panel **#7DA1C4** for soft sections, very light **#A6CAEC** for tinted backgrounds, white page, pale neutrals #E7E6E6 / #F2F2F2. Do not use #063360 (not in the native palette). Ignore Aptos theme slots (Office defaults) for color decisions.`,
   vibe: `Modern government brand: calm, enabling, trusted, bilingual-friendly, spacious, image-led heroes, rounded cards, soft blue panels, minimal noise.`,
   writing: `Prefer a single-line slide title when possible (native DGE masters assume a short headline); if the title must run long, keep it to two lines max so the subtitle band at y≈108px stays clear. Short declarative titles, concise institutional copy, minimal bullets.`,
-  css: `Rounded cards, thin blue outlines, soft blue fills, white reverse text on #203864 panels, generous margins, large photographic hero bands when appropriate.`,
+  css: `Rounded cards, thin blue outlines, soft blue fills, white reverse text on #005393 panels (the native DGE band blue), generous margins, large photographic hero bands when appropriate.`,
   pptx: `16:9 widescreen (13.333 x 7.5 in). Hard-code Noto Sans for body English text; prefer bundled master chrome over raw theme slots. Preserve top-right lockup and bottom classification strip from the DGE master when merging templates.`,
 };
 
@@ -649,11 +655,11 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 
 ## Master and trust
 - Treat the bundled DGE template as the chrome authority: top-right lockup, bottom classification strip, and hero geometry override generic Office theme slots (Aptos colors are not authoritative).
-- Standard white content: title 33,30 (black, Noto Sans SemiBold ~30pt; PPTX chrome uses SemiBold typeface with bold true; reserve up to **two lines** then ellipsis—subtitle is fixed at **y=108** so it never overlaps wrapped titles) / subtitle 33,108 (black, Noto Sans Medium ~12pt) / body frame **33,132 size 894x351** / top-right lockup **763,31,164x38** (cover-sized lockup for legibility) / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
-- Section/subsection tracker pills: fill **#203864**, white label text (native DGE scope-row blue — same as the primary brand blue, the native master uses one consistent navy throughout chrome and panels).
+- Standard white content: title 33,30 (black, Noto Sans SemiBold ~30pt; PPTX chrome uses SemiBold typeface with bold true; reserve up to **two lines** then ellipsis—subtitle is fixed at **y=108** so it never overlaps wrapped titles) / subtitle 33,108 (black, Noto Sans Medium ~12pt) / body frame **24,132 size 912x351** (extended to match native right margin) / top-right lockup **709,31,218x51** (cover-sized lockup for legibility) / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
+- Section/subsection tracker pills and band fills (e.g. SCOPE/ACHIEVEMENTS row): fill **#005393** with white label text. This is the dominant native band blue (middle gradient stop). Tracker chrome can use the secondary navy #203864 if a darker pill tone is needed.
 
 ## Theme
-- Primary brand blue **#203864** for panels, top tabs, section trackers, scope rows, and structural emphasis (this is the dominant blue in the native DGE master). Deepest navy **#0E2841** (theme dk2) for cover and darkest fills. Mid-tone **#32516E** for secondary structural emphasis. Light panel **#7DA1C4** for soft sections, very light **#A6CAEC** for tinted backgrounds, neutrals #E7E6E6 / #F2F2F2, white backgrounds.
+- Primary brand blue **#005393** for panels, top tabs, section trackers, scope rows, and structural emphasis (this is the dominant visible blue in the native DGE master — the middle stop of the native band gradient). Deepest navy **#00437B** for cover and darkest fills (the deepest gradient stop). Bright **#2A70AD** for top-of-band highlights. Secondary chrome navy **#203864** for small structural shapes only — never as a dominant fill. Light panel **#7DA1C4** for soft sections, very light **#A6CAEC** for tinted backgrounds, neutrals #E7E6E6 / #F2F2F2, white backgrounds.
 - Do not use **#063360** — it is not present in the native DGE template palette.
 - Forbidden as dominant fills: Office orange #E97132, bright green #196B24, cyan #0F9ED5, magenta #A02B93, lime #4EA72E.
 
@@ -683,7 +689,7 @@ const dgeStandardInches = {
   slideNum: { ...pxRectToInches(DGE_LAYOUT_CONTRACT.standardContent.slideNumber, DGE_LAYOUT_CONTRACT.canvas), font: DGE_PPTX_FONTS.slideNum },
   sectionTracker: {
     ...pxRectToInches(DGE_LAYOUT_CONTRACT.standardContent.sectionTracker, DGE_LAYOUT_CONTRACT.canvas),
-    colors: { fill: '203864', subFill: '203864', text: 'FFFFFF', subText: 'FFFFFF' },
+    colors: { fill: '005393', subFill: '005393', text: 'FFFFFF', subText: 'FFFFFF' },
     font: { fontFace: 'Noto Sans Medium', fontSize: 8, bold: false },
     paddingX: 0.22,
     textInset: 0.05,
@@ -994,7 +1000,7 @@ export const CLIENT_DESIGN_PROFILES = {
       ],
     },
     validationRules: {
-      requiredColors: ['#203864', '#0E2841', '#32516E', '#7DA1C4', '#FFFFFF'],
+      requiredColors: ['#005393', '#00437B', '#2A70AD', '#7DA1C4', '#FFFFFF'],
       preferredSurfaceColors: ['#E7E6E6', '#F2F2F2', '#E8EEF5', '#A6CAEC'],
       disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#063360'],
       forbiddenDominantColors: ['#E97132', '#196B24', '#0F9ED5', '#A02B93', '#4EA72E'],

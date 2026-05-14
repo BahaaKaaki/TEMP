@@ -83,21 +83,21 @@ export function getSlideMeasureClientChromeCss() {
 }
 
 .slide[data-client-profile="dge"] .client-chrome-dge-logo {
-  left: 763px;
+  left: 709px;
   top: 31px;
-  width: 164px;
-  height: 38px;
+  width: 218px;
+  height: 51px;
   object-fit: contain;
   object-position: right center;
 }
 
 .slide[data-client-profile="dge"] .client-chrome-dge-wordmark {
-  left: 763px;
+  left: 709px;
   top: 31px;
-  width: 164px;
-  height: 38px;
-  font: 600 12px/1.1 "Noto Sans", "Segoe UI", Arial, sans-serif;
-  color: #203864;
+  width: 218px;
+  height: 51px;
+  font: 600 14px/1.1 "Noto Sans", "Segoe UI", Arial, sans-serif;
+  color: #005393;
   text-align: right;
 }
 `;

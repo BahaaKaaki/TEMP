@@ -150,8 +150,8 @@ ACTIVE CLIENT PROFILE OVERRIDE -- PIF:
 ACTIVE CLIENT PROFILE OVERRIDE -- DGE:
 - Use the DGE government template shell, not Strategy& maroon geometry.
 - Canvas is 13.333 x 7.5 in (standard 16:9 from 960 x 540 px).
-- Brand palette taken directly from native DGE master: primary brand blue **#203864** (chrome, top tabs, scope rows, primary panels, structural emphasis), deepest navy **#0E2841** (cover and darkest fills), mid-tone **#32516E** (secondary structural), light panel **#7DA1C4**, very light **#A6CAEC**, pale surfaces #E7E6E6 / #F2F2F2, white. Slide chrome title and subtitle text must be black #000000, not brand blue. Do NOT use #063360 — it is not in the native palette.
-- If you define a c palette, favor: main:'203864', chrome:'203864', deep:'0E2841', secondary:'32516E', accent:'A6CAEC', surface:'F2F2F2', border:'7DA1C4', meta:'4A5568'.
+- Brand palette taken from the native DGE band gradient + chrome shapes: primary brand blue **#005393** (the dominant visible blue on header bands, scope rows, panels), deepest navy **#00437B** (covers, darkest fills), bright top-of-band **#2A70AD** (highlights), secondary chrome navy **#203864** (small structural shapes only — not as a dominant fill), light panel **#7DA1C4**, very light **#A6CAEC**, pale surfaces #E7E6E6 / #F2F2F2, white. Slide chrome title and subtitle text must be black #000000, not brand blue. Do NOT use #063360 — it is not in the native palette.
+- If you define a c palette, favor: main:'005393', chrome:'203864', deep:'00437B', highlight:'2A70AD', accent:'A6CAEC', surface:'F2F2F2', border:'7DA1C4', meta:'4A5568'.
 - Use Noto Sans family in every generated text box; do not default to Aptos, Calibri, Georgia, STC Forward, or Fund fonts. Allowed family variants (preserved verbatim by the export pipeline): "Noto Sans SemiBold" (titles, with bold:true), "Noto Sans Medium" (subtitles, labels, with bold:false), "Noto Sans Bold" (rare emphasis), "Noto Sans" (body, default), "Noto Sans Light" (compact captions). The pipeline rewrites any other fontFace to "Noto Sans" so do not bother with fallback families.
 - Keep the top-right lockup area clear of body content; footer topic label stays bottom-left unless omitted.
 `;
@@ -282,24 +282,31 @@ function enforcePptxColorsForProfile(codeString, profile) {
       ['E6E9EE', 'DBB8F3'],
     ]);
   } else if (profile?.id === 'dge') {
-    // Native DGE master palette: #203864 primary, #0E2841 deepest navy, #32516E mid-tone,
-    // #7DA1C4 light, #A6CAEC very light. #063360 is NOT in the native template — remap it.
+    // Native DGE master palette (visible blues from header band gradient + observed shapes):
+    //   #005393 = primary (middle gradient stop, dominant visible blue)
+    //   #00437B = deepest navy (deepest gradient stop, covers/darkest fills)
+    //   #2A70AD = bright top of gradient (highlights)
+    //   #7DA1C4 = light panel, #A6CAEC = very light tint
+    //   #203864 = secondary chrome navy (small structural shapes only)
+    // #063360, #0E2841, #32516E and #0A4D73 are remapped to the visible palette.
     replacements = new Map([
-      ['111111', '203864'],
+      ['111111', '005393'],
       ['222222', '1A1A1A'],
-      ['A32020', '32516E'],
-      ['8E1E1E', '203864'],
-      ['4F008C', '0E2841'],
-      ['FF375E', '32516E'],
+      ['A32020', '2A70AD'],
+      ['8E1E1E', '005393'],
+      ['4F008C', '00437B'],
+      ['FF375E', '2A70AD'],
       ['F7F9FB', 'F2F2F2'],
       ['EEF2F6', 'E7E6E6'],
       ['F8E3E3', 'E8EEF5'],
       ['4A4F57', '4A5568'],
       ['4B4F55', '1A1A1A'],
       ['E6E9EE', '7DA1C4'],
-      ['063360', '203864'],
-      ['0A4D73', '32516E'],
-      ['2B5799', 'A6CAEC'],
+      ['063360', '005393'],
+      ['0A4D73', '00437B'],
+      ['0E2841', '00437B'],
+      ['32516E', '2A70AD'],
+      ['2B5799', '2A70AD'],
     ]);
   }
   if (!replacements) return codeString;

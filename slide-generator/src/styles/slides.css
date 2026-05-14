@@ -459,9 +459,9 @@
 }
 
 .slide[data-client-profile="dge"] .frame {
-  left: 33px;
+  left: 24px;
   top: 132px;
-  width: 894px;
+  width: 912px;
   height: 351px;
 }
 
@@ -504,15 +504,15 @@
 }
 
 .slide[data-client-profile="dge"][data-section]::before {
-  /* Native DGE top-tab chrome (e.g. SCOPE row in client reference decks) */
-  background: #203864;
+  /* Native DGE band chrome — middle gradient stop is the dominant visible blue */
+  background: #005393;
   color: #fff;
   font: 500 8px/1.35 "Noto Sans", "Segoe UI", Arial, sans-serif;
 }
 
 .slide[data-client-profile="dge"][data-section][data-subsection]::after,
 .slide[data-client-profile="dge"]:not([data-section])[data-subsection]::after {
-  background: #203864;
+  background: #005393;
   color: #fff;
   font: 500 8px/1.35 "Noto Sans", "Segoe UI", Arial, sans-serif;
 }

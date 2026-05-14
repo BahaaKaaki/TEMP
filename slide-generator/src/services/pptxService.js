@@ -150,8 +150,8 @@ ACTIVE CLIENT PROFILE OVERRIDE -- PIF:
 ACTIVE CLIENT PROFILE OVERRIDE -- DGE:
 - Use the DGE government template shell, not Strategy& maroon geometry.
 - Canvas is 13.333 x 7.5 in (standard 16:9 from 960 x 540 px).
-- Brand palette for in-slide content and panels: primary #063360, structural #215A9E, highlight #2B5799, light panels #7DA1C4, pale surfaces #E7E6E6 / #F2F2F2. Slide chrome title and subtitle text must be black #000000 (see native template slide 7), not brand blue.
-- If you define a c palette, favor: main:'063360', secondary:'215A9E', accent:'2B5799', surface:'F2F2F2', border:'7DA1C4', meta:'4A5568'.
+- Brand palette for in-slide content and panels: primary #063360, structural navy #0A4D73 (same hue as primary; avoid Office theme accent1 #156082 and avoid bright #215A9E on large fills), highlight #2B5799, light panels #7DA1C4, pale surfaces #E7E6E6 / #F2F2F2. Slide chrome title and subtitle text must be black #000000 (see native template slide 7), not brand blue.
+- If you define a c palette, favor: main:'063360', secondary:'0A4D73', accent:'2B5799', surface:'F2F2F2', border:'7DA1C4', meta:'4A5568'.
 - Use Noto Sans for every generated text box; do not default to Aptos, Calibri, Georgia, STC Forward, or Fund fonts.
 - Keep the top-right lockup area clear of body content; footer topic label stays bottom-left unless omitted.
 `;
@@ -269,7 +269,7 @@ function enforcePptxColorsForProfile(codeString, profile) {
       ['222222', '1A1A1A'],
       ['A32020', '2B5799'],
       ['8E1E1E', '063360'],
-      ['4F008C', '215A9E'],
+      ['4F008C', '0A4D73'],
       ['FF375E', '2B5799'],
       ['F7F9FB', 'F2F2F2'],
       ['EEF2F6', 'E7E6E6'],

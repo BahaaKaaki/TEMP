@@ -459,7 +459,7 @@ const DGE_THEME = {
   defaultVariant: 'dge_blue_brand',
   colors: {
     accent: '#063360',
-    accentHover: '#215A9E',
+    accentHover: '#0A4D73',
     accentSoft: '#E8EEF5',
     onAccent: '#FFFFFF',
     heading: '#063360',
@@ -469,18 +469,18 @@ const DGE_THEME = {
     surface: '#F2F2F2',
     surfaceAlt: '#E7E6E6',
     border: '#7DA1C4',
-    success: '#215A9E',
+    success: '#063360',
     successSoft: '#D4E2F0',
     warning: '#2B5799',
     warningSoft: '#E8EEF5',
     danger: '#B21D41',
     dangerSoft: '#F7E1DD',
-    info: '#215A9E',
+    info: '#7DA1C4',
     neutral: '#6B7280',
     coverDark: '#063360',
     kicker: '#2B5799',
     dgePrimaryBlue: '#063360',
-    dgeStructuralBlue: '#215A9E',
+    dgeStructuralBlue: '#0A4D73',
     dgeLightBlue: '#7DA1C4',
     dgeHighlightBlue: '#2B5799',
   },
@@ -493,12 +493,12 @@ const DGE_THEME = {
     cssVars: {
       '--left-x': '33px',
       '--title-y': '30px',
-      '--title-w': '718px',
+      '--title-w': '660px',
       '--title-font-size': '30px',
       '--title-font-weight': '700',
       '--title-line-height': '1.15',
       '--subtitle-y': '108px',
-      '--subtitle-w': '720px',
+      '--subtitle-w': '660px',
       '--subtitle-color': '#000000',
       '--subtitle-font-size': '12px',
       '--subtitle-font-weight': '400',
@@ -531,9 +531,9 @@ const DGE_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    logo: { x: 763, y: 31, w: 164, h: 38 },
-    title: { x: 33, y: 30, w: 718, h: 72 },
-    subtitle: { x: 33, y: 108, w: 720, h: 22 },
+    logo: { x: 709, y: 31, w: 218, h: 51 },
+    title: { x: 33, y: 30, w: 660, h: 72 },
+    subtitle: { x: 33, y: 108, w: 660, h: 22 },
     body: { x: 33, y: 132, w: 894, h: 351 },
     source: { x: 33, y: 493, w: 79, h: 18 },
     slideNumber: { x: 900, y: 493, w: 40, h: 18 },
@@ -570,14 +570,14 @@ const DGE_LAYOUT_CONTRACT = {
 
 const DGE_FREESTYLE_OVERRIDES = {
   shell: `DGE Abu Dhabi government communications shell on 960x540:
-- Top-right DGE / Abu Dhabi lockup (reserved band ~x=763 y=31 w=164 h=38); do not place content over it.
-- h1.title: x=33 y=30 w=718, max two lines at ~30px/1.15 (ellipsis if longer), Noto Sans Bold, black #000000. Native short-title decks use a tight band; long consulting headlines must not push into the subtitle—keep title concise or accept a two-line clamp.
-- h2.subtitle: x=33 y=108 w=720 h=22, Noto Sans Regular ~12px, black #000000 (sits below a two-line title cap so it never collides with wrapped h1 text).
+- Top-right DGE / Abu Dhabi lockup (reserved band ~x=709 y=31 w=218 h=51, same footprint as native cover lockup); do not place content over it.
+- h1.title: x=33 y=30 w=660, max two lines at ~30px/1.15 (ellipsis if longer), Noto Sans Bold, black #000000. Native short-title decks use a tight band; long consulting headlines must not push into the subtitle—keep title concise or accept a two-line clamp.
+- h2.subtitle: x=33 y=108 w=660 h=22, Noto Sans Regular ~12px, black #000000 (sits below a two-line title cap so it never collides with wrapped h1 text).
 - div.frame: x=33 y=132 w=894 h=351 — body band below subtitle, clearing the lockup and staying above the footer row (y≈493) and classification strip (y=526–540). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
 - footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
 - slide number: bottom-right ~x=900 y=493.
 - Bottom classification strip zone y=526–540 is reserved for OPEN | مفتوحة style chrome; keep frame content above y≈500.`,
-  theme: `Primary #063360, structural blue #215A9E, highlight #2B5799, light panels #7DA1C4, white page, pale neutrals #E7E6E6 / #F2F2F2. Do not let generic Office theme accents (orange, bright green, cyan, magenta) dominate. Ignore Aptos theme slots for color decisions.`,
+  theme: `Primary #063360, darker navy structural #0A4D73 (same hue family; do not use Office theme accent1 #156082 or bright #215A9E for large fills), highlight #2B5799, light panels #7DA1C4, white page, pale neutrals #E7E6E6 / #F2F2F2. Do not let generic Office theme accents (orange, bright green, cyan, magenta) dominate. Ignore Aptos theme slots for color decisions.`,
   vibe: `Modern government brand: calm, enabling, trusted, bilingual-friendly, spacious, image-led heroes, rounded cards, soft blue panels, minimal noise.`,
   writing: `Prefer a single-line slide title when possible (native DGE masters assume a short headline); if the title must run long, keep it to two lines max so the subtitle band at y≈108px stays clear. Short declarative titles, concise institutional copy, minimal bullets.`,
   css: `Rounded cards, thin blue outlines, soft blue fills, white reverse text on #063360 panels, generous margins, large photographic hero bands when appropriate.`,
@@ -636,10 +636,10 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 
 ## Master and trust
 - Treat the bundled DGE template as the chrome authority: top-right lockup, bottom classification strip, and hero geometry override generic Office theme slots (Aptos colors are not authoritative).
-- Standard white content: title 33,30 (black, Noto Sans Bold ~30pt; reserve up to **two lines** then ellipsis—subtitle is fixed at **y=108** so it never overlaps wrapped titles) / subtitle 33,108 (black, Noto Sans Regular ~12pt) / body frame **33,132 size 894x351** / top-right lockup 763,31,164x38 / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
+- Standard white content: title 33,30 (black, Noto Sans Bold ~30pt; reserve up to **two lines** then ellipsis—subtitle is fixed at **y=108** so it never overlaps wrapped titles) / subtitle 33,108 (black, Noto Sans Regular ~12pt) / body frame **33,132 size 894x351** / top-right lockup **709,31,218x51** (cover-sized lockup for legibility) / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
 
 ## Theme
-- Primary #063360, structural #215A9E, highlight #2B5799, light panels #7DA1C4, neutrals #E7E6E6 and #F2F2F2, white backgrounds.
+- Primary #063360, structural navy #0A4D73 (not Office accent1 #156082), highlight #2B5799, light panels #7DA1C4, neutrals #E7E6E6 and #F2F2F2, white backgrounds.
 - Forbidden as dominant fills: Office orange #E97132, bright green #196B24, cyan #0F9ED5, magenta #A02B93, lime #4EA72E.
 
 ## Typography
@@ -971,7 +971,7 @@ export const CLIENT_DESIGN_PROFILES = {
       ],
     },
     validationRules: {
-      requiredColors: ['#063360', '#215A9E', '#7DA1C4', '#FFFFFF'],
+      requiredColors: ['#063360', '#0A4D73', '#7DA1C4', '#FFFFFF'],
       preferredSurfaceColors: ['#E7E6E6', '#F2F2F2', '#E8EEF5'],
       disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D'],
       forbiddenDominantColors: ['#E97132', '#196B24', '#0F9ED5', '#A02B93', '#4EA72E'],

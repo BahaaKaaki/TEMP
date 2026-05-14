@@ -438,7 +438,7 @@
 .slide[data-client-profile="dge"] .title {
   left: 33px;
   top: 30px;
-  width: 718px;
+  width: 660px;
   max-height: calc(30px * 1.15 * 2);
   font: 700 30px/1.15 "Noto Sans", "Segoe UI", Arial, sans-serif;
   color: #000000;
@@ -452,7 +452,7 @@
 .slide[data-client-profile="dge"] .subtitle {
   left: 33px;
   top: 108px;
-  width: 720px;
+  width: 660px;
   min-height: 22px;
   font: 400 12px/1.2 "Noto Sans", "Segoe UI", Arial, sans-serif;
   color: #000000;
@@ -504,15 +504,15 @@
 }
 
 .slide[data-client-profile="dge"][data-section]::before {
-  background: #215A9E;
+  background: #063360;
   color: #fff;
   font: 600 8px/1.35 "Noto Sans", "Segoe UI", Arial, sans-serif;
 }
 
 .slide[data-client-profile="dge"][data-section][data-subsection]::after,
 .slide[data-client-profile="dge"]:not([data-section])[data-subsection]::after {
-  background: #7DA1C4;
-  color: #063360;
+  background: #063360;
+  color: #fff;
   font: 600 8px/1.35 "Noto Sans", "Segoe UI", Arial, sans-serif;
 }
 

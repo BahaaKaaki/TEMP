@@ -3,7 +3,12 @@ import ReactDOM from 'react-dom';
 import { useSlides } from '../context/SlideContext';
 import { transformElementToWidget, hasAnyApiKey } from '../services/aiService';
 import { exportSingleSlideToPPTX, testPPTXCodeGeneration } from '../services/pptxService';
-import { exportSingleSlideToPDF, generateFileName } from '../services/exportService';
+import {
+  exportRenderedSlideElementToPDF,
+  exportRenderedSlideElementToPNG,
+  exportSingleSlideToPDF,
+  generateFileName,
+} from '../services/exportService';
 import { WIDGET_CATEGORIES, getWidgetsByCategory } from '../utils/slideWidgets';
 import { themeToCSS } from '../utils/themeUtils';
 import { authFetch } from '../services/authFetch';
@@ -351,6 +356,38 @@ export default function SlidePreview({ onSwitchToCode }) {
       await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename, null, state.theme);
     } catch (err) {
       console.error('Failed to download PDF:', err);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
+  const getRenderedSlideElement = () => slideRef.current?.querySelector('.slide') || null;
+
+  const handleDownloadRenderedSlide = async (format) => {
+    if (!activeSlide) return;
+    setIsDownloading(true);
+    setShowDownloadMenu(false);
+    try {
+      const renderedSlideElement = getRenderedSlideElement();
+      if (!renderedSlideElement) {
+        throw new Error('Rendered slide is not ready yet');
+      }
+
+      const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
+      const filename = generateFileName(`${state.deckName}_Slide${slideIndex + 1}_browser`, format, {
+        useNomenclature: state.settings.useNomenclature ?? true,
+        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
+        version: 1,
+      });
+
+      if (format === 'png') {
+        await exportRenderedSlideElementToPNG(renderedSlideElement, filename);
+      } else {
+        await exportRenderedSlideElementToPDF(renderedSlideElement, filename);
+      }
+    } catch (err) {
+      console.error(`Failed to download browser ${format.toUpperCase()}:`, err);
+      alert(`Failed to download browser ${format.toUpperCase()}: ${err.message}`);
     } finally {
       setIsDownloading(false);
     }
@@ -1146,6 +1183,42 @@ export default function SlidePreview({ onSwitchToCode }) {
             <line x1="3" y1="21" x2="10" y2="14" />
           </svg>
         </button>
+
+        <div className="slide-browser-export-float" ref={downloadMenuRef}>
+          <button
+            className="slide-browser-export-button"
+            onClick={() => setShowDownloadMenu(value => !value)}
+            disabled={isDownloading}
+            title="Export exactly as rendered in browser"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            {isDownloading ? 'Exporting…' : 'Browser Export'}
+          </button>
+          {showDownloadMenu && (
+            <div className="slide-browser-export-menu">
+              <button onClick={() => handleDownloadRenderedSlide('png')} disabled={isDownloading}>
+                Browser PNG
+                <span>Highest visual fidelity</span>
+              </button>
+              <button onClick={() => handleDownloadRenderedSlide('pdf')} disabled={isDownloading}>
+                Browser PDF
+                <span>Image-backed PDF</span>
+              </button>
+              <button onClick={handleDownloadSlidePPTX} disabled={isDownloading}>
+                Editable PPTX
+                <span>PowerPoint objects</span>
+              </button>
+              <button onClick={handleDownloadSlidePDF} disabled={isDownloading}>
+                Legacy PDF
+                <span>HTML re-render path</span>
+              </button>
+            </div>
+          )}
+        </div>
 
         {slideSources.length > 0 && (
           <button

@@ -367,3 +367,87 @@ export async function exportToPDF(slides, sharedCSS, filename = 'presentation.pd
 export async function exportSingleSlideToPDF(slide, sharedCSS, filename = 'slide.pdf', onProgress = null, theme = null) {
   return exportToPDF([slide], sharedCSS, filename, onProgress, theme);
 }
+
+function getRenderedSlideSize(slideElement) {
+  const rect = slideElement.getBoundingClientRect();
+  const computed = window.getComputedStyle(slideElement);
+  const width = slideElement.offsetWidth || parseFloat(computed.width) || rect.width || 960;
+  const height = slideElement.offsetHeight || parseFloat(computed.height) || rect.height || 540;
+
+  return {
+    width: Math.round(width),
+    height: Math.round(height),
+  };
+}
+
+async function captureRenderedSlideCanvas(slideElement, { scale = 3 } = {}) {
+  if (!slideElement) {
+    throw new Error('No rendered slide element found to export');
+  }
+
+  const { width, height } = getRenderedSlideSize(slideElement);
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-10000px';
+  container.style.top = '0';
+  container.style.width = `${width}px`;
+  container.style.height = `${height}px`;
+  container.style.overflow = 'hidden';
+  container.style.background = '#ffffff';
+  container.style.pointerEvents = 'none';
+  container.setAttribute('aria-hidden', 'true');
+
+  const clonedSlide = slideElement.cloneNode(true);
+  clonedSlide.style.width = `${width}px`;
+  clonedSlide.style.height = `${height}px`;
+  clonedSlide.style.transform = 'none';
+  clonedSlide.style.boxShadow = 'none';
+  clonedSlide.style.borderRadius = '0';
+  container.appendChild(clonedSlide);
+  document.body.appendChild(container);
+
+  try {
+    if (document.fonts?.ready) {
+      await document.fonts.ready;
+    }
+
+    return await html2canvas(clonedSlide, {
+      scale,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      width,
+      height,
+      windowWidth: width,
+      windowHeight: height,
+      logging: false,
+    });
+  } finally {
+    document.body.removeChild(container);
+  }
+}
+
+export async function exportRenderedSlideElementToPNG(slideElement, filename = 'slide.png', options = {}) {
+  const canvas = await captureRenderedSlideCanvas(slideElement, options);
+  const blob = await new Promise((resolve, reject) => {
+    canvas.toBlob((result) => {
+      if (result) resolve(result);
+      else reject(new Error('Failed to render slide image'));
+    }, 'image/png');
+  });
+
+  saveAs(blob, filename);
+}
+
+export async function exportRenderedSlideElementToPDF(slideElement, filename = 'slide.pdf', options = {}) {
+  const canvas = await captureRenderedSlideCanvas(slideElement, options);
+  const { width, height } = getRenderedSlideSize(slideElement);
+  const pdf = new jsPDF({
+    orientation: width >= height ? 'landscape' : 'portrait',
+    unit: 'px',
+    format: [width, height],
+  });
+
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
+  pdf.save(filename);
+}

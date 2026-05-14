@@ -643,7 +643,37 @@ async function sanitizeContentTypesForExistingParts(zip, label = 'presentation')
   }
 }
 
+async function removeOptionalPowerPointSidecars(zip) {
+  [
+    'ppt/viewProps.xml',
+    'ppt/presProps.xml',
+    'ppt/tableStyles.xml',
+  ].forEach(path => {
+    if (zip.files[path]) zip.remove(path);
+  });
+
+  const relsPath = 'ppt/_rels/presentation.xml.rels';
+  if (zip.files[relsPath]) {
+    const relsXml = await zip.files[relsPath].async('string');
+    zip.file(relsPath, relsXml
+      .replace(/<Relationship[^>]*Type="[^"]*\/(?:viewProps|presProps|tableStyles)"[^>]*\/>/g, ''));
+  }
+}
+
+async function sanitizeAppProperties(zip) {
+  const appPath = 'docProps/app.xml';
+  if (!zip.files[appPath]) return;
+  const slideCount = Object.keys(zip.files).filter(path => /^ppt\/slides\/slide\d+\.xml$/.test(path)).length;
+  const appXml = await zip.files[appPath].async('string');
+  const cleanedAppXml = appXml
+    .replace(/<Notes>\d+<\/Notes>/g, '<Notes>0</Notes>')
+    .replace(/<Slides>\d+<\/Slides>/g, `<Slides>${slideCount}</Slides>`);
+  if (cleanedAppXml !== appXml) zip.file(appPath, cleanedAppXml);
+}
+
 async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
+  await removeOptionalPowerPointSidecars(zip);
+  await sanitizeAppProperties(zip);
   await ensureZipMediaContentTypes(zip, label);
 
   Object.keys(zip.files)

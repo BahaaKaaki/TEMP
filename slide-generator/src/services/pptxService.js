@@ -44,7 +44,10 @@ const PROFILE_PPTX_FONT_FACE = {
   stc: 'STC Forward',
   pif: 'Fund Light',
   dge: 'Noto Sans',
+  mos: 'Sakkal Majalla',
 };
+
+const DIRECT_PROFILE_CHROME_EXPORTS = new Set(['mos']);
 
 async function writeSanitizedPptxFile(pptx, filename, label = 'direct export') {
   const buf = await pptx.write({ outputType: 'arraybuffer' });
@@ -55,6 +58,10 @@ async function writeSanitizedPptxFile(pptx, filename, label = 'direct export') {
     console.error('[PPTX] PowerPoint sanitation failed; downloading original buffer:', error);
     downloadArrayBuffer(buf, filename);
   }
+}
+
+function shouldUseDirectProfileChromeExport(profile) {
+  return DIRECT_PROFILE_CHROME_EXPORTS.has(profile?.id);
 }
 
 function getProfilePptxFontFace(profile) {
@@ -1761,7 +1768,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
 
   if (onProgress) onProgress({ phase: 'finalizing', processed: totalSlides, total: totalSlides, message: 'Creating PowerPoint file...' });
 
-  if (templateData?.data) {
+  if (templateData?.data && !shouldUseDirectProfileChromeExport(activeProfile)) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
       const chrome = {
@@ -1780,7 +1787,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       await writeSanitizedPptxFile(pptx, filename, 'template merge fallback');
     }
   } else {
-    await writeSanitizedPptxFile(pptx, filename, 'direct export');
+    await writeSanitizedPptxFile(pptx, filename, shouldUseDirectProfileChromeExport(activeProfile) ? `${activeProfile.id} direct profile export` : 'direct export');
   }
 
   if (onProgress) onProgress({ phase: 'complete', processed: totalSlides, total: totalSlides, message: 'Download complete!' });
@@ -1866,7 +1873,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 
   if (onProgress) onProgress({ phase: 'finalizing', message: 'Creating PowerPoint file...' });
 
-  if (templateData?.data) {
+  if (templateData?.data && !shouldUseDirectProfileChromeExport(activeProfile)) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
       const chrome = {
@@ -1882,7 +1889,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
       downloadArrayBuffer(merged, filename);
     } catch (e) { await writeSanitizedPptxFile(pptx, filename, 'single-slide template fallback'); }
     } else {
-      await writeSanitizedPptxFile(pptx, filename, 'single-slide direct export');
+      await writeSanitizedPptxFile(pptx, filename, shouldUseDirectProfileChromeExport(activeProfile) ? `${activeProfile.id} single-slide direct profile export` : 'single-slide direct export');
     }
 
   if (onProgress) onProgress({ phase: 'complete', message: 'Download complete!' });

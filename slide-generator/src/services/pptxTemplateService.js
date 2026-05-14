@@ -616,6 +616,17 @@ function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
     return match;
   });
 
+  fixed = fixed.replace(/<a:p\b[^>]*>[\s\S]*?<\/a:p>/g, paragraphXml => {
+    let seenParagraphProps = false;
+    return paragraphXml.replace(/<a:pPr\b[\s\S]*?<\/a:pPr>/g, match => {
+      if (!seenParagraphProps) {
+        seenParagraphProps = true;
+        return match;
+      }
+      return '';
+    });
+  });
+
   if (duplicateIds > 0 || nonPositiveExtents > 0 || volatileAttributes > 0 || unsafeTypefaces > 0) {
     console.warn('[PPTX Template] Sanitized %s: duplicateShapeIds=%d nonPositiveExtents=%d volatileAttributes=%d unsafeTypefaces=%d',
       slidePath || 'slide XML', duplicateIds, nonPositiveExtents, volatileAttributes, unsafeTypefaces);

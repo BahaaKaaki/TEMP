@@ -1412,6 +1412,68 @@ function addProfileTitleRule(pptxSlide, profile, positions) {
   });
 }
 
+function addMoSDirectFooterChrome(pptxSlide, slideNum, profile, positions) {
+  if (profile?.id !== 'mos' || !pptxSlide || !positions) return;
+  const footerBandY = 6.99;
+  const footerBandH = 0.51;
+  const green = '073B16';
+  const fontFace = getProfilePptxFontFace(profile) || 'Sakkal Majalla';
+  pptxSlide.addShape('rect', {
+    x: 0,
+    y: footerBandY,
+    w: profile?.layoutContract?.canvas?.widthIn || 13.333,
+    h: footerBandH,
+    fill: { color: green },
+    line: { color: green, transparency: 100 },
+  });
+  pptxSlide.addShape('rect', {
+    x: 0,
+    y: footerBandY - 0.07,
+    w: profile?.layoutContract?.canvas?.widthIn || 13.333,
+    h: 0.07,
+    fill: { color: '0B5921' },
+    line: { color: '0B5921', transparency: 100 },
+  });
+  pptxSlide.addText('MINISTRY OF SPORT', {
+    x: 0.25,
+    y: 7.08,
+    w: 1.32,
+    h: 0.22,
+    fontFace,
+    fontSize: 8,
+    bold: true,
+    color: 'FFFFFF',
+    margin: 0,
+    breakLine: false,
+    fit: 'shrink',
+  });
+  pptxSlide.addText('Sources:', {
+    x: positions.footer?.x ?? 1.84,
+    y: positions.footer?.y ?? 7.10,
+    w: positions.footer?.w ?? 7.65,
+    h: positions.footer?.h ?? 0.18,
+    fontFace,
+    fontSize: positions.footer?.font?.fontSize ?? 8,
+    color: 'FFFFFF',
+    margin: 0,
+    breakLine: false,
+    fit: 'shrink',
+  });
+  pptxSlide.addText(String(slideNum || ''), {
+    x: positions.slideNum?.x ?? 12.69,
+    y: positions.slideNum?.y ?? 7.10,
+    w: positions.slideNum?.w ?? 0.28,
+    h: positions.slideNum?.h ?? 0.18,
+    fontFace,
+    fontSize: positions.slideNum?.font?.fontSize ?? 13,
+    color: 'FFFFFF',
+    align: 'right',
+    margin: 0,
+    breakLine: false,
+    fit: 'shrink',
+  });
+}
+
 function fitObjectsIntoRect(objects, target, padding = 0.02) {
   const bounds = collectBounds(objects);
   if (!bounds || !target?.w || !target?.h) return false;
@@ -1562,6 +1624,7 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
     });
   }
   addProfileTitleRule(pptxSlide, profile, positions);
+  addMoSDirectFooterChrome(pptxSlide, slideNum, profile, positions);
 
   if (!bodyPos) return;
 

@@ -697,7 +697,7 @@ const DGE_THEME = {
       '--title-y': '30px',
       '--title-w': '660px',
       '--title-font-size': '30px',
-      '--title-font-weight': '400',
+      '--title-font-weight': '600',
       '--title-line-height': '1.15',
       '--subtitle-y': '108px',
       '--subtitle-w': '660px',

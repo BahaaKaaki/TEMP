@@ -498,14 +498,14 @@ const FYA_THEME = {
       '--title-font-size': '22px',
       '--title-font-weight': '400',
       '--title-line-height': '1.18',
-      '--subtitle-y': '119px',
-      '--subtitle-w': '867px',
+      '--subtitle-y': '100px',
+      '--subtitle-w': '597px',
       '--subtitle-color': '#CE9C3E',
       '--subtitle-font-size': '18px',
       '--subtitle-font-weight': '400',
-      '--frame-y': '145px',
+      '--frame-y': '132px',
       '--frame-w': '904px',
-      '--frame-h': '350px',
+      '--frame-h': '363px',
       '--footer-x': '26px',
       '--footer-y': '500px',
       '--footer-bottom': 'auto',
@@ -534,8 +534,8 @@ const FYA_LAYOUT_CONTRACT = {
   standardContent: {
     logo: { x: 26, y: 500, w: 139, h: 26 },
     title: { x: 26, y: 41, w: 867, h: 56 },
-    subtitle: { x: 26, y: 119, w: 867, h: 19 },
-    body: { x: 26, y: 145, w: 904, h: 350 },
+    subtitle: { x: 26, y: 100, w: 597, h: 25 },
+    body: { x: 26, y: 132, w: 904, h: 363 },
     source: { x: 190, y: 500, w: 560, h: 14 },
     date: { x: 820, y: 500, w: 110, h: 14 },
     slideNumber: { x: 792, y: 511, w: 138, h: 12 },
@@ -551,8 +551,8 @@ const FYA_LAYOUT_CONTRACT = {
 const FYA_FREESTYLE_OVERRIDES = {
   shell: `Use the Federal Youth Authority (FYA) warm institutional master on a 960x540 canvas. These FYA positions replace generic shell defaults:
 - h1.title: left 26px, top 41px, width about 867px, Poppins regular, 22px, black, compact institutional headline.
-- h2.subtitle: left 26px, top 119px, width about 867px, Poppins regular 18px, FYA gold #CE9C3E.
-- div.frame: left 26px, top 145px, width 904px, height 350px. Keep exhibits inside this body frame.
+- h2.subtitle: left 26px, top 100px, width about 597px, Poppins regular 18px, FYA gold #CE9C3E.
+- div.frame: left 26px, top 132px, width 904px, height 363px. Keep exhibits inside this body frame.
 - Footer/source/date/page chrome sits in the bottom band around y=500–526. Keep all content clear of the bottom footer band.
 - FYA logo appears bottom-left; do not use Strategy& footer branding on FYA slides.
 Use the FYA standard content slide as the default. Cover/divider variants are allowed only when explicitly requested.`,
@@ -592,7 +592,7 @@ const FYA_PPTX_CONTRACT = {
   sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',
   pageNumberPolicy: 'Bottom-right page number/date chrome in Poppins, dark neutral text.',
   titlePolicy: 'Content title at x=26 y=41 w=867 on the 960x540 canvas, Poppins SemiBold, black.',
-  subtitlePolicy: 'Use a compact gold subtitle at x=26 y=119 when the slide has a meaningful lens label; otherwise keep the body frame aligned to the standard band.',
+  subtitlePolicy: 'Use a compact gold subtitle at x=26 y=100 w=597 when the slide has a meaningful lens label; otherwise keep the body frame aligned to the standard band.',
   hiddenPlaceholderPolicy: 'Do not surface hidden template scratch content, think-cell artifacts, or unrelated stakeholder logos unless explicitly part of the requested content.',
   borderWeightPt: { min: 0.5, max: 1.25 },
 };
@@ -601,7 +601,7 @@ const FYA_PROMPT_CONTRACT = `# FYA Client Design Contract
 
 ## Master
 - Use one Federal Youth Authority warm institutional master shell. Do not invent a Strategy&, STC, PIF, or DGE variant.
-- Use the body frame at x=26 y=145 w=904 h=350 on the 960x540 canvas.
+- Use the body frame at x=26 y=132 w=904 h=363 on the 960x540 canvas.
 - Keep the bottom footer/logo/date/page band clear.
 - Do not render Strategy& footer branding.
 

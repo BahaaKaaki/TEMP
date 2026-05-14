@@ -448,18 +448,18 @@
 
 .slide[data-client-profile="fya"] .subtitle {
   left: 26px;
-  top: 119px;
-  width: 867px;
-  min-height: 19px;
+  top: 100px;
+  width: 597px;
+  min-height: 25px;
   font: 400 18px/1.18 Poppins, Arial, sans-serif;
   color: #CE9C3E;
 }
 
 .slide[data-client-profile="fya"] .frame {
   left: 26px;
-  top: 145px;
+  top: 132px;
   width: 904px;
-  height: 350px;
+  height: 363px;
 }
 
 .slide[data-client-profile="fya"] footer.footer:has(span.source),

@@ -101,6 +101,18 @@ function injectPageNumber(html = '', pageNumber, totalSlides) {
   return html.replace(/<\/div>\s*$/i, `${replacement}</div>`);
 }
 
+function normalizeDeckNameForVersion(name = '') {
+  return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function getDeckScopedExportVersion(state) {
+  const activeDeckName = normalizeDeckNameForVersion(state?.deckName || 'Untitled Deck');
+  const matchingDeckVersions = (state?.deckVersions || []).filter(version => (
+    normalizeDeckNameForVersion(version?.deckName || '') === activeDeckName
+  ));
+  return matchingDeckVersions.length + 1;
+}
+
 function prepareSlideHtmlForBrowserExport(slide, slideIndex, totalSlides, activeClientProfile) {
   let html = slide?.html || '';
   if (!/class=["']slide[\s"']/i.test(html)) {
@@ -448,7 +460,7 @@ ${previewParts.join('\n\n')}`;
       const filename = generateFileName(state.deckName, 'pptx', {
         useNomenclature: state.settings.useNomenclature ?? true,
         nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
-        version: state.deckVersions.length + 1,
+        version: getDeckScopedExportVersion(state),
       });
 
       // Combine custom templates for PPTX export (they may have pptxRendererCode)
@@ -497,7 +509,7 @@ ${previewParts.join('\n\n')}`;
       const filename = generateFileName(state.deckName, 'pdf', {
         useNomenclature: state.settings.useNomenclature ?? true,
         nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
-        version: state.deckVersions.length + 1,
+        version: getDeckScopedExportVersion(state),
       });
 
       await exportToPDF(
@@ -648,7 +660,7 @@ ${previewParts.join('\n\n')}`;
       const filename = generateFileName(`${state.deckName}_browser`, 'pdf', {
         useNomenclature: state.settings.useNomenclature ?? true,
         nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
-        version: state.deckVersions.length + 1,
+        version: getDeckScopedExportVersion(state),
       });
 
       await exportRenderedSlideElementsToPDF(container.querySelectorAll('.slide'), filename);

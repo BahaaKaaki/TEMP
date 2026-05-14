@@ -322,15 +322,31 @@ export async function clearTemplateFromStorage(options = {}) {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const WHITE_BG = '<p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>';
+function normalizePptxHexColor(color, fallback = 'FFFFFF') {
+  const raw = String(color || '').trim().replace(/^#/, '').toUpperCase();
+  return /^[0-9A-F]{6}$/.test(raw) ? raw : fallback;
+}
+
+function getProfileSlideBackground(profile) {
+  return normalizePptxHexColor(profile?.theme?.colors?.page, 'FFFFFF');
+}
+
+function buildSlideBackgroundXml(color) {
+  const safeColor = normalizePptxHexColor(color, 'FFFFFF');
+  return `<p:bg><p:bgPr><a:solidFill><a:srgbClr val="${safeColor}"/></a:solidFill><a:effectLst/></p:bgPr></p:bg>`;
+}
 
 /**
- * Inject a solid white background into slide XML so master/layout backgrounds
- * do not bleed through generated content.
+ * Inject a profile slide background so master/layout backgrounds do not bleed
+ * through generated content. Non-white profile decks (FYA) must keep their
+ * page color across every exported slide.
  */
-function injectSlideBackground(slideXml) {
-  if (/<p:bg\b/.test(slideXml)) return slideXml;
-  return slideXml.replace(/(<p:cSld[^>]*>)/, `$1${WHITE_BG}`);
+function injectSlideBackground(slideXml, profile = null) {
+  const backgroundXml = buildSlideBackgroundXml(getProfileSlideBackground(profile));
+  if (/<p:bg\b/.test(slideXml)) {
+    return slideXml.replace(/<p:bg\b[\s\S]*?<\/p:bg>/, backgroundXml);
+  }
+  return slideXml.replace(/(<p:cSld[^>]*>)/, `$1${backgroundXml}`);
 }
 
 /**
@@ -586,7 +602,7 @@ export async function applyProfileChromeToGenerated(generatedBuf, chrome = null,
     const slideNum = parseInt(genSlidePath.match(/slide(\d+)/)[1], 10);
     const genSlideRelsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
     let slideXml = await genZip.files[genSlidePath].async('string');
-    slideXml = hideMasterShapes(injectSlideBackground(slideXml));
+    slideXml = hideMasterShapes(injectSlideBackground(slideXml, profile));
     if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
     genZip.file(genSlidePath, slideXml);
 
@@ -686,6 +702,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   const tplZip = await JSZip.loadAsync(templateBuf);
   const genZip = await JSZip.loadAsync(generatedBuf);
   const preserveTemplateChrome = options.preserveTemplateChrome === true;
+  const profile = options.profile || (options.profileId ? getClientDesignProfile(options.profileId) : null);
 
   // ── Step 1: Remove template's existing slides + notesSlides ────────────
   const tplSlideFiles = Object.keys(tplZip.files).filter(
@@ -755,7 +772,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
     if (genZip.files[genSlidePath]) {
       let slideXml = await genZip.files[genSlidePath].async('string');
       if (!preserveTemplateChrome) slideXml = hideMasterShapes(slideXml);
-      slideXml = injectSlideBackground(slideXml);
+      slideXml = injectSlideBackground(slideXml, profile);
       if (hasLogo) slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
       tplZip.file(genSlidePath, slideXml);
     }

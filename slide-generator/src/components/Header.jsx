@@ -748,36 +748,6 @@ ${previewParts.join('\n\n')}`;
                 <div className="header-dropdown export-dropdown">
                   <button
                     className="export-dropdown-card"
-                    onClick={handleDownloadBrowserPDF}
-                    disabled={anyExportBusy}
-                  >
-                    {isExporting ? (
-                      <>
-                        <span className="export-dropdown-icon exporting">
-                          <span className="spinner" style={{ width: 18, height: 18 }} />
-                        </span>
-                        <span className="export-dropdown-text">
-                          <span className="export-dropdown-label">Exporting...</span>
-                          <span className="export-dropdown-hint">Please wait</span>
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="export-dropdown-icon">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                            <polyline points="13 2 13 9 20 9" />
-                          </svg>
-                        </span>
-                        <span className="export-dropdown-text">
-                          <span className="export-dropdown-label">Export Browser PDF</span>
-                          <span className="export-dropdown-hint">All slides, exact visual capture</span>
-                        </span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    className="export-dropdown-card"
                     onClick={() => handleDownloadPPTX(false)}
                     disabled={anyExportBusy}
                   >

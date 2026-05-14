@@ -546,10 +546,11 @@ const DGE_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    // Lockup band sized for visible presence; transparent PNG (4.27:1) fills cleanly.
-    // PowerPoint stretches to fill the box; band aspect is set close to PNG aspect so
-    // the badge isn't distorted: 218/51 = 4.27 matches native PNG.
-    logo: { x: 709, y: 31, w: 218, h: 51 },
+    // Lockup matched exactly to the native DGE master (DGE page_v1.0.pptx slide 1):
+    // x=763 y=31 w=164 h=38 px. The bundled PNG is the verbatim native image3.png
+    // (2000x468, ratio 4.274) and the band aspect (164/38 = 4.316) is the closest
+    // PowerPoint-pixel approximation, so PptxGenJS stretch leaves no visible band.
+    logo: { x: 763, y: 31, w: 164, h: 38 },
     title: { x: 33, y: 30, w: 660, h: 72 },
     subtitle: { x: 33, y: 108, w: 660, h: 22 },
     // Body band extended to match the native template right margin (~24px).
@@ -564,7 +565,7 @@ const DGE_LAYOUT_CONTRACT = {
     title: { x: 33, y: 345, w: 437, h: 46 },
     subtitle: { x: 33, y: 430, w: 203, h: 32 },
     meta: { x: 33, y: 493, w: 110, h: 18 },
-    brandLockup: { x: 709, y: 450, w: 218, h: 51 },
+    brandLockup: { x: 763, y: 450, w: 164, h: 38 },
     classificationStrip: { x: 0, y: 526, w: 960, h: 14 },
   },
   sectionDivider: {

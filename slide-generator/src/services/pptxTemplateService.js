@@ -568,10 +568,28 @@ function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
   let duplicateIds = 0;
   let nonPositiveExtents = 0;
   let volatileAttributes = 0;
+  let unsafeTypefaces = 0;
 
   fixed = fixed.replace(/\s+(?:dirty|smtClean|err|showMasterSp)="[^"]*"/g, () => {
     volatileAttributes++;
     return '';
+  });
+
+  fixed = fixed.replace(/\btypeface="([^"]*)"/g, (match, rawTypeface) => {
+    const typeface = String(rawTypeface || '')
+      .split(',')[0]
+      .trim()
+      .replace(/^['"]+|['"]+$/g, '')
+      .replace(/\s+/g, ' ');
+    if (!typeface || /^(sans-serif|serif|monospace|system-ui)$/i.test(typeface)) {
+      unsafeTypefaces++;
+      return 'typeface="Arial"';
+    }
+    if (typeface !== rawTypeface) {
+      unsafeTypefaces++;
+      return `typeface="${typeface.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}"`;
+    }
+    return match;
   });
 
   fixed = fixed.replace(/(<[A-Za-z0-9]+:cNvPr\b[^>]*\bid=")(\d+)(")/g, (match, prefix, idValue, suffix) => {
@@ -598,9 +616,9 @@ function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
     return match;
   });
 
-  if (duplicateIds > 0 || nonPositiveExtents > 0 || volatileAttributes > 0) {
-    console.warn('[PPTX Template] Sanitized %s: duplicateShapeIds=%d nonPositiveExtents=%d volatileAttributes=%d',
-      slidePath || 'slide XML', duplicateIds, nonPositiveExtents, volatileAttributes);
+  if (duplicateIds > 0 || nonPositiveExtents > 0 || volatileAttributes > 0 || unsafeTypefaces > 0) {
+    console.warn('[PPTX Template] Sanitized %s: duplicateShapeIds=%d nonPositiveExtents=%d volatileAttributes=%d unsafeTypefaces=%d',
+      slidePath || 'slide XML', duplicateIds, nonPositiveExtents, volatileAttributes, unsafeTypefaces);
   }
 
   return fixed;

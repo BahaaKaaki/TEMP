@@ -350,14 +350,12 @@ function injectSlideBackground(slideXml, profile = null) {
 }
 
 /**
- * Add showMasterSp="0" to the <p:sld> root element so decorative shapes
- * from the slide master (diamonds, text boxes, invisible EMFs) are hidden.
- * The logo and footer are injected directly into the slide's spTree,
- * so they are unaffected by this attribute.
+ * Historical exports used showMasterSp="0" to suppress template decoration.
+ * We now strip layout/master chrome directly, so avoid writing optional slide
+ * state that has caused PowerPoint repair prompts with some generated decks.
  */
 function hideMasterShapes(slideXml) {
-  if (/showMasterSp/.test(slideXml)) return slideXml;
-  return slideXml.replace(/<p:sld(\s)/, '<p:sld showMasterSp="0"$1');
+  return String(slideXml || '').replace(/\s+showMasterSp="[^"]*"/g, '');
 }
 
 function stripLayoutChrome(layoutXml) {
@@ -569,6 +567,12 @@ function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
   let maxId = 0;
   let duplicateIds = 0;
   let nonPositiveExtents = 0;
+  let volatileAttributes = 0;
+
+  fixed = fixed.replace(/\s+(?:dirty|smtClean|err|showMasterSp)="[^"]*"/g, () => {
+    volatileAttributes++;
+    return '';
+  });
 
   fixed = fixed.replace(/(<[A-Za-z0-9]+:cNvPr\b[^>]*\bid=")(\d+)(")/g, (match, prefix, idValue, suffix) => {
     const id = Number(idValue);
@@ -594,9 +598,9 @@ function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
     return match;
   });
 
-  if (duplicateIds > 0 || nonPositiveExtents > 0) {
-    console.warn('[PPTX Template] Sanitized %s: duplicateShapeIds=%d nonPositiveExtents=%d',
-      slidePath || 'slide XML', duplicateIds, nonPositiveExtents);
+  if (duplicateIds > 0 || nonPositiveExtents > 0 || volatileAttributes > 0) {
+    console.warn('[PPTX Template] Sanitized %s: duplicateShapeIds=%d nonPositiveExtents=%d volatileAttributes=%d',
+      slidePath || 'slide XML', duplicateIds, nonPositiveExtents, volatileAttributes);
   }
 
   return fixed;

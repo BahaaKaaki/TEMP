@@ -624,6 +624,25 @@ function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
   return fixed;
 }
 
+async function sanitizeContentTypesForExistingParts(zip, label = 'presentation') {
+  const contentTypesPath = '[Content_Types].xml';
+  if (!zip.files[contentTypesPath]) return;
+
+  const contentTypesXml = await zip.files[contentTypesPath].async('string');
+  let removedOverrides = 0;
+  const cleanedContentTypesXml = contentTypesXml.replace(/<Override\b[^>]*PartName="([^"]+)"[^>]*\/>/g, (match, partName) => {
+    const zipPath = String(partName || '').replace(/^\//, '');
+    if (!zipPath || zip.files[zipPath]) return match;
+    removedOverrides++;
+    return '';
+  });
+
+  if (cleanedContentTypesXml !== contentTypesXml) {
+    zip.file(contentTypesPath, cleanedContentTypesXml);
+    console.warn('[PPTX Template] Removed %d stale content-type override(s) for %s', removedOverrides, label);
+  }
+}
+
 async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
   await ensureZipMediaContentTypes(zip, label);
 
@@ -655,6 +674,7 @@ async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
       .replace(/<Override[^>]*PartName="\/ppt\/notesSlides\/notesSlide\d+\.xml"[^>]*\/>/g, '');
     if (cleanedCtXml !== ctXml) zip.file(contentTypesPath, cleanedCtXml);
   }
+  await sanitizeContentTypesForExistingParts(zip, label);
 
   const pptXmlFiles = Object.keys(zip.files)
     .filter(f => /^ppt\/.+\.xml$/.test(f))

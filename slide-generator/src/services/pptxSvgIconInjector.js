@@ -282,19 +282,6 @@ function findGeneratedIconHostRect(pptxSlide, iconRect, hostRect) {
   return best?.rect || null;
 }
 
-function hasNearbyGeneratedIconAnchor(pptxSlide, iconRect, hostRect) {
-  if (!Array.isArray(pptxSlide?._slideObjects)) return false;
-  const paddedIcon = padRect(iconRect, 0.08);
-  return pptxSlide._slideObjects.some((obj) => {
-    const objRect = getPptxObjectRect(obj);
-    if (!objRect) return false;
-    if (isLikelyIconHostPlaceholder(obj, objRect, iconRect, hostRect)) return true;
-    if (isLikelyNativeIconGlyphObject(obj, objRect, iconRect)) return true;
-    const overlap = rectIntersectionArea(objRect, paddedIcon) / Math.max(rectArea(objRect), 0.001);
-    return overlap > 0.55 || centerDistance(objRect, iconRect) <= 0.18;
-  });
-}
-
 function shouldAnchorToGeneratedHost(generatedHostRect, expectedHostRect) {
   if (!generatedHostRect) return false;
   const distance = centerDistance(generatedHostRect, expectedHostRect);
@@ -584,11 +571,6 @@ export async function injectRasterizedSvgIcons(pptxSlide, slide, settings) {
       const placementBox = !target.usesHostBox && shouldAnchorToGeneratedHost(generatedHostBox, hostBox)
         ? centerRectInside(box, generatedHostBox)
         : box;
-
-      if (!generatedHostBox && !hasNearbyGeneratedIconAnchor(pptxSlide, placementBox, hostBox)) {
-        console.info(`[PPTX] Skipped orphan SVG icon for slide ${slide?.id || '(unknown)'}; no nearby PPTX anchor found`);
-        continue;
-      }
 
       try {
         removeGeneratedIconGlyphObjects(pptxSlide, placementBox);

@@ -380,7 +380,7 @@ function getRenderedSlideSize(slideElement) {
   };
 }
 
-async function captureRenderedSlideCanvas(slideElement, { scale = 2 } = {}) {
+async function captureRenderedSlideCanvas(slideElement, { scale = 3 } = {}) {
   if (!slideElement) {
     throw new Error('No rendered slide element found to export');
   }
@@ -442,18 +442,13 @@ export async function exportRenderedSlideElementToPNG(slideElement, filename = '
 export async function exportRenderedSlideElementToPDF(slideElement, filename = 'slide.pdf', options = {}) {
   const canvas = await captureRenderedSlideCanvas(slideElement, options);
   const { width, height } = getRenderedSlideSize(slideElement);
-  const pageWidth = Number(options.pageWidth) || width;
-  const pageHeight = Number(options.pageHeight) || height;
-  const imageType = options.imageType || 'JPEG';
-  const mimeType = imageType === 'PNG' ? 'image/png' : 'image/jpeg';
-  const quality = Number.isFinite(options.quality) ? options.quality : 0.92;
   const pdf = new jsPDF({
-    orientation: pageWidth >= pageHeight ? 'landscape' : 'portrait',
+    orientation: width >= height ? 'landscape' : 'portrait',
     unit: 'px',
-    format: [pageWidth, pageHeight],
+    format: [width, height],
   });
 
-  pdf.addImage(canvas.toDataURL(mimeType, quality), imageType, 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+  pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
   pdf.save(filename);
 }
 
@@ -464,29 +459,22 @@ export async function exportRenderedSlideElementsToPDF(slideElements, filename =
   }
 
   const firstSize = getRenderedSlideSize(elements[0]);
-  const firstPageWidth = Number(options.pageWidth) || firstSize.width;
-  const firstPageHeight = Number(options.pageHeight) || firstSize.height;
-  const imageType = options.imageType || 'JPEG';
-  const mimeType = imageType === 'PNG' ? 'image/png' : 'image/jpeg';
-  const quality = Number.isFinite(options.quality) ? options.quality : 0.92;
   const pdf = new jsPDF({
-    orientation: firstPageWidth >= firstPageHeight ? 'landscape' : 'portrait',
+    orientation: firstSize.width >= firstSize.height ? 'landscape' : 'portrait',
     unit: 'px',
-    format: [firstPageWidth, firstPageHeight],
+    format: [firstSize.width, firstSize.height],
   });
 
   for (let i = 0; i < elements.length; i++) {
     const slideElement = elements[i];
     const canvas = await captureRenderedSlideCanvas(slideElement, options);
     const { width, height } = getRenderedSlideSize(slideElement);
-    const pageWidth = Number(options.pageWidth) || width;
-    const pageHeight = Number(options.pageHeight) || height;
 
     if (i > 0) {
-      pdf.addPage([pageWidth, pageHeight], pageWidth >= pageHeight ? 'landscape' : 'portrait');
+      pdf.addPage([width, height], width >= height ? 'landscape' : 'portrait');
     }
 
-    pdf.addImage(canvas.toDataURL(mimeType, quality), imageType, 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+    pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, width, height);
   }
 
   pdf.save(filename);

@@ -468,8 +468,9 @@ const DGE_THEME = {
     accentHover: '#00437B',
     accentSoft: '#E8EEF5',
     onAccent: '#FFFFFF',
-    heading: '#005393',
-    body: '#1A1A1A',
+    // Native DGE writes text in black or white only — blue is reserved for fills/bands.
+    heading: '#000000',
+    body: '#000000',
     muted: '#4A5568',
     page: '#FFFFFF',
     surface: '#F2F2F2',
@@ -484,7 +485,8 @@ const DGE_THEME = {
     info: '#7DA1C4',
     neutral: '#6B7280',
     coverDark: '#00437B',
-    kicker: '#2A70AD',
+    // Subtitle / kicker text is also black in native DGE; the bright blue is for fills only.
+  kicker: '#000000',
     /** Native primary brand blue — middle gradient stop, dominant visible blue on bands */
     dgePrimaryBlue: '#005393',
     /** Bright top of the native band gradient */
@@ -596,7 +598,7 @@ const DGE_FREESTYLE_OVERRIDES = {
 - footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
 - slide number: bottom-right ~x=900 y=493.
 - Bottom classification strip zone y=526–540 is reserved for OPEN | مفتوحة style chrome; keep frame content above y≈500.`,
-  theme: `Primary brand blue **#005393** (the dominant visible blue on native DGE header bands and scope rows — middle stop of the native gradient). Deepest navy **#00437B** (cover backgrounds and darkest fills, deepest gradient stop). Bright top-of-band **#2A70AD**. Secondary chrome navy **#203864** for small structural shapes only (do not use as a dominant fill). Light panel **#7DA1C4** for soft sections, very light **#A6CAEC** for tinted backgrounds, white page, pale neutrals #E7E6E6 / #F2F2F2. Do not use #063360 (not in the native palette). Ignore Aptos theme slots (Office defaults) for color decisions.`,
+  theme: `Primary brand blue **#005393** (the dominant visible blue on native DGE header bands and scope rows — middle stop of the native gradient). Deepest navy **#00437B** (cover backgrounds and darkest fills, deepest gradient stop). Bright top-of-band **#2A70AD**. Secondary chrome navy **#203864** for small structural shapes only (do not use as a dominant fill). Light panel **#7DA1C4** for soft sections, very light **#A6CAEC** for tinted backgrounds, white page, pale neutrals #E7E6E6 / #F2F2F2. **All slide text — titles, subtitles, body, labels, KPIs — must be black #000000 on light surfaces or white #FFFFFF on dark blue fills. Never use blue for text; the blue palette is reserved for fills, panels, bands, and rules.** Muted secondary text uses #4A5568 grey. Do not use #063360 (not in the native palette). Ignore Aptos theme slots (Office defaults) for color decisions.`,
   vibe: `Modern government brand: calm, enabling, trusted, bilingual-friendly, spacious, image-led heroes, rounded cards, soft blue panels, minimal noise.`,
   writing: `Prefer a single-line slide title when possible (native DGE masters assume a short headline); if the title must run long, keep it to two lines max so the subtitle band at y≈108px stays clear. Short declarative titles, concise institutional copy, minimal bullets.`,
   css: `Rounded cards, thin blue outlines, soft blue fills, white reverse text on #005393 panels (the native DGE band blue), generous margins, large photographic hero bands when appropriate.`,
@@ -660,6 +662,7 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 
 ## Theme
 - Primary brand blue **#005393** for panels, top tabs, section trackers, scope rows, and structural emphasis (this is the dominant visible blue in the native DGE master — the middle stop of the native band gradient). Deepest navy **#00437B** for cover and darkest fills (the deepest gradient stop). Bright **#2A70AD** for top-of-band highlights. Secondary chrome navy **#203864** for small structural shapes only — never as a dominant fill. Light panel **#7DA1C4** for soft sections, very light **#A6CAEC** for tinted backgrounds, neutrals #E7E6E6 / #F2F2F2, white backgrounds.
+- **Text color rule (strict):** all titles, subtitles, body copy, labels, KPIs, captions, and chrome text are either black **#000000** on light surfaces or white **#FFFFFF** on dark blue fills. Blue is reserved for fills, panels, bands, and rules — never for text. Muted secondary text uses #4A5568 grey.
 - Do not use **#063360** — it is not present in the native DGE template palette.
 - Forbidden as dominant fills: Office orange #E97132, bright green #196B24, cyan #0F9ED5, magenta #A02B93, lime #4EA72E.
 

@@ -497,7 +497,7 @@ const DGE_THEME = {
       '--title-y': '30px',
       '--title-w': '660px',
       '--title-font-size': '30px',
-      '--title-font-weight': '700',
+      '--title-font-weight': '600',
       '--title-line-height': '1.15',
       '--subtitle-y': '108px',
       '--subtitle-w': '660px',
@@ -575,7 +575,7 @@ const DGE_LAYOUT_CONTRACT = {
 const DGE_FREESTYLE_OVERRIDES = {
   shell: `DGE Abu Dhabi government communications shell on 960x540:
 - Top-right DGE / Abu Dhabi lockup (reserved band ~x=709 y=31 w=218 h=51, same footprint as native cover lockup); do not place content over it.
-- h1.title: x=33 y=30 w=660, max two lines at ~30px/1.15 (ellipsis if longer), Noto Sans Bold (700), black #000000. Native short-title decks use a tight band; long consulting headlines must not push into the subtitle—keep title concise or accept a two-line clamp.
+- h1.title: x=33 y=30 w=660, max two lines at ~30px/1.15 (ellipsis if longer), Noto Sans SemiBold, black #000000. PPTX title chrome: typeface Noto Sans SemiBold with bold enabled. Native short-title decks use a tight band; long consulting headlines must not push into the subtitle—keep title concise or accept a two-line clamp.
 - h2.subtitle: x=33 y=108 w=660 h=22, Noto Sans Medium ~12px (500), black #000000 (sits below a two-line title cap so it never collides with wrapped h1 text).
 - div.frame: x=33 y=132 w=894 h=351 — body band below subtitle, clearing the lockup and staying above the footer row (y≈493) and classification strip (y=526–540). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
 - footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
@@ -623,13 +623,13 @@ const DGE_COMPONENT_PATTERNS = [
 
 const DGE_PPTX_CONTRACT = {
   slideSize: '16:9 widescreen (13.333 x 7.5 in from 960 x 540 px)',
-  fontPolicy: 'Use Noto Sans family faces explicitly: Noto Sans Bold (bold flag in PPTX, font-weight 700 in HTML) for standard slide titles, Noto Sans Medium for subtitles and compact chrome, Noto Sans Regular for body. Do not use Aptos, Calibri, Georgia, STC Forward, or Fund fonts unless mixing a quoted hero line in Cairo where the user requests it.',
+  fontPolicy: 'Use Noto Sans family faces explicitly: Noto Sans SemiBold for standard slide titles (PPTX: fontFace Noto Sans SemiBold, bold true), Noto Sans Medium for subtitles and compact chrome, Noto Sans Regular for body. Do not use Aptos, Calibri, Georgia, STC Forward, or Fund fonts unless mixing a quoted hero line in Cairo where the user requests it.',
   defaultFontFace: 'Noto Sans',
-  allowedFontFaces: ['Noto Sans', 'Noto Sans Medium', 'Noto Kufi Arabic', 'Cairo'],
+  allowedFontFaces: ['Noto Sans', 'Noto Sans SemiBold', 'Noto Sans Medium', 'Noto Kufi Arabic', 'Cairo'],
   logoPolicy: 'Top-right DGE / Abu Dhabi lockup on standard interior slides.',
   sourcePolicy: 'Footer topic label bottom-left; blank unless real source text exists.',
   pageNumberPolicy: 'Bottom-right near footer band; do not collide with classification strip.',
-  titlePolicy: 'Standard interior title band: black #000000, Noto Sans Bold ~30pt (bold:true in PPTX); prefer one line (template slide 7); long titles may use at most two lines before ellipsis so the subtitle row does not overlap.',
+  titlePolicy: 'Standard interior title band: black #000000, Noto Sans SemiBold ~30pt with bold enabled in PPTX; prefer one line (template slide 7); long titles may use at most two lines before ellipsis so the subtitle row does not overlap.',
   subtitlePolicy: 'Subtitle band: black #000000, Noto Sans Medium ~12pt at y≈108px below the title block; optional on dense slides.',
   hiddenPlaceholderPolicy: 'Do not surface dormant Office placeholder labels or generic click-to-edit prompts from unused masters.',
   themeTrustLevel: 'low',
@@ -640,7 +640,7 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 
 ## Master and trust
 - Treat the bundled DGE template as the chrome authority: top-right lockup, bottom classification strip, and hero geometry override generic Office theme slots (Aptos colors are not authoritative).
-- Standard white content: title 33,30 (black, Noto Sans **Bold** ~30pt; reserve up to **two lines** then ellipsis—subtitle is fixed at **y=108** so it never overlaps wrapped titles) / subtitle 33,108 (black, Noto Sans Medium ~12pt) / body frame **33,132 size 894x351** / top-right lockup **709,31,218x51** (cover-sized lockup for legibility) / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
+- Standard white content: title 33,30 (black, Noto Sans SemiBold ~30pt; PPTX chrome uses SemiBold typeface with bold true; reserve up to **two lines** then ellipsis—subtitle is fixed at **y=108** so it never overlaps wrapped titles) / subtitle 33,108 (black, Noto Sans Medium ~12pt) / body frame **33,132 size 894x351** / top-right lockup **709,31,218x51** (cover-sized lockup for legibility) / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
 - Section/subsection tracker pills: fill **#203864**, white label text (native DGE scope-row blue—not the darker #063360 panel blue).
 
 ## Theme
@@ -648,7 +648,7 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 - Forbidden as dominant fills: Office orange #E97132, bright green #196B24, cyan #0F9ED5, magenta #A02B93, lime #4EA72E.
 
 ## Typography
-- Titles: Noto Sans Bold (700). Subtitles: Noto Sans Medium. Body: Noto Sans Regular with Noto Kufi Arabic in the stack for bilingual decks. Cairo is an optional hero/process accent only when the user explicitly requests that variant.
+- Titles: Noto Sans SemiBold (font-weight 600 in HTML). Subtitles: Noto Sans Medium. Body: Noto Sans Regular with Noto Kufi Arabic in the stack for bilingual decks. Cairo is an optional hero/process accent only when the user explicitly requests that variant.
 
 ## Writing
 - Government communications tone: short headlines, minimal bullets, future-oriented, institutional optimism.
@@ -657,7 +657,7 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 - Reference hero cover, section divider, four-step timeline, and image+right-panel layouts from the profile component list; keep slides airy.`;
 
 const DGE_PPTX_FONTS = {
-  title: { fontFace: 'Noto Sans', fontSize: 30, bold: true, color: '000000' },
+  title: { fontFace: 'Noto Sans SemiBold', fontSize: 30, bold: true, color: '000000' },
   subtitle: { fontFace: 'Noto Sans Medium', fontSize: 12, bold: false, color: '000000' },
   body: { fontFace: 'Noto Sans', fontSize: 10, bold: false, color: '1A1A1A' },
   footer: { fontFace: 'Noto Sans', fontSize: 9, italic: false, bold: false, color: '4A5568' },
@@ -979,7 +979,7 @@ export const CLIENT_DESIGN_PROFILES = {
       ],
       notes: [
         'Treat master chrome and shape system as higher trust than raw theme XML.',
-        'Bundled Noto Sans TTFs ship for canvas/PPTX (including Bold for title weight 700); add Noto Kufi Arabic files to assets when available.',
+        'Bundled Noto Sans TTFs ship for canvas/PPTX (SemiBold/Medium/Regular/Bold as needed); add Noto Kufi Arabic files to assets when available.',
         'Top-right lockup raster: backend/assets/client-templates/dge/logo.png (sourced from the DGE master; re-crop if export picks up stray separator pixels).',
       ],
     },

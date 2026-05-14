@@ -123,7 +123,7 @@ function getProfilePptxTypographyGuidance(profile) {
     return '- PIF typography: use Fund Light for titles/body and Fund Regular only for page numbers or limited emphasis. Content title is 11pt in PPTX, dense matrix/detail text may be 8-10pt, and footer/source/page chrome may be 7-8pt. There is no broad subtitle band on standard PIF body slides.\n';
   }
   if (profile?.id === 'dge') {
-    return '- DGE typography: Noto Sans Bold for standard slide titles (PPTX: fontFace "Noto Sans", bold true; HTML: font-weight 700), Noto Sans Medium for subtitles, Noto Sans Regular for body and footer. Slide chrome title/subtitle text: black #000000, ~30pt title, ~12pt subtitle. Body/footer use the profile greys and brand blues only inside content—not for the top title bands.\n';
+    return '- DGE typography: Noto Sans SemiBold for standard slide titles (PPTX: fontFace Noto Sans SemiBold, bold true; HTML: font-weight 600), Noto Sans Medium for subtitles, Noto Sans Regular for body and footer. Slide chrome title/subtitle text: black #000000, ~30pt title, ~12pt subtitle. Body/footer use the profile greys and brand blues only inside content—not for the top title bands.\n';
   }
   if (profile?.id !== 'stc') return '';
   return '- STC typography: use title 24pt regular, subtitle 18pt regular, body 12pt regular, local labels/card titles 500-equivalent only when bold is needed, and footer/source/page numbers 8pt regular.\n- For STC Forward, avoid bold:true on normal body leads, subtitles, card titles, stage titles, and labels unless the CSS explicitly requires strong emphasis.\n';

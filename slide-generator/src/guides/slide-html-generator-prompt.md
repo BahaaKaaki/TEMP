@@ -712,6 +712,19 @@ Use `display: inline-block` only for true structural elements such as compact nu
 Use CSS grid or flex for simple pillars, rows, cards, and tables.  
 Use explicit pixel geometry for matrices, charts, roadmaps, process flows, org charts, arrows, connectors, or any layout with overlap risk.
 
+For icon-heavy layouts, tables with row icons, process rows, decision agendas, roadmaps, timelines, matrices, or any slide likely to be exported to PPTX, prefer an absolute-positioned exhibit inside `.frame`:
+
+- Set `.frame > .exhibit` to `position: relative; width: 100%; height: 100%;`
+- Place each major module with explicit `position:absolute; left:Npx; top:Npx; width:Npx; height:Npx;`
+- Place icon hosts with explicit `position:absolute; left:Npx; top:Npx; width:Npx; height:Npx;`
+- Place the nested `svg` with explicit `position:absolute; left:Npx; top:Npx; width:Npx; height:Npx;`
+- Keep icon circles/chips and the inner SVG as separate predictable boxes: host controls chip/background, SVG controls glyph only.
+- Avoid relying on flex/grid centering for icons when exact alignment matters; calculate and set the icon coordinates.
+- Do not use emoji or text glyphs as a backup for an SVG icon in the same location.
+- If a row contains an SVG icon, do not also render a text symbol such as ✓, →, ↑, or • for that same icon.
+
+Use absolute geometry as a precision tool, not decoration. It is better for the slide to be slightly less fluid than for PPTX export to reinterpret row, icon, or connector positions.
+
 For explicit geometry, check:
 
 - `left + width` stays within parent

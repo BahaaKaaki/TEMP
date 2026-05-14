@@ -210,6 +210,21 @@ function getPptxObjectRect(obj) {
   return { x, y, w, h };
 }
 
+function getPptxObjectText(obj) {
+  if (!obj) return '';
+  if (typeof obj.text === 'string') return obj.text.trim();
+  if (Array.isArray(obj.text)) {
+    return obj.text.map(run => (typeof run === 'string' ? run : run?.text || '')).join('').trim();
+  }
+  return '';
+}
+
+function isLikelyIconTextGlyph(obj) {
+  const text = getPptxObjectText(obj);
+  if (!text || /\d/.test(text)) return false;
+  return /^[✓✔✕✖✗✘→←↑↓↗↘↙↖➜➔➞➟➤•●○◦]+$/.test(text) || text.length <= 2;
+}
+
 function isLikelyNativeIconGlyphObject(obj, objRect, iconRect) {
   const paddedIcon = padRect(iconRect, 0.06);
   const objArea = rectArea(objRect);
@@ -219,8 +234,9 @@ function isLikelyNativeIconGlyphObject(obj, objRect, iconRect) {
   const centerInside = containsPoint(paddedIcon, rectCenter(objRect));
   if (!centerInside && overlapRatio < 0.65) return false;
 
-  const maxGlyphW = Math.max(iconRect.w * 2.25, 0.48);
-  const maxGlyphH = Math.max(iconRect.h * 2.25, 0.48);
+  const textGlyph = isLikelyIconTextGlyph(obj);
+  const maxGlyphW = Math.max(iconRect.w * (textGlyph ? 3.0 : 2.25), textGlyph ? 0.65 : 0.48);
+  const maxGlyphH = Math.max(iconRect.h * (textGlyph ? 3.0 : 2.25), textGlyph ? 0.75 : 0.48);
   const isSmallGlyphBox = objRect.w <= maxGlyphW && objRect.h <= maxGlyphH;
   if (!isSmallGlyphBox) return false;
 

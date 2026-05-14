@@ -517,9 +517,9 @@ const DGE_THEME = {
       '--subtitle-color': '#000000',
       '--subtitle-font-size': '12px',
       '--subtitle-font-weight': '500',
-      '--frame-y': '132px',
+      '--frame-y': '112px',
       '--frame-w': '894px',
-      '--frame-h': '351px',
+      '--frame-h': '371px',
       '--footer-x': '33px',
       '--footer-y': '493px',
       '--footer-bottom': 'auto',
@@ -546,15 +546,16 @@ const DGE_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    // Lockup matched exactly to the native DGE master (DGE page_v1.0.pptx slide 1):
-    // x=763 y=31 w=164 h=38 px. The bundled PNG is the verbatim native image3.png
+    // Lockup matched to the native DGE master (DGE page_v1.0.pptx slide 1):
+    // x≈763 y≈31 w≈164 h≈38 px. The bundled PNG is the verbatim native image3.png
     // (2000x468, ratio 4.274) and the band aspect (164/38 = 4.316) is the closest
     // PowerPoint-pixel approximation, so PptxGenJS stretch leaves no visible band.
     logo: { x: 763, y: 31, w: 164, h: 38 },
     title: { x: 33, y: 30, w: 660, h: 72 },
-    subtitle: { x: 33, y: 108, w: 660, h: 22 },
-    // Body band extended to match the native template right margin (~24px).
-    body: { x: 24, y: 132, w: 912, h: 351 },
+    subtitle: { x: 33, y: 108, w: 660, h: 0 },
+    // With standard DGE subtitles suppressed, body starts higher while still
+    // clearing two-line titles and the top-right lockup.
+    body: { x: 24, y: 112, w: 912, h: 371 },
     source: { x: 33, y: 493, w: 79, h: 18 },
     slideNumber: { x: 900, y: 493, w: 40, h: 18 },
     /** Top-of-slide tab strip (HTML ::before/::after + PPTX addSectionTracker) */
@@ -592,16 +593,16 @@ const DGE_LAYOUT_CONTRACT = {
 
 const DGE_FREESTYLE_OVERRIDES = {
   shell: `DGE Abu Dhabi government communications shell on 960x540:
-- Top-right DGE / Abu Dhabi lockup (reserved band ~x=709 y=31 w=218 h=51, same footprint as native cover lockup); do not place content over it.
-- h1.title: x=33 y=30 w=660, max two lines at ~30px/1.15 (ellipsis if longer), Noto Sans SemiBold, black #000000. PPTX title chrome: typeface Noto Sans SemiBold with bold enabled. Native short-title decks use a tight band; long consulting headlines must not push into the subtitle—keep title concise or accept a two-line clamp.
-- h2.subtitle: x=33 y=108 w=660 h=22, Noto Sans Medium ~12px (500), black #000000 (sits below a two-line title cap so it never collides with wrapped h1 text).
-- div.frame: x=24 y=132 w=912 h=351 — body band below subtitle, clearing the lockup and staying above the footer row (y≈493) and classification strip (y=526–540). Frame extends to within ~24px of the slide right edge, matching the native template (no wide white right margin). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
+- Top-right DGE / Abu Dhabi lockup x≈763 y≈31 w≈164 h≈38, matching DGE page_v1.0; do not resize it smaller and do not place content over it.
+- h1.title: x=33 y=30 w=660, max two lines at ~30px/1.15 (ellipsis if longer), Noto Sans SemiBold, black #000000. PPTX title chrome: typeface Noto Sans SemiBold with bold enabled. Native short-title decks use a tight band; long consulting headlines should stay within the two-line title cap.
+- DGE production slides normally do not use subtitles. Do not generate or render h2.subtitle on DGE standard content slides; use the body frame for any kicker/context if absolutely required by content.
+- div.frame: x=24 y=112 w=912 h=371 — body band starts higher because standard subtitles are suppressed, while still clearing two-line titles, the lockup, footer row (y≈493), and classification strip (y=526–540). Frame extends to within ~24px of the slide right edge, matching the native template (no wide white right margin). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
 - footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
 - slide number: bottom-right ~x=900 y=493.
 - Bottom classification strip zone y=526–540 is reserved for OPEN | مفتوحة style chrome; keep frame content above y≈500.`,
   theme: `Primary brand blue **#005393** (the dominant visible blue on native DGE header bands and scope rows — middle stop of the native gradient). Deepest navy **#00437B** (cover backgrounds and darkest fills, deepest gradient stop). Bright top-of-band **#2A70AD**. Secondary chrome navy **#203864** for small structural shapes only (do not use as a dominant fill). Light panel **#7DA1C4** for soft sections, very light **#A6CAEC** for tinted backgrounds, white page, pale neutrals #E7E6E6 / #F2F2F2. **All slide text — titles, subtitles, body, labels, KPIs — must be black #000000 on light surfaces or white #FFFFFF on dark blue fills. Never use blue for text; the blue palette is reserved for fills, panels, bands, and rules.** Muted secondary text uses #4A5568 grey. Do not use #063360 (not in the native palette). Ignore Aptos theme slots (Office defaults) for color decisions.`,
   vibe: `Modern government brand: calm, enabling, trusted, bilingual-friendly, spacious, image-led heroes, rounded cards, soft blue panels, minimal noise.`,
-  writing: `Prefer a single-line slide title when possible (native DGE masters assume a short headline); if the title must run long, keep it to two lines max so the subtitle band at y≈108px stays clear. Short declarative titles, concise institutional copy, minimal bullets.`,
+  writing: `Prefer a single-line slide title when possible (native DGE masters assume a short headline); if the title must run long, keep it to two lines max and do not add a subtitle. Short declarative titles, concise institutional copy, minimal bullets.`,
   css: `Rounded cards, thin blue outlines, soft blue fills, white reverse text on #005393 panels (the native DGE band blue), generous margins, large photographic hero bands when appropriate.`,
   pptx: `16:9 widescreen (13.333 x 7.5 in). Hard-code Noto Sans for body English text; prefer bundled master chrome over raw theme slots. Preserve top-right lockup and bottom classification strip from the DGE master when merging templates.`,
 };
@@ -977,6 +978,7 @@ export const CLIENT_DESIGN_PROFILES = {
       serverProfileId: 'dge',
       forceBundledDefault: true,
       useProfileChrome: true,
+      assetVersion: 'dge-logo-native-2000x468-v2',
       notes: 'Bundled DGE master from backend assets; uploads stay profile-bound in local storage.',
     },
     chrome: {

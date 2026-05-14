@@ -450,19 +450,14 @@
 }
 
 .slide[data-client-profile="dge"] .subtitle {
-  left: 33px;
-  top: 108px;
-  width: 660px;
-  min-height: 22px;
-  font: 500 12px/1.2 "Noto Sans", "Segoe UI", Arial, sans-serif;
-  color: #000000;
+  display: none;
 }
 
 .slide[data-client-profile="dge"] .frame {
   left: 24px;
-  top: 132px;
+  top: 112px;
   width: 912px;
-  height: 351px;
+  height: 371px;
 }
 
 .slide[data-client-profile="dge"] footer.footer:has(span.source),

@@ -47,7 +47,8 @@ async function loadProfileLogo(profile) {
   const logoPos = profile?.chrome?.positions?.logo;
   if (!profile?.id || !logoPos) return null;
   try {
-    const res = await authFetch(`/api/assets/client-templates/${profile.id}/logo.png`);
+    const version = profile?.pptxMaster?.assetVersion || profile?.status || '1';
+    const res = await authFetch(`/api/assets/client-templates/${profile.id}/logo.png?v=${encodeURIComponent(version)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const buffer = await res.arrayBuffer();
     return {

@@ -234,8 +234,9 @@ export default function SlidePreview({ onSwitchToCode }) {
   }, [activeSlide?.id]);
 
   useEffect(() => {
+    const logoVersion = activeClientProfile?.pptxMaster?.assetVersion || activeClientProfile?.status || '1';
     const logoAsset = ['stc', 'pif', 'dge'].includes(activeClientProfile?.id)
-      ? `/api/assets/client-templates/${activeClientProfile.id}/logo.png`
+      ? `/api/assets/client-templates/${activeClientProfile.id}/logo.png?v=${encodeURIComponent(logoVersion)}`
       : null;
 
     if (!logoAsset) {
@@ -266,7 +267,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [activeClientProfile?.id]);
+  }, [activeClientProfile?.id, activeClientProfile?.pptxMaster?.assetVersion, activeClientProfile?.status]);
 
   // Handle Escape key to exit fullscreen
   useEffect(() => {

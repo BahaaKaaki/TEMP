@@ -1128,10 +1128,15 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
 function parseHTML(html) { return new DOMParser().parseFromString(html, 'text/html'); }
 function getText(doc, sel) { const el = doc.querySelector(sel); return el ? el.textContent.trim() : ''; }
 
+function shouldSuppressStandardSubtitle(profile) {
+  return ['pif', 'dge'].includes(profile?.id);
+}
+
 function generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile = null) {
   const pptxSlide = pptx.addSlide();
   const doc = parseHTML(slide.html || '<div></div>');
   const isStc = activeProfile?.id === 'stc';
+  const suppressSubtitle = shouldSuppressStandardSubtitle(activeProfile);
   const profilePositions = activeProfile?.chrome?.positions || {};
   const fontFace = getProfilePptxFontFace(activeProfile);
   const titleFont = fontFace || 'Georgia';
@@ -1171,7 +1176,7 @@ function generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile
   const title = getText(doc, '.title, h1, .cover-title');
   const subtitle = getText(doc, '.subtitle, h2');
   if (title) pptxSlide.addText(title, { x: titlePos.x, y: titlePos.y, w: titlePos.w, h: titlePos.h, fontFace: titleFont, fontSize: titlePos.font?.fontSize || 28, color: colors.main });
-  if (subtitle) pptxSlide.addText(subtitle, { x: subtitlePos.x, y: subtitlePos.y, w: subtitlePos.w, h: subtitlePos.h, fontFace: bodyFont, fontSize: subtitlePos.font?.fontSize || 18, color: colors.subtitle, bold: subtitlePos.font?.bold ?? true });
+  if (subtitle && !suppressSubtitle) pptxSlide.addText(subtitle, { x: subtitlePos.x, y: subtitlePos.y, w: subtitlePos.w, h: subtitlePos.h, fontFace: bodyFont, fontSize: subtitlePos.font?.fontSize || 18, color: colors.subtitle, bold: subtitlePos.font?.bold ?? true });
 
   const contentY = bodyPos.y;
   const cards = doc.querySelectorAll('.card, .grid-cell, .kpi-block, .stat-box');
@@ -1473,6 +1478,10 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
   const findTextObjects = predicate => objects.filter(obj => predicate(getSlideObjectText(obj), obj));
   const titleObjects = title ? findTextObjects(text => text === title) : [];
   const subtitleObjects = subtitle ? findTextObjects(text => text === subtitle) : [];
+  if (shouldSuppressStandardSubtitle(profile) && subtitleObjects.length > 0) {
+    const subtitles = new Set(subtitleObjects);
+    pptxSlide._slideObjects = pptxSlide._slideObjects.filter(obj => !subtitles.has(obj));
+  }
   const sourceObjects = findTextObjects(text => text.startsWith('Source:') || sourceNeedles.has(text));
   const slideNumObjects = findTextObjects((text, obj) =>
     text === String(slideNum)

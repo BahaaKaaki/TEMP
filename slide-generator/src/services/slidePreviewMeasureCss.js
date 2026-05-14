@@ -125,5 +125,30 @@ export function getSlideMeasureClientChromeCss() {
   font: 600 10px/1.1 Poppins, Arial, sans-serif;
   color: #111111;
 }
+
+.slide[data-client-profile="mos"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="mos"] .client-chrome-mos-logo {
+  left: 18px;
+  top: 506px;
+  width: 37px;
+  height: 18px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="mos"] .client-chrome-mos-wordmark {
+  left: 18px;
+  top: 506px;
+  width: 37px;
+  height: 18px;
+  font: 700 9px/1 "Sakkal Majalla", Arial, sans-serif;
+  color: #0B5921;
+}
 `;
 }

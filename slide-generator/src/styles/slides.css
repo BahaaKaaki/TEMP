@@ -273,7 +273,7 @@
   white-space: nowrap;
 }
 
-.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]) footer.footer:has(span.source) > span:last-child {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]) footer.footer:has(span.source) > span:last-child {
   position: static;
   left: auto;
   top: auto;
@@ -291,7 +291,7 @@
   text-align: left;
 }
 
-.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]) footer.footer:has(span.source) .source {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]) footer.footer:has(span.source) .source {
   min-width: 0;
   padding: 0 4px;
   overflow: hidden;
@@ -497,6 +497,77 @@
   text-align: right;
   color: #6F6A5F;
   font: 400 8px/1 Poppins, Arial, sans-serif;
+  white-space: nowrap;
+}
+
+/* MoS profile: Ministry of Sport performance-management shell */
+.slide[data-client-profile="mos"] {
+  font-family: "Sakkal Majalla", Arial, sans-serif;
+  color: #2C2C2C;
+  background: #FFFFFF;
+}
+
+.slide[data-client-profile="mos"] .title {
+  left: 35px;
+  top: 28px;
+  width: 890px;
+  max-height: calc(24px * 1.12 * 2);
+  font: 700 24px/1.12 "Sakkal Majalla", Arial, sans-serif;
+  color: #000000;
+  overflow: hidden;
+}
+
+.slide[data-client-profile="mos"] .subtitle {
+  left: 35px;
+  top: 100px;
+  width: 890px;
+  min-height: 19px;
+  font: 700 14px/1.12 "Sakkal Majalla", Arial, sans-serif;
+  color: #0B5921;
+}
+
+.slide[data-client-profile="mos"] .frame {
+  left: 35px;
+  top: 122px;
+  width: 890px;
+  height: 372px;
+}
+
+.slide[data-client-profile="mos"] footer.footer:has(span.source),
+.slide[data-client-profile="mos"] footer.footer {
+  display: block;
+  font-family: "Sakkal Majalla", Arial, sans-serif;
+}
+
+.slide[data-client-profile="mos"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="mos"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #7F7F7F;
+}
+
+.slide[data-client-profile="mos"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #7F7F7F;
+  font: 400 7px/1 "Sakkal Majalla", Arial, sans-serif;
   white-space: nowrap;
 }
 
@@ -811,4 +882,17 @@
   background: #92732A;
   color: #FFFFFF;
   font: 700 8px/1.35 Poppins, Arial, sans-serif;
+}
+
+.slide[data-client-profile="mos"][data-section]::before {
+  background: #0B5921;
+  color: #FFFFFF;
+  font: 700 8px/1.35 "Sakkal Majalla", Arial, sans-serif;
+}
+
+.slide[data-client-profile="mos"][data-section][data-subsection]::after,
+.slide[data-client-profile="mos"]:not([data-section])[data-subsection]::after {
+  background: #073B16;
+  color: #FFFFFF;
+  font: 700 8px/1.35 "Sakkal Majalla", Arial, sans-serif;
 }

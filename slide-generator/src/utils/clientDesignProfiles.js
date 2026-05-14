@@ -641,6 +641,192 @@ const fyaStandardInches = {
   },
 };
 
+const MOS_THEME = {
+  name: 'MoS',
+  defaultVariant: 'mos_sport_performance_green',
+  colors: {
+    accent: '#0B5921',
+    accentHover: '#073B16',
+    accentSoft: '#E7F3EA',
+    onAccent: '#FFFFFF',
+    heading: '#000000',
+    body: '#2C2C2C',
+    muted: '#7F7F7F',
+    page: '#FFFFFF',
+    surface: '#F2F2F2',
+    surfaceAlt: '#E7F3EA',
+    border: '#80C7A7',
+    success: '#0E762C',
+    successSoft: '#DFF3E6',
+    warning: '#BD9608',
+    warningSoft: '#F6EBC4',
+    danger: '#670F31',
+    dangerSoft: '#F3DDE6',
+    info: '#074F77',
+    neutral: '#7F7F7F',
+    coverDark: '#073B16',
+    kicker: '#0E762C',
+    mosDarkGreen: '#073B16',
+    mosGreen: '#0B5921',
+    mosBrightGreen: '#0E762C',
+    mosGold: '#BD9608',
+    mosLightGreen: '#80C7A7',
+  },
+  fonts: {
+    title: '"Sakkal Majalla", Arial, sans-serif',
+    heading: '"Sakkal Majalla", Arial, sans-serif',
+    body: '"Sakkal Majalla", Arial, sans-serif',
+  },
+  layout: {
+    cssVars: {
+      '--left-x': '35px',
+      '--title-y': '28px',
+      '--title-w': '890px',
+      '--title-font-size': '24px',
+      '--title-font-weight': '700',
+      '--title-line-height': '1.12',
+      '--subtitle-y': '100px',
+      '--subtitle-w': '890px',
+      '--subtitle-color': '#0B5921',
+      '--subtitle-font-size': '14px',
+      '--subtitle-font-weight': '700',
+      '--frame-y': '122px',
+      '--frame-w': '890px',
+      '--frame-h': '372px',
+      '--footer-x': '24px',
+      '--footer-y': '505px',
+      '--footer-bottom': 'auto',
+      '--footer-w': '912px',
+      '--footer-font-size': '7px',
+      '--footer-padding-bottom': '0',
+      '--source-x': '75px',
+      '--source-y': '507px',
+      '--source-w': '610px',
+      '--source-h': '14px',
+      '--slide-num-x': '910px',
+      '--slide-num-y': '507px',
+      '--slide-num-w': '18px',
+      '--slide-num-h': '12px',
+    },
+  },
+};
+
+const MOS_LAYOUT_CONTRACT = {
+  canvas: {
+    widthPx: 960,
+    heightPx: 540,
+    widthIn: 13.333,
+    heightIn: 7.5,
+  },
+  standardContent: {
+    logo: { x: 18, y: 506, w: 37, h: 18 },
+    title: { x: 35, y: 28, w: 890, h: 62 },
+    subtitle: { x: 35, y: 100, w: 890, h: 19 },
+    body: { x: 35, y: 122, w: 890, h: 372 },
+    source: { x: 75, y: 507, w: 610, h: 14 },
+    slideNumber: { x: 910, y: 507, w: 18, h: 12 },
+    sectionTracker: { x: 106, y: 12, w: 110, h: 12 },
+  },
+  cover: {
+    logo: { x: 739, y: 18, w: 179, h: 88 },
+    title: { x: 76, y: 150, w: 310, h: 90 },
+    subtitle: { x: 76, y: 258, w: 305, h: 32 },
+  },
+};
+
+const MOS_FREESTYLE_OVERRIDES = {
+  shell: `Use the Ministry of Sport (MoS) performance-management master on a 960x540 canvas. These MoS positions replace generic shell defaults:
+- h1.title: left 35px, top 28px, width about 890px, Sakkal Majalla bold, black, compact one- to two-line headline.
+- h2.subtitle: left 35px, top 100px, width about 890px, Sakkal Majalla bold 14px, MoS green #0B5921.
+- div.frame: left 35px, top 122px, width 890px, height 372px. Keep performance exhibits, tables, chains, and benchmark cards inside this body frame.
+- Footer/source/page chrome sits in the bottom band around y=505–524; keep content clear of the footer.
+- MoS logo appears bottom-left on standard content pages and larger/top-right on covers where the master uses image-led hero layouts.
+Use standard white content pages by default; reserve stadium/photo covers and section dividers for explicit cover/section requests.`,
+  theme: `Use MoS dark green (#073B16), primary green (#0B5921), bright green (#0E762C), gold (#BD9608), light green (#80C7A7), white, light gray #F2F2F2, and charcoal #2C2C2C. Do not use Strategy& maroon, STC purple, PIF dark green/gold pairing, DGE blue, or FYA cream as the dominant system.`,
+  vibe: `Sport-sector performance management: official, analytical, structured, and energetic. Use green benchmark bands, arrow chains, KPI tables, pillar cards, and concise methodology blocks. Avoid decorative consumer sport styling and generic SaaS dashboards.`,
+  writing: `Write concise performance-management language: benchmarks, KPI design, governance, data/reporting, operating model, insights, implications, and Ministry of Sport actions.`,
+  css: `Use Sakkal Majalla throughout. Prefer white pages, dark-green bands, light-gray panels, thin green borders, gold highlights, and compact tables. Icons should be simple black or green line icons.`,
+  pptx: `Export on a 13.333 x 7.5 in canvas using Sakkal Majalla, MoS green/gold palette, bundled MoS master, real MoS logo asset, editable footer/page chrome, and no Strategy& branding.`,
+};
+
+const MOS_COMPONENT_PATTERNS = [
+  {
+    name: 'benchmark_flow',
+    structure: 'Three-stage arrow or card flow with dark-green active stage and pale-green inactive stages.',
+    useWhen: 'Benchmark methodology, foundation/assessment/insight narratives, and section openers.',
+    avoid: ['unbranded blue arrows', 'maroon Strategy& bars', 'unbounded text blocks'],
+  },
+  {
+    name: 'performance_pillar_cards',
+    structure: 'Four compact cards with green header strips, line icons, and crisp implications.',
+    useWhen: 'Assessment pillars, capability needs, key themes, and operating-model dimensions.',
+    avoid: ['oversized cards', 'low-density decorative illustrations', 'consumer sport colors'],
+  },
+  {
+    name: 'kpi_matrix',
+    structure: 'Dense table or value-chain matrix with green row/column headers, gray cells, and check/status markers.',
+    useWhen: 'KPI architecture, governance comparison, ministry benchmarking, and maturity assessment.',
+    avoid: ['large font tables that overflow', 'icons detached from cells', 'content below footer band'],
+  },
+];
+
+const MOS_PPTX_CONTRACT = {
+  slideSize: { w: 13.333, h: 7.5 },
+  defaultFontFace: 'Sakkal Majalla',
+  allowedFontFaces: ['Sakkal Majalla'],
+  logoPolicy: 'MoS logo bottom-left on standard slides; larger logo only on cover/photo layouts.',
+  sourcePolicy: 'Footer/source text is compact and optional; never collide with bottom-left logo.',
+  pageNumberPolicy: 'Small bottom-right page number in Sakkal Majalla.',
+  titlePolicy: 'Standard title at x=35 y=28 w=890 on the 960x540 canvas, Sakkal Majalla bold, black.',
+  subtitlePolicy: 'Compact green subtitle at x=35 y=100 when a section/lens label is useful.',
+  hiddenPlaceholderPolicy: 'Do not surface hidden think-cell data, scratch placeholders, or unrelated benchmark report artifacts unless explicitly requested.',
+  borderWeightPt: { min: 0.5, max: 1.25 },
+};
+
+const MOS_PROMPT_CONTRACT = `# MoS Client Design Contract
+
+## Master
+- Use one Ministry of Sport performance-management master shell. Do not invent Strategy&, STC, PIF, DGE, or FYA variants.
+- Use the body frame at x=35 y=122 w=890 h=372 on the 960x540 canvas.
+- Keep the bottom footer/logo/page band clear.
+- Do not render Strategy& footer branding.
+
+## Theme
+- Use MoS dark green (#073B16), primary green (#0B5921), bright green (#0E762C), gold (#BD9608), light green (#80C7A7), white, light gray, and charcoal.
+- Avoid maroon-led, purple-led, blue-led, or cream-led slide systems.
+
+## Typography
+- Sakkal Majalla is the official font. Use it for titles, labels, body, and footer.
+- Keep dense tables legible and compact.
+
+## Components
+- Prefer benchmark flows, pillar cards, KPI matrices, value-chain maps, comparison tables, and implication panels inside the body frame.
+- Use green bands, pale-green panels, thin borders, and gold highlights sparingly.`;
+
+const MOS_PPTX_FONTS = {
+  title: { fontFace: 'Sakkal Majalla', fontSize: 24, bold: true, color: '000000' },
+  subtitle: { fontFace: 'Sakkal Majalla', fontSize: 14, bold: true, color: '0B5921' },
+  body: { fontFace: 'Sakkal Majalla', fontSize: 10, bold: false, color: '2C2C2C' },
+  footer: { fontFace: 'Sakkal Majalla', fontSize: 7, italic: false, bold: false, color: '7F7F7F' },
+  slideNum: { fontFace: 'Sakkal Majalla', fontSize: 7, bold: false, color: '7F7F7F' },
+};
+
+const mosStandardInches = {
+  logo: pxRectToInches(MOS_LAYOUT_CONTRACT.standardContent.logo, MOS_LAYOUT_CONTRACT.canvas),
+  title: { ...pxRectToInches(MOS_LAYOUT_CONTRACT.standardContent.title, MOS_LAYOUT_CONTRACT.canvas), font: MOS_PPTX_FONTS.title },
+  subtitle: { ...pxRectToInches(MOS_LAYOUT_CONTRACT.standardContent.subtitle, MOS_LAYOUT_CONTRACT.canvas), font: MOS_PPTX_FONTS.subtitle },
+  body: { ...pxRectToInches(MOS_LAYOUT_CONTRACT.standardContent.body, MOS_LAYOUT_CONTRACT.canvas), font: MOS_PPTX_FONTS.body },
+  footer: { ...pxRectToInches(MOS_LAYOUT_CONTRACT.standardContent.source, MOS_LAYOUT_CONTRACT.canvas), font: MOS_PPTX_FONTS.footer },
+  slideNum: { ...pxRectToInches(MOS_LAYOUT_CONTRACT.standardContent.slideNumber, MOS_LAYOUT_CONTRACT.canvas), font: MOS_PPTX_FONTS.slideNum },
+  sectionTracker: {
+    ...pxRectToInches(MOS_LAYOUT_CONTRACT.standardContent.sectionTracker, MOS_LAYOUT_CONTRACT.canvas),
+    colors: { fill: '0B5921', subFill: '073B16', text: 'FFFFFF', subText: 'FFFFFF' },
+    font: { fontFace: 'Sakkal Majalla', fontSize: 8, bold: true },
+    paddingX: 0.18,
+    textInset: 0.05,
+  },
+};
+
 const DGE_THEME = {
   name: 'DGE',
   defaultVariant: 'dge_blue_brand',
@@ -1226,6 +1412,110 @@ export const CLIENT_DESIGN_PROFILES = {
         maxBulletsStandard: 6,
         maxModulesStandard: 6,
         minBodyPt: 8,
+      },
+      chrome: {
+        requireLogo: true,
+        requirePageNumberNonCover: true,
+        requireSourceNonCover: false,
+        forbidHeavyFooterBar: true,
+        forbidAccidentalAppendixNavigation: true,
+      },
+    },
+  },
+  mos: {
+    schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
+    id: 'mos',
+    navLabel: 'MoS',
+    name: 'Ministry of Sport',
+    description: 'Ministry of Sport template: Sakkal Majalla, green performance-management system, benchmark layouts.',
+    status: 'brand-0.1',
+    footerBranding: '',
+    theme: MOS_THEME,
+    layoutContract: MOS_LAYOUT_CONTRACT,
+    freestyleOverrides: MOS_FREESTYLE_OVERRIDES,
+    componentPatterns: MOS_COMPONENT_PATTERNS,
+    pptxContract: MOS_PPTX_CONTRACT,
+    promptContract: MOS_PROMPT_CONTRACT,
+    designContract: MOS_PROMPT_CONTRACT,
+    pptxMaster: {
+      mode: 'profile-bound',
+      templateId: PROFILE_TEMPLATE_SLOT.DEFAULT,
+      bundled: true,
+      storageKey: 'client-template:mos:default',
+      serverSync: 'backend-profile-default',
+      serverProfileId: 'mos',
+      forceBundledDefault: true,
+      useProfileChrome: true,
+      assetVersion: 'mos-logo-native-v1',
+      notes: 'Default MoS master is served from backend assets; uploads stay profile-bound in local storage.',
+    },
+    chrome: {
+      footerText: '',
+      positions: mosStandardInches,
+    },
+    evidence: {
+      sourceDecks: [
+        {
+          label: 'MoS Template',
+          fileName: 'MoS Template.pptx',
+          slides: 5,
+          layouts: 42,
+          masters: 2,
+          role: 'bundled master and canonical MoS template shell',
+        },
+        {
+          label: 'MoS Performance Management Benchmark Report',
+          fileName: '20251123_MoS_Performance Management Benchmark Report.pptx',
+          slides: 47,
+          layouts: 102,
+          masters: 8,
+          role: 'content-pattern and benchmark-layout reference',
+        },
+      ],
+      rawThemeSlots: {
+        dk1: '#2C2C2C',
+        dk2: '#073B16',
+        lt1: '#F2F2F2',
+        accent1: '#0B5921',
+        accent2: '#0E762C',
+        accent3: '#BD9608',
+        accent4: '#14AA3F',
+        accent5: '#7F7F7F',
+      },
+      notes: [
+        'Sakkal Majalla is the official font used in the MoS theme.',
+        'Standard report pages use white backgrounds, green benchmark bands, compact tables, and small bottom chrome.',
+        'Logo asset is extracted from MoS Template media image7.png.',
+      ],
+    },
+    validationRules: {
+      requiredColors: ['#073B16', '#0B5921', '#0E762C', '#BD9608', '#80C7A7', '#FFFFFF', '#2C2C2C'],
+      preferredSurfaceColors: ['#F2F2F2', '#E7F3EA', '#DFF3E6', '#FFFFFF'],
+      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#005393', '#F9F7ED', '#C3984D'],
+      forbiddenDominantColors: ['#8E1E1E', '#A32020', '#4F008C', '#005393', '#F9F7ED'],
+      disallowedFonts: ['Georgia', 'STC Forward', 'Fund Light', 'Noto Sans', 'Poppins', 'Aptos', 'Calibri'],
+      disallowedFooterText: ['Strategy&', 'Federal Youth Authority', 'Department of Government Enablement'],
+      minFontPx: 8,
+      targetBodyFontPx: 10,
+      fontSizesPt: {
+        titleStandard: { min: 22, max: 26 },
+        titleCover: { min: 28, max: 38 },
+        subtitle: { min: 12, max: 16 },
+        body: { min: 8, max: 12 },
+        bodyDense: { min: 7, max: 10 },
+        footer: { min: 6, max: 8 },
+      },
+      layoutBands: {
+        logoSafeBottomPct: 8,
+        titleMaxBottomPct: 18,
+        subtitleMaxBottomPct: 24,
+        contentStartPct: 23,
+        footerStartPct: 92,
+      },
+      density: {
+        maxBulletsStandard: 6,
+        maxModulesStandard: 6,
+        minBodyPt: 7,
       },
       chrome: {
         requireLogo: true,

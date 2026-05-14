@@ -15,6 +15,7 @@ const PROFILE_DEFAULT_DISPLAY_NAMES: Record<string, string> = {
   pif: 'PIF LDC Implementation Guide master.pptx',
   dge: 'DGE Presentation Template master.pptx',
   fya: 'FYA Template for Edwin.pptx',
+  mos: 'MoS Template.pptx',
 };
 
 function getProfileDefaultPptx(profileId: string): { path: string; displayName: string } | null {

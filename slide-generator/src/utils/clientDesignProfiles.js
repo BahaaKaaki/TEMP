@@ -469,8 +469,8 @@ const FYA_THEME = {
     surface: '#F9F7ED',
     surfaceAlt: '#F0E8D8',
     border: '#D8C890',
-    success: '#3F8E50',
-    successSoft: '#E5F0E2',
+    success: '#CE9C3E',
+    successSoft: '#EFE4C8',
     warning: '#CE9C3E',
     warningSoft: '#EFE4C8',
     danger: '#D83731',
@@ -556,11 +556,11 @@ const FYA_FREESTYLE_OVERRIDES = {
 - Footer/source/date/page chrome sits in the bottom band around y=500–526. Keep all content clear of the bottom footer band.
 - FYA logo appears bottom-left; do not use Strategy& footer branding on FYA slides.
 Use the FYA standard content slide as the default. Cover/divider variants are allowed only when explicitly requested.`,
-  theme: `Use FYA warm cream (#F9F7ED), gold (#CE9C3E), green (#3F8E50), brown (#6E4527), red (#D83731), sand neutrals, and black text. Keep the page warm and institutional. Do not use Strategy& maroon, STC purple/coral, PIF green/gold combinations, or DGE blue as the dominant palette.`,
+  theme: `Use FYA warm cream (#F9F7ED), gold (#CE9C3E), brown (#6E4527), red (#D83731), sand neutrals, and black text. Green (#3F8E50) is allowed only as a very small status marker or check, never as a card fill, anchor band, large panel, or dominant background. Keep the page warm and institutional. Do not use Strategy& maroon, STC purple/coral, PIF green/gold combinations, DGE blue, or MoS green bands as the dominant palette.`,
   vibe: `Federal government youth-agenda style: optimistic, warm, official, structured, and polished. Use rounded institutional panels, warm sand surfaces, compact tables, gold rules, and restrained iconography. Avoid dark consulting slides, generic SaaS dashboards, neon gradients, and playful consumer cards.`,
   writing: `Write in concise government-strategy language for youth policy, engagement, governance, initiatives, and national agenda content. Keep labels short and executive.`,
-  css: `Use Poppins throughout. Prefer warm cream backgrounds, gold dividers, green or red status accents, and subtle brown icon strokes. Keep borders thin and modules clean.`,
-  pptx: `Export on a 13.333 x 7.5 in canvas using Poppins, FYA warm cream/gold/green/brown/red palette, the bundled FYA master, bottom-left FYA logo asset, editable footer/page chrome, and no Strategy& branding.`,
+  css: `Use Poppins throughout. Prefer warm cream backgrounds, gold dividers, sand panels, and subtle brown icon strokes. Use red sparingly for risk; use green only for tiny status markers. Do not use pale-green callout panels. Keep borders thin and modules clean.`,
+  pptx: `Export on a 13.333 x 7.5 in canvas using Poppins, FYA warm cream/gold/brown/red palette, the bundled FYA master, bottom-left FYA logo asset, editable footer/page chrome, and no Strategy& branding.`,
 };
 
 const FYA_COMPONENT_PATTERNS = [
@@ -572,13 +572,13 @@ const FYA_COMPONENT_PATTERNS = [
   },
   {
     name: 'engagement_map',
-    structure: 'Structured stakeholder bands or swimlanes using gold separators, green highlights, and warm neutral panels.',
+    structure: 'Structured stakeholder bands or swimlanes using gold separators, brown/gold highlights, and warm neutral panels.',
     useWhen: 'Stakeholder engagement, phase planning, governance, and consultation flows.',
     avoid: ['rainbow stakeholder colors', 'dense unbounded lists', 'content in footer band'],
   },
   {
     name: 'governance_matrix',
-    structure: 'Compact matrix with warm cream cells, gold rules, black headings, and green/red responsibility markers.',
+    structure: 'Compact matrix with warm cream cells, gold rules, black headings, and tiny green/red responsibility markers only.',
     useWhen: 'Governance structures, cadence, roles, approvals, and decision rights.',
     avoid: ['blue government palette', 'PIF dark green master', 'large empty generic cards'],
   },
@@ -606,8 +606,9 @@ const FYA_PROMPT_CONTRACT = `# FYA Client Design Contract
 - Do not render Strategy& footer branding.
 
 ## Theme
-- Use FYA warm cream (#F9F7ED), gold (#CE9C3E), green (#3F8E50), brown (#6E4527), red (#D83731), sand neutrals, and black text.
-- Avoid blue-led, purple-led, or maroon-led slide systems.
+- Use FYA warm cream (#F9F7ED), gold (#CE9C3E), brown (#6E4527), red (#D83731), sand neutrals, and black text.
+- Green (#3F8E50) is only for tiny status/check markers. Never use green or pale-green as a large panel, card background, anchor band, or section fill.
+- Avoid blue-led, purple-led, maroon-led, or green-led slide systems.
 
 ## Typography
 - Use Poppins for title, headings, labels, and body copy.
@@ -615,7 +616,7 @@ const FYA_PROMPT_CONTRACT = `# FYA Client Design Contract
 
 ## Components
 - Prefer pillar cards, engagement maps, governance matrices, phase plans, compact timelines, and stakeholder grids inside the body frame.
-- Use warm neutral panels, thin gold rules, green/red status markers, and restrained brown/gold icons.`;
+- Use warm neutral panels, thin gold rules, tiny status markers only, and restrained brown/gold icons.`;
 
 const FYA_PPTX_FONTS = {
   title: { fontFace: 'Poppins', fontSize: 22, bold: false, color: '000000' },
@@ -1373,7 +1374,7 @@ export const CLIENT_DESIGN_PROFILES = {
         lt1: '#F9F7ED',
         dk1: '#000000',
         accent1: '#CE9C3E',
-        accent2: '#3F8E50',
+        accent2: '#6E4527',
         accent3: '#92732A',
         accent4: '#D83731',
         accent5: '#6E4527',
@@ -1385,10 +1386,10 @@ export const CLIENT_DESIGN_PROFILES = {
       ],
     },
     validationRules: {
-      requiredColors: ['#F9F7ED', '#CE9C3E', '#3F8E50', '#6E4527', '#D83731', '#000000'],
+      requiredColors: ['#F9F7ED', '#CE9C3E', '#6E4527', '#D83731', '#000000'],
       preferredSurfaceColors: ['#F9F7ED', '#F0E8D8', '#EFE4C8', '#E8E0C8'],
       disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#005393', '#00332A', '#005C4D'],
-      forbiddenDominantColors: ['#8E1E1E', '#A32020', '#4F008C', '#005393', '#00332A'],
+      forbiddenDominantColors: ['#8E1E1E', '#A32020', '#4F008C', '#005393', '#00332A', '#3F8E50', '#E5F0E2'],
       disallowedFonts: ['Georgia', 'STC Forward', 'Fund Light', 'Noto Sans', 'Aptos', 'Calibri'],
       disallowedFooterText: ['Strategy&', 'Department of Government Enablement', 'National Development Division'],
       minFontPx: 8,

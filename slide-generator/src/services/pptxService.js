@@ -150,9 +150,9 @@ ACTIVE CLIENT PROFILE OVERRIDE -- PIF:
 ACTIVE CLIENT PROFILE OVERRIDE -- DGE:
 - Use the DGE government template shell, not Strategy& maroon geometry.
 - Canvas is 13.333 x 7.5 in (standard 16:9 from 960 x 540 px).
-- Brand palette for in-slide content and panels: primary #063360, structural navy #0A4D73, highlight #2B5799, light panels #7DA1C4, pale surfaces #E7E6E6 / #F2F2F2. Top tab / section-tracker chrome uses **#203864** (native DGE scope-row blue from client reference decks), not the darker #063360 panel blue. Slide chrome title and subtitle text must be black #000000, not brand blue.
-- If you define a c palette, favor: main:'063360', chrome:'203864', secondary:'0A4D73', accent:'2B5799', surface:'F2F2F2', border:'7DA1C4', meta:'4A5568'.
-- Use Noto Sans for every generated text box; do not default to Aptos, Calibri, Georgia, STC Forward, or Fund fonts.
+- Brand palette taken directly from native DGE master: primary brand blue **#203864** (chrome, top tabs, scope rows, primary panels, structural emphasis), deepest navy **#0E2841** (cover and darkest fills), mid-tone **#32516E** (secondary structural), light panel **#7DA1C4**, very light **#A6CAEC**, pale surfaces #E7E6E6 / #F2F2F2, white. Slide chrome title and subtitle text must be black #000000, not brand blue. Do NOT use #063360 — it is not in the native palette.
+- If you define a c palette, favor: main:'203864', chrome:'203864', deep:'0E2841', secondary:'32516E', accent:'A6CAEC', surface:'F2F2F2', border:'7DA1C4', meta:'4A5568'.
+- Use Noto Sans family in every generated text box; do not default to Aptos, Calibri, Georgia, STC Forward, or Fund fonts. Allowed family variants (preserved verbatim by the export pipeline): "Noto Sans SemiBold" (titles, with bold:true), "Noto Sans Medium" (subtitles, labels, with bold:false), "Noto Sans Bold" (rare emphasis), "Noto Sans" (body, default), "Noto Sans Light" (compact captions). The pipeline rewrites any other fontFace to "Noto Sans" so do not bother with fallback families.
 - Keep the top-right lockup area clear of body content; footer topic label stays bottom-left unless omitted.
 `;
   }
@@ -182,6 +182,8 @@ function buildProfileReferenceExampleCode(profile, fallbackCode) {
   if (!profile || profile.id === 'strategy' || !positions?.title || !positions?.body) return fallbackCode;
 
   const fontFace = getProfilePptxFontFace(profile) || profile.theme?.fonts?.body?.replace(/["']/g, '') || 'Arial';
+  const titleFontFace = positions.title?.font?.fontFace || fontFace;
+  const subtitleFontFace = positions.subtitle?.font?.fontFace || fontFace;
   const colors = {
     main: getProfileTextColor(profile, 'heading', '111111'),
     secondary: getProfileTextColor(profile, 'body', '222222'),
@@ -202,8 +204,8 @@ function buildProfileReferenceExampleCode(profile, fallbackCode) {
   return `function(pptx, slideNum, totalSlides) {
   const slide = pptx.addSlide();
   const c = ${JSON.stringify(colors)};
-  slide.addText("Client-profile title uses the exact master band", {x:${title.x}, y:${title.y}, w:${title.w}, h:${title.h}, fontFace:'${fontFace}', fontSize:${title.font?.fontSize ?? 24}, bold:${title.font?.bold ? 'true' : 'false'}, color:c.main, valign:'top'});
-  slide.addText("Client profile subtitle", {x:${subtitle.x}, y:${subtitle.y}, w:${subtitle.w}, h:${subtitle.h}, fontFace:'${fontFace}', fontSize:${subtitle.font?.fontSize ?? 18}, bold:${subtitle.font?.bold ? 'true' : 'false'}, color:c.subtitle, valign:'top'});
+  slide.addText("Client-profile title uses the exact master band", {x:${title.x}, y:${title.y}, w:${title.w}, h:${title.h}, fontFace:'${titleFontFace}', fontSize:${title.font?.fontSize ?? 24}, bold:${title.font?.bold ? 'true' : 'false'}, color:c.main, valign:'top'});
+  slide.addText("Client profile subtitle", {x:${subtitle.x}, y:${subtitle.y}, w:${subtitle.w}, h:${subtitle.h}, fontFace:'${subtitleFontFace}', fontSize:${subtitle.font?.fontSize ?? 18}, bold:${subtitle.font?.bold ? 'true' : 'false'}, color:c.subtitle, valign:'top'});
   const body = {x:${body.x}, y:${body.y}, w:${body.w}, h:${body.h}};
   const items = [
     {num:'01', title:'First module', body:'Keep every body object inside the profile body rectangle.'},
@@ -222,12 +224,28 @@ function buildProfileReferenceExampleCode(profile, fallbackCode) {
 }`;
 }
 
+// Per-profile whitelist of font-face variants the LLM is allowed to keep
+// (prevents the global normalizer from collapsing weighted family names like
+// "Noto Sans SemiBold" / "Noto Sans Medium" down to plain "Noto Sans").
+const PROFILE_PPTX_FONT_FACE_VARIANTS = {
+  dge: ['Noto Sans SemiBold', 'Noto Sans Medium', 'Noto Sans Bold', 'Noto Sans Light', 'Noto Sans', 'Noto Kufi Arabic', 'Cairo'],
+  stc: ['STC Forward'],
+  pif: ['Fund Light', 'Fund Regular', 'Fund Med', 'Fund SemBd'],
+};
+
 function enforcePptxFontFaceForProfile(codeString, profile) {
   const fontFace = getProfilePptxFontFace(profile);
   if (!fontFace || !codeString) return codeString;
+  const allowedVariants = PROFILE_PPTX_FONT_FACE_VARIANTS[profile?.id] || [fontFace];
   return String(codeString).replace(
-    /fontFace\s*:\s*(['"`])[^'"`]+?\1/g,
-    `fontFace:'${fontFace}'`
+    /fontFace\s*:\s*(['"`])([^'"`]+?)\1/g,
+    (match, quote, current) => {
+      // Keep already-allowed family variants verbatim (preserves SemiBold/Medium/Bold faces).
+      if (allowedVariants.some(v => v.toLowerCase() === current.toLowerCase())) {
+        return `fontFace:${quote}${current}${quote}`;
+      }
+      return `fontFace:'${fontFace}'`;
+    }
   );
 }
 
@@ -264,19 +282,24 @@ function enforcePptxColorsForProfile(codeString, profile) {
       ['E6E9EE', 'DBB8F3'],
     ]);
   } else if (profile?.id === 'dge') {
+    // Native DGE master palette: #203864 primary, #0E2841 deepest navy, #32516E mid-tone,
+    // #7DA1C4 light, #A6CAEC very light. #063360 is NOT in the native template — remap it.
     replacements = new Map([
-      ['111111', '063360'],
+      ['111111', '203864'],
       ['222222', '1A1A1A'],
-      ['A32020', '2B5799'],
-      ['8E1E1E', '063360'],
-      ['4F008C', '0A4D73'],
-      ['FF375E', '2B5799'],
+      ['A32020', '32516E'],
+      ['8E1E1E', '203864'],
+      ['4F008C', '0E2841'],
+      ['FF375E', '32516E'],
       ['F7F9FB', 'F2F2F2'],
       ['EEF2F6', 'E7E6E6'],
       ['F8E3E3', 'E8EEF5'],
       ['4A4F57', '4A5568'],
       ['4B4F55', '1A1A1A'],
       ['E6E9EE', '7DA1C4'],
+      ['063360', '203864'],
+      ['0A4D73', '32516E'],
+      ['2B5799', 'A6CAEC'],
     ]);
   }
   if (!replacements) return codeString;
@@ -1444,6 +1467,12 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
   );
   const chromeObjects = new Set([...titleObjects, ...subtitleObjects, ...sourceObjects, ...slideNumObjects]);
 
+  // Prefer band-specific fontFace (e.g. "Noto Sans SemiBold") over the generic profile face,
+  // so the typeface variant + weight survives all the way into the exported PPTX run props.
+  const titleFontFace = titlePos?.font?.fontFace || fontFace;
+  const subtitleFontFace = subtitlePos?.font?.fontFace || fontFace;
+  const footerFontFace = footerPos?.font?.fontFace || fontFace;
+  const slideNumFontFace = slideNumPos?.font?.fontFace || fontFace;
   for (const obj of titleObjects) {
     if (!titlePos) continue;
     applyObjectOptions(obj, {
@@ -1451,9 +1480,9 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       y: titlePos.y,
       w: titlePos.w,
       h: titlePos.h,
-      fontFace,
+      fontFace: titleFontFace,
       fontSize: titlePos.font?.fontSize ?? 24,
-      bold: false,
+      bold: titlePos.font?.bold ?? false,
       color: titleColor,
       valign: 'top',
     });
@@ -1465,9 +1494,9 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       y: subtitlePos.y,
       w: subtitlePos.w,
       h: subtitlePos.h,
-      fontFace,
+      fontFace: subtitleFontFace,
       fontSize: subtitlePos.font?.fontSize ?? 18,
-      bold: false,
+      bold: subtitlePos.font?.bold ?? false,
       color: subtitleColor,
       valign: 'top',
     });
@@ -1479,9 +1508,9 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       y: footerPos.y,
       w: footerPos.w,
       h: footerPos.h,
-      fontFace,
+      fontFace: footerFontFace,
       fontSize: footerPos.font?.fontSize ?? 8,
-      bold: false,
+      bold: footerPos.font?.bold ?? false,
       italic: footerPos.font?.italic ?? false,
       color: footerColor,
       align: 'left',
@@ -1495,9 +1524,9 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       y: slideNumPos.y,
       w: slideNumPos.w,
       h: slideNumPos.h,
-      fontFace,
+      fontFace: slideNumFontFace,
       fontSize: slideNumPos.font?.fontSize ?? 8,
-      bold: false,
+      bold: slideNumPos.font?.bold ?? false,
       color: slideNumColor,
       align: slideNumPos.font?.align || 'right',
       ...(slideNumFill ? { fill: { color: slideNumFill }, line: { color: slideNumFill, transparency: 100 } } : {}),

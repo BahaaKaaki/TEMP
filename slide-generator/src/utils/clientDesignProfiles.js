@@ -457,34 +457,42 @@ const pifStandardInches = {
 const DGE_THEME = {
   name: 'DGE',
   defaultVariant: 'dge_blue_brand',
+  // Palette anchored to the native DGE master (DGE page_v1.0.pptx):
+  // - #203864 dominates structural shapes (32 occurrences) — primary brand blue
+  // - #0E2841 is theme dk2 — deepest navy
+  // - #32516E mid-tone, #7DA1C4 light, #A6CAEC very light
   colors: {
-    accent: '#063360',
-    accentHover: '#0A4D73',
+    accent: '#203864',
+    accentHover: '#0E2841',
     accentSoft: '#E8EEF5',
     onAccent: '#FFFFFF',
-    heading: '#063360',
+    heading: '#203864',
     body: '#1A1A1A',
     muted: '#4A5568',
     page: '#FFFFFF',
     surface: '#F2F2F2',
     surfaceAlt: '#E7E6E6',
     border: '#7DA1C4',
-    success: '#063360',
+    success: '#203864',
     successSoft: '#D4E2F0',
-    warning: '#2B5799',
+    warning: '#32516E',
     warningSoft: '#E8EEF5',
     danger: '#B21D41',
     dangerSoft: '#F7E1DD',
     info: '#7DA1C4',
     neutral: '#6B7280',
-    coverDark: '#063360',
-    kicker: '#2B5799',
-    dgePrimaryBlue: '#063360',
-    /** Top tab / scope-row chrome from client reference decks (e.g. DGE page_v1.0) */
+    coverDark: '#0E2841',
+    kicker: '#32516E',
+    /** Native DGE primary brand blue — used for chrome, scope rows, structural emphasis */
+    dgePrimaryBlue: '#203864',
+    /** Alias retained for older code paths */
     dgeChromeBlue: '#203864',
-    dgeStructuralBlue: '#0A4D73',
+    /** Native theme dk2 — deepest navy */
+    dgeDeepNavy: '#0E2841',
+    /** Mid-tone navy from native template */
+    dgeStructuralBlue: '#32516E',
     dgeLightBlue: '#7DA1C4',
-    dgeHighlightBlue: '#2B5799',
+    dgeHighlightBlue: '#A6CAEC',
   },
   fonts: {
     title: '"Noto Sans", "Noto Kufi Arabic", "Segoe UI", Arial, sans-serif',
@@ -533,7 +541,8 @@ const DGE_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    logo: { x: 709, y: 31, w: 218, h: 51 },
+    // Lockup measured from native DGE_page_v1.0 master (image3.png at x=763 y=31 w=164 h=38).
+    logo: { x: 763, y: 31, w: 164, h: 38 },
     title: { x: 33, y: 30, w: 660, h: 72 },
     subtitle: { x: 33, y: 108, w: 660, h: 22 },
     body: { x: 33, y: 132, w: 894, h: 351 },
@@ -547,7 +556,7 @@ const DGE_LAYOUT_CONTRACT = {
     title: { x: 33, y: 345, w: 437, h: 46 },
     subtitle: { x: 33, y: 430, w: 203, h: 32 },
     meta: { x: 33, y: 493, w: 110, h: 18 },
-    brandLockup: { x: 709, y: 450, w: 218, h: 51 },
+    brandLockup: { x: 763, y: 450, w: 164, h: 38 },
     classificationStrip: { x: 0, y: 526, w: 960, h: 14 },
   },
   sectionDivider: {
@@ -574,17 +583,17 @@ const DGE_LAYOUT_CONTRACT = {
 
 const DGE_FREESTYLE_OVERRIDES = {
   shell: `DGE Abu Dhabi government communications shell on 960x540:
-- Top-right DGE / Abu Dhabi lockup (reserved band ~x=709 y=31 w=218 h=51, same footprint as native cover lockup); do not place content over it.
+- Top-right DGE / Abu Dhabi lockup (reserved band ~x=763 y=31 w=164 h=38, same footprint as native cover lockup); do not place content over it.
 - h1.title: x=33 y=30 w=660, max two lines at ~30px/1.15 (ellipsis if longer), Noto Sans SemiBold, black #000000. PPTX title chrome: typeface Noto Sans SemiBold with bold enabled. Native short-title decks use a tight band; long consulting headlines must not push into the subtitle—keep title concise or accept a two-line clamp.
 - h2.subtitle: x=33 y=108 w=660 h=22, Noto Sans Medium ~12px (500), black #000000 (sits below a two-line title cap so it never collides with wrapped h1 text).
 - div.frame: x=33 y=132 w=894 h=351 — body band below subtitle, clearing the lockup and staying above the footer row (y≈493) and classification strip (y=526–540). Use timeline_4step layout contract when you need the exact four-card x positions from the native template.
 - footer topic label: bottom-left x=33 y=493; keep blank unless a real source exists.
 - slide number: bottom-right ~x=900 y=493.
 - Bottom classification strip zone y=526–540 is reserved for OPEN | مفتوحة style chrome; keep frame content above y≈500.`,
-  theme: `Primary #063360 for body panels and emphasis; top tab / section-tracker chrome #203864 (matches native SCOPE-style rows in client reference decks—do not use darker #063360 for those pills). Structural navy #0A4D73, highlight #2B5799, light panels #7DA1C4, white page, pale neutrals #E7E6E6 / #F2F2F2. Ignore Aptos theme slots for color decisions.`,
+  theme: `Primary brand blue #203864 (native DGE structural blue — used for body panels, top tabs, scope rows, section trackers, and primary emphasis). Deepest navy #0E2841 (theme dk2) for darkest fills and cover backgrounds. Mid-tone #32516E for secondary structural emphasis. Light panel #7DA1C4 for soft sections, very light #A6CAEC for hover/tinted backgrounds, white page, pale neutrals #E7E6E6 / #F2F2F2. Do not use #063360 (not in the native palette). Ignore Aptos theme slots (Office defaults) for color decisions.`,
   vibe: `Modern government brand: calm, enabling, trusted, bilingual-friendly, spacious, image-led heroes, rounded cards, soft blue panels, minimal noise.`,
   writing: `Prefer a single-line slide title when possible (native DGE masters assume a short headline); if the title must run long, keep it to two lines max so the subtitle band at y≈108px stays clear. Short declarative titles, concise institutional copy, minimal bullets.`,
-  css: `Rounded cards, thin blue outlines, soft blue fills, white reverse text on #063360 panels, generous margins, large photographic hero bands when appropriate.`,
+  css: `Rounded cards, thin blue outlines, soft blue fills, white reverse text on #203864 panels, generous margins, large photographic hero bands when appropriate.`,
   pptx: `16:9 widescreen (13.333 x 7.5 in). Hard-code Noto Sans for body English text; prefer bundled master chrome over raw theme slots. Preserve top-right lockup and bottom classification strip from the DGE master when merging templates.`,
 };
 
@@ -640,11 +649,12 @@ const DGE_PROMPT_CONTRACT = `# DGE Client Design Contract
 
 ## Master and trust
 - Treat the bundled DGE template as the chrome authority: top-right lockup, bottom classification strip, and hero geometry override generic Office theme slots (Aptos colors are not authoritative).
-- Standard white content: title 33,30 (black, Noto Sans SemiBold ~30pt; PPTX chrome uses SemiBold typeface with bold true; reserve up to **two lines** then ellipsis—subtitle is fixed at **y=108** so it never overlaps wrapped titles) / subtitle 33,108 (black, Noto Sans Medium ~12pt) / body frame **33,132 size 894x351** / top-right lockup **709,31,218x51** (cover-sized lockup for legibility) / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
-- Section/subsection tracker pills: fill **#203864**, white label text (native DGE scope-row blue—not the darker #063360 panel blue).
+- Standard white content: title 33,30 (black, Noto Sans SemiBold ~30pt; PPTX chrome uses SemiBold typeface with bold true; reserve up to **two lines** then ellipsis—subtitle is fixed at **y=108** so it never overlaps wrapped titles) / subtitle 33,108 (black, Noto Sans Medium ~12pt) / body frame **33,132 size 894x351** / top-right lockup **763,31,164x38** (cover-sized lockup for legibility) / footer label 33,493 / reserve bottom strip 526–540px for classification chrome.
+- Section/subsection tracker pills: fill **#203864**, white label text (native DGE scope-row blue — same as the primary brand blue, the native master uses one consistent navy throughout chrome and panels).
 
 ## Theme
-- Primary #063360 for panels and in-content emphasis; **#203864** for top tab / tracker chrome. Structural navy #0A4D73, highlight #2B5799, light panels #7DA1C4, neutrals #E7E6E6 and #F2F2F2, white backgrounds.
+- Primary brand blue **#203864** for panels, top tabs, section trackers, scope rows, and structural emphasis (this is the dominant blue in the native DGE master). Deepest navy **#0E2841** (theme dk2) for cover and darkest fills. Mid-tone **#32516E** for secondary structural emphasis. Light panel **#7DA1C4** for soft sections, very light **#A6CAEC** for tinted backgrounds, neutrals #E7E6E6 / #F2F2F2, white backgrounds.
+- Do not use **#063360** — it is not present in the native DGE template palette.
 - Forbidden as dominant fills: Office orange #E97132, bright green #196B24, cyan #0F9ED5, magenta #A02B93, lime #4EA72E.
 
 ## Typography
@@ -984,9 +994,9 @@ export const CLIENT_DESIGN_PROFILES = {
       ],
     },
     validationRules: {
-      requiredColors: ['#063360', '#203864', '#0A4D73', '#7DA1C4', '#FFFFFF'],
-      preferredSurfaceColors: ['#E7E6E6', '#F2F2F2', '#E8EEF5'],
-      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D'],
+      requiredColors: ['#203864', '#0E2841', '#32516E', '#7DA1C4', '#FFFFFF'],
+      preferredSurfaceColors: ['#E7E6E6', '#F2F2F2', '#E8EEF5', '#A6CAEC'],
+      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#063360'],
       forbiddenDominantColors: ['#E97132', '#196B24', '#0F9ED5', '#A02B93', '#4EA72E'],
       disallowedFonts: ['Aptos', 'Calibri', 'Georgia', 'STC Forward', 'Fund Light'],
       disallowedFooterText: ['Strategy&'],

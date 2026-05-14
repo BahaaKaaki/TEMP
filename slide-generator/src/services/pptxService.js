@@ -480,6 +480,8 @@ YOUR TASK:
 4. Use the REFERENCE EXAMPLE as a structural guide only — override its colors/sizes with the ones from THIS slide's CSS
 5. Pull fonts and colors from the CSS rules and resolved palette — never guess
 
+LAYOUT FIDELITY: Treat the rendered HTML as a fixed 960x540 canvas. Recreate each visible block with explicit absolute x/y/w/h values in PptxGenJS after resolving CSS grid/flex/padding/gap math. Do not reflow, rebalance, or redesign sections to make them more editable. If exact conversion conflicts with PowerPoint text wrapping, keep the HTML block geometry and adjust only text fit/height minimally. Imperfect editability is acceptable; visible alignment to the HTML render is more important.
+
 EXACT COLOR FIDELITY: The CSS RULES provided with each slide are the RESOLVED colors.
 You MUST use the exact hex colors from the CSS rules for each element. If .card-num says color:#8E1E1E,
 use color:'8E1E1E'. NEVER substitute your own colors. The examples are structural guides only —

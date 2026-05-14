@@ -20,6 +20,7 @@ const MAX_ICON_PX = 180;
 const MAX_ICON_AREA = 200 * 200;
 const ICON_RASTER_SCALE = 4;
 const MAX_ICON_HOST_TO_SVG_AREA_RATIO = 12;
+const MAX_GENERATED_HOST_ANCHOR_DISTANCE_IN = 0.22;
 
 const ICON_HOST_SELECTOR = [
   '.icon',
@@ -263,6 +264,16 @@ function findGeneratedIconHostRect(pptxSlide, iconRect, hostRect) {
     if (!best || distance < best.distance) best = { rect: objRect, distance };
   }
   return best?.rect || null;
+}
+
+function shouldAnchorToGeneratedHost(generatedHostRect, expectedHostRect) {
+  if (!generatedHostRect) return false;
+  const distance = centerDistance(generatedHostRect, expectedHostRect);
+  const sizeDelta = Math.max(
+    Math.abs(generatedHostRect.w - expectedHostRect.w),
+    Math.abs(generatedHostRect.h - expectedHostRect.h),
+  );
+  return distance <= MAX_GENERATED_HOST_ANCHOR_DISTANCE_IN && sizeDelta <= MAX_GENERATED_HOST_ANCHOR_DISTANCE_IN;
 }
 
 function centerRectInside(rect, container) {
@@ -541,7 +552,7 @@ export async function injectRasterizedSvgIcons(pptxSlide, slide, settings) {
         meta,
       );
       const generatedHostBox = findGeneratedIconHostRect(pptxSlide, box, hostBox);
-      const placementBox = generatedHostBox && !target.usesHostBox
+      const placementBox = !target.usesHostBox && shouldAnchorToGeneratedHost(generatedHostBox, hostBox)
         ? centerRectInside(box, generatedHostBox)
         : box;
 

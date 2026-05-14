@@ -634,29 +634,34 @@ async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
     if (cleanedCtXml !== ctXml) zip.file(contentTypesPath, cleanedCtXml);
   }
 
-  const slideFiles = Object.keys(zip.files)
-    .filter(f => /^ppt\/slides\/slide\d+\.xml$/.test(f))
+  const pptXmlFiles = Object.keys(zip.files)
+    .filter(f => /^ppt\/.+\.xml$/.test(f))
     .sort((a, b) => {
-      const na = parseInt(a.match(/slide(\d+)/)[1], 10);
-      const nb = parseInt(b.match(/slide(\d+)/)[1], 10);
-      return na - nb;
+      const rank = path => /^ppt\/slides\/slide\d+\.xml$/.test(path) ? 0 : 1;
+      return rank(a) - rank(b) || a.localeCompare(b);
     });
 
-  for (const slidePath of slideFiles) {
-    const xml = await zip.files[slidePath].async('string');
-    const fixed = sanitizeSlideXmlForPowerPoint(xml, slidePath);
-    if (fixed !== xml) zip.file(slidePath, fixed);
+  for (const xmlPath of pptXmlFiles) {
+    const xml = await zip.files[xmlPath].async('string');
+    const fixed = sanitizeSlideXmlForPowerPoint(xml, xmlPath);
+    if (fixed !== xml) zip.file(xmlPath, fixed);
 
-    const slideNum = slidePath.match(/slide(\d+)\.xml$/)?.[1];
+    const slideNum = xmlPath.match(/^ppt\/slides\/slide(\d+)\.xml$/)?.[1];
     const relsPath = slideNum ? `ppt/slides/_rels/slide${slideNum}.xml.rels` : null;
     if (relsPath && zip.files[relsPath]) {
       const relsXml = await zip.files[relsPath].async('string');
-      const cleanedRelsXml = relsXml.replace(/<Relationship[^>]*Type="[^"]*\/notesSlide"[^>]*\/>/g, '');
+      let cleanedRelsXml = relsXml.replace(/<Relationship[^>]*Type="[^"]*\/notesSlide"[^>]*\/>/g, '');
+      const usedRelationshipIds = new Set((fixed.match(/r:embed="([^"]+)"|r:link="([^"]+)"/g) || [])
+        .map(match => match.match(/="([^"]+)"/)?.[1])
+        .filter(Boolean));
+      cleanedRelsXml = cleanedRelsXml.replace(/<Relationship\b[^>]*Id="([^"]+)"[^>]*Type="[^"]*\/image"[^>]*\/>/g, (match, id) => (
+        usedRelationshipIds.has(id) ? match : ''
+      ));
       if (cleanedRelsXml !== relsXml) zip.file(relsPath, cleanedRelsXml);
     }
   }
 
-  console.log('[PPTX Template] PowerPoint sanitation complete for %s (%d slide(s))', label, slideFiles.length);
+  console.log('[PPTX Template] PowerPoint sanitation complete for %s (%d ppt XML part(s))', label, pptXmlFiles.length);
   return zip;
 }
 

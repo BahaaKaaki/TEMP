@@ -135,18 +135,18 @@ export function getSlideMeasureClientChromeCss() {
 
 .slide[data-client-profile="mos"] .client-chrome-mos-logo {
   left: 18px;
-  top: 508px;
-  width: 72px;
-  height: 35px;
+  top: 510px;
+  width: 95px;
+  height: 25px;
   object-fit: contain;
   object-position: left center;
 }
 
 .slide[data-client-profile="mos"] .client-chrome-mos-wordmark {
   left: 18px;
-  top: 508px;
-  width: 72px;
-  height: 35px;
+  top: 510px;
+  width: 95px;
+  height: 25px;
   font: 700 10px/1 "Sakkal Majalla", Arial, sans-serif;
   color: #FFFFFF;
 }

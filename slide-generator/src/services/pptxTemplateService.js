@@ -502,6 +502,15 @@ async function applyProfileThemeToGenerated(zip, profile) {
 /**
  * Inject a `<p:pic>` shape for the logo into slide XML before `</p:spTree>`.
  */
+function insertIntoSlideShapeTree(slideXml, markup) {
+  const spTreeEnd = slideXml.lastIndexOf('</p:spTree>');
+  if (spTreeEnd === -1) return slideXml;
+  const spTreeStart = slideXml.lastIndexOf('<p:spTree', spTreeEnd);
+  const extLstStart = slideXml.lastIndexOf('<p:extLst', spTreeEnd);
+  const insertAt = extLstStart > spTreeStart ? extLstStart : spTreeEnd;
+  return `${slideXml.slice(0, insertAt)}${markup}${slideXml.slice(insertAt)}`;
+}
+
 function injectLogoPic(slideXml, logo, rId) {
   if (!logo || !/<\/p:spTree>/.test(slideXml)) return slideXml;
   const x = Math.round(logo.x * EMU_PER_INCH);
@@ -511,7 +520,7 @@ function injectLogoPic(slideXml, logo, rId) {
 
   const pic = `<p:pic><p:nvPicPr><p:cNvPr id="9990" name="TemplateLogo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
 
-  return slideXml.replace('</p:spTree>', pic + '</p:spTree>');
+  return insertIntoSlideShapeTree(slideXml, pic);
 }
 
 function emu(valueInches) {
@@ -531,12 +540,12 @@ function injectMoSFooterChrome(slideXml, logo, rId, slideNumber) {
 
   let chrome = band + source + page;
   if (logo) {
-    chrome += injectLogoPic('<p:spTree></p:spTree>', { ...logo, x: 0.17, y: 7.03, w: 0.94, h: 0.35 }, rId)
+    chrome += injectLogoPic('<p:spTree></p:spTree>', { ...logo, x: 0.25, y: 7.08, w: 1.32, h: 0.35 }, rId)
       .replace('<p:spTree>', '')
       .replace('</p:spTree>', '')
       .replace('TemplateLogo', 'MoSFooterLogo');
   }
-  return slideXml.replace('</p:spTree>', chrome + '</p:spTree>');
+  return insertIntoSlideShapeTree(slideXml, chrome);
 }
 
 function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
@@ -823,10 +832,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
         ''
       );
       if (hasLogo) {
-        genRelsXml = genRelsXml.replace(
-          '</Relationships>',
-          `<Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${LOGO_TARGET}"/></Relationships>`
-        );
+        genRelsXml = addLogoRelationship(genRelsXml, LOGO_RID, LOGO_TARGET);
       }
       tplZip.file(genSlideRelsPath, genRelsXml);
     } else {

@@ -719,7 +719,7 @@ const MOS_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    logo: { x: 18, y: 508, w: 72, h: 35 },
+    logo: { x: 18, y: 510, w: 95, h: 25 },
     title: { x: 35, y: 28, w: 890, h: 72 },
     subtitle: { x: 35, y: 104, w: 890, h: 24 },
     body: { x: 35, y: 132, w: 890, h: 349 },
@@ -1446,7 +1446,7 @@ export const CLIENT_DESIGN_PROFILES = {
       serverProfileId: 'mos',
       forceBundledDefault: true,
       useProfileChrome: true,
-      assetVersion: 'mos-logo-native-v1',
+      assetVersion: 'mos-logo-cropped-v2',
       notes: 'Default MoS master is served from backend assets; uploads stay profile-bound in local storage.',
     },
     chrome: {

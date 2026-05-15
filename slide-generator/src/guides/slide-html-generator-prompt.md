@@ -72,6 +72,8 @@ Use only these color tokens:
 - `var(--warning-soft)`
 - `var(--danger)`
 - `var(--danger-soft)`
+- `var(--neutral-fill)`
+- `var(--rose-fill)`
 
 No hex, rgb, rgba, named colors, or hardcoded gradients.
 

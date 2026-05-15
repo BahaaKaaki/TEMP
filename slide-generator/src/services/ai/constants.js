@@ -16,6 +16,8 @@ ACCENT TOKENS:
   var(--accent-hover)- Accent hover state
   var(--accent-soft) - Light accent background
   var(--on-accent)   - Text on accent backgrounds (white)
+  var(--neutral-fill) - Cool gray fill for charts/shapes (Strategy&)
+  var(--rose-fill)    - Rose fill for secondary series/highlights (Strategy&)
 
 SURFACE TOKENS:
   var(--page)        - Page/slide background
@@ -28,7 +30,7 @@ STATUS TOKENS:
   var(--warning), var(--warning-soft)  - Caution
   var(--danger), var(--danger-soft)    - Negative/decline
 
-CONTRAST: When background is a dark token (--accent, --success, --danger), ALL text inside must use var(--on-accent) (white). Never put dark text on dark backgrounds.
+CONTRAST: When background is a dark token (--accent, --neutral-fill, --rose-fill, --success, --danger), ALL text inside must use var(--on-accent) (white). Never put dark text on dark backgrounds.
 
 FONTS:
 - Titles: Georgia, serif - 28px, color: var(--heading)
@@ -323,7 +325,7 @@ export const FREESTYLE_COMPONENT_GUIDE = `# SLIDE VISUAL THEME & STRUCTURE
 
 ## CSS TOKENS (always use var(--token) — NEVER hardcode colors!)
 Text: var(--heading), var(--body), var(--muted)
-Accent: var(--accent), var(--accent-soft), var(--on-accent)
+Accent: var(--accent), var(--accent-soft), var(--on-accent), var(--neutral-fill), var(--rose-fill)
 Surfaces: var(--page), var(--surface), var(--surface-alt), var(--border)
 Fonts: Titles = Georgia serif 28px, Subtitles = Arial bold 18px, Body = Arial 12px
 Icons: 🎯 ⚙️ 🚀 📈 💰 👥 ⚡ 🔧 📊 💡 ✓ → ★

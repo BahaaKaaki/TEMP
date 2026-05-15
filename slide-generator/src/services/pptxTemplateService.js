@@ -682,6 +682,27 @@ async function sanitizeAppProperties(zip) {
   if (cleanedAppXml !== appXml) zip.file(appPath, cleanedAppXml);
 }
 
+async function ensurePresentationNotesSize(zip) {
+  const presentationPath = 'ppt/presentation.xml';
+  if (!zip.files[presentationPath]) return;
+
+  const presentationXml = await zip.files[presentationPath].async('string');
+  if (/<p:notesSz\b/.test(presentationXml)) return;
+
+  const notesSizeXml = '<p:notesSz cx="6858000" cy="9144000"/>';
+  let fixedPresentationXml = presentationXml;
+  if (/<p:defaultTextStyle\b/.test(fixedPresentationXml)) {
+    fixedPresentationXml = fixedPresentationXml.replace(/<p:defaultTextStyle\b/, `${notesSizeXml}<p:defaultTextStyle`);
+  } else {
+    fixedPresentationXml = fixedPresentationXml.replace(/<\/p:presentation>\s*$/, `${notesSizeXml}</p:presentation>`);
+  }
+
+  if (fixedPresentationXml !== presentationXml) {
+    zip.file(presentationPath, fixedPresentationXml);
+    console.warn('[PPTX Template] Restored required presentation notes size');
+  }
+}
+
 async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
   await removeOptionalPowerPointSidecars(zip);
   await sanitizeAppProperties(zip);
@@ -702,10 +723,11 @@ async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
   if (zip.files[presentationPath]) {
     const presentationXml = await zip.files[presentationPath].async('string');
     const cleanedPresentationXml = presentationXml
-      .replace(/<p:notesMasterIdLst\b[\s\S]*?<\/p:notesMasterIdLst>/g, '')
-      .replace(/<p:notesSz\b[^>]*\/>/g, '');
+      .replace(/<p:notesMasterIdLst\b[\s\S]*?<\/p:notesMasterIdLst>/g, '');
     if (cleanedPresentationXml !== presentationXml) zip.file(presentationPath, cleanedPresentationXml);
   }
+
+  await ensurePresentationNotesSize(zip);
 
   const contentTypesPath = '[Content_Types].xml';
   if (zip.files[contentTypesPath]) {

@@ -61,6 +61,7 @@ const THEME_VAR_MAP = {
   page: '--page', surface: '--surface', surfaceAlt: '--surface-alt', border: '--border',
   success: '--success', successSoft: '--success-soft', warning: '--warning',
   warningSoft: '--warning-soft', danger: '--danger', dangerSoft: '--danger-soft',
+  neutralFill: '--neutral-fill', roseFill: '--rose-fill',
 };
 
 const LEGACY_ALIAS_MAP = {

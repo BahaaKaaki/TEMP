@@ -364,14 +364,18 @@ export function themeToPptxPalette(theme) {
   const c = t.colors || DEFAULT_THEME.colors;
   const strip = (hex) => (hex || '').replace('#', '');
 
-  const colorCode = `const c = {main:'${strip(c.heading)}',secondary:'${strip(c.body)}',accent:'${strip(c.accent)}',accentHover:'${strip(c.accentHover)}',accentSoft:'${strip(c.accentSoft)}',onAccent:'${strip(c.onAccent)}',muted:'${strip(c.muted)}',page:'${strip(c.page)}',surface:'${strip(c.surface)}',surfaceAlt:'${strip(c.surfaceAlt)}',border:'${strip(c.border)}',success:'${strip(c.success)}',danger:'${strip(c.danger)}',warning:'${strip(c.warning)}'};`;
+  const neutralFill = c.neutralFill ?? DEFAULT_THEME.colors.neutralFill;
+  const roseFill = c.roseFill ?? DEFAULT_THEME.colors.roseFill;
+
+  const colorCode = `const c = {main:'${strip(c.heading)}',secondary:'${strip(c.body)}',accent:'${strip(c.accent)}',accentHover:'${strip(c.accentHover)}',accentSoft:'${strip(c.accentSoft)}',onAccent:'${strip(c.onAccent)}',muted:'${strip(c.muted)}',page:'${strip(c.page)}',surface:'${strip(c.surface)}',surfaceAlt:'${strip(c.surfaceAlt)}',border:'${strip(c.border)}',success:'${strip(c.success)}',danger:'${strip(c.danger)}',warning:'${strip(c.warning)}',neutralFill:'${strip(neutralFill)}',roseFill:'${strip(roseFill)}'};`;
 
   const hint = `THEME: ${t.name || 'Custom'} - Use accent (${c.accent}) for emphasis, heading (${c.heading}) for titles, body (${c.body}) for text.`;
 
   const resolvedVars = `--heading = ${c.heading}, --body = ${c.body}, --muted = ${c.muted}
 --accent = ${c.accent}, --accent-hover = ${c.accentHover}, --accent-soft = ${c.accentSoft}, --on-accent = ${c.onAccent}
 --page = ${c.page}, --surface = ${c.surface}, --surface-alt = ${c.surfaceAlt}, --border = ${c.border}
---success = ${c.success}, --danger = ${c.danger}, --warning = ${c.warning}`;
+--success = ${c.success}, --danger = ${c.danger}, --warning = ${c.warning}
+--neutral-fill = ${neutralFill}, --rose-fill = ${roseFill}`;
 
   return { colorCode, hint, resolvedVars, colors: {
     main: c.heading, secondary: c.body, accent: c.accent,

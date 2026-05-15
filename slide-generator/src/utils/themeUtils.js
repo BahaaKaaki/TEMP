@@ -23,6 +23,8 @@ export const DEFAULT_THEME = {
     warningSoft: 'rgba(245, 158, 11, 0.15)',
     danger: '#dc2626',
     dangerSoft: 'rgba(220, 38, 38, 0.15)',
+    neutralFill: '#4b5563',
+    roseFill: '#d4687a',
   },
   fonts: {
     title: 'Georgia, serif',
@@ -49,6 +51,8 @@ const COLOR_TOKEN_MAP = {
   warningSoft: '--warning-soft',
   danger: '--danger',
   dangerSoft: '--danger-soft',
+  neutralFill: '--neutral-fill',
+  roseFill: '--rose-fill',
   info: '--info',
   infoSoft: '--info-soft',
   neutral: '--neutral',

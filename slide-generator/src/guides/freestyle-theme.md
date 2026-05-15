@@ -26,6 +26,8 @@ Token values are set by the active theme and adapt automatically to any brand.
 | Warning bg | `var(--warning-soft)` | Warning highlight background |
 | Negative/decline | `var(--danger)` | Down arrows, risk indicators |
 | Negative bg | `var(--danger-soft)` | Danger highlight background |
+| Neutral chart fill | `var(--neutral-fill)` | Bars, areas, icons needing a cool gray fill (not body text) |
+| Rose chart fill | `var(--rose-fill)` | Secondary series, highlights, warm rose fills (not legacy `--rose`, which maps to accent-soft) |
 
 ### Font tokens
 
@@ -52,11 +54,11 @@ Never set normal visible text below 10px, or compact tag/tracker text below 8px.
 
 ## Contrast (CRITICAL)
 
-**MANDATORY**: Any element with `var(--accent)`, `var(--accent-hover)`, `var(--success)`, `var(--warning)`, or `var(--danger)` as background MUST use `var(--on-accent)` (white) or another light color for ALL text inside it — including ALL child elements (spans, strongs, headings, labels). Never place `var(--heading)`, `var(--body)`, or any dark color on a dark background. This is the #1 most common visual defect.
+**MANDATORY**: Any element with `var(--accent)`, `var(--accent-hover)`, `var(--neutral-fill)`, `var(--rose-fill)`, `var(--success)`, `var(--warning)`, or `var(--danger)` as background MUST use `var(--on-accent)` (white) or another light color for ALL text inside it — including ALL child elements (spans, strongs, headings, labels). Never place `var(--heading)`, `var(--body)`, or any dark color on a dark background. This is the #1 most common visual defect.
 
 **SELF-CHECK**: After writing each CSS rule that sets `background` or `background-color` to a dark token, verify that the `color` of EVERY text element inside that container (including nested children) is set to `var(--on-accent)` or white. If you write `background: var(--accent)` on a div, every `h3`, `h4`, `p`, `span`, `strong` inside it needs `color: var(--on-accent)`.
 
-The current palette: `var(--heading)` = near-black, `var(--body)` = dark gray, `var(--muted)` = medium gray, `var(--accent)` = dark maroon, `var(--accent-hover)` = dark red, `var(--accent-soft)` = light pink tint, `var(--on-accent)` = white, `var(--page)` = white, `var(--surface)` = light gray, `var(--surface-alt)` = slightly darker light gray, `var(--border)` = light divider.
+The current palette: `var(--heading)` = near-black, `var(--body)` = dark gray, `var(--muted)` = medium gray, `var(--accent)` = dark maroon, `var(--accent-hover)` = dark red, `var(--accent-soft)` = light pink tint, `var(--on-accent)` = white, `var(--page)` = white, `var(--surface)` = light gray, `var(--surface-alt)` = slightly darker light gray, `var(--border)` = light divider, `var(--neutral-fill)` = cool gray for chart fills, `var(--rose-fill)` = rose for secondary fills.
 
 ## Surface usage patterns
 

@@ -94,6 +94,9 @@
   --danger-soft: rgba(220, 38, 38, 0.15);
   --info: #2563eb;
   --info-soft: rgba(37, 99, 235, 0.15);
+  /* Strategy& chart / diagram fills (distinct from legacy --rose alias = accent-soft) */
+  --neutral-fill: #4b5563;
+  --rose-fill: #d4687a;
 
   /* Legacy aliases (backward compat with template component CSS) */
   --main: var(--heading);

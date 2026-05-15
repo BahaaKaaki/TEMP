@@ -387,6 +387,8 @@ Slide CSS is organized into three layers:
 | `--success`, `--success-soft` | Positive/growth indicators |
 | `--warning`, `--warning-soft` | Caution indicators |
 | `--danger`, `--danger-soft` | Negative/decline indicators |
+| `--neutral-fill` | Strategy& cool gray for chart/diagram fills |
+| `--rose-fill` | Strategy& rose for secondary series / warm fills |
 | `--font-title` | Title font family |
 | `--font-heading` | Heading font family |
 | `--font-body` | Body font family |

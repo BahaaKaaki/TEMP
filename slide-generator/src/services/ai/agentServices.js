@@ -451,9 +451,24 @@ export async function webSearch(query, settings, options = {}) {
   }
 
   try {
+    // Wrap any caller-provided instructions with strict output rules so the
+    // search model produces a synthesis instead of a meta-apology when results
+    // are sparse. Empirically, gpt-5.4-mini emits "I'm sorry, I can't reliably
+    // verify..." in ~3/4 of trials without these rules even though the tool
+    // has fired multiple times.
+    const baseGoal = options.instructions || 'Use web_search_preview to gather evidence and synthesize a factual brief on the query.';
+    const hardenedInstructions = `${baseGoal}
+
+OUTPUT RULES — strict:
+- Use the web_search_preview tool to gather evidence, then synthesize a factual brief based on what you found.
+- Output ONLY the brief. Do not apologize. Do not write meta-commentary about whether the search tool "worked", "failed", or "returned no results". Do not write phrases like "I couldn't verify", "I'm sorry", "the search backend returned no results".
+- If results are thin, write what you DID find with confidence levels (high/medium/low) per claim. Never refuse.
+- Cite source domains inline in parentheses, e.g. (openai.com), (anthropic.com).`;
+
     const requestBody = {
       model: effectiveSearchModel,
       input: query,
+      instructions: hardenedInstructions,
       tools: [
         {
           type: 'web_search_preview',
@@ -462,9 +477,6 @@ export async function webSearch(query, settings, options = {}) {
       ],
       max_output_tokens: settings.searchMaxTokens || 128000,
     };
-    if (options.instructions) {
-      requestBody.instructions = options.instructions;
-    }
 
     console.log('[webSearch] Searching:', query.substring(0, 100) + '...', `(model: ${effectiveSearchModel})`);
 
@@ -492,13 +504,16 @@ export async function webSearch(query, settings, options = {}) {
 
     const data = await response.json();
 
-    // Extract text from response - /responses API format
-    // Response structure: { output: [{ type: "message", content: [{ type: "output_text", text: "..." }] }] }
+    // Extract text and inspect tool-call activity from /responses API output.
+    // Response shape: { output: [ { type: "web_search_call", ... }, { type: "message", content: [{ type: "output_text", text: "..." }] } ] }
     let resultText = '';
+    let searchCallCount = 0;
 
     if (data.output && Array.isArray(data.output)) {
       for (const item of data.output) {
-        if (item.type === 'message' && item.content) {
+        if (item.type === 'web_search_call') {
+          searchCallCount++;
+        } else if (item.type === 'message' && item.content) {
           for (const content of item.content) {
             if (content.text) {
               resultText += content.text + '\n';
@@ -508,8 +523,24 @@ export async function webSearch(query, settings, options = {}) {
       }
     }
 
-    console.log('[webSearch] Got result:', resultText.substring(0, 200) + '...');
-    return resultText.trim() || null;
+    const trimmed = resultText.trim();
+    // Defensive: even with hardened instructions, occasionally the model still
+    // writes a refusal. Detect that pattern and treat it as no-result so the
+    // executor doesn't get fed an apology as if it were facts.
+    const refusalPattern = /^\s*(i'?m sorry|i\s+(?:can'?t|couldn'?t)\s+(?:reliably|verify|confirm)|the\s+(?:search|web)\s+(?:tool|backend)\s+(?:returned no|is failing|failed))/i;
+    if (trimmed && refusalPattern.test(trimmed)) {
+      console.warn('[webSearch] Refusal-style response detected after', searchCallCount, 'search call(s) — discarding so executor falls back to model knowledge.');
+      console.warn('[webSearch] Refusal preview:', trimmed.slice(0, 200));
+      return null;
+    }
+
+    if (searchCallCount === 0 && !trimmed) {
+      console.warn('[webSearch] No web_search_call items and no message content — returning null.');
+      return null;
+    }
+
+    console.log('[webSearch] Got result:', trimmed.substring(0, 200) + '...', `(${searchCallCount} search call(s))`);
+    return trimmed || null;
 
   } catch (error) {
     console.error('[webSearch] Error:', error.message);

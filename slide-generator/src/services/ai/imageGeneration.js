@@ -215,6 +215,17 @@ export function buildFrameImageStyleContext(settings, theme, options = {}) {
   return parts.join('\n\n');
 }
 
+function buildUserLayoutChangeSection(layoutGuidance) {
+  const text = String(layoutGuidance || '').trim();
+  if (!text || text === 'None') return '';
+  return `
+
+USER LAYOUT REQUEST (highest priority — overrides default layout preservation):
+${text}
+Reorganize the diagram to satisfy this request (e.g. column count, grid, matrix, flow direction).
+Keep every label, fact, metric, and relationship; do not drop or invent content.`;
+}
+
 function buildVisualUpliftPrompt({
   settings,
   layoutGuidance,
@@ -228,6 +239,11 @@ function buildVisualUpliftPrompt({
   let prompt = basePrompt
     .replace(/\{layoutGuidance\}/g, layoutGuidance || 'None')
     .replace(/\{clientProfileName\}/g, clientProfileName || 'Strategy&');
+
+  const layoutChangeSection = buildUserLayoutChangeSection(layoutGuidance);
+  if (layoutChangeSection) {
+    prompt += layoutChangeSection;
+  }
 
   const sections = [];
   if (styleContext) {
@@ -792,7 +808,9 @@ export async function upliftSlideWithImage(slide, settings, options = {}) {
     prompt: imagePrompt,
   });
 
-  console.log(`[upliftSlideWithImage] model=${VISUAL_UPLIFT_IMAGE_MODEL}, title="${displayTitle.slice(0, 60)}", hasRef=${!!referenceImageDataUri}, promptLen=${imagePrompt.length}`);
+  console.log(
+    `[upliftSlideWithImage] model=${VISUAL_UPLIFT_IMAGE_MODEL}, title="${displayTitle.slice(0, 60)}", hasRef=${!!referenceImageDataUri}, layoutGuidance="${layoutGuidance.slice(0, 120)}", promptLen=${imagePrompt.length}`
+  );
 
   const imageDataUri = await generateImage(imagePrompt, settings, referenceImageDataUri, {
     modelRef: VISUAL_UPLIFT_IMAGE_MODEL,

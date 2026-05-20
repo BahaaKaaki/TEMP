@@ -2139,13 +2139,28 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
       return;
     }
 
-    setProgress({ phase: 'Working...', current: 0, total: 1 });
+    const directTargetIdx = triage.scope === 'direct' && activeSlide
+      ? (triageTargetIndices.length === 1 ? triageTargetIndices[0] : currentSlideIndex)
+      : -1;
+    const directSlideForEdit = directTargetIdx >= 0
+      ? (currentState.slides[directTargetIdx] || activeSlide)
+      : null;
+    const directEditUsesFrameImage = directSlideForEdit && slideUsesRasterFrameImage(directSlideForEdit);
+
+    setProgress({
+      phase: directEditUsesFrameImage ? 'Regenerating frame image...' : 'Working...',
+      current: 0,
+      total: 1,
+    });
 
     // ─── DIRECT EXECUTION: single-slide actions via shared helper ───
     if (triage.scope === 'direct' && activeSlide) {
+      const slideId = directSlideForEdit?.id;
+      if (slideId) {
+        setBusySlideIds(prev => new Set(prev).add(slideId));
+      }
       try {
-        const directTargetIdx = triageTargetIndices.length === 1 ? triageTargetIndices[0] : currentSlideIndex;
-        const directSlide = currentState.slides[directTargetIdx] || activeSlide;
+        const directSlide = directSlideForEdit || activeSlide;
         const fullKnowledge = buildKnowledgeContextForPrompt(effectivePrompt, { fullContent: true });
         const result = await performDirectSlideEdit(directSlide, effectivePrompt, triage, { knowledgeContext: fullKnowledge });
         if (result) {
@@ -2168,6 +2183,7 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           const label = result.action === 'template-switch' ? `Switched to: <strong>${result.templateId}</strong>`
             : result.action === 'filled' ? `Filled: <strong>${result.templateTitle || result.title}</strong>`
             : result.action === 'generated' ? `Created: <strong>${result.title || 'Slide'}</strong>`
+            : directEditUsesFrameImage ? 'Updated frame image'
             : 'Updated slide';
           addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> ${label}</div>`, { isHTML: true });
         }
@@ -2176,6 +2192,9 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
           addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Error: ${err.message}</div>`, { isHTML: true });
         }
       } finally {
+        if (slideId) {
+          setBusySlideIds(prev => { const next = new Set(prev); next.delete(slideId); return next; });
+        }
         setIsLoading(false);
         setProgress(null);
         abortControllerRef.current = null;

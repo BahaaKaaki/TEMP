@@ -1,6 +1,11 @@
 import { createContext, useContext, useReducer, useEffect, useRef, useCallback, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
+import {
+  hydrateSlidesFromLocalStorage,
+  prepareSlidesForLocalStorage,
+  slideHtmlHasFrameImagePlaceholder,
+} from '../services/slideFrameImageStorage.js';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { getClientDesignProfile, getClientProfileTheme } from '../utils/clientDesignProfiles';
 import { normalizeSlideTypographyHTML, scopeCSS, unscopeCSS } from '../utils/cssScoping';
@@ -450,6 +455,7 @@ const ACTIONS = {
   ADD_SLIDE: 'ADD_SLIDE',
   INSERT_SLIDE_AT: 'INSERT_SLIDE_AT',
   UPDATE_SLIDE: 'UPDATE_SLIDE',
+  HYDRATE_SLIDES: 'HYDRATE_SLIDES',
   DELETE_SLIDE: 'DELETE_SLIDE',
   REORDER_SLIDES: 'REORDER_SLIDES',
   REORDER_SLIDES_BY_ID: 'REORDER_SLIDES_BY_ID',
@@ -814,6 +820,12 @@ function slideReducer(state, action) {
         }),
         storyline: newStoryline,
       };
+    }
+
+    case ACTIONS.HYDRATE_SLIDES: {
+      const hydrated = action.payload?.slides;
+      if (!Array.isArray(hydrated) || hydrated.length === 0) return state;
+      return { ...state, slides: hydrated };
     }
 
     case ACTIONS.DELETE_SLIDE: {
@@ -1777,6 +1789,28 @@ function getDefaultSlideHTML() {
 // Provider component
 export function SlideProvider({ children }) {
   const [state, dispatch] = useReducer(slideReducer, null, loadState);
+  const frameHydrateStartedRef = useRef(false);
+
+  // Restore frame images from IndexedDB when localStorage holds placeholders
+  useEffect(() => {
+    if (frameHydrateStartedRef.current) return;
+    const slides = state.slides || [];
+    if (!slides.some((s) => slideHtmlHasFrameImagePlaceholder(s?.html))) return;
+    frameHydrateStartedRef.current = true;
+    let cancelled = false;
+    (async () => {
+      try {
+        const hydrated = await hydrateSlidesFromLocalStorage(slides);
+        if (!cancelled) {
+          dispatch({ type: ACTIONS.HYDRATE_SLIDES, slides: hydrated });
+          console.log('[SlideContext] Hydrated frame images from IndexedDB');
+        }
+      } catch (e) {
+        console.warn('[SlideContext] Frame image hydrate failed:', e.message);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [state.slides]);
 
   const [isPanelOpen, setIsPanelOpen] = useState(() => {
     try {
@@ -1839,20 +1873,35 @@ export function SlideProvider({ children }) {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
 
     saveTimerRef.current = setTimeout(() => {
-      const saveState = (stateToSave) => {
+      const saveState = async (stateToSave) => {
         // Strip transient/server-owned fields:
         //   - selectedSlideIds: UI selection, not meaningful after reload
         //   - availableSkills:  server catalogue, always refetched at boot
         //                       from /api/skills; persisting it would shadow
         //                       catalogue updates until a full reload.
         const { selectedSlideIds, availableSkills, ...persistState } = stateToSave;
-        const stateJson = JSON.stringify(persistState);
+        const slidesForStorage = await prepareSlidesForLocalStorage(persistState.slides || []);
+        let versionsForStorage = persistState.deckVersions || [];
+        if (versionsForStorage.length > 0) {
+          versionsForStorage = await Promise.all(
+            versionsForStorage.map(async (v) => ({
+              ...v,
+              slides: await prepareSlidesForLocalStorage(v.slides || []),
+            }))
+          );
+        }
+        const stateJson = JSON.stringify({
+          ...persistState,
+          slides: slidesForStorage,
+          deckVersions: versionsForStorage,
+        });
         localStorage.setItem('slideGeneratorState', stateJson);
         return stateJson.length;
       };
 
+      (async () => {
       try {
-        const stateSize = saveState(state);
+        const stateSize = await saveState(state);
         console.log('[SlideContext] State saved to localStorage', {
           deckName: state.deckName,
           slideCount: state.slides?.length || 0,
@@ -1866,7 +1915,7 @@ export function SlideProvider({ children }) {
           console.warn('[SlideContext] localStorage quota exceeded! Auto-clearing history...');
           const slimState = { ...state, deckVersions: [] };
           try {
-            const slimSize = saveState(slimState);
+            const slimSize = await saveState(slimState);
             console.log('[SlideContext] Saved after clearing versions, new size:', slimSize);
             dispatch({ type: ACTIONS.CLEAR_HISTORY });
           } catch (e2) {
@@ -1874,6 +1923,7 @@ export function SlideProvider({ children }) {
           }
         }
       }
+      })();
     }, 2000);
 
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };

@@ -106,12 +106,12 @@ export async function enrichInstructionWithSearch(instruction, settings) {
  * @param {string}  [options.extraContext] - Additional context to append
  */
 export async function improveSlideWithSearch(slide, instruction, settings, options = {}) {
-  const { extraContext, skipSearch = true, theme = null, imageVibe = 'default', slideNumber, totalSlides } = options;
+  const { extraContext, skipSearch = true, theme = null, imageVibe = 'default', slideNumber, totalSlides, userPrompt } = options;
 
   if (slideUsesRasterFrameImage(slide)) {
     try {
       const imageResult = await editRasterImageSlide(slide, instruction, settings, {
-        userPrompt: instruction,
+        userPrompt: userPrompt || instruction,
         theme,
         imageVibe,
         slideNumber,

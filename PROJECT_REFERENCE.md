@@ -835,6 +835,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 100. **Visual Uplift (image-content)**: `upliftSlideWithImage()` in `imageGeneration.js` keeps title/subtitle/footer, replaces `.frame` with a `data:image` `<img class="frame-image">`, and generates via fixed `vertex_ai.gemini-3-pro-image-preview` (not Settings image model). AIChatbot opens a **Visual direction** popover (optional text + suggestion chips) before **Apply Visual Uplift**; prompt override `visualUplift.system` in debug Settings. Frame image prompts share `buildFrameImagePaletteGuidance()` + full deck/profile theme tokens (Strategy& uses `state.theme` JSON, not a 4-color shortcut).
 101. **PPTX export for uplifted slides**: `pptxService.js` detects raster frame slides and embeds the PNG with `addImage` instead of sending HTML with `[embedded-image]` to the PPTX LLM. **Export Browser PDF** removed from `Header.jsx`.
+102. **Image-slide chat edits**: `slideUsesRasterFrameImage()` + `editRasterImageSlide()` route direct chat, Quick Fixes, and `improveSlideWithSearch` through image regeneration (Visual Uplift / Gemini when `imageEditPipeline: 'uplift'` or `.frame-image`; Settings image model for plan `image-content` / `image-full`). Slides store `imageEditPipeline` after uplift or `generateImageSlide`. HTML text edit remains fallback; base64 is still stripped for any HTML fallback via `sanitizeHtmlForAiPrompt`.
 
 ---
 

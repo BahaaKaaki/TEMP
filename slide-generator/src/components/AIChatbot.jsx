@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildDeckContextDigest, buildDeckStructure, planTrackerSyncFromDeckStructures, CONTEXT_LEVELS, normalizeContextLevel, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, triageRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, agentTriageRequest, generateImageSlide, upliftSlideWithImage, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildDeckContextDigest, buildDeckStructure, planTrackerSyncFromDeckStructures, CONTEXT_LEVELS, normalizeContextLevel, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, triageRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, agentTriageRequest, generateImageSlide, upliftSlideWithImage, extractImageDataUri, editRasterImageSlide, slideUsesRasterFrameImage, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
 import { PRIMARY_ACTIONS, MORE_ACTIONS } from '../constants/slideActions';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
@@ -1758,11 +1758,52 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
     }
 
     const fullPrompt = enrichedPrompt + referenceContext + deckContext;
-    const result = await improveSlideWithSearch(slide, fullPrompt, slideSettings, { skipSearch: true });
+    const slideIdx = currentState.slides.findIndex(s => s.id === slide.id);
+
+    if (slideUsesRasterFrameImage(slide)) {
+      try {
+        const imageResult = await editRasterImageSlide(slide, fullPrompt, slideSettings, {
+          userPrompt: prompt.trim(),
+          slideNumber: slideIdx + 1,
+          totalSlides: currentState.slides.length,
+          theme: currentState.theme,
+          imageVibe,
+          footerBranding: getClientProfileFooterBranding(currentState.settings, 'Strategy&'),
+        });
+        return {
+          action: 'improved',
+          html: imageResult.html,
+          title: imageResult.title || slide.title,
+          updateData: {
+            html: imageResult.html,
+            title: imageResult.title || slide.title,
+            templateId: imageResult.templateId || slide.templateId || 'image-content',
+            type: imageResult.type || slide.type || 'image-content',
+            customCSS: imageResult.customCSS ?? slide.customCSS ?? '',
+            imageEditPipeline: imageResult.imageEditPipeline || slide.imageEditPipeline,
+          },
+        };
+      } catch (imgErr) {
+        console.warn('[DirectEdit] Image edit failed, falling back to HTML edit:', imgErr.message);
+      }
+    }
+
+    const result = await improveSlideWithSearch(slide, fullPrompt, slideSettings, {
+      skipSearch: true,
+      theme: currentState.theme,
+      imageVibe,
+      slideNumber: slideIdx + 1,
+      totalSlides: currentState.slides.length,
+    });
     const improvedHtml = result?.html || result;
-    const updateData = { html: improvedHtml, templateId: null };
+    const updateData = {
+      html: improvedHtml,
+      templateId: result?.templateId ?? slide.templateId ?? null,
+      type: result?.type ?? slide.type,
+      imageEditPipeline: result?.imageEditPipeline ?? slide.imageEditPipeline,
+    };
     if (result?.customCSS) updateData.customCSS = result.customCSS;
-    const newTitle = extractTitleFromHTML(improvedHtml);
+    const newTitle = result?.title || extractTitleFromHTML(improvedHtml);
     if (newTitle) updateData.title = newTitle;
     return { action: 'improved', html: improvedHtml, title: newTitle, updateData };
   };
@@ -3991,13 +4032,13 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               }
             }
 
-            let newHtml, newTitle, newCustomCSS;
+            let newHtml, newTitle, newCustomCSS, imageResult;
             if (isImageSlide && settings.imageModel) {
               // Image slide: edit the image — pass existing image as reference
               const imageMode = slideToEdit.templateId === 'image-full' ? 'full' : 'content';
               const existingImage = extractImageDataUri(slideToEdit.html);
               try {
-                const imageResult = await generateImageSlide(editContext, executionSettings, imageMode, {
+                imageResult = await generateImageSlide(editContext, executionSettings, imageMode, {
                   layoutGuidance: step.layoutGuidance || step.instruction,
                   vibe: imageVibe,
                   footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
@@ -4047,7 +4088,11 @@ ${digest.storylineSummary ? `Storyline:\n${digest.storylineSummary}\n` : ''}
               html: newHtml,
               customCSS: newCustomCSS,
               title: newTitle,
-              ...(isImageSlide ? { templateId: slideToEdit.templateId, type: slideToEdit.type } : {}),
+              ...(isImageSlide ? {
+                templateId: slideToEdit.templateId,
+                type: slideToEdit.type,
+                imageEditPipeline: imageResult?.imageEditPipeline || slideToEdit.imageEditPipeline || 'generate',
+              } : {}),
             });
 
             if (trackerSyncUpdates.length > 0) {
@@ -6393,9 +6438,22 @@ Original request: ${userPrompt}`;
         ...state.settings,
         model: genModel,
       };
-      const result = await improveSlideWithSearch(freshSlide, actionPrompt, improveSettings, { skipSearch: true });
+      const slideIdx = currentState.slides.findIndex(s => s.id === slideId);
+      const result = await improveSlideWithSearch(freshSlide, actionPrompt, improveSettings, {
+        skipSearch: true,
+        theme: currentState.theme,
+        imageVibe,
+        slideNumber: slideIdx + 1,
+        totalSlides: currentState.slides.length,
+      });
       const improvedHtml = result?.html || result;
-      const updateData = { html: improvedHtml, templateId: null };
+      const updateData = {
+        html: improvedHtml,
+        templateId: result?.templateId ?? freshSlide.templateId ?? null,
+        type: result?.type ?? freshSlide.type,
+        imageEditPipeline: result?.imageEditPipeline ?? freshSlide.imageEditPipeline,
+      };
+      if (result?.title) updateData.title = result.title;
       if (result?.customCSS) updateData.customCSS = result.customCSS;
       actions.updateSlide(slideId, updateData);
       addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Applied: <strong>${actionLabel || 'Quick Action'}</strong></div>`, { isHTML: true });

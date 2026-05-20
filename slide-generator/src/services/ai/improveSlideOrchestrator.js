@@ -1,6 +1,8 @@
 import { SLIDE_TEMPLATES } from '../../utils/slideTemplates';
 import { buildMinimalEditContext } from './slideContext.js';
 import { improveSlide } from './slideEditing.js';
+import { editRasterImageSlide, slideUsesRasterFrameImage } from './imageGeneration.js';
+import { getClientProfileFooterBranding } from '../../utils/clientDesignProfiles.js';
 import { webSearch } from './agentServices.js';
 import { currentDateString } from './router.js';
 
@@ -104,7 +106,30 @@ export async function enrichInstructionWithSearch(instruction, settings) {
  * @param {string}  [options.extraContext] - Additional context to append
  */
 export async function improveSlideWithSearch(slide, instruction, settings, options = {}) {
-  const { extraContext, skipSearch = true } = options;
+  const { extraContext, skipSearch = true, theme = null, imageVibe = 'default', slideNumber, totalSlides } = options;
+
+  if (slideUsesRasterFrameImage(slide)) {
+    try {
+      const imageResult = await editRasterImageSlide(slide, instruction, settings, {
+        userPrompt: instruction,
+        theme,
+        imageVibe,
+        slideNumber,
+        totalSlides,
+        footerBranding: getClientProfileFooterBranding(settings, 'Strategy&'),
+      });
+      return {
+        html: imageResult.html,
+        title: imageResult.title,
+        customCSS: imageResult.customCSS ?? slide.customCSS ?? '',
+        templateId: imageResult.templateId || slide.templateId,
+        type: imageResult.type || slide.type,
+        imageEditPipeline: imageResult.imageEditPipeline || slide.imageEditPipeline,
+      };
+    } catch (imgErr) {
+      console.warn('[improveSlideWithSearch] Raster image edit failed, falling back to HTML edit:', imgErr.message);
+    }
+  }
 
   const slideInfo = {
     html: slide.html,

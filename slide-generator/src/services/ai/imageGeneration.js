@@ -9,6 +9,7 @@ import {
   buildClientProfileContext,
   buildClientValidationBlock,
   getActiveClientProfile,
+  getClientProfileFooterBranding,
 } from '../../utils/clientDesignProfiles.js';
 import { DEFAULT_THEME } from '../../utils/themeUtils.js';
 import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
@@ -815,6 +816,7 @@ export async function upliftSlideWithImage(slide, settings, options = {}) {
     type: 'image-content',
     templateId: 'image-content',
     customCSS: slide.customCSS || '',
+    imageEditPipeline: 'uplift',
   };
 }
 
@@ -823,6 +825,60 @@ export function extractImageDataUri(html) {
   if (!html) return null;
   const match = html.match(/src="(data:image\/[^"]+)"/);
   return match ? match[1] : null;
+}
+
+/** Slides whose frame is a raster image (image templates or post-Visual Uplift). */
+export function slideUsesRasterFrameImage(slide) {
+  const html = slide?.html || '';
+  const tid = slide?.templateId || slide?.type || '';
+  if (tid === 'image-full' || tid === 'image-content') return true;
+  return /class=["']frame-image["']/i.test(html) || /src=["']data:image\//i.test(html);
+}
+
+/**
+ * Edit a slide by regenerating its frame image (not HTML/CSS text edit).
+ * Uplift-style frames use Gemini Visual Uplift; plan image slides use Settings image model.
+ */
+export async function editRasterImageSlide(slide, instruction, settings, options = {}) {
+  const {
+    slideNumber = 1,
+    totalSlides = 1,
+    theme = null,
+    imageVibe = 'default',
+    userPrompt = '',
+    footerBranding,
+  } = options;
+
+  const promptText = String(userPrompt || instruction || '').trim();
+  const isFullBleed = (slide?.templateId || slide?.type) === 'image-full';
+  const pipeline = slide?.imageEditPipeline;
+  const useUpliftPipeline =
+    pipeline === 'uplift' ||
+    (pipeline !== 'generate' && !isFullBleed && /class=["']frame-image["']/i.test(slide?.html || ''));
+
+  if (useUpliftPipeline) {
+    return upliftSlideWithImage(slide, settings, {
+      userPrompt: promptText,
+      slideNumber,
+      theme,
+      imageVibe,
+      footerBranding,
+    });
+  }
+
+  if (!settings?.imageModel) {
+    throw new Error('Image slide edits require an image model in Settings.');
+  }
+
+  return generateImageSlide(instruction, settings, isFullBleed ? 'full' : 'content', {
+    layoutGuidance: promptText,
+    vibe: imageVibe,
+    footerBranding: footerBranding ?? getClientProfileFooterBranding(settings, 'Strategy&'),
+    slideNumber,
+    totalSlides,
+    existingImageDataUri: extractImageDataUri(slide?.html),
+    theme,
+  });
 }
 
 export async function generateImageSlide(instruction, settings, mode = 'content', contextInfo = {}) {
@@ -961,6 +1017,7 @@ ${vibeContext ? `STYLE VARIATION: ${vibeContext}\n` : ''}${existingImageDataUri 
 </div>`,
       type: 'image-full',
       templateId: 'image-full',
+      imageEditPipeline: 'generate',
     };
 
   } else {
@@ -1055,6 +1112,7 @@ Return ONLY valid JSON: {"title": "...", "subtitle": "...", "footer": ""}`;
 </div>`,
       type: 'image-content',
       templateId: 'image-content',
+      imageEditPipeline: 'generate',
     };
   }
 }

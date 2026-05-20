@@ -203,7 +203,7 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 | Classifier | `openai.gpt-5.4-mini` |
 | Router | `openai.gpt-5.5` |
 | Step evidence search | `openai.gpt-5.4-mini` |
-| Image | `vertex_ai.gemini-3-pro-image-preview` |
+| Image | `openai.gpt-image-1.5` (regional; ~8–12s). `openai.global.gpt-image-2` needs PwC geography enablement — proxy auto-falls back to 1.5 on 401. **Visual Uplift** always uses `vertex_ai.gemini-3-pro-image-preview` (~20s). Uplifted/image-content slides export to PPTX by embedding the raster image (not re-translating HTML). |
 | Report | `bedrock.anthropic.claude-opus-4-7` |
 | PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
 

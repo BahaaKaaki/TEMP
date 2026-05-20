@@ -1139,11 +1139,83 @@ async function generateSlideWithRetry(slide, slideNum, totalSlides, settings, cr
 function parseHTML(html) { return new DOMParser().parseFromString(html, 'text/html'); }
 function getText(doc, sel) { const el = doc.querySelector(sel); return el ? el.textContent.trim() : ''; }
 
+function extractSlideRasterImageDataUri(html) {
+  if (!html) return null;
+  const doc = parseHTML(html);
+  const img = doc.querySelector('.frame-image, .frame img[src^="data:image"], img[src^="data:image"]');
+  if (!img) return null;
+  const src = img.getAttribute('src') || '';
+  return src.startsWith('data:image/') ? src : null;
+}
+
+function shouldUseRasterFramePptxExport(slide) {
+  const html = slide?.html || '';
+  const dataUri = extractSlideRasterImageDataUri(html);
+  if (!dataUri) return false;
+  const tid = slide?.templateId || slide?.type || '';
+  if (tid === 'image-content' || tid === 'image-full') return true;
+  return html.includes('frame-image');
+}
+
+function renderRasterFrameSlide(pptx, slide, slideNum, totalSlides, activeProfile = null, positions = null) {
+  const pptxSlide = pptx.addSlide();
+  const doc = parseHTML(slide.html || '<div></div>');
+  const profilePositions = positions || resolvePptxPositionsForProfile(activeProfile, null);
+  const isStc = activeProfile?.id === 'stc';
+  const suppressSubtitle = shouldSuppressStandardSubtitle(activeProfile);
+  const fontFace = getProfilePptxFontFace(activeProfile);
+  const titleFont = fontFace || 'Georgia';
+  const bodyFont = fontFace || 'Arial';
+  const titlePos = profilePositions?.title || { x: 0.48, y: 0.42, w: 12.36, h: 0.8 };
+  const subtitlePos = profilePositions?.subtitle || { x: 0.48, y: 1.40, w: 12.36, h: 0.4 };
+  const framePos = profilePositions?.body || { x: 0.39, y: 1.76, w: 12.56, h: 5.08 };
+  const colors = isStc
+    ? { main: '4F008C', secondary: '1D252D', accent: '4F008C', subtitle: 'FF375E' }
+    : { main: COLORS.main, secondary: COLORS.secondary, accent: COLORS.maroon, subtitle: COLORS.red };
+
+  const isFullBleed = (slide?.templateId || slide?.type) === 'image-full';
+  const dataUri = extractSlideRasterImageDataUri(slide.html);
+
+  pptxSlide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: 'FFFFFF' } });
+
+  if (!isFullBleed) {
+    const title = getText(doc, '.title, h1, .cover-title');
+    const subtitle = getText(doc, '.subtitle, h2');
+    if (title) {
+      pptxSlide.addText(title, {
+        x: titlePos.x, y: titlePos.y, w: titlePos.w, h: titlePos.h,
+        fontFace: titleFont, fontSize: titlePos.font?.fontSize || 28, color: colors.main,
+      });
+    }
+    if (subtitle && !suppressSubtitle) {
+      pptxSlide.addText(subtitle, {
+        x: subtitlePos.x, y: subtitlePos.y, w: subtitlePos.w, h: subtitlePos.h,
+        fontFace: bodyFont, fontSize: subtitlePos.font?.fontSize || 18, color: colors.subtitle, bold: true,
+      });
+    }
+  }
+
+  if (dataUri) {
+    const imgRect = isFullBleed
+      ? { x: 0, y: 0, w: 13.333, h: 7.5 }
+      : { x: framePos.x, y: framePos.y, w: framePos.w, h: framePos.h };
+    pptxSlide.addImage({ data: dataUri, ...imgRect });
+  }
+
+  addSourceNote(pptxSlide, slide.html);
+  addFooter(pptxSlide, slideNum, totalSlides);
+}
+
 function shouldSuppressStandardSubtitle(profile) {
   return ['pif', 'dge'].includes(profile?.id);
 }
 
 function generateFallbackSlide(pptx, slide, slideNum, totalSlides, activeProfile = null) {
+  if (shouldUseRasterFramePptxExport(slide)) {
+    renderRasterFrameSlide(pptx, slide, slideNum, totalSlides, activeProfile);
+    return;
+  }
+
   const pptxSlide = pptx.addSlide();
   const doc = parseHTML(slide.html || '<div></div>');
   const isStc = activeProfile?.id === 'stc';
@@ -1693,6 +1765,28 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       const slide = slides[i];
       const slideNum = i + 1;
 
+      if (shouldUseRasterFramePptxExport(slide)) {
+        console.log(`[PPTX] Slide ${slideNum}: embedding raster frame image`);
+        aiResults[i] = {
+          success: true,
+          slideFunctions: [(pptxInstance, sn, ts) => {
+            renderRasterFrameSlide(pptxInstance, slide, sn, ts, activeProfile, activeProfilePositions);
+          }],
+          raster: true,
+          attempts: 0,
+        };
+        completed++;
+        if (onProgress) {
+          onProgress({
+            phase: 'rendering',
+            processed: completed,
+            total: totalSlides,
+            message: `Slide ${completed}/${totalSlides} (raster image)...`,
+          });
+        }
+        return;
+      }
+
       // Use pre-generated PPTX code if available and valid
       if (slide.pptxCode && canUseCachedPptxCodeForProfile(activeProfile)) {
         try {
@@ -1795,7 +1889,14 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
 
     let rendered = false;
 
-      if (useAI) {
+      if (shouldUseRasterFramePptxExport(slide)) {
+        renderRasterFrameSlide(pptx, slide, slideNum, totalSlides, activeProfile, activeProfilePositions);
+        rendered = true;
+        const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+        if (lastSlide) {
+          normalizeGeneratedSlideForProfile(lastSlide, slide, slideNum, activeProfile, activeProfilePositions);
+        }
+      } else if (useAI) {
         try {
           const result = await generateSlideWithRetry(slide, slideNum, totalSlides, settings, credentials);
           if (result.success && result.slideFunctions) {
@@ -1903,7 +2004,15 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
         message: message || 'Unknown error',
       });
     };
-  if (useAI) {
+
+  if (shouldUseRasterFramePptxExport(slide)) {
+    renderRasterFrameSlide(pptx, slide, slideNumber, totalSlides, activeProfile, activeProfilePositions);
+    rendered = true;
+    const lastSlide = pptx.slides?.[pptx.slides.length - 1];
+    if (lastSlide) {
+      normalizeGeneratedSlideForProfile(lastSlide, slide, slideNumber, activeProfile, activeProfilePositions);
+    }
+  } else if (useAI) {
     try {
       const result = await generateSlideWithRetry(slide, slideNumber, totalSlides, settings, credentials);
       if (result.success && result.slideFunctions) {

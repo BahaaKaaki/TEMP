@@ -61,6 +61,11 @@ const initialState = {
           'openai.gpt-5.4-pro',
           'vertex_ai.gemini-3.1-pro-preview',
           'vertex_ai.gemini-3-pro-image-preview',
+          'vertex_ai.gemini-3.1-flash-image-preview',
+          'openai.gpt-image-1.5',
+          'openai.eu.gpt-image-1.5',
+          'openai.global.gpt-image-2',
+          'openai.global.gpt-image-1.5',
           'vertex_ai.anthropic.claude-opus-4-7',
           'azure.gpt-5.5',
           'azure.gpt-5.5-2026-04-24',
@@ -131,7 +136,9 @@ const initialState = {
     reportFormat: 'json',
     reportSingleCall: false,
     reportSkipCompilation: false,
-    imageModel: 'pwc:vertex_ai.gemini-3-pro-image-preview',
+    imageModel: 'pwc:openai.gpt-image-1.5',
+    visualUpliftIncludeTheme: true,
+    visualUpliftIncludeVibe: true,
     enableAgenticMode: false,
     freestyleSelfCorrection: false,
     // Web Search via backend proxy
@@ -395,6 +402,7 @@ function loadState() {
           pptxModel: initialState.settings.pptxModel,
           reportModel: initialState.settings.reportModel,
           evidenceSearchModel: initialState.settings.evidenceSearchModel,
+          imageModel: initialState.settings.imageModel,
           // Skill selection is one-shot: it clears after a successful
           // generation and also on every app load, so a refresh never
           // silently reuses a previously picked playbook.
@@ -409,6 +417,7 @@ function loadState() {
         pptxModel: loadedState.settings.pptxModel,
         reportModel: loadedState.settings.reportModel,
         evidenceSearchModel: loadedState.settings.evidenceSearchModel,
+        imageModel: loadedState.settings.imageModel,
         speedMode: loadedState.settings.speedMode,
       });
       // Legacy labels from older builds

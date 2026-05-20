@@ -8,6 +8,7 @@ export const PROMPT_OVERRIDE_DEFS = [
   { key: 'edit.system', label: 'Edit System', description: 'Slide edit and improve prompt.' },
   { key: 'validation.system', label: 'Validation System', description: 'AI slide quality validation prompt.' },
   { key: 'pptx.system', label: 'PPTX System', description: 'HTML/CSS to PptxGenJS export prompt.' },
+  { key: 'visualUplift.system', label: 'Visual Uplift', description: 'Frame image enhancement prompt. Placeholders: {layoutGuidance}, {clientProfileName}.' },
 ];
 
 const PROMPT_PAYLOAD_STORAGE_KEY = 'edwin:lastPromptPayloads';

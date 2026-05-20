@@ -181,6 +181,96 @@ export async function proxyResponses(req: Request, res: Response): Promise<void>
   }
 }
 
+/** Regional models on the same /v1/images/generations endpoint (no geography gate). */
+const PWC_IMAGE_FALLBACK_MODELS = ['openai.gpt-image-1.5', 'openai.eu.gpt-image-1.5'];
+
+function isGeographyAuthError(status: number, bodyText: string): boolean {
+  return status === 401 && /geography restrictions/i.test(bodyText);
+}
+
+function isGlobalImageModel(model: string): boolean {
+  return model.startsWith('openai.global.');
+}
+
+function sendImageProxyResponse(
+  res: Response,
+  status: number,
+  bodyText: string,
+  contentType: string,
+  meta: { requested: string; used: string; route: string },
+): void {
+  res
+    .status(status)
+    .set('Content-Type', contentType)
+    .set('X-Edwin-Image-Model-Requested', meta.requested)
+    .set('X-Edwin-Image-Model-Used', meta.used)
+    .set('X-Edwin-Image-Route', meta.route);
+  res.send(bodyText);
+}
+
+async function fetchPwCImages(body: Record<string, unknown>): Promise<Response> {
+  return fetch(`${PWC_BASE}/v1/images/generations`, {
+    method: 'POST',
+    headers: getPwcHeaders(),
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(600_000),
+  });
+}
+
+/**
+ * POST /api/ai/images/generations
+ * Proxies to PwC Shared Services /v1/images/generations (GPT Image, etc.)
+ */
+export async function proxyImages(req: Request, res: Response): Promise<void> {
+  if (!env.PWC_API_KEY) {
+    res.status(500).json({ error: 'PWC_API_KEY is not configured on the server' });
+    return;
+  }
+
+  const requested = String(req.body?.model || '');
+
+  try {
+    logger.debug('AI proxy: POST /v1/images/generations model=%s', requested);
+    let upstream = await fetchPwCImages({ ...req.body, model: requested });
+    let contentType = upstream.headers.get('content-type') || 'application/json';
+    let bodyText = await upstream.text();
+    let used = requested;
+
+    if (!upstream.ok && isGeographyAuthError(upstream.status, bodyText) && isGlobalImageModel(requested)) {
+      for (const fallbackModel of PWC_IMAGE_FALLBACK_MODELS) {
+        logger.warn('Image proxy: geography block for %s, trying %s', requested, fallbackModel);
+        upstream = await fetchPwCImages({ ...req.body, model: fallbackModel });
+        contentType = upstream.headers.get('content-type') || 'application/json';
+        bodyText = await upstream.text();
+        used = fallbackModel;
+        if (upstream.ok) break;
+      }
+    }
+
+    if (upstream.ok) {
+      sendImageProxyResponse(res, upstream.status, bodyText, contentType, {
+        requested,
+        used,
+        route: used === requested ? 'pwc' : 'pwc-fallback',
+      });
+      if (used !== requested) {
+        logger.info('Image proxy: %s unavailable, served with %s', requested, used);
+      }
+      return;
+    }
+
+    logger.error('AI proxy images error: %d %s', upstream.status, bodyText.slice(0, 500));
+    sendImageProxyResponse(res, upstream.status, bodyText, contentType, {
+      requested,
+      used,
+      route: 'pwc-error',
+    });
+  } catch (err: any) {
+    logger.error('AI proxy images network error: %s', err.message);
+    res.status(502).json({ error: 'Failed to reach PwC AI service', detail: err.message });
+  }
+}
+
 /**
  * GET /api/ai/models
  * Proxies to PwC Shared Services /models

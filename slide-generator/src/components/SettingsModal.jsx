@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
-import { DEFAULT_SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT, PROMPT_OVERRIDE_DEFS, getLastPromptPayloads, setApiMaxConcurrent } from '../services/aiService';
+import { DEFAULT_SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT, PROMPT_OVERRIDE_DEFS, VISUAL_UPLIFT_PROMPT, VISUAL_UPLIFT_IMAGE_MODEL, getLastPromptPayloads, setApiMaxConcurrent } from '../services/aiService';
 import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, FREESTYLE_PRESETS } from '../services/ai/freestylePromptBuilder.js';
 import { getRouterSystemPrompt, TRIAGE_SYSTEM_PROMPT } from '../services/ai/router.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
@@ -1613,6 +1613,7 @@ export default function SettingsModal({ onClose }) {
       'edit.system': EDIT_SYSTEM_PROMPT,
       'validation.system': 'You are a strict quality assurance expert for Strategy& consulting slide design.',
       'pptx.system': DEFAULT_PPTX_SYSTEM_PROMPT,
+      'visualUplift.system': VISUAL_UPLIFT_PROMPT,
     };
     const promptOverrides = settings.promptOverrides || {};
     const lastPromptPayloads = getLastPromptPayloads();
@@ -1711,6 +1712,30 @@ export default function SettingsModal({ onClose }) {
         </div>
 
         <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
+        <div style={sectionTitle}>Visual Uplift</div>
+        <div style={{ ...boxStyle, marginBottom: 12 }}>
+          <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
+            Model is fixed to <code style={{ fontSize: 10 }}>{VISUAL_UPLIFT_IMAGE_MODEL.replace('pwc:', '')}</code> (not the Image role above).
+            Prompt is editable below under <strong>Visual Uplift</strong> in Prompt Debug Overrides.
+          </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 6 }}>
+            <input
+              type="checkbox"
+              checked={settings.visualUpliftIncludeTheme !== false}
+              onChange={(e) => setSettings({ ...settings, visualUpliftIncludeTheme: e.target.checked })}
+            />
+            Include client profile theme tokens (accent colors, fonts)
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+            <input
+              type="checkbox"
+              checked={settings.visualUpliftIncludeVibe !== false}
+              onChange={(e) => setSettings({ ...settings, visualUpliftIncludeVibe: e.target.checked })}
+            />
+            Include image vibe (when not default)
+          </label>
+        </div>
 
         <div style={sectionTitle}>Prompt Debug Overrides</div>
         <div style={{ ...hint, marginBottom: 8 }}>

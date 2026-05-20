@@ -4,17 +4,10 @@ import { useSlides } from '../context/SlideContext';
 import {
   downloadAsHTML,
   downloadAsJSON,
-  exportRenderedSlideElementsToPDF,
   exportToPDF,
   exportSingleSlideToPDF,
   generateFileName,
 } from '../services/exportService';
-import { themeToCSS } from '../utils/themeUtils';
-import SHELL_CSS from '../styles/slides.css?raw';
-import {
-  getSlideMeasureClientChromeCss,
-  getSlideMeasureContainerCss,
-} from '../services/slidePreviewMeasureCss.js';
 import { extractRelevantCSS } from '../services/aiService';
 import {
   exportToPPTX,
@@ -42,65 +35,6 @@ const postAssistantMessage = (content) => {
   if (typeof post === 'function') post(content);
 };
 
-function estimateTrackerOffset(sectionLabel = '', profile = null) {
-  const activeProfile = profile || {};
-  const labelLength = String(sectionLabel || '').length;
-  const isStc = activeProfile?.id === 'stc';
-  const base = isStc ? 38 : 22;
-  const charWidth = isStc ? 6.1 : 4.8;
-  const min = isStc ? 190 : 0;
-  const max = isStc ? 360 : 360;
-  return Math.min(max, Math.max(min, Math.round(labelLength * charWidth + base)));
-}
-
-function escapeHtmlAttr(value = '') {
-  return String(value)
-    .replace(/&/g, '&amp;')
-    .replace(/"/g, '&quot;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;');
-}
-
-function stripClientProfileChrome(html = '') {
-  return html
-    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-logo\b[^"]*"[^>]*>/gi, '')
-    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
-    .replace(/\s*data-client-profile="[^"]*"/gi, '');
-}
-
-function injectClientProfileChrome(html, profile, logoUrl) {
-  const cleanedHtml = stripClientProfileChrome(html || '');
-  if (!profile?.id || profile.id === 'strategy' || !cleanedHtml) return cleanedHtml;
-
-  const isSpecialMaster = /\b(master-cover|master-blank|master-emptyPage)\b/i.test(cleanedHtml)
-    || /cover-slide|cover-branding|section-divider-slide|separator-slide/i.test(cleanedHtml);
-  const withProfile = cleanedHtml.replace(
-    /class="slide([^"]*)"/,
-    `class="slide$1" data-client-profile="${escapeHtmlAttr(profile.id)}"`
-  );
-  if (isSpecialMaster) return withProfile;
-
-  const wordmarkLabel = profile.id === 'pif' ? 'PIF' : profile.id === 'stc' ? 'stc' : (profile.navLabel || profile.name || profile.id);
-  const logoVersion = profile?.pptxMaster?.assetVersion || profile?.status || '1';
-  const hasBundledLogo = profile?.chrome?.positions?.logo && profile?.pptxMaster?.serverSync === 'backend-profile-default';
-  const logoSrc = logoUrl || (hasBundledLogo
-    ? `/api/assets/client-templates/${profile.id}/logo.png?v=${encodeURIComponent(logoVersion)}`
-    : '');
-  const logoMarkup = logoSrc
-    ? `<img class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-logo" data-no-edit src="${escapeHtmlAttr(logoSrc)}" alt="${escapeHtmlAttr(profile.name || profile.id)}" />`
-    : `<div class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-wordmark" data-no-edit>${escapeHtmlAttr(wordmarkLabel)}</div>`;
-  return withProfile.replace(/(<div\b[^>]*class="[^"]*\bslide\b[^"]*"[^>]*>)/i, `$1${logoMarkup}`);
-}
-
-function injectPageNumber(html = '', pageNumber, totalSlides) {
-  if (!html) return html;
-  const replacement = `<footer class="footer"><span>Strategy&</span><span class="source"></span><span>${pageNumber}</span></footer>`;
-  if (/<footer\b[^>]*class="[^"]*\bfooter\b[^"]*"[^>]*>[\s\S]*?<\/footer>/i.test(html)) {
-    return html.replace(/<footer\b[^>]*class="[^"]*\bfooter\b[^"]*"[^>]*>[\s\S]*?<\/footer>/i, replacement);
-  }
-  return html.replace(/<\/div>\s*$/i, `${replacement}</div>`);
-}
-
 function normalizeDeckNameForVersion(name = '') {
   return String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
 }
@@ -111,32 +45,6 @@ function getDeckScopedExportVersion(state) {
     normalizeDeckNameForVersion(version?.deckName || '') === activeDeckName
   ));
   return matchingDeckVersions.length + 1;
-}
-
-function prepareSlideHtmlForBrowserExport(slide, slideIndex, totalSlides, activeClientProfile) {
-  let html = slide?.html || '';
-  if (!/class=["']slide[\s"']/i.test(html)) {
-    html = `<div class="slide">${html}</div>`;
-  }
-  if ((html.includes('section-divider-slide') || html.includes('separator-slide')) && !html.includes('master-blank')) {
-    html = html.replace(/class="slide([^"]*)"/, 'class="slide master-blank$1"');
-  }
-  if (html.includes('cover-slide') || html.includes('cover-branding')) {
-    html = html.replace(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/gi, '');
-  }
-  if (slide?.sectionLabel) {
-    html = html.replace(/class="slide([^"]*)"/, `class="slide$1" data-section="${escapeHtmlAttr(slide.sectionLabel)}"`);
-  }
-  if (slide?.subSectionLabel) {
-    const trackerOffset = estimateTrackerOffset(slide.sectionLabel, activeClientProfile);
-    html = html.replace(
-      /class="slide([^"]*)"/,
-      `class="slide$1" data-subsection="${escapeHtmlAttr(slide.subSectionLabel)}" style="--tracker-offset: ${trackerOffset}px"`
-    );
-  }
-  html = html.replace(/class="slide([^"]*)"/, `class="slide$1" data-slide-id="${escapeHtmlAttr(slide?.id || `slide-${slideIndex + 1}`)}"`);
-  html = injectPageNumber(html, slideIndex + 1, totalSlides);
-  return injectClientProfileChrome(html, activeClientProfile);
 }
 
 export default function Header() {
@@ -617,65 +525,6 @@ ${previewParts.join('\n\n')}`;
     }
   };
 
-  const handleDownloadBrowserPDF = async () => {
-    if (!state.slides.length) {
-      alert('No slides to download. Create some slides first!');
-      return;
-    }
-    setIsExporting(true);
-    setShowExportMenu(false);
-    setExportProgress({ phase: 'starting', title: 'Exporting Browser PDF', message: 'Rendering slides exactly as browser images...' });
-
-    const container = document.createElement('div');
-    container.style.position = 'fixed';
-    container.style.left = '-10000px';
-    container.style.top = '0';
-    container.style.width = '960px';
-    container.style.background = '#ffffff';
-    container.style.pointerEvents = 'none';
-    container.setAttribute('aria-hidden', 'true');
-
-    const styleEl = document.createElement('style');
-    styleEl.textContent = [
-      SHELL_CSS,
-      getSlideMeasureContainerCss(),
-      getSlideMeasureClientChromeCss(),
-      themeToCSS(state.theme),
-      state.sharedCSS || '',
-      ...state.slides.map(slide => slide.customCSS || ''),
-    ].join('\n');
-    container.appendChild(styleEl);
-
-    try {
-      state.slides.forEach((slide, index) => {
-        const wrapper = document.createElement('div');
-        wrapper.className = 'slide-render-container';
-        wrapper.style.margin = '0';
-        wrapper.innerHTML = prepareSlideHtmlForBrowserExport(slide, index, state.slides.length, activeClientProfile);
-        container.appendChild(wrapper);
-      });
-
-      document.body.appendChild(container);
-
-      const filename = generateFileName(`${state.deckName}_browser`, 'pdf', {
-        useNomenclature: state.settings.useNomenclature ?? true,
-        nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
-        version: getDeckScopedExportVersion(state),
-      });
-
-      await exportRenderedSlideElementsToPDF(container.querySelectorAll('.slide'), filename);
-
-      setExportProgress({ phase: 'complete', message: 'Download complete!' });
-      setTimeout(() => setExportProgress(null), 2000);
-    } catch (err) {
-      setExportProgress(null);
-      alert('Failed to export browser PDF: ' + err.message);
-    } finally {
-      document.body.removeChild(container);
-      setIsExporting(false);
-    }
-  };
-
   return (
     <>
       <header className="app-header">
@@ -793,36 +642,6 @@ ${previewParts.join('\n\n')}`;
                       </span>
                     </button>
                   )}
-                  <button
-                    className="export-dropdown-card"
-                    onClick={handleDownloadBrowserPDF}
-                    disabled={anyExportBusy}
-                  >
-                    {isExporting ? (
-                      <>
-                        <span className="export-dropdown-icon exporting">
-                          <span className="spinner" style={{ width: 18, height: 18 }} />
-                        </span>
-                        <span className="export-dropdown-text">
-                          <span className="export-dropdown-label">Exporting...</span>
-                          <span className="export-dropdown-hint">Please wait</span>
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        <span className="export-dropdown-icon">
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-                            <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                            <polyline points="13 2 13 9 20 9" />
-                          </svg>
-                        </span>
-                        <span className="export-dropdown-text">
-                          <span className="export-dropdown-label">Export Browser PDF</span>
-                          <span className="export-dropdown-hint">All slides, exact visual capture</span>
-                        </span>
-                      </>
-                    )}
-                  </button>
                   {selectedCount > 1 && (
                     <button
                       className="export-dropdown-card"

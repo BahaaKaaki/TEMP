@@ -4419,11 +4419,31 @@ body {
   gap: 5px;
 }
 
-/* Three-button action bar: [Quick Fixes v] [Translate to Arabic] [Template v] */
+/* Action bar: row 1 = Quick Fixes | Reimagine | Visual Uplift; row 2 = Skill | Template */
 .panel-action-bar {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 6px;
+}
+
+.panel-action-bar-row {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.panel-action-bar-row--triple {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.panel-action-bar-row--double {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.panel-action-bar-row .panel-action-btn {
+  min-width: 0;
+  padding-left: 8px;
+  padding-right: 8px;
 }
 
 .panel-action-btn {
@@ -4591,6 +4611,108 @@ body {
   overflow-y: auto;
   z-index: 150;
   animation: panel-dropdown-in 0.15s ease;
+}
+
+.panel-uplift-popover {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: calc(100% + 4px);
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  padding: 12px;
+  z-index: 150;
+  animation: panel-dropdown-in 0.15s ease;
+}
+
+.panel-uplift-header {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+
+.panel-uplift-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.panel-uplift-hint {
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.panel-uplift-input {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  line-height: 1.45;
+  resize: vertical;
+  min-height: 52px;
+  margin-bottom: 8px;
+}
+
+.panel-uplift-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(142, 30, 30, 0.12);
+}
+
+.panel-uplift-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+.panel-uplift-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.panel-uplift-btn {
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.panel-uplift-btn--ghost:hover:not(:disabled) {
+  background: var(--bg-secondary);
+}
+
+.panel-uplift-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.panel-uplift-btn--primary:hover:not(:disabled) {
+  filter: brightness(1.05);
+}
+
+.panel-uplift-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.quick-action-done-hint {
+  font-weight: 400;
+  color: var(--text-secondary);
+  font-size: 0.92em;
 }
 
 .panel-quick-template.active {
@@ -12848,7 +12970,6 @@ body {
    Skill button keeps the exact same size and styling it has when shown
    alongside the other top-bar actions. Only the layout track changes. */
 .panel-action-bar--solo {
-  grid-template-columns: 1fr;
   margin-bottom: 8px;
 }
 

@@ -344,7 +344,8 @@ The agent uses a budget system, supports live user input during execution, and c
 ```
 Slides in state (HTML + CSS)
   ├── PPTX: pptxService.js
-  │   ├── AI generates PptxGenJS code from HTML
+  │   ├── image-content / Visual Uplift slides: embed `data:image` in frame via `addImage` (skip LLM translator)
+  │   ├── AI generates PptxGenJS code from HTML (other slides)
   │   ├── Table-intent HTML/hints are prompted and retried toward native slide.addTable output
   │   ├── Section tracker chrome is measured, capped, and kept single-line with shrink/ellipsis fallback
   │   ├── PptxGenJS renders .pptx file
@@ -831,6 +832,9 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 97. **DGE chrome vs native template**: Slide title and subtitle default to black #000000 with Noto Sans SemiBold 30px / Medium 12px (PPTX title chrome: Noto Sans SemiBold with bold true); brand blues remain for body/panels. Standard interior body band and chrome positions live in `DGE_LAYOUT_CONTRACT.standardContent` and `slides.css` `[data-client-profile="dge"]`; top-right logo box uses the same 218x51px footprint as native cover lockups (709,31) for HTML/PPTX parity; section tracker fills use **#203864** in HTML and in `chrome.positions.sectionTracker` for PPTX export; `DGE_LAYOUT_CONTRACT.timeline` keeps exact four-card positions from that slide.
 98. **DGE title/subtitle vertical stack**: Wrapped long titles overlapped the subtitle (subtitle was anchored for a single-line headline). DGE shell now uses a two-line title clamp with ellipsis, subtitle at y=108px, frame at y=132px (894x351), and updated layout contract / prompts so HTML preview and PPTX chrome hints stay consistent.
 99. **Slide Editor Rendered tab parity**: `SlideEditor.jsx` injects `data-client-profile` on the slide root for non-strategy profiles (matching `SlidePreview` chrome injection) and passes `activeSlide.customCSS` into `extractRelevantCSS` so the dump matches preview and includes component rules; comments no longer claim "only rules used by this slide."
+
+100. **Visual Uplift (image-content)**: `upliftSlideWithImage()` in `imageGeneration.js` keeps title/subtitle/footer, replaces `.frame` with a `data:image` `<img class="frame-image">`, and generates via fixed `vertex_ai.gemini-3-pro-image-preview` (not Settings image model). AIChatbot opens a **Visual direction** popover (optional text + suggestion chips) before **Apply Visual Uplift**; prompt override `visualUplift.system` in debug Settings. Frame image prompts share `buildFrameImagePaletteGuidance()` + full deck/profile theme tokens (Strategy& uses `state.theme` JSON, not a 4-color shortcut).
+101. **PPTX export for uplifted slides**: `pptxService.js` detects raster frame slides and embeds the PNG with `addImage` instead of sending HTML with `[embedded-image]` to the PPTX LLM. **Export Browser PDF** removed from `Header.jsx`.
 
 ---
 

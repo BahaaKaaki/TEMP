@@ -5,7 +5,267 @@ import { parseModelRef, findProvider, getCredentials, buildProviderHeaders, buil
 import { callWithModelFallback, getFallbackModels } from './apiClient.js';
 import { TITLE_HEADER_RULES } from './constants.js';
 import { authFetch } from '../authFetch.js';
-import { buildClientProfileContext, getActiveClientProfile } from '../../utils/clientDesignProfiles.js';
+import {
+  buildClientProfileContext,
+  buildClientValidationBlock,
+  getActiveClientProfile,
+} from '../../utils/clientDesignProfiles.js';
+import { DEFAULT_THEME } from '../../utils/themeUtils.js';
+import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
+
+const FRAME_CAPTURE_W = 904;
+const FRAME_CAPTURE_H = 366;
+
+/** Visual Uplift always uses Gemini 3 Pro Image (chat + reference image), not Settings image model. */
+export const VISUAL_UPLIFT_IMAGE_MODEL = 'pwc:vertex_ai.gemini-3-pro-image-preview';
+
+/** Visual Uplift system prompt (placeholders: layoutGuidance, clientProfileName). */
+export const VISUAL_UPLIFT_PROMPT = `You are enhancing ONLY the content-area visual inside a strategy consulting slide.
+
+This is NOT a full slide. The title, subtitle, footer, page number, frame, and slide chrome already exist outside this image. Your output should be only the diagram/content visual that sits inside the slide frame.
+
+INPUT:
+- A reference image of the current content-area visual may be provided.
+- Existing text, labels, pillars, categories, steps, relationships, and structure must be preserved.
+- Optional layout guidance: {layoutGuidance}
+- Optional client style: {clientProfileName}
+
+TASK:
+Transform the current content into a polished strategy consulting-style visual while preserving the factual meaning and all important labels.
+
+You may improve:
+- Layout clarity
+- Spacing and alignment
+- Visual hierarchy
+- Grouping and flow
+- Shape consistency
+- Typography balance
+- Use of consulting diagram patterns such as pillars, value chains, matrices, chevrons, swimlanes, hub-and-spoke, operating model layers, or phased roadmaps
+
+You must preserve:
+- All factual content
+- All labels and key terms
+- The number of pillars, phases, steps, categories, or workstreams
+- The logical order and relationships between items
+- Any hierarchy implied by the original content
+- The intent of the original diagram
+
+Do NOT:
+- Add a slide title, heading, subtitle, footer, source line, page number, or logo
+- Add borders, frames, cards around the entire image, or slide template chrome
+- Add decorative accent bars along the edges
+- Replace the content with generic stock imagery
+- Use photos, 3D effects, heavy gradients, ornamental illustrations, or decorative art
+- Invent new facts, labels, categories, metrics, or relationships
+- Remove or rename pillars, phases, or categories unless explicitly instructed
+
+STYLE:
+Create a clean, premium strategy consulting diagram:
+- White background
+- Flat vector shapes
+- Thin lines
+- Structured grid
+- Crisp spacing
+- Clear information hierarchy
+- Minimal, purposeful icons only where they improve comprehension
+- Professional executive-ready look
+- Suitable for a top-tier consulting presentation
+- Use the client palette from BRAND & LAYOUT CONTEXT: accent for key structure, pale surfaces for cards/panels, semantic greens/reds/ambers only where content implies them — not a single-color wash
+- When a reference image is provided, preserve its color roles (header fills vs body panels vs highlights) while improving clarity
+
+FORMAT:
+- Extra-wide landscape content area
+- Target aspect ratio: approximately 2.5:1
+- Optimized for a 904×366 container
+- Edge-to-edge content on white background
+- No surrounding slide template elements
+
+OUTPUT GOAL:
+Produce a visually upgraded version of the existing content that feels like a polished consulting slide diagram, not a decorative image. The result should make the same information easier to understand, more structured, and more executive-ready.`;
+
+function extractAllFrameContentForUplift(frameHtml) {
+  if (typeof document === 'undefined') return '';
+  const tempDiv = document.createElement('div');
+  tempDiv.innerHTML = frameHtml;
+  const frame = tempDiv.querySelector('.frame');
+  const root = frame || tempDiv;
+  return root.innerText?.replace(/\n{3,}/g, '\n\n').trim() || '';
+}
+
+/** Deck theme when set; otherwise the active client profile theme. */
+export function resolveFrameImageTheme(settings, deckTheme = null) {
+  if (deckTheme?.colors) return deckTheme;
+  const profile = getActiveClientProfile(settings);
+  return profile?.theme || DEFAULT_THEME;
+}
+
+/**
+ * Shared palette instructions for frame images (generateImageSlide + Visual Uplift).
+ * Pairs with brand tokens from buildFrameImageStyleContext — does not duplicate full profile JSON.
+ */
+export function buildFrameImagePaletteGuidance(settings, theme = null, options = {}) {
+  const { skipValidation = false, includeValidation = true } = options;
+  const resolvedTheme = resolveFrameImageTheme(settings, theme);
+  const profile = getActiveClientProfile(settings);
+  const c = resolvedTheme?.colors || {};
+  const accent = c.accent || '#8E1E1E';
+  const heading = c.heading || '#111111';
+  const body = c.body || '#222222';
+  const surface = c.surface || '#F7F9FB';
+  const surfaceAlt = c.surfaceAlt || '#EEF2F6';
+  const border = c.border || '#E6E9EE';
+  const success = c.success || '#059669';
+  const warning = c.warning || '#d97706';
+  const danger = c.danger || '#dc2626';
+  const info = c.info || '#2563eb';
+
+  const lines = [
+    'PALETTE & COLOR USAGE (use multiple tokens — not a single accent wash):',
+    `- Primary accent (${accent}): pillar headers, chevrons, matrix axes, key bars, and primary emphasis`,
+    `- Heading/body text (${heading} / ${body}): labels on light fills; near-black on white`,
+    `- Card/panel fills (${surface} / ${surfaceAlt}): alternate surfaces for grouped blocks`,
+    `- Borders/dividers (${border}): thin rules between cells and sections`,
+    `- Semantic fills only when content warrants: success ${success}, warning ${warning}, danger ${danger}, info ${info}`,
+    '- Background: plain white edge-to-edge; flat vector shapes; no gradients, photos, or 3D',
+    '- When a reference image is provided, preserve its color roles (which fill is header vs panel vs highlight) while polishing layout',
+    '- Do NOT render hex codes, font names, or technical annotations in the image',
+  ];
+
+  const extraColorTokens = Object.entries(c)
+    .filter(([key, value]) => value && !['accent', 'heading', 'body', 'page', 'surface', 'surfaceAlt', 'border', 'success', 'warning', 'danger', 'info', 'muted', 'onAccent', 'accentHover', 'accentSoft'].includes(key))
+    .map(([key, value]) => `${key}: ${value}`);
+  if (extraColorTokens.length > 0) {
+    lines.push(`- Profile-specific tokens: ${extraColorTokens.join('; ')}`);
+  }
+
+  if (includeValidation && !skipValidation) {
+    const validationBlock = formatProfileColorRules(profile);
+    if (validationBlock) lines.push(validationBlock);
+  }
+
+  return lines.join('\n');
+}
+
+function formatProfileColorRules(profile) {
+  const block = buildClientValidationBlock(profile);
+  if (!block) return '';
+  return block.replace(/^CLIENT VALIDATION RULES:\n/, 'Profile color rules:\n');
+}
+
+/**
+ * Shared brand/style context for frame images (new image slides + Visual Uplift).
+ * Uses the same client design profile + deck theme + image vibe as generateImageSlide.
+ */
+export function buildFrameImageStyleContext(settings, theme, options = {}) {
+  const {
+    slide = null,
+    imageVibe = 'default',
+    includeTheme = true,
+    includeVibe = true,
+    includeComponents = true,
+    includeValidation = true,
+  } = options;
+
+  const parts = [];
+  const templateLabel = slide?.templateId || slide?.type;
+  if (templateLabel) {
+    parts.push(`Slide template: ${templateLabel}`);
+  }
+
+  if (includeTheme) {
+    const profile = getActiveClientProfile(settings);
+    const resolvedTheme = resolveFrameImageTheme(settings, theme);
+    const profileBlock = profile?.id !== 'strategy'
+      ? buildClientProfileContext(settings, {
+        includeTheme: true,
+        includeLayout: false,
+        includeValidation,
+        includeEvidence: false,
+        includePromptSections: false,
+        includeComponents,
+        includePptx: false,
+      })
+      : '';
+
+    if (profileBlock) {
+      parts.push(profileBlock);
+      parts.push(buildFrameImagePaletteGuidance(settings, theme, {
+        skipValidation: includeValidation,
+        includeValidation,
+      }));
+    } else {
+      parts.push(
+        `ACTIVE CLIENT PROFILE: ${profile?.name || 'Strategy&'} (strategy)`,
+        `Semantic theme tokens:\n${JSON.stringify(resolvedTheme, null, 2)}`,
+      );
+      if (includeValidation) {
+        const validationBlock = buildClientValidationBlock(profile);
+        if (validationBlock) parts.push(validationBlock);
+      }
+      parts.push(buildFrameImagePaletteGuidance(settings, theme, { includeValidation }));
+    }
+  }
+
+  if (includeVibe && imageVibe && !isBaseVibe(imageVibe)) {
+    const vibeCtx = getVibePromptContext(imageVibe);
+    if (vibeCtx) parts.push(`Image vibe variation:\n${vibeCtx}`);
+  }
+
+  return parts.join('\n\n');
+}
+
+function buildVisualUpliftPrompt({
+  settings,
+  layoutGuidance,
+  clientProfileName,
+  frameContent,
+  title,
+  subtitle,
+  styleContext,
+}) {
+  const basePrompt = applyPromptOverride(settings, 'visualUplift.system', VISUAL_UPLIFT_PROMPT);
+  let prompt = basePrompt
+    .replace(/\{layoutGuidance\}/g, layoutGuidance || 'None')
+    .replace(/\{clientProfileName\}/g, clientProfileName || 'Strategy&');
+
+  const sections = [];
+  if (styleContext) {
+    sections.push(`BRAND & LAYOUT CONTEXT:\n${styleContext}`);
+  }
+  if (frameContent) {
+    sections.push(`EXISTING FRAME CONTENT (preserve every label, number, term, and relationship):\n${frameContent}`);
+  }
+  if (title || subtitle) {
+    const lines = [];
+    if (title) lines.push(`Title (context only — do not render in image): "${title}"`);
+    if (subtitle) lines.push(`Subtitle (context only — do not render in image): ${subtitle}`);
+    sections.push(`SLIDE CONTEXT:\n${lines.join('\n')}`);
+  }
+  if (sections.length > 0) {
+    prompt += `\n\n---\n${sections.join('\n\n')}`;
+  }
+  return prompt;
+}
+
+/** PwC / Edwin backend proxy (chat or images), not direct Vertex/OpenAI URLs. */
+function isPwCProxyUrl(apiUrl, provider) {
+  return provider?.authType === 'server'
+    || (apiUrl || '').includes('/api/ai/')
+    || (apiUrl || '').includes('/chat/completions');
+}
+
+/** Resolve OpenAI-style /images/generations URL for the configured provider. */
+function resolveImageGenerationsEndpoint(apiUrl) {
+  const url = apiUrl || '';
+  if (url.includes('/api/ai/chat')) return '/api/ai/images/generations';
+  if (url.includes('/chat/completions')) {
+    return url.replace('/v1/chat/completions', '/v1/images/generations')
+      .replace('/chat/completions', '/images/generations');
+  }
+  if (url.includes('api.openai.com')) return 'https://api.openai.com/v1/images/generations';
+  if (url) return `${url.replace(/\/+$/, '')}/images/generations`;
+  return '/api/ai/images/generations';
+}
 
 // ============================================
 // IMAGE GENERATION
@@ -21,38 +281,23 @@ import { buildClientProfileContext, getActiveClientProfile } from '../../utils/c
  *   - Azure/PwC proxies for all of the above
  * Returns a data:image/png;base64,... URI string.
  */
-export async function generateImage(imagePrompt, settings, referenceImageDataUri = null) {
-  const imageModelRef = settings.imageModel;
+export async function generateImage(imagePrompt, settings, referenceImageDataUri = null, imageOptions = {}) {
+  const imageModelRef = imageOptions.modelRef || settings.imageModel;
   if (!imageModelRef) {
-    throw new Error('No image model configured. Set imageModel in Settings (e.g., "pwc:gemini-3-pro-image-preview").');
+    throw new Error('No image model configured. Set imageModel in Settings (e.g., "pwc:openai.gpt-image-1.5").');
   }
 
-  try {
-    return await _generateImageInner(imagePrompt, settings, referenceImageDataUri, imageModelRef);
-  } catch (err) {
-    if (err.message?.includes('rate limit') || err.message?.includes('429')) throw err;
-
-    const { providerId, modelName } = parseModelRef(imageModelRef);
-    const fallbacks = getFallbackModels(settings, providerId, modelName, 'image');
-    if (fallbacks.length === 0) throw err;
-
-    console.warn(`[ImageGen] Primary model "${modelName}" failed: ${err.message.slice(0, 150)}`);
-
-    for (const fb of fallbacks) {
-      try {
-        const fbRef = `${providerId}:${fb}`;
-        console.log(`[ImageGen] Trying fallback image model: ${fbRef}`);
-        return await _generateImageInner(imagePrompt, { ...settings, imageModel: fbRef }, referenceImageDataUri, fbRef);
-      } catch (fbErr) {
-        if (fbErr.message?.includes('rate limit') || fbErr.message?.includes('429')) throw fbErr;
-        console.warn(`[ImageGen] Fallback "${fb}" also failed: ${fbErr.message.slice(0, 100)}`);
-      }
-    }
-    throw err;
-  }
+  return await _generateImageInner(imagePrompt, settings, referenceImageDataUri, imageModelRef, imageOptions);
 }
 
-async function _generateImageInner(imagePrompt, settings, referenceImageDataUri, imageModelRef) {
+function resolveGptImageParams(imageOptions = {}) {
+  return {
+    quality: imageOptions.quality || 'medium',
+    size: imageOptions.size || '1536x1024',
+  };
+}
+
+async function _generateImageInner(imagePrompt, settings, referenceImageDataUri, imageModelRef, imageOptions = {}) {
   const { providerId, modelName } = parseModelRef(imageModelRef);
   const provider = findProvider(settings, providerId);
   if (!provider?.apiKey) {
@@ -86,14 +331,12 @@ async function _generateImageInner(imagePrompt, settings, referenceImageDataUri,
 
   // ── Gemini 3 Pro Image (generateContent with responseModalities) ──
   if (isGeminiImageModel) {
-    const isPwcOrProxy = apiUrl.includes('/chat/completions') || isAzureStyle;
+    const isPwcOrProxy = isPwCProxyUrl(apiUrl, provider) || isAzureStyle;
     const requestModel = isAzureStyle ? `azure.${modelName}` : modelName;
 
     if (isPwcOrProxy) {
-      // PwC / Azure-style proxy: use the existing /chat/completions endpoint.
-      // Send OpenAI-format messages + Gemini-specific generationConfig fields.
-      // The proxy forwards these extra fields to the Gemini backend.
-      const geminiEndpoint = apiUrl; // keep /chat/completions as-is
+      // PwC / Edwin proxy: POST /api/ai/chat → upstream /chat/completions
+      const geminiEndpoint = apiUrl;
 
       // Build message content: text prompt + optional reference image for editing
       let messageContent;
@@ -324,23 +567,17 @@ async function _generateImageInner(imagePrompt, settings, referenceImageDataUri,
     });
   }
 
-  // ── OpenAI-compatible (GPT-Image-1, DALL-E 3, Azure proxies) ──
-  let imageEndpoint;
-  if (apiUrl.includes('/chat/completions')) {
-    imageEndpoint = apiUrl.replace('/chat/completions', '/images/generations');
-  } else if (apiUrl.includes('api.openai.com')) {
-    imageEndpoint = 'https://api.openai.com/v1/images/generations';
-  } else {
-    imageEndpoint = apiUrl.replace(/\/+$/, '') + '/images/generations';
-  }
+  // ── OpenAI-compatible (GPT-Image-1/2, DALL-E 3, Azure proxies) ──
+  const imageEndpoint = resolveImageGenerationsEndpoint(apiUrl);
 
   const azureModel = isAzureStyle ? `azure.${modelName}` : modelName;
+  const gptParams = isGptImage1 ? resolveGptImageParams(imageOptions) : null;
   const requestBody = {
     model: azureModel,
     prompt: imagePrompt,
     n: 1,
-    size: isGptImage1 ? '1536x1024' : (isDallE ? '1792x1024' : '1024x1024'),
-    quality: isGptImage1 ? 'high' : 'hd',
+    size: gptParams?.size || (isDallE ? '1792x1024' : '1024x1024'),
+    quality: gptParams?.quality || (isDallE ? 'hd' : 'standard'),
   };
   if (isGptImage1) {
     requestBody.output_format = 'b64_json';
@@ -348,7 +585,13 @@ async function _generateImageInner(imagePrompt, settings, referenceImageDataUri,
     requestBody.response_format = 'b64_json';
   }
 
-  console.log('[generateImage] OpenAI image call:', { imageEndpoint, model: azureModel, provider: providerId });
+  console.log('[generateImage] OpenAI image call:', {
+    imageEndpoint,
+    model: azureModel,
+    provider: providerId,
+    size: requestBody.size,
+    quality: requestBody.quality,
+  });
 
   return await _callImageEndpoint(imageEndpoint, headers, requestBody, (data) => {
     const b64 = data.data?.[0]?.b64_json;
@@ -401,7 +644,13 @@ export async function _callImageEndpoint(endpoint, headers, body, extractImage) 
         throw new Error('Image API returned no image data');
       }
 
-      console.log('[generateImage] Image generated successfully');
+      const usedModel = response.headers.get('X-Edwin-Image-Model-Used');
+      const requestedModel = response.headers.get('X-Edwin-Image-Model-Requested');
+      if (usedModel && usedModel !== requestedModel) {
+        console.warn(`[generateImage] Requested ${requestedModel}; served via ${usedModel}`);
+      } else {
+        console.log('[generateImage] Image generated successfully');
+      }
       return dataUri;
 
     } catch (err) {
@@ -421,6 +670,154 @@ export async function _callImageEndpoint(endpoint, headers, body, extractImage) 
  * @param {object} contextInfo - { layoutGuidance, vibe, footerBranding, slideNumber, totalSlides }
  * @returns {object} { id, title, html, type, templateId }
  */
+function parseSlideChrome(html) {
+  if (typeof document === 'undefined') {
+    return { title: '', subtitle: '', footerBranding: 'Strategy&', slideNumber: '', frameText: '' };
+  }
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const title = doc.querySelector('h1.title')?.textContent?.trim()
+    || doc.querySelector('.cover-title')?.textContent?.trim()
+    || doc.querySelector('h1')?.textContent?.trim()
+    || '';
+  const subtitle = doc.querySelector('h2.subtitle')?.textContent?.trim()
+    || doc.querySelector('.cover-category')?.textContent?.trim()
+    || '';
+  const footer = doc.querySelector('footer.footer');
+  const footerSpans = footer ? [...footer.querySelectorAll('span')] : [];
+  const footerBranding = footerSpans[0]?.textContent?.trim() || 'Strategy&';
+  const slideNumber = footerSpans.length > 0 ? footerSpans[footerSpans.length - 1]?.textContent?.trim() || '' : '';
+  const frame = doc.querySelector('.frame');
+  const frameHtml = frame
+    ? `<div class="frame">${frame.innerHTML}</div>`
+    : html;
+  const frameText = extractAllFrameContentForUplift(frameHtml);
+  return { title, subtitle, footerBranding, slideNumber, frameText };
+}
+
+async function captureFrameReference(html) {
+  if (typeof document === 'undefined') return null;
+  try {
+    const { captureSlideAsImage } = await import('../templateValidation.js');
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    const frame = doc.querySelector('.frame');
+    const inner = frame?.innerHTML || html;
+    const shell = `<div class="slide" style="width:${FRAME_CAPTURE_W}px;height:${FRAME_CAPTURE_H}px;background:#fff;margin:0;padding:0;overflow:hidden"><div class="frame" style="width:100%;height:100%;overflow:hidden">${inner}</div></div>`;
+    const b64 = await captureSlideAsImage(shell, FRAME_CAPTURE_W, FRAME_CAPTURE_H);
+    return b64 ? `data:image/png;base64,${b64}` : null;
+  } catch (e) {
+    console.warn('[upliftSlideWithImage] Frame capture failed:', e.message);
+    return null;
+  }
+}
+
+/**
+ * Visual uplift: keep title/subtitle/footer, regenerate the content frame with the image model.
+ * Uses the current slide HTML (and optional screenshot) as reference.
+ */
+export async function upliftSlideWithImage(slide, settings, options = {}) {
+  const {
+    userPrompt = '',
+    footerBranding: footerBrandingOverride,
+    slideNumber = 1,
+    theme = null,
+    imageVibe = 'default',
+    includeThemeContext = settings?.visualUpliftIncludeTheme !== false,
+    includeVibeContext = settings?.visualUpliftIncludeVibe !== false,
+  } = options;
+
+  if (!settings?.providers?.length && !settings?.imageModel) {
+    throw new Error('Visual Uplift requires the PwC provider in Settings.');
+  }
+
+  const html = slide?.html || '';
+  if (!html.trim()) {
+    throw new Error('Slide has no HTML content to uplift.');
+  }
+
+  const isFullBleed = slide.templateId === 'image-full' || slide.type === 'image-full';
+  const layoutGuidance = userPrompt.trim() || '';
+
+  if (isFullBleed) {
+    const instruction = parseSlideChrome(html).frameText || slide.title || 'Enhance this visual';
+    return generateImageSlide(instruction, settings, 'full', {
+      layoutGuidance,
+      footerBranding: footerBrandingOverride || 'Strategy&',
+      slideNumber,
+      existingImageDataUri: extractImageDataUri(html),
+      imageModelRef: VISUAL_UPLIFT_IMAGE_MODEL,
+    });
+  }
+
+  const { title, subtitle, footerBranding, slideNumber: parsedNum, frameText } = parseSlideChrome(html);
+  const displayTitle = title || slide?.title || 'Slide';
+  const footerBrand = footerBrandingOverride || footerBranding;
+  const pageNum = parsedNum || String(slideNumber);
+
+  let referenceImageDataUri = extractImageDataUri(html);
+  if (!referenceImageDataUri) {
+    referenceImageDataUri = await captureFrameReference(html);
+  }
+
+  const activeProfile = getActiveClientProfile(settings);
+  const styleContext = buildFrameImageStyleContext(settings, theme, {
+    slide,
+    imageVibe,
+    includeTheme: includeThemeContext,
+    includeVibe: includeVibeContext,
+    includeComponents: true,
+    includeValidation: true,
+  });
+  const imagePrompt = buildVisualUpliftPrompt({
+    settings,
+    layoutGuidance,
+    clientProfileName: activeProfile.name || 'Strategy&',
+    frameContent: frameText,
+    title: displayTitle,
+    subtitle,
+    styleContext,
+  });
+
+  recordPromptPayload('visualUplift', {
+    model: VISUAL_UPLIFT_IMAGE_MODEL,
+    layoutGuidance: layoutGuidance || null,
+    clientProfileName: activeProfile.name || 'Strategy&',
+    includeThemeContext,
+    includeVibeContext,
+    imageVibe,
+    templateId: slide?.templateId,
+    hasReferenceImage: !!referenceImageDataUri,
+    promptLength: imagePrompt.length,
+    frameContentLength: frameText?.length || 0,
+    prompt: imagePrompt,
+  });
+
+  console.log(`[upliftSlideWithImage] model=${VISUAL_UPLIFT_IMAGE_MODEL}, title="${displayTitle.slice(0, 60)}", hasRef=${!!referenceImageDataUri}, promptLen=${imagePrompt.length}`);
+
+  const imageDataUri = await generateImage(imagePrompt, settings, referenceImageDataUri, {
+    modelRef: VISUAL_UPLIFT_IMAGE_MODEL,
+  });
+
+  const safeTitle = displayTitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const safeSubtitle = subtitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const safePage = String(pageNum).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  return {
+    id: slide.id,
+    title: displayTitle,
+    html: `<div class="slide">
+  <h1 class="title">${safeTitle}</h1>
+  ${subtitle ? `<h2 class="subtitle">${safeSubtitle}</h2>` : ''}
+  <div class="frame">
+    <img src="${imageDataUri}" alt="${safeTitle}" class="frame-image" />
+  </div>
+  <footer class="footer"><span>${footerBrand}</span><span class="source"></span><span>${safePage}</span></footer>
+</div>`,
+    type: 'image-content',
+    templateId: 'image-content',
+    customCSS: slide.customCSS || '',
+  };
+}
+
 // Extract base64 image data URI from slide HTML (for image editing)
 export function extractImageDataUri(html) {
   if (!html) return null;
@@ -429,19 +826,17 @@ export function extractImageDataUri(html) {
 }
 
 export async function generateImageSlide(instruction, settings, mode = 'content', contextInfo = {}) {
-  const { layoutGuidance, vibe, footerBranding = 'Strategy&', slideNumber = 1, totalSlides, existingImageDataUri } = contextInfo;
+  const { layoutGuidance, vibe, footerBranding = 'Strategy&', slideNumber = 1, totalSlides, existingImageDataUri, imageModelRef, theme = null } = contextInfo;
+  const imageGenOptions = imageModelRef ? { modelRef: imageModelRef } : {};
 
-  // Only inject vibe variation for non-base vibes — base vibe is the default consulting style
   const vibeContext = (vibe && !isBaseVibe(vibe)) ? getVibePromptContext(vibe) : '';
   const activeProfile = getActiveClientProfile(settings);
-  const clientProfileContext = buildClientProfileContext(settings, {
+  const clientProfileContext = buildFrameImageStyleContext(settings, theme, {
+    imageVibe: vibe,
     includeTheme: true,
-    includeLayout: false,
-    includeValidation: true,
-    includeEvidence: false,
-    includePromptSections: false,
+    includeVibe: false,
     includeComponents: true,
-    includePptx: false,
+    includeValidation: true,
   });
 
   // Clean instruction for IMAGE prompt: strip all metadata (vibe tags, search hints, context blocks)
@@ -548,14 +943,6 @@ TEXT LABELS:
 - Keep all labels to 3-4 words max. NO long sentences.
 - Every label must have strong contrast: dark text on light fills, white text on dark fills
 
-VISUAL STYLE:
-- Primary accent color: use the active client profile's primary accent color for key shapes, highlights, and emphasis
-- Body text: near-black on white or light backgrounds
-- Shape fills: use the active client profile's pale surface colors for cards and surfaces
-- Borders and dividers: light grey, thin lines
-- Positive indicators: green. Negative: red. Caution: amber. Info: blue.
-- Background: plain white, edge to edge
-- Do NOT invent bright or neon colors — keep the palette muted and professional
 ${clientProfileContext ? `\nACTIVE CLIENT PROFILE GUIDANCE:\n${clientProfileContext}\n` : ''}
 ${vibeContext ? `STYLE VARIATION: ${vibeContext}\n` : ''}${existingImageDataUri ? 'EDIT MODE: A reference image is provided. Modify it according to the instructions above while preserving its overall structure and style.\n' : ''}Content must fill the entire image area edge-to-edge with no margins or padding.`;
 
@@ -563,7 +950,7 @@ ${vibeContext ? `STYLE VARIATION: ${vibeContext}\n` : ''}${existingImageDataUri 
 
   if (mode === 'full') {
     // Full image slide — just generate the image (pass reference if editing)
-    const imageDataUri = await generateImage(imagePrompt, settings, existingImageDataUri || null);
+    const imageDataUri = await generateImage(imagePrompt, settings, existingImageDataUri || null, imageGenOptions);
     const title = (textInstruction || cleanInstruction).slice(0, 80).replace(/[<>"]/g, '').replace(/\[[^\]]*\]/g, '').trim();
 
     return {
@@ -621,7 +1008,7 @@ Return ONLY valid JSON: {"title": "...", "subtitle": "...", "footer": ""}`;
 
     // Run image generation and text generation in parallel (pass reference image if editing)
     const [imageDataUri, textContent] = await Promise.all([
-      generateImage(imagePrompt, settings, existingImageDataUri || null),
+      generateImage(imagePrompt, settings, existingImageDataUri || null, imageGenOptions),
       callWithModelFallback(settings, 'You are a Strategy& consulting presentation writer. Return only valid JSON.', textPrompt),
     ]);
 

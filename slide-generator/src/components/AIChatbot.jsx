@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
 import { useKnowledgeBase } from '../context/KnowledgeBaseContext';
-import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildDeckContextDigest, buildDeckStructure, planTrackerSyncFromDeckStructures, CONTEXT_LEVELS, normalizeContextLevel, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, triageRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, agentTriageRequest, generateImageSlide, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
+import { generateSlides, improveSlide, improveSlideWithTemplate, improveMultipleSlides, generatePptxRendererCode, fillTemplateWithAI, fillTemplatesBulkWithAI, selectTemplateWithAI, planSlidesWithTemplates, chatWithContext, generateStoryline, generateSkeletonSlides, fillSkeletonSlide, populateSlides, createAgentExecutionPlan, buildContextString, buildDeckContextDigest, buildDeckStructure, planTrackerSyncFromDeckStructures, CONTEXT_LEVELS, normalizeContextLevel, updateSlideSummary, generateSlideSummary, routeRequest, aiRouteRequest, classifyRequest, triageRequest, detectContextRequest, buildRequestedContext, extractTitleFromHTML, analyzeContentForSlides, agentTriageRequest, generateImageSlide, upliftSlideWithImage, extractImageDataUri, buildDeckContextForSwitch, transformSlideToTemplate, callWithModelFallback, webSearch, currentDateString, buildEnrichedSlideInfo, trimSearchResult, improveSlideWithSearch, hasAnyApiKey } from '../services/aiService';
 import { PRIMARY_ACTIONS, MORE_ACTIONS } from '../constants/slideActions';
 import { useAgenticExecution } from '../hooks/useAgenticExecution';
 // Agent components removed - using simplified content agent
@@ -36,6 +36,18 @@ function detectVibeFromPrompt(prompt) {
   if (/\b(minimal|clean|simple|keynote|zen|whitespace)\b/.test(lower)) return 'minimal';
   return 'default'; // professional strategy consulting
 }
+
+/** Quick-pick visual direction chips for the Visual Uplift panel (optional layoutGuidance). */
+const VISUAL_UPLIFT_SUGGESTIONS = [
+  'Futuristic / digital aesthetic',
+  'Minimal and clean',
+  'Bold contrast and hierarchy',
+  '2x2 matrix layout',
+  'Timeline / phased roadmap',
+  'Hub-and-spoke operating model',
+  'Chevron process flow',
+  'Executive polish only (no layout change)',
+];
 
 function buildStorylineSummary(storyline) {
   if (!Array.isArray(storyline) || storyline.length === 0) return '';
@@ -643,6 +655,9 @@ export default function AIChatbot({ initialHandoff = null }) {
   const [activeQuickAction, setActiveQuickAction] = useState('');
   const [showMoreActions, setShowMoreActions] = useState(false);
   const [showSlideTemplatePicker, setShowSlideTemplatePicker] = useState(false);
+  const [showVisualUpliftPanel, setShowVisualUpliftPanel] = useState(false);
+  const [visualUpliftDirection, setVisualUpliftDirection] = useState('');
+  const visualUpliftInputRef = useRef(null);
   const [showSkillsPopover, setShowSkillsPopover] = useState(false);
   const [isVoiceListening, setIsVoiceListening] = useState(false);
   const [voiceInterimTranscript, setVoiceInterimTranscript] = useState('');
@@ -6466,6 +6481,73 @@ Original request: ${userPrompt}`;
     }
   }, [activeSlide, busySlideIds, state.settings, actions]);
 
+  const closeVisualUpliftPanel = useCallback(() => {
+    setShowVisualUpliftPanel(false);
+  }, []);
+
+  const toggleVisualUpliftPanel = useCallback(() => {
+    if (!activeSlide || !hasAnyApiKey(state.settings)) return;
+    setShowMoreActions(false);
+    setShowSlideTemplatePicker(false);
+    setShowVisualUpliftPanel((open) => {
+      if (!open) {
+        setVisualUpliftDirection((prev) => prev || prompt.trim());
+        window.setTimeout(() => visualUpliftInputRef.current?.focus(), 80);
+      }
+      return !open;
+    });
+  }, [activeSlide, state.settings, prompt]);
+
+  const runVisualUplift = useCallback(async () => {
+    if (!activeSlide) return;
+    const slideId = activeSlide.id;
+    if (busySlideIds.has(slideId)) return;
+    if (!hasAnyApiKey(state.settings)) {
+      addMessage('assistant', 'Visual Uplift needs API access (PwC provider in Settings).', { isHTML: false });
+      return;
+    }
+
+    const userPrompt = visualUpliftDirection.trim();
+    closeVisualUpliftPanel();
+    setBusySlideIds(prev => new Set(prev).add(slideId));
+    setActiveQuickAction('Visual Uplift');
+    try {
+      const currentState = stateRef.current;
+      const freshSlide = currentState.slides.find(s => s.id === slideId) || activeSlide;
+      const slideIdx = currentState.slides.findIndex(s => s.id === slideId);
+      const result = await upliftSlideWithImage(freshSlide, state.settings, {
+        userPrompt,
+        slideNumber: slideIdx + 1,
+        totalSlides: currentState.slides.length,
+        theme: currentState.theme,
+        imageVibe,
+      });
+      actions.updateSlide(slideId, {
+        html: result.html,
+        title: result.title || freshSlide.title,
+        templateId: result.templateId || 'image-content',
+        type: result.type,
+        customCSS: result.customCSS ?? freshSlide.customCSS ?? '',
+      });
+      const label = (result.title || freshSlide.title || 'slide').slice(0, 60);
+      const directionNote = userPrompt
+        ? ` <span class="quick-action-done-hint">(${userPrompt.slice(0, 48)}${userPrompt.length > 48 ? '…' : ''})</span>`
+        : '';
+      addMessage('assistant', `<div class="quick-action-done-card"><span class="quick-action-done-icon">&#10003;</span> Visual uplift applied: <strong>${label}</strong>${directionNote}</div>`, { isHTML: true });
+      setVisualUpliftDirection('');
+    } catch (err) {
+      console.error('[VisualUplift] failed:', err);
+      addMessage('assistant', `<div class="quick-action-done-card quick-action-error"><span class="quick-action-done-icon">&#10007;</span> Visual uplift failed: ${err.message}</div>`, { isHTML: true });
+    } finally {
+      setBusySlideIds(prev => { const next = new Set(prev); next.delete(slideId); return next; });
+      setActiveQuickAction('');
+    }
+  }, [activeSlide, busySlideIds, state.settings, state.theme, actions, visualUpliftDirection, imageVibe, closeVisualUpliftPanel]);
+
+  useEffect(() => {
+    setShowVisualUpliftPanel(false);
+  }, [activeSlide?.id]);
+
   if (!isOpen) return null;
 
   // Renders the consulting-skill dropdown button used in the top action bar.
@@ -6667,57 +6749,134 @@ Original request: ${userPrompt}`;
             ) : (
               <>
                 <div className="panel-action-bar">
-                  {/* Quick Fixes dropdown */}
-                  <button
-                    className={`panel-action-btn panel-action-btn--primary ${showMoreActions ? 'panel-action-btn--active' : ''}`}
-                    disabled={activeSlide && busySlideIds.has(activeSlide.id)}
-                    onClick={() => { setShowMoreActions(!showMoreActions); setShowSlideTemplatePicker(false); }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-                    </svg>
-                    Quick Fixes
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d={showMoreActions ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
-                    </svg>
-                  </button>
+                  <div className="panel-action-bar-row panel-action-bar-row--triple">
+                    {/* Quick Fixes dropdown */}
+                    <button
+                      className={`panel-action-btn panel-action-btn--primary ${showMoreActions ? 'panel-action-btn--active' : ''}`}
+                      disabled={activeSlide && busySlideIds.has(activeSlide.id)}
+                      onClick={() => { setShowMoreActions(!showMoreActions); setShowSlideTemplatePicker(false); setShowVisualUpliftPanel(false); }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+                      </svg>
+                      Quick Fixes
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d={showMoreActions ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+                      </svg>
+                    </button>
 
-                  {/* Reimagine Slide */}
-                  <button
-                    className="panel-action-btn"
-                    disabled={activeSlide && busySlideIds.has(activeSlide.id)}
-                    onClick={handleReimagineSlide}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M23 4v6h-6" />
-                      <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
-                    </svg>
-                    Reimagine Slide
-                  </button>
+                    <button
+                      className="panel-action-btn"
+                      disabled={activeSlide && busySlideIds.has(activeSlide.id)}
+                      onClick={handleReimagineSlide}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M23 4v6h-6" />
+                        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+                      </svg>
+                      Reimagine
+                    </button>
 
-                  {/* Consulting skill (single-select). Shown here so it's
-                      always one click away when planning a new deck or
-                      editing an existing one. */}
-                  {renderSkillsActionButton()}
+                    <button
+                      className={`panel-action-btn ${showVisualUpliftPanel ? 'panel-action-btn--active' : ''}`}
+                      disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || !hasAnyApiKey(state.settings)}
+                      title={hasAnyApiKey(state.settings)
+                        ? 'Polish the content frame with Gemini 3 Pro Image — add optional visual direction first'
+                        : 'Configure API access in Settings'}
+                      onClick={toggleVisualUpliftPanel}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="18" height="18" rx="2" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <path d="M21 15l-5-5L5 21" />
+                      </svg>
+                      Visual Uplift
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d={showVisualUpliftPanel ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+                      </svg>
+                    </button>
+                  </div>
 
-                  {/* Template switcher */}
-                  <button
-                    className={`panel-action-btn ${showSlideTemplatePicker ? 'panel-action-btn--active' : ''}`}
-                    disabled={activeSlide && busySlideIds.has(activeSlide.id)}
-                    onClick={() => { setShowSlideTemplatePicker(!showSlideTemplatePicker); setShowMoreActions(false); }}
-                  >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <rect x="3" y="3" width="7" height="7" rx="1" />
-                      <rect x="14" y="3" width="7" height="7" rx="1" />
-                      <rect x="14" y="14" width="7" height="7" rx="1" />
-                      <rect x="3" y="14" width="7" height="7" rx="1" />
-                    </svg>
-                    Change Template
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                      <path d={showSlideTemplatePicker ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
-                    </svg>
-                  </button>
+                  <div className="panel-action-bar-row panel-action-bar-row--double">
+                    {renderSkillsActionButton()}
+
+                    <button
+                      className={`panel-action-btn ${showSlideTemplatePicker ? 'panel-action-btn--active' : ''}`}
+                      disabled={activeSlide && busySlideIds.has(activeSlide.id)}
+                      onClick={() => { setShowSlideTemplatePicker(!showSlideTemplatePicker); setShowMoreActions(false); setShowVisualUpliftPanel(false); }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <rect x="3" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="3" width="7" height="7" rx="1" />
+                        <rect x="14" y="14" width="7" height="7" rx="1" />
+                        <rect x="3" y="14" width="7" height="7" rx="1" />
+                      </svg>
+                      Change Template
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <path d={showSlideTemplatePicker ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
+
+                {showVisualUpliftPanel && (
+                  <>
+                    <div className="panel-more-backdrop" onClick={closeVisualUpliftPanel} />
+                    <div className="panel-uplift-popover" role="dialog" aria-label="Visual Uplift direction">
+                      <div className="panel-uplift-header">
+                        <span className="panel-uplift-title">Visual direction</span>
+                        <span className="panel-uplift-hint">Optional — guides layout and style inside the frame only</span>
+                      </div>
+                      <textarea
+                        ref={visualUpliftInputRef}
+                        className="panel-uplift-input"
+                        rows={2}
+                        value={visualUpliftDirection}
+                        onChange={(e) => setVisualUpliftDirection(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                            e.preventDefault();
+                            runVisualUplift();
+                          }
+                          if (e.key === 'Escape') {
+                            e.preventDefault();
+                            closeVisualUpliftPanel();
+                          }
+                        }}
+                        placeholder="e.g. Make it futuristic with a digital mesh, or use a 2x2 prioritization matrix..."
+                      />
+                      <div className="panel-uplift-suggestions">
+                        {VISUAL_UPLIFT_SUGGESTIONS.map((suggestion) => (
+                          <button
+                            key={suggestion}
+                            type="button"
+                            className={`panel-quick-pill panel-quick-pill-sm${visualUpliftDirection === suggestion ? ' active' : ''}`}
+                            onClick={() => setVisualUpliftDirection(suggestion)}
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="panel-uplift-actions">
+                        <button
+                          type="button"
+                          className="panel-uplift-btn panel-uplift-btn--ghost"
+                          onClick={closeVisualUpliftPanel}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          className="panel-uplift-btn panel-uplift-btn--primary"
+                          disabled={activeSlide && busySlideIds.has(activeSlide.id)}
+                          onClick={runVisualUplift}
+                        >
+                          {visualUpliftDirection.trim() ? 'Apply with direction' : 'Apply Visual Uplift'}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 {/* Quick Fixes dropdown panel */}
                 {showMoreActions && (
@@ -7661,7 +7820,7 @@ Original request: ${userPrompt}`;
                 ? 'Type here to edit the active slide while the plan runs...'
                 : agenticExecution.isRunning
                   ? 'Chat with the team while they work...'
-                  : 'Describe your presentation goal or paste an image (Ctrl+V)...';
+                  : 'Describe your presentation goal, or paste an image (Ctrl+V)...';
             return (
               <div className="chatbot-input-box">
                 <textarea

@@ -41,6 +41,11 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Organization-Id'],
+  exposedHeaders: [
+    'X-Edwin-Image-Model-Requested',
+    'X-Edwin-Image-Model-Used',
+    'X-Edwin-Image-Route',
+  ],
 }));
 
 // Compression

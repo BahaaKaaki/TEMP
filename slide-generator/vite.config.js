@@ -13,6 +13,9 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         ws: true,
+        // Image generation (gpt-image-2) can take several minutes
+        timeout: 600000,
+        proxyTimeout: 600000,
       },
       '/health': {
         target: 'http://127.0.0.1:3001',

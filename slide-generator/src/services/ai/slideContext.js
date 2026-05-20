@@ -94,7 +94,7 @@ export function extractSlideMetadata(html, type, title) {
 
 // Extract slide content for AI context (NO raw HTML - just structured text)
 export function extractSlideContentForAI(html, options = {}) {
-  const { maxLength = 500, includeStructure = true } = options;
+  const { maxLength = 500, includeStructure = true, maxItems = 10 } = options;
   const tempDiv = typeof document !== 'undefined' ? document.createElement('div') : null;
 
   if (!tempDiv) {
@@ -149,7 +149,7 @@ export function extractSlideContentForAI(html, options = {}) {
   if (title) output += `Title: "${title}"\n`;
   if (subtitle) output += `Subtitle: ${subtitle}\n`;
   if (contentParts.length > 0) {
-    output += `Content:\n${contentParts.slice(0, 10).join('\n')}`;
+    output += `Content:\n${contentParts.slice(0, maxItems).join('\n')}`;
   }
 
   // Add structure info if requested

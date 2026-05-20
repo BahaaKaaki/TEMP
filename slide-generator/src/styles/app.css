@@ -4493,6 +4493,27 @@ body {
   color: #6b1616;
 }
 
+.panel-action-beta {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: #6b4c9a;
+  background: #ede8f5;
+  border: 1px solid #d4c8e8;
+}
+
+.panel-action-btn--active .panel-action-beta {
+  color: #5a3d88;
+  background: #e8dff5;
+  border-color: #c9b8e0;
+}
+
 .panel-quick-pill {
   display: inline-flex;
   align-items: center;

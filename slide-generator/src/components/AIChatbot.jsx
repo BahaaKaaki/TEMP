@@ -6781,7 +6781,7 @@ Original request: ${userPrompt}`;
                       className={`panel-action-btn ${showVisualUpliftPanel ? 'panel-action-btn--active' : ''}`}
                       disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || !hasAnyApiKey(state.settings)}
                       title={hasAnyApiKey(state.settings)
-                        ? 'Polish the content frame with Gemini 3 Pro Image — add optional visual direction first'
+                        ? 'Beta: polish the content frame with Gemini 3 Pro Image. Add optional visual style first.'
                         : 'Configure API access in Settings'}
                       onClick={toggleVisualUpliftPanel}
                     >
@@ -6791,6 +6791,7 @@ Original request: ${userPrompt}`;
                         <path d="M21 15l-5-5L5 21" />
                       </svg>
                       Visual Uplift
+                      <span className="panel-action-beta">Beta</span>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                         <path d={showVisualUpliftPanel ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
                       </svg>

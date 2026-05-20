@@ -6825,7 +6825,7 @@ Original request: ${userPrompt}`;
                     <div className="panel-uplift-popover" role="dialog" aria-label="Visual Uplift direction">
                       <div className="panel-uplift-header">
                         <span className="panel-uplift-title">Visual direction</span>
-                        <span className="panel-uplift-hint">Optional — guides layout and style inside the frame only</span>
+                        <span className="panel-uplift-hint">Optional visual direction for layout and style inside the frame only</span>
                       </div>
                       <textarea
                         ref={visualUpliftInputRef}

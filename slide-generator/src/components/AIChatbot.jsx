@@ -37,6 +37,8 @@ function detectVibeFromPrompt(prompt) {
   return 'default'; // professional strategy consulting
 }
 
+import { VISUAL_UPLIFT_UI_ENABLED } from '../constants/featureFlags.js';
+
 const CHAT_WELCOME_MESSAGE = 'Just describe what you need. A single slide or a full deck works. I\'ll figure out the rest.';
 
 /** Style and look chips for Visual Uplift (not diagram layout types like 2x2 or roadmap). */
@@ -6563,6 +6565,7 @@ Original request: ${userPrompt}`;
   }, []);
 
   const toggleVisualUpliftPanel = useCallback(() => {
+    if (!VISUAL_UPLIFT_UI_ENABLED) return;
     if (!activeSlide || !hasAnyApiKey(state.settings)) return;
     setShowMoreActions(false);
     setShowSlideTemplatePicker(false);
@@ -6576,6 +6579,7 @@ Original request: ${userPrompt}`;
   }, [activeSlide, state.settings, prompt]);
 
   const runVisualUplift = useCallback(async () => {
+    if (!VISUAL_UPLIFT_UI_ENABLED) return;
     if (!activeSlide) return;
     const slideId = activeSlide.id;
     if (busySlideIds.has(slideId)) return;
@@ -6624,6 +6628,10 @@ Original request: ${userPrompt}`;
   useEffect(() => {
     setShowVisualUpliftPanel(false);
   }, [activeSlide?.id]);
+
+  useEffect(() => {
+    if (!VISUAL_UPLIFT_UI_ENABLED) setShowVisualUpliftPanel(false);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -6855,11 +6863,21 @@ Original request: ${userPrompt}`;
                     </button>
 
                     <button
-                      className={`panel-action-btn ${showVisualUpliftPanel ? 'panel-action-btn--active' : ''}`}
-                      disabled={(activeSlide && busySlideIds.has(activeSlide.id)) || !hasAnyApiKey(state.settings)}
-                      title={hasAnyApiKey(state.settings)
-                        ? 'Beta: polish the content frame with Gemini 3 Pro Image. Add optional visual style first.'
-                        : 'Configure API access in Settings'}
+                      type="button"
+                      className={`panel-action-btn panel-action-btn--uplift${showVisualUpliftPanel ? ' panel-action-btn--active' : ''}${!VISUAL_UPLIFT_UI_ENABLED ? ' panel-action-btn--feature-off' : ''}`}
+                      disabled={
+                        !VISUAL_UPLIFT_UI_ENABLED
+                        || (activeSlide && busySlideIds.has(activeSlide.id))
+                        || !hasAnyApiKey(state.settings)
+                      }
+                      title={
+                        !VISUAL_UPLIFT_UI_ENABLED
+                          ? 'Visual Uplift is temporarily unavailable'
+                          : hasAnyApiKey(state.settings)
+                            ? 'Beta: polish the content frame with Gemini 3 Pro Image. Add optional visual style first.'
+                            : 'Configure API access in Settings'
+                      }
+                      aria-disabled={!VISUAL_UPLIFT_UI_ENABLED}
                       onClick={toggleVisualUpliftPanel}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6868,10 +6886,12 @@ Original request: ${userPrompt}`;
                         <path d="M21 15l-5-5L5 21" />
                       </svg>
                       Visual Uplift
-                      <span className="panel-action-beta">Beta</span>
-                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d={showVisualUpliftPanel ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
-                      </svg>
+                      <span className="panel-action-beta">{VISUAL_UPLIFT_UI_ENABLED ? 'Beta' : 'Off'}</span>
+                      {VISUAL_UPLIFT_UI_ENABLED && (
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d={showVisualUpliftPanel ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+                        </svg>
+                      )}
                     </button>
                   </div>
 
@@ -6897,7 +6917,7 @@ Original request: ${userPrompt}`;
                   </div>
                 </div>
 
-                {showVisualUpliftPanel && (
+                {VISUAL_UPLIFT_UI_ENABLED && showVisualUpliftPanel && (
                   <>
                     <div className="panel-more-backdrop" onClick={closeVisualUpliftPanel} />
                     <div className="panel-uplift-popover" role="dialog" aria-label="Visual Uplift direction">

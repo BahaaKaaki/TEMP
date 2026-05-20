@@ -4474,6 +4474,18 @@ body {
   cursor: not-allowed;
 }
 
+.panel-action-btn--feature-off:disabled {
+  opacity: 0.42;
+  background: #f3f3f4;
+  color: #9ca3af;
+  border-color: #e5e7eb;
+}
+
+.panel-action-btn--feature-off .panel-action-beta {
+  background: #e5e7eb;
+  color: #6b7280;
+}
+
 .panel-action-btn--active {
   border-color: var(--accent, #8E1E1E);
   background: #fdf2f2;

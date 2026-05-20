@@ -5,6 +5,7 @@ import { callWithModelFallback, buildRequestBody, parseAPIResponseContent, _acqu
 import { LEAN_ROUTER_PROMPT } from './constants.js';
 import { safeJSONParse } from './router.js';
 import { authFetch } from '../authFetch.js';
+import { sanitizeHtmlForAiPrompt } from './slideContext.js';
 
 // Generate PptxGenJS renderer code for a custom template
 export async function generatePptxRendererCode(templateHtml, templateTitle, settings) {
@@ -100,7 +101,7 @@ export async function chatWithContext(question, context, settings) {
 Title: "${slide.title || 'Untitled'}"
 Type: ${slide.type || 'custom'}
 HTML Content:
-${slide.html}
+${sanitizeHtmlForAiPrompt(slide.html)}
 === END CURRENT SLIDE ===
 `;
   }
@@ -114,7 +115,7 @@ ${slide.html}
 Title: "${slide.title || 'Untitled'}"
 Type: ${slide.type || 'custom'}
 HTML Content:
-${slide.html}
+${sanitizeHtmlForAiPrompt(slide.html)}
 === END SLIDE ${ref.index + 1} ===
 `;
     }

@@ -92,6 +92,17 @@ export function extractSlideMetadata(html, type, title) {
   };
 }
 
+/**
+ * Strip inline base64 images from HTML before LLM prompts (Visual Uplift / image-content slides).
+ * Keeps structure; models must preserve [embedded-frame-image] placeholders in edits.
+ */
+export function sanitizeHtmlForAiPrompt(html = '') {
+  if (!html || typeof html !== 'string') return html;
+  return html
+    .replace(/src=(["'])data:image\/[^"']*\1/gi, 'src=$1[embedded-frame-image]$1')
+    .replace(/url\(\s*data:image\/[^)]+\)/gi, 'url([embedded-frame-image])');
+}
+
 // Extract slide content for AI context (NO raw HTML - just structured text)
 export function extractSlideContentForAI(html, options = {}) {
   const { maxLength = 500, includeStructure = true, maxItems = 10 } = options;
@@ -180,10 +191,10 @@ export function extractSlideHtmlForRouter(html) {
 
   const tempDiv = typeof document !== 'undefined' ? document.createElement('div') : null;
   if (!tempDiv) {
-    return html
+    return sanitizeHtmlForAiPrompt(html
       .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
       .replace(/\sstyle=(["'])[\s\S]*?\1/gi, '')
-      .trim();
+      .trim());
   }
 
   tempDiv.innerHTML = html;
@@ -192,7 +203,7 @@ export function extractSlideHtmlForRouter(html) {
     node.removeAttribute('style');
   });
 
-  return tempDiv.innerHTML.trim();
+  return sanitizeHtmlForAiPrompt(tempDiv.innerHTML.trim());
 }
 
 // Build lightweight deck outline (no HTML, just metadata)

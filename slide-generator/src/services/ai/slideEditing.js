@@ -9,7 +9,14 @@ import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { extractRelevantCSS, detectContextRequest, buildRequestedContext } from './cssExtraction.js';
 import { appendClientDesignContract, getClientProfileFooterBranding } from '../../utils/clientDesignProfiles.js';
 import { unscopeCSS } from '../../utils/cssScoping.js';
-import { extractSlideContentForAI, generateSlideSummary, extractSlideMetadata, buildDeckContext, buildSectionMap } from './slideContext.js';
+import {
+  extractSlideContentForAI,
+  generateSlideSummary,
+  extractSlideMetadata,
+  buildDeckContext,
+  buildSectionMap,
+  sanitizeHtmlForAiPrompt,
+} from './slideContext.js';
 import { extractSingleSlide, flattenNestedFrames, extractTitleFromHTML, ensureSlideStructure } from './slideGeneration.js';
 import { currentDateString, safeJSONParse } from './router.js';
 
@@ -136,7 +143,9 @@ export async function improveSlide(slideHtmlOrInfo, instruction, settings, deckC
     ? { html: slideHtmlOrInfo }
     : slideHtmlOrInfo;
 
-  const { html, title, type, templateId, slideNumber, totalSlides, comments, templateHtml, templateName, customCSS, sharedCSS, minimalContext, sectionLabel, subSectionLabel } = slideInfo;
+  const { html: rawHtml, title, type, templateId, slideNumber, totalSlides, comments, templateHtml, templateName, customCSS, sharedCSS, minimalContext, sectionLabel, subSectionLabel } = slideInfo;
+  const html = sanitizeHtmlForAiPrompt(rawHtml || '');
+  const embeddedFrameSrc = (rawHtml || '').match(/src=(["'])(data:image\/[^"']+)\1/i)?.[2] || null;
 
   // MINIMAL CONTEXT MODE: If minimalContext is provided, use it directly
   // This significantly reduces token usage while keeping agent informed
@@ -309,6 +318,7 @@ CRITICAL: The instruction above is a META-COMMAND about how to modify the slide 
 ${html}
 ${cssContext}${positionContext}${metadataContext}${contextNote}${neighborContext}${deckOverview}${aiGuidance}${commentContext}${templateContext}
 
+${embeddedFrameSrc ? 'EMBEDDED FRAME IMAGE: The slide has a content-frame image represented as src="[embedded-frame-image]". Keep that <img> tag in your output (same placeholder or equivalent); do not inline base64 and do not remove the image unless the user explicitly asks to delete it.\n' : ''}
 ${TITLE_HEADER_RULES}
 
 Footer/source text: use "${getClientProfileFooterBranding(settings, 'Strategy&')}" in footer left span; if this value is empty, leave the left span blank unless a real source is provided.`;
@@ -410,7 +420,7 @@ NOTE: You requested additional context ("${contextRequest.reason}") but that inf
         hasSlideDiv,
         returnedContent: content.substring(0, 500),
       });
-      return { html, customCSS: extractedCustomCSS }; // Return original HTML instead of empty
+      return { html: rawHtml || html, customCSS: extractedCustomCSS };
     }
 
     // If AI returned HTML without proper frame/content structure, warn but still return
@@ -419,6 +429,14 @@ NOTE: You requested additional context ("${contextRequest.reason}") but that inf
         originalHadFrame: true,
         responsePreview: content.substring(0, 300),
       });
+    }
+
+    if (embeddedFrameSrc && content && !content.includes('data:image/')) {
+      if (content.includes('[embedded-frame-image]')) {
+        content = content.replace(/src=(["'])\[embedded-frame-image\]\1/gi, `src="${embeddedFrameSrc}"`);
+      } else if (rawHtml && rawHtml.includes('frame-image') && !content.includes('frame-image')) {
+        content = rawHtml;
+      }
     }
 
     return { html: content, customCSS: extractedCustomCSS };
@@ -504,6 +522,7 @@ export function buildDeckContextForSwitch(slides, currentIndex) {
 // deckContext is optional: { deckMap, neighborContext, pillarNote } from buildDeckContext()
 // userGuidance is optional: free-text instruction from the user
 export async function improveSlideWithTemplate(slideHtml, instruction, template, settings, slidePosition = null, deckContext = null, userGuidance = null) {
+  slideHtml = sanitizeHtmlForAiPrompt(slideHtml || '');
   // Apply templateSwitcher role overrides if configured
   const tsRole = settings.roleSettings?.templateSwitcher || {};
   if (tsRole.model) settings = { ...settings, model: tsRole.model };
@@ -637,7 +656,8 @@ export async function improveSlideWithContext(slideHtmlOrInfo, instruction, neig
     ? { html: slideHtmlOrInfo }
     : slideHtmlOrInfo;
 
-  const { html, title, type, templateId, slideNumber, totalSlides } = slideInfo;
+  const { html: rawHtml, title, type, templateId, slideNumber, totalSlides } = slideInfo;
+  const html = sanitizeHtmlForAiPrompt(rawHtml || '');
 
   // Build position header
   let positionHeader = '';

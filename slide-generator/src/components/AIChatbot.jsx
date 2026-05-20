@@ -37,16 +37,16 @@ function detectVibeFromPrompt(prompt) {
   return 'default'; // professional strategy consulting
 }
 
-/** Quick-pick visual direction chips for the Visual Uplift panel (optional layoutGuidance). */
+const CHAT_WELCOME_MESSAGE = 'Just describe what you need. A single slide or a full deck works. I\'ll figure out the rest.';
+
+/** Style and look chips for Visual Uplift (not diagram layout types like 2x2 or roadmap). */
 const VISUAL_UPLIFT_SUGGESTIONS = [
-  'Futuristic / digital aesthetic',
-  'Minimal and clean',
-  'Bold contrast and hierarchy',
-  '2x2 matrix layout',
-  'Timeline / phased roadmap',
-  'Hub-and-spoke operating model',
-  'Chevron process flow',
-  'Executive polish only (no layout change)',
+  'Futuristic',
+  'Digital',
+  '3D depth',
+  'Rich icons',
+  'Minimal',
+  'Bold contrast',
 ];
 
 function buildStorylineSummary(storyline) {
@@ -717,7 +717,7 @@ export default function AIChatbot({ initialHandoff = null }) {
   const [messages, setMessages] = useState([
     {
       type: 'assistant',
-      content: 'Just describe what you need — a single slide or a full deck. I\'ll figure out the rest.',
+      content: CHAT_WELCOME_MESSAGE,
     },
   ]);
   const messagesEndRef = useRef(null);
@@ -1585,7 +1585,7 @@ export default function AIChatbot({ initialHandoff = null }) {
     if (gen !== prevDeckGenRef.current) {
       setMessages([{
         type: 'assistant',
-        content: 'Just describe what you need — a single slide or a full deck. I\'ll figure out the rest.',
+        content: CHAT_WELCOME_MESSAGE,
       }]);
       setUploadedFiles([]);
       setPendingSmartAction(null);
@@ -6644,7 +6644,7 @@ Original request: ${userPrompt}`;
             className="chatbot-action-btn"
             onClick={() => {
               // Full reset — clear ALL chat state for a fresh start
-              setMessages([{ type: 'assistant', content: 'Just describe what you need — a single slide or a full deck. I\'ll figure out the rest.' }]);
+              setMessages([{ type: 'assistant', content: CHAT_WELCOME_MESSAGE }]);
               setUploadedFiles([]);
               setPendingSmartAction(null);
               setProgress(null);
@@ -6824,8 +6824,8 @@ Original request: ${userPrompt}`;
                     <div className="panel-more-backdrop" onClick={closeVisualUpliftPanel} />
                     <div className="panel-uplift-popover" role="dialog" aria-label="Visual Uplift direction">
                       <div className="panel-uplift-header">
-                        <span className="panel-uplift-title">Visual direction</span>
-                        <span className="panel-uplift-hint">Optional visual direction for layout and style inside the frame only</span>
+                        <span className="panel-uplift-title">Visual style</span>
+                        <span className="panel-uplift-hint">Optional look and feel for the frame visual only</span>
                       </div>
                       <textarea
                         ref={visualUpliftInputRef}
@@ -6843,7 +6843,7 @@ Original request: ${userPrompt}`;
                             closeVisualUpliftPanel();
                           }
                         }}
-                        placeholder="e.g. Make it futuristic with a digital mesh, or use a 2x2 prioritization matrix..."
+                        placeholder="e.g. Futuristic and digital with richer icons and subtle 3D depth..."
                       />
                       <div className="panel-uplift-suggestions">
                         {VISUAL_UPLIFT_SUGGESTIONS.map((suggestion) => (

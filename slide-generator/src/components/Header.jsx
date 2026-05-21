@@ -726,6 +726,8 @@ ${previewParts.join('\n\n')}`;
                       svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg> },
                     { name: 'Edwin Slide Builder', desc: 'Strategy& branded slides', url: 'https://chatgpt.com/g/g-6936882b659c8191aaf8ead55132f4ca-edwin-slide-builder',
                       svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg> },
+                    { name: 'Edwin Economic Development', desc: 'Economic development strategy & analysis', url: 'https://chatgpt.com/g/g-69ec7a58b49c8191a1ed862047d17d62-edwin-economic-development',
+                      svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m7 12 4-4 4 4 5-6"/></svg> },
                     { name: 'Edwin CV Creator', desc: 'Tailored CVs and team pages', url: 'https://chatgpt.com/g/g-6973437234b08191bda4f456c7804573-edwin-cv-creator',
                       svg: <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E1E1E" strokeWidth="1.8"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
                     { name: 'Edwin Icon Creator', desc: 'Custom presentation icons', url: 'https://chatgpt.com/g/g-6973445942b48191ad0fc8a37839638b-edwin-icon-creator',

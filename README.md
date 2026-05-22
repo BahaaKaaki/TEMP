@@ -190,6 +190,10 @@ The backend ships with an optional staff-allowlist gate that verifies Entra ID I
 
 Step-by-step Azure CLI commands for flipping the feature on (merge the PR -> build the list -> set app settings -> deploy -> observe in `log` -> flip to `enforce` -> rollback plan) live in [`docs/runbooks/allowlist-path-b-runbook.md`](docs/runbooks/allowlist-path-b-runbook.md). The runbook is the single source of truth for operating this feature in production -- update it, not the README, when the procedure changes.
 
+### Daily usage email (on-demand)
+
+Manual report of distinct sign-in users for **yesterday** and **today** (UTC), opened as an Outlook draft for you to send. Runbook: [`docs/runbooks/edwin-daily-usage-email.md`](docs/runbooks/edwin-daily-usage-email.md). Script: `backend/scripts/edwin_daily_usage_report.py` (`--outlook-draft` or `--dry-run`).
+
 ## Model Configuration
 
 Models are auto-fetched from the PwC Shared Services `/models` endpoint on first load and cached locally for 24 hours. The Settings UI groups models by vendor (Gemini, Claude, OpenAI, Azure) with capability tags (fast, pro, image, code, preview). A "Refresh from API" button allows manual re-fetch.

@@ -660,6 +660,7 @@ export default function AIChatbot({ initialHandoff = null }) {
   const [showVisualUpliftPanel, setShowVisualUpliftPanel] = useState(false);
   const [visualUpliftDirection, setVisualUpliftDirection] = useState('');
   const visualUpliftInputRef = useRef(null);
+  const visualUpliftEnabled = VISUAL_UPLIFT_UI_ENABLED && state.settings.visualUpliftEnabled === true;
   const [showSkillsPopover, setShowSkillsPopover] = useState(false);
   const [isVoiceListening, setIsVoiceListening] = useState(false);
   const [voiceInterimTranscript, setVoiceInterimTranscript] = useState('');
@@ -6565,7 +6566,7 @@ Original request: ${userPrompt}`;
   }, []);
 
   const toggleVisualUpliftPanel = useCallback(() => {
-    if (!VISUAL_UPLIFT_UI_ENABLED) return;
+    if (!visualUpliftEnabled) return;
     if (!activeSlide || !hasAnyApiKey(state.settings)) return;
     setShowMoreActions(false);
     setShowSlideTemplatePicker(false);
@@ -6576,10 +6577,10 @@ Original request: ${userPrompt}`;
       }
       return !open;
     });
-  }, [activeSlide, state.settings, prompt]);
+  }, [activeSlide, state.settings, prompt, visualUpliftEnabled]);
 
   const runVisualUplift = useCallback(async () => {
-    if (!VISUAL_UPLIFT_UI_ENABLED) return;
+    if (!visualUpliftEnabled) return;
     if (!activeSlide) return;
     const slideId = activeSlide.id;
     if (busySlideIds.has(slideId)) return;
@@ -6623,15 +6624,15 @@ Original request: ${userPrompt}`;
       setBusySlideIds(prev => { const next = new Set(prev); next.delete(slideId); return next; });
       setActiveQuickAction('');
     }
-  }, [activeSlide, busySlideIds, state.settings, state.theme, actions, visualUpliftDirection, imageVibe, closeVisualUpliftPanel]);
+  }, [activeSlide, busySlideIds, state.settings, state.theme, actions, visualUpliftDirection, imageVibe, closeVisualUpliftPanel, visualUpliftEnabled]);
 
   useEffect(() => {
     setShowVisualUpliftPanel(false);
   }, [activeSlide?.id]);
 
   useEffect(() => {
-    if (!VISUAL_UPLIFT_UI_ENABLED) setShowVisualUpliftPanel(false);
-  }, []);
+    if (!visualUpliftEnabled) setShowVisualUpliftPanel(false);
+  }, [visualUpliftEnabled]);
 
   if (!isOpen) return null;
 
@@ -6864,20 +6865,20 @@ Original request: ${userPrompt}`;
 
                     <button
                       type="button"
-                      className={`panel-action-btn panel-action-btn--uplift${showVisualUpliftPanel ? ' panel-action-btn--active' : ''}${!VISUAL_UPLIFT_UI_ENABLED ? ' panel-action-btn--feature-off' : ''}`}
+                      className={`panel-action-btn panel-action-btn--uplift${showVisualUpliftPanel ? ' panel-action-btn--active' : ''}${!visualUpliftEnabled ? ' panel-action-btn--feature-off' : ''}`}
                       disabled={
-                        !VISUAL_UPLIFT_UI_ENABLED
+                        !visualUpliftEnabled
                         || (activeSlide && busySlideIds.has(activeSlide.id))
                         || !hasAnyApiKey(state.settings)
                       }
                       title={
-                        !VISUAL_UPLIFT_UI_ENABLED
-                          ? 'Visual Uplift is temporarily unavailable'
+                        !visualUpliftEnabled
+                          ? 'Enable Visual Uplift in debug Settings to use this beta feature'
                           : hasAnyApiKey(state.settings)
                             ? 'Beta: polish the content frame with Gemini 3 Pro Image. Add optional visual style first.'
                             : 'Configure API access in Settings'
                       }
-                      aria-disabled={!VISUAL_UPLIFT_UI_ENABLED}
+                      aria-disabled={!visualUpliftEnabled}
                       onClick={toggleVisualUpliftPanel}
                     >
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -6886,8 +6887,8 @@ Original request: ${userPrompt}`;
                         <path d="M21 15l-5-5L5 21" />
                       </svg>
                       Visual Uplift
-                      <span className="panel-action-beta">{VISUAL_UPLIFT_UI_ENABLED ? 'Beta' : 'Off'}</span>
-                      {VISUAL_UPLIFT_UI_ENABLED && (
+                      <span className="panel-action-beta">{visualUpliftEnabled ? 'Beta' : 'Off'}</span>
+                      {visualUpliftEnabled && (
                         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                           <path d={showVisualUpliftPanel ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
                         </svg>
@@ -6917,7 +6918,7 @@ Original request: ${userPrompt}`;
                   </div>
                 </div>
 
-                {VISUAL_UPLIFT_UI_ENABLED && showVisualUpliftPanel && (
+                {visualUpliftEnabled && showVisualUpliftPanel && (
                   <>
                     <div className="panel-more-backdrop" onClick={closeVisualUpliftPanel} />
                     <div className="panel-uplift-popover" role="dialog" aria-label="Visual Uplift direction">

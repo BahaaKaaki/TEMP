@@ -1722,6 +1722,14 @@ export default function SettingsModal({ onClose }) {
           <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 6 }}>
             <input
               type="checkbox"
+              checked={settings.visualUpliftEnabled === true}
+              onChange={(e) => setSettings({ ...settings, visualUpliftEnabled: e.target.checked })}
+            />
+            Enable Visual Uplift button in the AI panel
+          </label>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, marginBottom: 6 }}>
+            <input
+              type="checkbox"
               checked={settings.visualUpliftIncludeTheme !== false}
               onChange={(e) => setSettings({ ...settings, visualUpliftIncludeTheme: e.target.checked })}
             />

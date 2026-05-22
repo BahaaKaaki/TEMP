@@ -65,6 +65,7 @@ const initialState = {
           'openai.gpt-5.4-nano',
           'openai.gpt-5.4-pro',
           'vertex_ai.gemini-3.1-pro-preview',
+          'vertex_ai.gemini-3.5-flash',
           'vertex_ai.gemini-3-pro-image-preview',
           'vertex_ai.gemini-3.1-flash-image-preview',
           'openai.gpt-image-1.5',
@@ -87,7 +88,7 @@ const initialState = {
     speedMode: 'premium',        // 'fast' | 'premium' — user-selectable generation tier
     // Model selections — format: "providerId:modelName"
     model: 'pwc:bedrock.anthropic.claude-opus-4-7',          // Premium slide generation (Claude Opus 4.7 on Bedrock)
-    fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // "Fast" generation (~5s/slide)
+    fastModel: 'pwc:vertex_ai.gemini-3.5-flash', // "Fast" generation (Fast speed mode)
     classifierModel: 'pwc:openai.gpt-5.4-mini',             // Tier 1 quick classifier (always fast)
     // Router / planner
     routerModel: 'pwc:openai.gpt-5.5',                      // Tier 2 full planner
@@ -142,6 +143,7 @@ const initialState = {
     reportSingleCall: false,
     reportSkipCompilation: false,
     imageModel: 'pwc:openai.gpt-image-1.5',
+    visualUpliftEnabled: false,
     visualUpliftIncludeTheme: true,
     visualUpliftIncludeVibe: true,
     enableAgenticMode: false,

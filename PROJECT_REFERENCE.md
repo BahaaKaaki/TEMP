@@ -455,12 +455,13 @@ Core state shape:
     freestyleVibe: '',            // Override for Vibe prompt section (empty = code default)
     freestyleWriting: '',         // Override for Writing Profile section (empty = code default)
     promptOverrides: {},          // Debug-only prompt overrides keyed by prompt surface
+    visualUpliftEnabled: false,   // Debug setting; enables the Visual Uplift AI-panel button
     selectedSkillId: null,        // Single active consulting-skill id (or null). Attached to router calls as _skillId; never applied to rendering/edits/transforms/validation. Manual-clear only.
     clientDesignProfileId: 'strategy', // Active client template profile. 'stc' applies STC theme, footer, layout, prompt, and PPTX profile contracts.
     clientProfileVersion: 'default',   // Active profile status/version marker for migrations and Settings display.
     // Model/search defaults
     model: 'pwc:bedrock.anthropic.claude-opus-4-7',  // Premium generation (Claude Opus 4.7 on Bedrock)
-    fastModel: 'pwc:vertex_ai.gemini-3.1-flash-lite-preview', // Fast generation (~5s/slide)
+    fastModel: 'pwc:vertex_ai.gemini-3.5-flash', // Fast generation (Fast speed mode)
     classifierModel: 'pwc:openai.gpt-5.4-mini',      // Unified triage classifier
     routerModel: 'pwc:openai.gpt-5.5',               // Tier 2 full planner
     pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7', // PPTX export code generation
@@ -834,7 +835,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 98. **DGE title/subtitle vertical stack**: Wrapped long titles overlapped the subtitle (subtitle was anchored for a single-line headline). DGE shell now uses a two-line title clamp with ellipsis, subtitle at y=108px, frame at y=132px (894x351), and updated layout contract / prompts so HTML preview and PPTX chrome hints stay consistent.
 99. **Slide Editor Rendered tab parity**: `SlideEditor.jsx` injects `data-client-profile` on the slide root for non-strategy profiles (matching `SlidePreview` chrome injection) and passes `activeSlide.customCSS` into `extractRelevantCSS` so the dump matches preview and includes component rules; comments no longer claim "only rules used by this slide."
 
-100. **Visual Uplift (image-content)**: `upliftSlideWithImage()` in `imageGeneration.js` keeps title/subtitle/footer, replaces `.frame` with a `data:image` `<img class="frame-image">`, and generates via fixed `vertex_ai.gemini-3-pro-image-preview` (not Settings image model). AIChatbot opens a **Visual direction** popover (optional text + suggestion chips) before **Apply Visual Uplift**; prompt override `visualUplift.system` in debug Settings. Frame image prompts share `buildFrameImagePaletteGuidance()` + full deck/profile theme tokens (Strategy& uses `state.theme` JSON, not a 4-color shortcut).
+100. **Visual Uplift (image-content)**: `upliftSlideWithImage()` in `imageGeneration.js` keeps title/subtitle/footer, replaces `.frame` with a `data:image` `<img class="frame-image">`, and generates via fixed `vertex_ai.gemini-3-pro-image-preview` (not Settings image model). Visual Uplift is off by default; debug Settings exposes `visualUpliftEnabled` to enable the AI-panel button, then AIChatbot opens a **Visual direction** popover (optional text + suggestion chips) before **Apply Visual Uplift**. Prompt override `visualUplift.system` remains in debug Settings. Frame image prompts share `buildFrameImagePaletteGuidance()` + full deck/profile theme tokens (Strategy& uses `state.theme` JSON, not a 4-color shortcut).
 101. **PPTX export for uplifted slides**: `pptxService.js` detects raster frame slides and embeds the PNG with `addImage` instead of sending HTML with `[embedded-image]` to the PPTX LLM. **Export Browser PDF** removed from `Header.jsx`.
 102. **Image-slide chat edits**: `slideUsesRasterFrameImage()` + `editRasterImageSlide()` route direct chat, Quick Fixes, and `improveSlideWithSearch` through image regeneration (Visual Uplift / Gemini when `imageEditPipeline: 'uplift'` or `.frame-image`; Settings image model for plan `image-content` / `image-full`). Slides store `imageEditPipeline` after uplift or `generateImageSlide`. User layout requests (e.g. "three columns") append a high-priority `USER LAYOUT REQUEST` block to the uplift prompt. Frame `data:image` blobs persist in IndexedDB (`slideFrameImageStorage.js`); localStorage stores placeholders only to avoid quota errors.
 103. **Daily usage email (on-demand)**: `backend/scripts/edwin_daily_usage_report.py` builds HTML for yesterday/today UTC sign-ins (distinct UPNs, OK/Fail counts) plus assigned-user and month-to-date counts; `--outlook-draft` opens Microsoft Outlook for manual send. Runbook `docs/runbooks/edwin-daily-usage-email.md`.

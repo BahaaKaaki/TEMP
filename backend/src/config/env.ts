@@ -47,6 +47,8 @@ const envSchema = z.object({
 
   // AI Proxy (PwC Shared Services)
   PWC_API_KEY: z.string().default(''),
+  /** Optional key scoped to global GPT Image models (openai.global.*). Chat/search/PPTX use PWC_API_KEY. */
+  PWC_IMAGE_API_KEY: z.string().default(''),
   PWC_API_BASE_URL: z.string().default('https://genai-sharedservice-emea.pwcinternal.com'),
 
   // Entra ID JWT validation (Route B: backend-only allowlist)

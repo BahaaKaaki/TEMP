@@ -542,7 +542,7 @@ Only the router attaches `_skillId`, so slide rendering, edits, transforms, and 
 ### Key Design Decisions
 
 - **In-memory fallback:** Both database and Redis fall back to in-memory storage, so the app runs without Docker/infrastructure
-- **API key server-side:** `PWC_API_KEY` never reaches the browser; backend injects it on proxy calls
+- **API keys server-side:** `PWC_API_KEY` for chat/search/regional images; `PWC_IMAGE_API_KEY` for `openai.global.gpt-image-*` only. Neither reaches the browser.
 - **Basic Auth:** Simple password gate for deployment; separate from JWT auth system
 
 ---

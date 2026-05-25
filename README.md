@@ -129,7 +129,7 @@ Browser (localhost:5173)
                                 (API-Key header added server-side)
 ```
 
-The frontend never touches the PwC API directly. All AI calls go through the backend proxy at `/api/ai/chat` (chat completions) and `/api/ai/responses` (search/Responses API). The backend injects the `API-Key` header from the `PWC_API_KEY` environment variable.
+The frontend never touches the PwC API directly. All AI calls go through the backend proxy at `/api/ai/chat` (chat completions) and `/api/ai/responses` (search/Responses API). The backend injects the `API-Key` header from `PWC_API_KEY`. Global GPT Image models (`openai.global.gpt-image-*`) use a separate `PWC_IMAGE_API_KEY` when configured; regional image fallbacks still use `PWC_API_KEY`.
 
 ## Environment Variables
 
@@ -137,7 +137,8 @@ The frontend never touches the PwC API directly. All AI calls go through the bac
 
 | Variable | Required | Description |
 |---|---|---|
-| `PWC_API_KEY` | Yes | PwC Shared Services API key |
+| `PWC_API_KEY` | Yes | PwC Shared Services API key (chat, search, regional image models) |
+| `PWC_IMAGE_API_KEY` | No | Dedicated key for `openai.global.gpt-image-*` only; required when using global GPT Image 2 |
 | `PWC_API_BASE_URL` | No | PwC API base URL (defaults to EMEA endpoint) |
 | `BASIC_AUTH_USER` | Yes | Login username |
 | `BASIC_AUTH_PASS` | Yes | Login password |
@@ -267,6 +268,7 @@ DNS A records required in the centrally managed Private DNS Zone `privatelink.az
 | `NODE_ENV` | `production` |
 | `PORT` | `8080` |
 | `PWC_API_KEY` | (set in App Service settings) |
+| `PWC_IMAGE_API_KEY` | (optional; global GPT Image models only) |
 | `PWC_API_BASE_URL` | `https://genai-sharedservice-emea.pwcinternal.com` |
 | `BASIC_AUTH_USER` | (set in App Service settings) |
 | `BASIC_AUTH_PASS` | (set in App Service settings) |

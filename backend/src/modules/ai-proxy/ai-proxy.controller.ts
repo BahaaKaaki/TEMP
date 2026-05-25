@@ -5,11 +5,19 @@ import { getSkillBody, getSkillMetadata } from '../skills/skills.service';
 
 const PWC_BASE = env.PWC_API_BASE_URL;
 
-function getPwcHeaders(): Record<string, string> {
+function getPwcHeaders(apiKey: string = env.PWC_API_KEY): Record<string, string> {
   return {
     'Content-Type': 'application/json',
-    'API-Key': env.PWC_API_KEY,
+    'API-Key': apiKey,
   };
+}
+
+/** Global GPT Image models use a dedicated key when PWC_IMAGE_API_KEY is set. */
+function resolveImageApiKey(model: string): string {
+  if (isGlobalImageModel(model) && env.PWC_IMAGE_API_KEY) {
+    return env.PWC_IMAGE_API_KEY;
+  }
+  return env.PWC_API_KEY;
 }
 
 /**
@@ -208,10 +216,11 @@ function sendImageProxyResponse(
   res.send(bodyText);
 }
 
-async function fetchPwCImages(body: Record<string, unknown>): Promise<Response> {
+async function fetchPwCImages(body: Record<string, unknown>, model: string): Promise<Response> {
+  const apiKey = resolveImageApiKey(model);
   return fetch(`${PWC_BASE}/v1/images/generations`, {
     method: 'POST',
-    headers: getPwcHeaders(),
+    headers: getPwcHeaders(apiKey),
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(600_000),
   });
@@ -229,9 +238,16 @@ export async function proxyImages(req: Request, res: Response): Promise<void> {
 
   const requested = String(req.body?.model || '');
 
+  if (isGlobalImageModel(requested) && !env.PWC_IMAGE_API_KEY) {
+    res.status(500).json({
+      error: 'PWC_IMAGE_API_KEY is not configured on the server (required for global image models)',
+    });
+    return;
+  }
+
   try {
     logger.debug('AI proxy: POST /v1/images/generations model=%s', requested);
-    let upstream = await fetchPwCImages({ ...req.body, model: requested });
+    let upstream = await fetchPwCImages({ ...req.body, model: requested }, requested);
     let contentType = upstream.headers.get('content-type') || 'application/json';
     let bodyText = await upstream.text();
     let used = requested;
@@ -239,7 +255,7 @@ export async function proxyImages(req: Request, res: Response): Promise<void> {
     if (!upstream.ok && isGeographyAuthError(upstream.status, bodyText) && isGlobalImageModel(requested)) {
       for (const fallbackModel of PWC_IMAGE_FALLBACK_MODELS) {
         logger.warn('Image proxy: geography block for %s, trying %s', requested, fallbackModel);
-        upstream = await fetchPwCImages({ ...req.body, model: fallbackModel });
+        upstream = await fetchPwCImages({ ...req.body, model: fallbackModel }, fallbackModel);
         contentType = upstream.headers.get('content-type') || 'application/json';
         bodyText = await upstream.text();
         used = fallbackModel;

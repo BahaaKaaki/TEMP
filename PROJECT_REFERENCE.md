@@ -1,7 +1,7 @@
 # Edwin Slides Creator -- Full Project Reference
 
 > Auto-generated project reference for AI assistant context.
-> Last updated: 2026-05-08
+> Last updated: 2026-05-25
 
 ---
 
@@ -467,6 +467,7 @@ Core state shape:
     pptxModel: 'pwc:bedrock.anthropic.claude-opus-4-7', // PPTX export code generation
     searchModel: 'openai.gpt-5.4-mini',              // Dedicated lightweight search model
     evidenceSearchModel: 'openai.gpt-5.4-mini',           // Per-step evidence search enrichment
+    imageModel: 'pwc:openai.global.gpt-image-2',        // Image generation (code-managed; proxy falls back on geography 401)
     providers: [...],            // Provider registry (PwC Shared Services)
     // ... many more settings (batch sizes, work levels, search, etc.)
   }

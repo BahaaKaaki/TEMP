@@ -13,6 +13,7 @@ import {
 } from '../../utils/clientDesignProfiles.js';
 import { DEFAULT_THEME } from '../../utils/themeUtils.js';
 import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
+import { persistFrameImageForSlide } from '../slideFrameImageStorage.js';
 
 const FRAME_CAPTURE_W = 904;
 const FRAME_CAPTURE_H = 366;
@@ -306,10 +307,13 @@ export async function generateImage(imagePrompt, settings, referenceImageDataUri
 
 function resolveGptImageParams(imageOptions = {}) {
   return {
-    quality: imageOptions.quality || 'medium',
+    quality: imageOptions.quality || 'high',
     size: imageOptions.size || '1536x1024',
   };
 }
+
+/** Frame / uplift images: max resolution supported by GPT Image on PwC proxy. */
+const FRAME_IMAGE_GEN_OPTIONS = { quality: 'high', size: '1536x1024' };
 
 async function _generateImageInner(imagePrompt, settings, referenceImageDataUri, imageModelRef, imageOptions = {}) {
   const { providerId, modelName } = parseModelRef(imageModelRef);
@@ -816,7 +820,12 @@ export async function upliftSlideWithImage(slide, settings, options = {}) {
 
   const imageDataUri = await generateImage(imagePrompt, settings, referenceImageDataUri, {
     modelRef: upliftModelRef,
+    ...FRAME_IMAGE_GEN_OPTIONS,
   });
+
+  if (slide.id && imageDataUri) {
+    await persistFrameImageForSlide(slide.id, imageDataUri);
+  }
 
   const safeTitle = displayTitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
   const safeSubtitle = subtitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -903,7 +912,10 @@ export async function editRasterImageSlide(slide, instruction, settings, options
 
 export async function generateImageSlide(instruction, settings, mode = 'content', contextInfo = {}) {
   const { layoutGuidance, vibe, footerBranding = 'Strategy&', slideNumber = 1, totalSlides, existingImageDataUri, imageModelRef, theme = null } = contextInfo;
-  const imageGenOptions = imageModelRef ? { modelRef: imageModelRef } : {};
+  const imageGenOptions = {
+    ...FRAME_IMAGE_GEN_OPTIONS,
+    ...(imageModelRef ? { modelRef: imageModelRef } : {}),
+  };
 
   const vibeContext = (vibe && !isBaseVibe(vibe)) ? getVibePromptContext(vibe) : '';
   const activeProfile = getActiveClientProfile(settings);
@@ -1027,10 +1039,12 @@ ${vibeContext ? `STYLE VARIATION: ${vibeContext}\n` : ''}${existingImageDataUri 
   if (mode === 'full') {
     // Full image slide — just generate the image (pass reference if editing)
     const imageDataUri = await generateImage(imagePrompt, settings, existingImageDataUri || null, imageGenOptions);
+    const slideId = `slide-${Date.now()}`;
+    if (imageDataUri) await persistFrameImageForSlide(slideId, imageDataUri);
     const title = (textInstruction || cleanInstruction).slice(0, 80).replace(/[<>"]/g, '').replace(/\[[^\]]*\]/g, '').trim();
 
     return {
-      id: `slide-${Date.now()}`,
+      id: slideId,
       title,
       html: `<div class="slide slide-image-full">
   <img src="${imageDataUri}" alt="${title}" class="slide-image-cover" />
@@ -1119,8 +1133,10 @@ Return ONLY valid JSON: {"title": "...", "subtitle": "...", "footer": ""}`;
     const safeTitle = title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeSubtitle = subtitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const safeFooter = footer.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const slideId = `slide-${Date.now()}`;
+    if (imageDataUri) await persistFrameImageForSlide(slideId, imageDataUri);
     return {
-      id: `slide-${Date.now()}`,
+      id: slideId,
       title,
       html: `<div class="slide">
   <h1 class="title">${safeTitle}</h1>

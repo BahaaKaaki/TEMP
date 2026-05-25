@@ -2,9 +2,12 @@ import { createContext, useContext, useReducer, useEffect, useRef, useCallback, 
 import { v4 as uuidv4 } from 'uuid';
 import { generateSlideSummary, extractTitleFromHTML, setApiMaxConcurrent } from '../services/aiService';
 import {
+  extractFrameImageDataUriFromHtml,
   hydrateSlidesFromLocalStorage,
+  persistFrameImageForSlide,
   prepareSlidesForLocalStorage,
   slideHtmlHasFrameImagePlaceholder,
+  stripSlidesFrameImagesForUnload,
 } from '../services/slideFrameImageStorage.js';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { getClientDesignProfile, getClientProfileTheme } from '../utils/clientDesignProfiles';
@@ -1791,14 +1794,22 @@ function getDefaultSlideHTML() {
 // Provider component
 export function SlideProvider({ children }) {
   const [state, dispatch] = useReducer(slideReducer, null, loadState);
-  const frameHydrateStartedRef = useRef(false);
+  // Backfill IndexedDB when localStorage still holds inline data URIs (legacy saves)
+  useEffect(() => {
+    for (const s of state.slides || []) {
+      const uri = extractFrameImageDataUriFromHtml(s?.html);
+      if (uri && s?.id) void persistFrameImageForSlide(s.id, uri);
+    }
+  }, [state.slides]);
 
   // Restore frame images from IndexedDB when localStorage holds placeholders
   useEffect(() => {
-    if (frameHydrateStartedRef.current) return;
     const slides = state.slides || [];
-    if (!slides.some((s) => slideHtmlHasFrameImagePlaceholder(s?.html))) return;
-    frameHydrateStartedRef.current = true;
+    const needsHydrate = slides.some(
+      (s) => slideHtmlHasFrameImagePlaceholder(s?.html) && !extractFrameImageDataUriFromHtml(s?.html),
+    );
+    if (!needsHydrate) return;
+
     let cancelled = false;
     (async () => {
       try {
@@ -1949,7 +1960,16 @@ export function SlideProvider({ children }) {
     const handleBeforeUnload = () => {
       try {
         const { selectedSlideIds, availableSkills, ...persistState } = state;
-        localStorage.setItem('slideGeneratorState', JSON.stringify(persistState));
+        const slides = stripSlidesFrameImagesForUnload(persistState.slides || []);
+        const deckVersions = (persistState.deckVersions || []).map((v) => ({
+          ...v,
+          slides: stripSlidesFrameImagesForUnload(v.slides || []),
+        }));
+        localStorage.setItem('slideGeneratorState', JSON.stringify({
+          ...persistState,
+          slides,
+          deckVersions,
+        }));
       } catch (e) {
         console.error('[SlideContext] Failed to save on unload:', e);
       }

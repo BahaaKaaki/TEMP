@@ -28,6 +28,10 @@ import { extractRelevantCSS } from './aiService';
 import { resolveCustomProperties } from './ai/cssExtraction';
 import { SLIDE_TEMPLATES } from '../utils/slideTemplates';
 import { decideTemplateUsage } from './templateMatcher';
+import {
+  resolveSlidesHtmlFrameImages,
+  slideHtmlHasFrameImagePlaceholder,
+} from './slideFrameImageStorage.js';
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { buildClientProfileContext, getActiveClientProfile, getClientProfileFooterBranding } from '../utils/clientDesignProfiles.js';
 import { parsePptxHints, stripPptxHintComments, formatHintsForPrompt } from './pptxHints';
@@ -1150,14 +1154,18 @@ function extractSlideRasterImageDataUri(html) {
 
 function shouldUseRasterFramePptxExport(slide) {
   const html = slide?.html || '';
-  const dataUri = extractSlideRasterImageDataUri(html);
-  if (!dataUri) return false;
+  if (extractSlideRasterImageDataUri(html)) return isRasterFrameSlideType(slide, html);
+  if (slideHtmlHasFrameImagePlaceholder(html)) return isRasterFrameSlideType(slide, html);
+  return false;
+}
+
+function isRasterFrameSlideType(slide, html) {
   const tid = slide?.templateId || slide?.type || '';
   if (tid === 'image-content' || tid === 'image-full') return true;
   return html.includes('frame-image');
 }
 
-function renderRasterFrameSlide(pptx, slide, slideNum, totalSlides, activeProfile = null, positions = null) {
+function renderRasterFrameSlide(pptx, slide, slideNum, totalSlides, activeProfile = null, positions = null, rasterDataUri = null) {
   const pptxSlide = pptx.addSlide();
   const doc = parseHTML(slide.html || '<div></div>');
   const profilePositions = positions || resolvePptxPositionsForProfile(activeProfile, null);
@@ -1174,7 +1182,7 @@ function renderRasterFrameSlide(pptx, slide, slideNum, totalSlides, activeProfil
     : { main: COLORS.main, secondary: COLORS.secondary, accent: COLORS.maroon, subtitle: COLORS.red };
 
   const isFullBleed = (slide?.templateId || slide?.type) === 'image-full';
-  const dataUri = extractSlideRasterImageDataUri(slide.html);
+  const dataUri = rasterDataUri || extractSlideRasterImageDataUri(slide.html);
 
   pptxSlide.addShape('rect', { x: 0, y: 0, w: 13.333, h: 7.5, fill: { color: 'FFFFFF' } });
 
@@ -1199,7 +1207,11 @@ function renderRasterFrameSlide(pptx, slide, slideNum, totalSlides, activeProfil
     const imgRect = isFullBleed
       ? { x: 0, y: 0, w: 13.333, h: 7.5 }
       : { x: framePos.x, y: framePos.y, w: framePos.w, h: framePos.h };
-    pptxSlide.addImage({ data: dataUri, ...imgRect });
+    pptxSlide.addImage({
+      data: dataUri,
+      ...imgRect,
+      sizing: { type: 'contain', w: imgRect.w, h: imgRect.h },
+    });
   }
 
   addSourceNote(pptxSlide, slide.html);
@@ -1717,6 +1729,8 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
 export async function exportToPPTX(slides, filename = 'presentation.pptx', settings = null, onProgress = null) {
   if (!slides || slides.length === 0) throw new Error('No slides to export');
 
+  slides = await resolveSlidesHtmlFrameImages(slides);
+
   const activeProfile = getActiveClientProfile(settings || {});
   const pptx = new PptxGenJS();
   applyPptxLayout(pptx, activeProfile);
@@ -1971,6 +1985,8 @@ export async function exportToPPTXStatic(slides, filename = 'presentation.pptx')
 
 export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, filename, settings = null, onProgress = null) {
   if (!slide) throw new Error('No slide to export');
+
+  [slide] = await resolveSlidesHtmlFrameImages([slide]);
 
   const activeProfile = getActiveClientProfile(settings || {});
   const pptx = new PptxGenJS();

@@ -15,10 +15,14 @@ export function slideHtmlHasFrameImagePlaceholder(html) {
   return typeof html === 'string' && html.includes(PLACEHOLDER_PREFIX);
 }
 
-function extractDataUriFromHtml(html) {
+export function extractFrameImageDataUriFromHtml(html) {
   if (!html) return null;
   const m = html.match(/src=["'](data:image\/[^"']+)["']/);
   return m ? m[1] : null;
+}
+
+function extractDataUriFromHtml(html) {
+  return extractFrameImageDataUriFromHtml(html);
 }
 
 function stripDataUrisFromHtml(html, slideId) {
@@ -70,6 +74,54 @@ async function getFrameImage(slideId) {
   });
 }
 
+/** Write frame blob to IndexedDB as soon as an image is generated (before debounced localStorage save). */
+export async function persistFrameImageForSlide(slideId, dataUri) {
+  if (!slideId || !dataUri?.startsWith('data:image/') || typeof indexedDB === 'undefined') return;
+  try {
+    await putFrameImage(slideId, dataUri);
+  } catch (e) {
+    console.warn('[FrameImageStorage] Failed to persist frame for slide %s: %s', slideId, e.message);
+  }
+}
+
+/** Inline data URI in HTML, or load from IndexedDB when HTML uses a placeholder. */
+export async function resolveFrameImageDataUri(slide) {
+  const html = slide?.html || '';
+  const inline = extractDataUriFromHtml(html);
+  if (inline) return inline;
+  if (!slide?.id || !slideHtmlHasFrameImagePlaceholder(html)) return null;
+  try {
+    return await getFrameImage(slide.id);
+  } catch (e) {
+    console.warn('[FrameImageStorage] resolve failed for slide %s: %s', slide.id, e.message);
+    return null;
+  }
+}
+
+/** Restore slide HTML with frame images for export/preview when only placeholders are stored. */
+export async function resolveSlideHtmlFrameImages(slide) {
+  if (!slide?.html || !slide?.id) return slide;
+  const dataUri = await resolveFrameImageDataUri(slide);
+  if (!dataUri || extractDataUriFromHtml(slide.html)) return slide;
+  return { ...slide, html: restoreDataUrisInHtml(slide.html, slide.id, dataUri) };
+}
+
+export async function resolveSlidesHtmlFrameImages(slides = []) {
+  return Promise.all(slides.map((s) => resolveSlideHtmlFrameImages(s)));
+}
+
+/** Synchronous strip for beforeunload (IndexedDB should already be populated). */
+export function stripSlidesFrameImagesForUnload(slides = []) {
+  return slides.map((slide) => {
+    const dataUri = extractDataUriFromHtml(slide?.html);
+    if (dataUri && slide?.id) {
+      void persistFrameImageForSlide(slide.id, dataUri);
+      return { ...slide, html: stripDataUrisFromHtml(slide.html, slide.id) };
+    }
+    return slide;
+  });
+}
+
 /** Strip base64 from slides for localStorage; store blobs in IndexedDB. */
 export async function prepareSlidesForLocalStorage(slides = []) {
   if (typeof indexedDB === 'undefined') return slides;
@@ -77,11 +129,7 @@ export async function prepareSlidesForLocalStorage(slides = []) {
   for (const slide of slides) {
     const dataUri = extractDataUriFromHtml(slide?.html);
     if (dataUri && slide?.id) {
-      try {
-        await putFrameImage(slide.id, dataUri);
-      } catch (e) {
-        console.warn('[FrameImageStorage] Failed to persist frame for slide %s: %s', slide.id, e.message);
-      }
+      await persistFrameImageForSlide(slide.id, dataUri);
       out.push({ ...slide, html: stripDataUrisFromHtml(slide.html, slide.id) });
     } else {
       out.push(slide);

@@ -208,7 +208,7 @@ Models are auto-fetched from the PwC Shared Services `/models` endpoint on first
 | Classifier | `openai.gpt-5.4-mini` |
 | Router | `openai.gpt-5.5` |
 | Step evidence search | `openai.gpt-5.4-mini` |
-| Image | `openai.global.gpt-image-2` (global; longer runs). Proxy auto-falls back to `openai.gpt-image-1.5` / `openai.eu.gpt-image-1.5` on geography 401. **Visual Uplift** is off by default and can be enabled from debug Settings; the code-level kill switch is `VISUAL_UPLIFT_UI_ENABLED` in `slide-generator/src/constants/featureFlags.js`. When enabled, Visual Uplift uses `vertex_ai.gemini-3-pro-image-preview`. Chat/Quick Fix edits on image slides use split HTML vs image routing (`shouldRouteEditThroughImagePipeline`). Uplifted/image-content slides export to PPTX by embedding the raster image (not re-translating HTML). |
+| Image | `openai.global.gpt-image-2` (global; longer runs). Proxy auto-falls back to `openai.gpt-image-1.5` / `openai.eu.gpt-image-1.5` on geography 401. **Visual Uplift** uses the same Image role model. Uplift is off by default; enable via debug Settings (`visualUpliftEnabled`; UI gate `VISUAL_UPLIFT_UI_ENABLED` in `featureFlags.js`). Chat/Quick Fix edits on image slides use split HTML vs image routing (`shouldRouteEditThroughImagePipeline`). Uplifted/image-content slides export to PPTX by embedding the raster image (not re-translating HTML). |
 | Report | `bedrock.anthropic.claude-opus-4-7` |
 | PPTX (export) | `bedrock.anthropic.claude-opus-4-7` |
 

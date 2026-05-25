@@ -17,9 +17,6 @@ import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 const FRAME_CAPTURE_W = 904;
 const FRAME_CAPTURE_H = 366;
 
-/** Visual Uplift always uses Gemini 3 Pro Image (chat + reference image), not Settings image model. */
-export const VISUAL_UPLIFT_IMAGE_MODEL = 'pwc:vertex_ai.gemini-3-pro-image-preview';
-
 /** Visual Uplift system prompt (placeholders: layoutGuidance, clientProfileName). */
 export const VISUAL_UPLIFT_PROMPT = `You are enhancing ONLY the content-area visual inside a strategy consulting slide.
 
@@ -743,7 +740,12 @@ export async function upliftSlideWithImage(slide, settings, options = {}) {
   } = options;
 
   if (!settings?.providers?.length && !settings?.imageModel) {
-    throw new Error('Visual Uplift requires the PwC provider in Settings.');
+    throw new Error('Visual Uplift requires the PwC provider and Image model in Settings.');
+  }
+
+  const upliftModelRef = settings.imageModel;
+  if (!upliftModelRef) {
+    throw new Error('Visual Uplift requires an Image model (Settings → Image role).');
   }
 
   const html = slide?.html || '';
@@ -761,7 +763,7 @@ export async function upliftSlideWithImage(slide, settings, options = {}) {
       footerBranding: footerBrandingOverride || 'Strategy&',
       slideNumber,
       existingImageDataUri: extractImageDataUri(html),
-      imageModelRef: VISUAL_UPLIFT_IMAGE_MODEL,
+      imageModelRef: upliftModelRef,
     });
   }
 
@@ -795,7 +797,7 @@ export async function upliftSlideWithImage(slide, settings, options = {}) {
   });
 
   recordPromptPayload('visualUplift', {
-    model: VISUAL_UPLIFT_IMAGE_MODEL,
+    model: upliftModelRef,
     layoutGuidance: layoutGuidance || null,
     clientProfileName: activeProfile.name || 'Strategy&',
     includeThemeContext,
@@ -809,11 +811,11 @@ export async function upliftSlideWithImage(slide, settings, options = {}) {
   });
 
   console.log(
-    `[upliftSlideWithImage] model=${VISUAL_UPLIFT_IMAGE_MODEL}, title="${displayTitle.slice(0, 60)}", hasRef=${!!referenceImageDataUri}, layoutGuidance="${layoutGuidance.slice(0, 120)}", promptLen=${imagePrompt.length}`
+    `[upliftSlideWithImage] model=${upliftModelRef}, title="${displayTitle.slice(0, 60)}", hasRef=${!!referenceImageDataUri}, layoutGuidance="${layoutGuidance.slice(0, 120)}", promptLen=${imagePrompt.length}`
   );
 
   const imageDataUri = await generateImage(imagePrompt, settings, referenceImageDataUri, {
-    modelRef: VISUAL_UPLIFT_IMAGE_MODEL,
+    modelRef: upliftModelRef,
   });
 
   const safeTitle = displayTitle.replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -855,7 +857,7 @@ export function slideUsesRasterFrameImage(slide) {
 
 /**
  * Edit a slide by regenerating its frame image (not HTML/CSS text edit).
- * Uplift-style frames use Gemini Visual Uplift; plan image slides use Settings image model.
+ * Uplift-style frames use Visual Uplift (settings.imageModel); plan image slides use the same Image role.
  */
 export async function editRasterImageSlide(slide, instruction, settings, options = {}) {
   const {

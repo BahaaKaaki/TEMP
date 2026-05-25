@@ -118,7 +118,6 @@ export {
   slideUsesRasterFrameImage,
   editRasterImageSlide,
   VISUAL_UPLIFT_PROMPT,
-  VISUAL_UPLIFT_IMAGE_MODEL,
   LAYOUT_GUIDANCE_MAP,
 } from './ai/imageGeneration.js';
 

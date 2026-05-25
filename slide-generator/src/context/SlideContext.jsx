@@ -142,7 +142,7 @@ const initialState = {
     reportFormat: 'json',
     reportSingleCall: false,
     reportSkipCompilation: false,
-    imageModel: 'pwc:openai.gpt-image-1.5',
+    imageModel: 'pwc:openai.global.gpt-image-2',
     visualUpliftEnabled: false,
     visualUpliftIncludeTheme: true,
     visualUpliftIncludeVibe: true,

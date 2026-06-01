@@ -1045,6 +1045,19 @@ export default function SettingsModal({ onClose }) {
         </label>
       </div>
 
+      <div style={{ ...boxStyle, borderLeft: '3px solid #2563eb' }}>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={settings.slideLayoutPolish !== false}
+            onChange={e => setSettings({ ...settings, slideLayoutPolish: e.target.checked })}
+            style={{ width: 14, height: 14 }}
+          />
+          <span style={{ fontWeight: 600, fontSize: 13 }}>Post-Generation Layout Polish</span>
+          <span style={{ fontSize: 10, color: '#999' }}>Fast model pass per slide before display (grids, alignment, overflow; chrome locked)</span>
+        </label>
+      </div>
+
       {/* ── Web Search / Custom Search Endpoint (DEBUG_MODE only) ── */}
       {DEBUG_MODE && (
         <>

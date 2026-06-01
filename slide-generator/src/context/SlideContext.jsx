@@ -151,6 +151,7 @@ const initialState = {
     visualUpliftIncludeVibe: true,
     enableAgenticMode: false,
     freestyleSelfCorrection: false,
+    slideLayoutPolish: true,
     // Web Search via backend proxy
     searchEnabled: true,
     searchEndpoint: '/api/ai/responses',

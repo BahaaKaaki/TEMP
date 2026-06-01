@@ -138,7 +138,7 @@ function getProfilePptxTypographyGuidance(profile) {
     return '- DGE typography: Noto Sans SemiBold for standard slide titles (PPTX: fontFace Noto Sans SemiBold, bold true; HTML: font-weight 600), Noto Sans Medium for subtitles, Noto Sans Regular for body and footer. Slide chrome title/subtitle text: black #000000, ~30pt title, ~12pt subtitle. Body/footer use the profile greys and brand blues only inside content—not for the top title bands.\n';
   }
   if (profile?.id === 'se') {
-    return '- SE typography: titles SE Medium 24pt color 0080FF; subtitles SE bold 16pt color 00FF86; body SE 12pt 1D252D; footer/page 8pt. Structural header fills 001F5E with white text. Multi-pillar content: pillar 1 #008BB9/#0080FF, pillar 2 #BFBFBF/#1D252D, pillar 3 #1F4A8E — never pink/coral.\n';
+    return '- SE typography: titles SE Medium 32pt color 0080FF; subtitles SE bold 18pt color 00FF86; body SE 12pt 1D252D; footer/page 8pt. Title band starts at y≈32 (below top accent bar). Structural header fills 001F5E with white text. Multi-pillar content: pillar 1 #008BB9/#0080FF, pillar 2 #BFBFBF/#1D252D, pillar 3 #1F4A8E — never pink/coral.\n';
   }
   if (profile?.id !== 'stc') return '';
   return '- STC typography: use title 24pt regular, subtitle 18pt regular, body 12pt regular, local labels/card titles 500-equivalent only when bold is needed, and footer/source/page numbers 8pt regular.\n- For STC Forward, avoid bold:true on normal body leads, subtitles, card titles, stage titles, and labels unless the CSS explicitly requires strong emphasis.\n';

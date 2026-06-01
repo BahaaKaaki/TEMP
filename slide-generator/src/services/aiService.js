@@ -103,6 +103,9 @@ export {
   polishSlideHtml,
   isSlideLayoutPolishEnabled,
   shouldPolishSlide,
+  DEFAULT_LAYOUT_POLISH_SYSTEM,
+  DEFAULT_LAYOUT_POLISH_USER_TEMPLATE,
+  buildLayoutPolishUserPrompt,
 } from './ai/slideLayoutPolish.js';
 
 // ── slideEditing.js — improve, template switch, batch edit ───────────────────

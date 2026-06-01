@@ -3,7 +3,7 @@ import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { parseGeneratedSlides } from './slideGeneration.js';
 import { slideUsesRasterFrameImage } from './imageGeneration.js';
 
-const DEFAULT_LAYOUT_POLISH_SYSTEM = `You are a slide layout QA engineer for 960x540 consulting slides (HTML + scoped CSS).
+export const DEFAULT_LAYOUT_POLISH_SYSTEM = `You are a slide layout QA engineer for 960x540 consulting slides (HTML + scoped CSS).
 
 Your job is to fix obvious VISUAL and LAYOUT defects in the body area. Typical fixes:
 - White space misuse (large empty gaps, unbalanced padding/margins)
@@ -28,7 +28,32 @@ You MAY change:
 
 Return ONLY the corrected <style> block(s) plus the complete .slide HTML. No markdown fences, no commentary.`;
 
+/** User message template. Placeholders: {instructionBlock}, {slideHtml} */
+export const DEFAULT_LAYOUT_POLISH_USER_TEMPLATE = `Polish this slide for layout quality. Fix frame/body issues only.{instructionBlock}
+
+{slideHtml}`;
+
 const CHROME_SELECTORS = ['h1.title', 'h2.subtitle', 'footer.footer'];
+
+/**
+ * @param {string} slideHtml
+ * @param {object} settings
+ * @param {{ instruction?: string }} [options]
+ * @returns {string}
+ */
+export function buildLayoutPolishUserPrompt(slideHtml, settings, options = {}) {
+  const instructionBlock = options.instruction
+    ? `\nOriginal slide intent (for layout context only — do not change chrome copy):\n${options.instruction.slice(0, 1200)}\n`
+    : '';
+  const template = applyPromptOverride(
+    settings,
+    'layoutPolish.user',
+    DEFAULT_LAYOUT_POLISH_USER_TEMPLATE
+  );
+  return template
+    .replace(/\{instructionBlock\}/g, instructionBlock)
+    .replace(/\{slideHtml\}/g, slideHtml);
+}
 
 /**
  * @param {object} settings
@@ -158,13 +183,7 @@ export async function polishSlideHtml(slideHtml, settings, options = {}) {
     DEFAULT_LAYOUT_POLISH_SYSTEM
   );
 
-  const focus = options.instruction
-    ? `\nOriginal slide intent (for layout context only — do not change chrome copy):\n${options.instruction.slice(0, 1200)}\n`
-    : '';
-
-  const userPrompt = `Polish this slide for layout quality. Fix frame/body issues only.${focus}
-
-${slideHtml}`;
+  const userPrompt = buildLayoutPolishUserPrompt(slideHtml, settings, options);
 
   recordPromptPayload('layoutPolish.system', {
     model: polishSettings.model,

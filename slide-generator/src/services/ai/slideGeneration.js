@@ -11,6 +11,7 @@ import { LAYOUT_GUIDANCE_MAP } from './imageGeneration.js';
 import { applyPromptOverride, appendPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { appendClientDesignContract, buildClientChartGeometryGuide, getActiveClientProfile, getClientProfileFooterBranding, rewritePromptGeometryForClientProfile } from '../../utils/clientDesignProfiles.js';
 import { isSlideLayoutPolishEnabled, polishGeneratedSlides } from './slideLayoutPolish.js';
+import { normalizeDenseFrameLayoutSlide } from '../../utils/slideFrameLayoutNormalize.js';
 
 // ============================================
 // FREESTYLE VALIDATION (brand compliance)
@@ -918,13 +919,14 @@ export function parseGeneratedSlides(content) {
       html = ensureSlideStructure(html);
       const title = extractTitle(html);
       const type = detectSlideType(html);
+      const layoutNorm = normalizeDenseFrameLayoutSlide({ html, customCSS: customCSS || '' });
       return [
         {
           html,
           title,
           type,
           summary: generateSlideSummary(html, type, title),
-          ...(customCSS ? { customCSS } : {}),
+          ...(layoutNorm.customCSS ? { customCSS: layoutNorm.customCSS } : {}),
         },
       ];
     }
@@ -947,12 +949,16 @@ export function parseGeneratedSlides(content) {
     trimmedHtml = ensureSlideStructure(trimmedHtml);
     const title = extractTitle(trimmedHtml) || `Slide ${index + 1}`;
     const type = detectSlideType(trimmedHtml);
+    const layoutNorm = normalizeDenseFrameLayoutSlide({
+      html: trimmedHtml,
+      customCSS: slideCSS || '',
+    });
     return {
       html: trimmedHtml,
       title,
       type,
       summary: generateSlideSummary(trimmedHtml, type, title),
-      ...(slideCSS ? { customCSS: slideCSS } : {}),
+      ...(layoutNorm.customCSS ? { customCSS: layoutNorm.customCSS } : {}),
     };
   });
 }

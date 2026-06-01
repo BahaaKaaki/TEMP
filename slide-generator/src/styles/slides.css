@@ -354,6 +354,39 @@
   width: calc(var(--source-w) - 124px);
 }
 
+/* STC profile: title / subtitle / frame geometry (theme cssVars also set these; rules
+   ensure correct band when preview/export omits themeToCSS). Body band is 931x340. */
+.slide[data-client-profile="stc"] {
+  font-family: "STC Forward", Arial, sans-serif;
+  color: #1D252D;
+}
+
+.slide[data-client-profile="stc"] .title {
+  left: 15px;
+  top: 28px;
+  width: 931px;
+  max-height: calc(24px * 1.15 * 2);
+  font: 400 24px/1.15 "STC Forward", Arial, sans-serif;
+  color: #4F008C;
+  overflow: hidden;
+}
+
+.slide[data-client-profile="stc"] .subtitle {
+  left: 15px;
+  top: 105px;
+  width: 931px;
+  min-height: 22px;
+  font: 400 18px/1.15 "STC Forward", Arial, sans-serif;
+  color: #FF375E;
+}
+
+.slide[data-client-profile="stc"] .frame {
+  left: 15px;
+  top: 134px;
+  width: 931px;
+  height: 340px;
+}
+
 /* PIF LDC profile: verified implementation-guide shell */
 .slide[data-client-profile="pif"] {
   font-family: "Fund Light", "Fund Regular", Arial, sans-serif;

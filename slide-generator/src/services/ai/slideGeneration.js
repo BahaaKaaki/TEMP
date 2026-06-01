@@ -10,6 +10,7 @@ import { currentDateString } from './router.js';
 import { LAYOUT_GUIDANCE_MAP } from './imageGeneration.js';
 import { applyPromptOverride, appendPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { appendClientDesignContract, buildClientChartGeometryGuide, getActiveClientProfile, getClientProfileFooterBranding, rewritePromptGeometryForClientProfile } from '../../utils/clientDesignProfiles.js';
+import { isSlideLayoutPolishEnabled, polishGeneratedSlides } from './slideLayoutPolish.js';
 
 // ============================================
 // FREESTYLE VALIDATION (brand compliance)
@@ -475,10 +476,18 @@ ${content}`;
     }
 
     // Parse the generated HTML into individual slides
-    const slides = parseGeneratedSlides(content);
+    let slides = parseGeneratedSlides(content);
 
     if (slides.length === 0) {
       throw new Error('No valid slides were generated. The AI may need more specific instructions. Please try again with more details.');
+    }
+
+    // V1 layout polish: fast second pass before the slide is shown (overflow, grids, alignment)
+    if (isSlideLayoutPolishEnabled(settings)) {
+      slides = await polishGeneratedSlides(slides, settings, {
+        instruction: prompt,
+        isFreestyle: Boolean(isFreestyle && !template),
+      });
     }
 
     return slides;

@@ -593,10 +593,10 @@
 
 .slide[data-client-profile="se"] .title {
   left: 35px;
-  top: 30px;
+  top: 32px;
   width: 890px;
   max-height: 66px;
-  font: 500 24px/1.15 "SE Medium", "SE", Arial, sans-serif;
+  font: 500 32px/1.15 "SE Medium", "SE", Arial, sans-serif;
   color: var(--heading, #0080FF);
   overflow: hidden;
 }
@@ -607,7 +607,7 @@
   width: 890px;
   height: 25px;
   max-height: 25px;
-  font: 700 16px/1.18 "SE", Arial, sans-serif;
+  font: 700 18px/1.18 "SE", Arial, sans-serif;
   color: var(--kicker, #00FF86);
   overflow: hidden;
 }
@@ -984,6 +984,14 @@
 }
 
 .slide[data-client-profile="se"][data-section]::before {
+  top: 16px;
+  left: 0;
+  min-width: 153px;
+  max-width: 360px;
+  height: 19px;
+  padding: 2px 10px;
+  line-height: 15px;
+  border-radius: 0;
   background: #001F5E;
   color: #FFFFFF;
   font: 500 8px/1.35 "SE Medium", "SE", Arial, sans-serif;
@@ -991,6 +999,14 @@
 
 .slide[data-client-profile="se"][data-section][data-subsection]::after,
 .slide[data-client-profile="se"]:not([data-section])[data-subsection]::after {
+  top: 16px;
+  left: var(--tracker-offset, 153px);
+  min-width: 120px;
+  max-width: 360px;
+  height: 19px;
+  padding: 2px 10px;
+  line-height: 15px;
+  border-radius: 0;
   background: #0080FF;
   color: #FFFFFF;
   font: 500 8px/1.35 "SE Medium", "SE", Arial, sans-serif;

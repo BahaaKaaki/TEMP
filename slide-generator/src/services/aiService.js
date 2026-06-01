@@ -98,6 +98,13 @@ export {
   extractTitleFromHTML,
 } from './ai/slideGeneration.js';
 
+export {
+  polishGeneratedSlides,
+  polishSlideHtml,
+  isSlideLayoutPolishEnabled,
+  shouldPolishSlide,
+} from './ai/slideLayoutPolish.js';
+
 // ── slideEditing.js — improve, template switch, batch edit ───────────────────
 export {
   improveSlide,

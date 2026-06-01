@@ -10,7 +10,8 @@ import { currentDateString } from './router.js';
 import { LAYOUT_GUIDANCE_MAP } from './imageGeneration.js';
 import { applyPromptOverride, appendPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { appendClientDesignContract, buildClientChartGeometryGuide, getActiveClientProfile, getClientProfileFooterBranding, rewritePromptGeometryForClientProfile } from '../../utils/clientDesignProfiles.js';
-import { isSlideLayoutPolishEnabled, polishGeneratedSlides } from './slideLayoutPolish.js';
+// Temporarily disabled — polish pass under active development (re-enable tomorrow).
+// import { isSlideLayoutPolishEnabled, polishGeneratedSlides } from './slideLayoutPolish.js';
 import { normalizeDenseFrameLayoutSlide } from '../../utils/slideFrameLayoutNormalize.js';
 
 // ============================================
@@ -484,12 +485,12 @@ ${content}`;
     }
 
     // V1 layout polish: fast second pass before the slide is shown (overflow, grids, alignment)
-    if (isSlideLayoutPolishEnabled(settings)) {
-      slides = await polishGeneratedSlides(slides, settings, {
-        instruction: prompt,
-        isFreestyle: Boolean(isFreestyle && !template),
-      });
-    }
+    // if (isSlideLayoutPolishEnabled(settings)) {
+    //   slides = await polishGeneratedSlides(slides, settings, {
+    //     instruction: prompt,
+    //     isFreestyle: Boolean(isFreestyle && !template),
+    //   });
+    // }
 
     return slides;
   } catch (error) {

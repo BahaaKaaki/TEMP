@@ -1125,14 +1125,14 @@ const SE_THEME = {
       '--title-font-size': '24px',
       '--title-font-weight': '500',
       '--title-line-height': '1.15',
-      '--subtitle-y': '100px',
+      '--subtitle-y': '101px',
       '--subtitle-w': '890px',
       '--subtitle-color': '#00FF86',
       '--subtitle-font-size': '16px',
       '--subtitle-font-weight': '700',
-      '--frame-y': '132px',
+      '--frame-y': '137px',
       '--frame-w': '890px',
-      '--frame-h': '360px',
+      '--frame-h': '353px',
       '--footer-x': '35px',
       '--footer-y': '500px',
       '--footer-bottom': 'auto',
@@ -1158,14 +1158,16 @@ const SE_LAYOUT_CONTRACT = {
     widthIn: 13.333,
     heightIn: 7.5,
   },
+  // Audited from bundled master slideLayout13/14/16 (standard content layouts).
   standardContent: {
-    logo: { x: 35, y: 500, w: 139, h: 26 },
+    logo: { x: 35, y: 511, w: 139, h: 11 },
     title: { x: 35, y: 30, w: 890, h: 66 },
-    subtitle: { x: 35, y: 100, w: 890, h: 25 },
-    body: { x: 35, y: 132, w: 890, h: 360 },
+    subtitle: { x: 35, y: 101, w: 890, h: 25 },
+    body: { x: 35, y: 137, w: 890, h: 353 },
     source: { x: 192, y: 500, w: 576, h: 22 },
     slideNumber: { x: 786, y: 511, w: 139, h: 11 },
     sectionTracker: { x: 0, y: 16, w: 153, h: 19 },
+    topAccentBar: { x: 315, y: 21, w: 594, h: 10 },
   },
   cover: {
     logo: { x: 35, y: 500, w: 139, h: 26 },
@@ -1175,12 +1177,13 @@ const SE_LAYOUT_CONTRACT = {
 };
 
 const SE_FREESTYLE_OVERRIDES = {
-  shell: `Use the SE (Saudi Electricity) master shell on a 960x540 canvas. These SE positions replace generic shell defaults:
-- h1.title: left 35px, top 30px, width about 890px, SE Medium 24px, bright mid blue #0080FF (not navy).
-- h2.subtitle: left 35px, top 100px, width about 890px, SE bold 16px, brand green #00FF86 when a subtitle is needed.
-- div.frame: left 35px, top 132px, width 890px, height 360px. Keep all exhibits inside this body frame.
-- Footer/source/page chrome sits in the bottom band around y=500-526. Do not add an extra SE logo in HTML — the bundled master already carries footer branding.
-- Top section tracker band sits around y=16px; do not place body content into the tracker band.
+  shell: `Use the SE (Saudi Electricity) master shell on a 960x540 canvas. These audited positions replace generic shell defaults (from native slideLayout13/14):
+- h1.title: left 35px, top 30px, width 890px, height up to 66px, SE Medium 24px, color #0080FF.
+- h2.subtitle: left 35px, top 101px, width 890px, height 25px, SE bold 16px, color #00FF86 when needed.
+- div.frame: left 35px, top 137px, width 890px, height 353px — all body content must stay inside this band (ends ~y=490).
+- Footer/source/page chrome: source band y≈500, page number y≈511; do not place frame content below y=490.
+- Top section tracker y≈16px (height 19px); optional top accent bar y≈21px — keep clear of title/subtitle.
+- Do not add an extra SE logo in HTML; the bundled master footer already includes branding.
 Use the SE standard content slide as the default. Cover/divider variants are allowed only when explicitly requested.`,
   theme: `Match the native SE master palette. Slide chrome: title text #0080FF, subtitle text #00FF86 (bold). Structural header bars and column caps use navy fill #001F5E with white text. Inside the frame for multi-column roadmaps: pillar 1 accents #008BB9 / #0080FF, pillar 2 accents #BFBFBF / #1D252D, pillar 3 accents #1F4A8E / #1C4792. Soft panels #DCE4F0 / #D6E2F6. Body copy #1D252D on white. Never use pink, coral, maroon, purple, or Strategy& red as pillar accents.`,
   vibe: `Modern Saudi energy utility style: confident, clean, institutional, and forward-looking. Use crisp blue geometry, thin rules, structured grids, and restrained iconography. Avoid generic Office chart palettes, maroon consulting styling, and playful consumer UI.`,
@@ -1217,8 +1220,9 @@ const SE_PPTX_CONTRACT = {
   logoPolicy: 'Do not add a duplicate SE logo — the bundled master footer already includes branding.',
   sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',
   pageNumberPolicy: 'Bottom-right page number in SE regular, muted neutral text.',
-  titlePolicy: 'Content title at x=35 y=30 w=890 on the 960x540 canvas, SE Medium, color 0080FF.',
-  subtitlePolicy: 'Use a compact bold green subtitle (#00FF86) at x=35 y=100 w=890 when the slide has a meaningful lens label.',
+  titlePolicy: 'Content title at x=35 y=30 w=890 h=66 on the 960x540 canvas, SE Medium, color 0080FF.',
+  subtitlePolicy: 'Subtitle at x=35 y=101 w=890 h=25, SE bold, color 00FF86, when the slide has a meaningful lens label.',
+  bodyPolicy: 'Body/content frame at x=35 y=137 w=890 h=353; do not extend content into the footer band below y=490.',
   hiddenPlaceholderPolicy: 'Do not surface hidden template scratch content or unrelated stakeholder logos unless explicitly requested.',
   borderWeightPt: { min: 0.5, max: 1.25 },
 };
@@ -1227,7 +1231,7 @@ const SE_PROMPT_CONTRACT = `# SE Client Design Contract
 
 ## Master
 - Use one Saudi Electricity (SE) master shell. Do not invent Strategy&, STC, PIF, DGE, FYA, or MoS variants.
-- Use the body frame at x=35 y=132 w=890 h=360 on the 960x540 canvas.
+- Use the body frame at x=35 y=137 w=890 h=353 on the 960x540 canvas (native body placeholder).
 - Keep the bottom footer/logo/page band and top tracker band clear.
 - Do not render Strategy& footer branding.
 
@@ -1864,6 +1868,7 @@ export const CLIENT_DESIGN_PROFILES = {
       },
       notes: [
         'Native deck is 13.333 x 7.5in widescreen mapped to 960 x 540px for canvas preview.',
+        'Canonical content geometry from slideLayout13/14: title 35,30,890x66; subtitle 35,101,890x25; body 35,137,890x353.',
         'Visible typography uses SE Medium for headlines; bundled SE TTF weights ship under backend/assets/fonts/se/.',
         'Logo raster extracted from ppt/media/image22.png in the bundled master.',
       ],
@@ -1887,10 +1892,10 @@ export const CLIENT_DESIGN_PROFILES = {
       },
       layoutBands: {
         logoSafeBottomPct: 8,
-        titleMaxBottomPct: 20,
-        subtitleMaxBottomPct: 26,
-        contentStartPct: 27,
-        footerStartPct: 92,
+        titleMaxBottomPct: 18,
+        subtitleMaxBottomPct: 24,
+        contentStartPct: 25,
+        footerStartPct: 93,
       },
       density: {
         maxBulletsStandard: 6,

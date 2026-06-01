@@ -276,7 +276,7 @@
   white-space: nowrap;
 }
 
-.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]) footer.footer:has(span.source) > span:last-child {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]):not([data-client-profile="se"]) footer.footer:has(span.source) > span:last-child {
   position: static;
   left: auto;
   top: auto;
@@ -294,7 +294,7 @@
   text-align: left;
 }
 
-.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]) footer.footer:has(span.source) .source {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]):not([data-client-profile="se"]) footer.footer:has(span.source) .source {
   min-width: 0;
   padding: 0 4px;
   overflow: hidden;
@@ -581,6 +581,77 @@
   text-align: right;
   color: #FFFFFF;
   font: 400 13px/1 "Sakkal Majalla", Arial, sans-serif;
+  white-space: nowrap;
+}
+
+/* SE profile: Saudi Electricity blue energy shell */
+.slide[data-client-profile="se"] {
+  font-family: "SE", "SE Medium", Arial, sans-serif;
+  color: #1D252D;
+  background: #FFFFFF;
+}
+
+.slide[data-client-profile="se"] .title {
+  left: 35px;
+  top: 30px;
+  width: 890px;
+  max-height: calc(24px * 1.15 * 2);
+  font: 500 24px/1.15 "SE Medium", "SE", Arial, sans-serif;
+  color: var(--heading, #0080FF);
+  overflow: hidden;
+}
+
+.slide[data-client-profile="se"] .subtitle {
+  left: 35px;
+  top: 100px;
+  width: 890px;
+  min-height: 25px;
+  font: 700 16px/1.18 "SE", Arial, sans-serif;
+  color: var(--kicker, #00FF86);
+}
+
+.slide[data-client-profile="se"] .frame {
+  left: 35px;
+  top: 132px;
+  width: 890px;
+  height: 360px;
+}
+
+.slide[data-client-profile="se"] footer.footer:has(span.source),
+.slide[data-client-profile="se"] footer.footer {
+  display: block;
+  font-family: "SE", Arial, sans-serif;
+}
+
+.slide[data-client-profile="se"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="se"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #5A6B7A;
+}
+
+.slide[data-client-profile="se"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #5A6B7A;
+  font: 400 8px/1 "SE", Arial, sans-serif;
   white-space: nowrap;
 }
 
@@ -908,4 +979,17 @@
   background: #073B16;
   color: #FFFFFF;
   font: 700 8px/1.35 "Sakkal Majalla", Arial, sans-serif;
+}
+
+.slide[data-client-profile="se"][data-section]::before {
+  background: #001F5E;
+  color: #FFFFFF;
+  font: 500 8px/1.35 "SE Medium", "SE", Arial, sans-serif;
+}
+
+.slide[data-client-profile="se"][data-section][data-subsection]::after,
+.slide[data-client-profile="se"]:not([data-section])[data-subsection]::after {
+  background: #0080FF;
+  color: #FFFFFF;
+  font: 500 8px/1.35 "SE Medium", "SE", Arial, sans-serif;
 }

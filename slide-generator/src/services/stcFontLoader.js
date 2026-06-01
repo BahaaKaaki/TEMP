@@ -21,9 +21,17 @@ const DGE_FONT_FACES = [
   { file: 'NotoSans-Bold.ttf', family: 'Noto Sans', weight: '700', route: 'dge-noto' },
 ];
 
+const SE_FONT_FACES = [
+  { file: 'SE-Regular.ttf', family: 'SE', weight: '400', route: 'se' },
+  { file: 'SE-Medium.ttf', family: 'SE Medium', weight: '500', route: 'se' },
+  { file: 'SE-SemiBold.ttf', family: 'SE', weight: '600', route: 'se' },
+  { file: 'SE-Bold.ttf', family: 'SE', weight: '700', route: 'se' },
+];
+
 let stcLoadPromise = null;
 let pifLoadPromise = null;
 let dgeLoadPromise = null;
+let seLoadPromise = null;
 
 function loadFontFaces(fontFaces, label) {
   if (typeof window === 'undefined' || typeof FontFace === 'undefined' || !document.fonts) {
@@ -90,9 +98,23 @@ export function loadDgeNotoFonts() {
   return dgeLoadPromise;
 }
 
+export function loadSeFonts() {
+  if (seLoadPromise) return seLoadPromise;
+
+  seLoadPromise = loadFontFaces(SE_FONT_FACES, 'SE')
+    .catch((err) => {
+      console.warn('[Fonts] SE fonts could not be loaded:', err.message);
+      seLoadPromise = null;
+      return false;
+    });
+
+  return seLoadPromise;
+}
+
 export function loadClientProfileFonts(profileId) {
   if (profileId === 'stc') return loadStcForwardFonts();
   if (profileId === 'pif') return loadPifFundFonts();
   if (profileId === 'dge') return loadDgeNotoFonts();
+  if (profileId === 'se') return loadSeFonts();
   return Promise.resolve(false);
 }

@@ -16,6 +16,7 @@ const PROFILE_DEFAULT_DISPLAY_NAMES: Record<string, string> = {
   dge: 'DGE Presentation Template master.pptx',
   fya: 'FYA Template for Edwin.pptx',
   mos: 'MoS Template.pptx',
+  se: 'SE Slide Repository - New Style.pptx',
 };
 
 function getProfileDefaultPptx(profileId: string): { path: string; displayName: string } | null {
@@ -46,7 +47,7 @@ export function uploadPptxMaster(req: Request, res: Response, next: NextFunction
   }
 }
 
-/** GET /api/templates/pptx-master?profileId=strategy|stc|pif|dge */
+/** GET /api/templates/pptx-master?profileId=strategy|stc|pif|dge|fya|mos|se */
 export function downloadPptxMaster(req: Request, res: Response, next: NextFunction): void {
   try {
     const profileId = typeof req.query.profileId === 'string' ? req.query.profileId : 'strategy';

@@ -64,7 +64,9 @@ async function loadProfileLogo(profile) {
 
 async function buildProfileChrome(profile) {
   if (!profile?.chrome) return null;
-  const logo = await loadProfileLogo(profile);
+  const logo = profile.chrome.injectExportLogo === false
+    ? null
+    : await loadProfileLogo(profile);
   return {
     footerText: profile.chrome.footerText || '',
     positions: profile.chrome.positions || null,

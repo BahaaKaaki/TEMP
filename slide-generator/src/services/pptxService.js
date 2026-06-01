@@ -49,6 +49,7 @@ const PROFILE_PPTX_FONT_FACE = {
   pif: 'Fund Light',
   dge: 'Noto Sans',
   mos: 'Sakkal Majalla',
+  se: 'SE Medium',
 };
 
 const DIRECT_PROFILE_CHROME_EXPORTS = new Set(['mos']);
@@ -135,6 +136,9 @@ function getProfilePptxTypographyGuidance(profile) {
   }
   if (profile?.id === 'dge') {
     return '- DGE typography: Noto Sans SemiBold for standard slide titles (PPTX: fontFace Noto Sans SemiBold, bold true; HTML: font-weight 600), Noto Sans Medium for subtitles, Noto Sans Regular for body and footer. Slide chrome title/subtitle text: black #000000, ~30pt title, ~12pt subtitle. Body/footer use the profile greys and brand blues only inside content—not for the top title bands.\n';
+  }
+  if (profile?.id === 'se') {
+    return '- SE typography: titles SE Medium 24pt color 0080FF; subtitles SE bold 16pt color 00FF86; body SE 12pt 1D252D; footer/page 8pt. Structural header fills 001F5E with white text. Multi-pillar content: pillar 1 #008BB9/#0080FF, pillar 2 #BFBFBF/#1D252D, pillar 3 #1F4A8E — never pink/coral.\n';
   }
   if (profile?.id !== 'stc') return '';
   return '- STC typography: use title 24pt regular, subtitle 18pt regular, body 12pt regular, local labels/card titles 500-equivalent only when bold is needed, and footer/source/page numbers 8pt regular.\n- For STC Forward, avoid bold:true on normal body leads, subtitles, card titles, stage titles, and labels unless the CSS explicitly requires strong emphasis.\n';
@@ -243,6 +247,7 @@ const PROFILE_PPTX_FONT_FACE_VARIANTS = {
   dge: ['Noto Sans SemiBold', 'Noto Sans Medium', 'Noto Sans Bold', 'Noto Sans Light', 'Noto Sans', 'Noto Kufi Arabic', 'Cairo'],
   stc: ['STC Forward'],
   pif: ['Fund Light', 'Fund Regular', 'Fund Med', 'Fund SemBd'],
+  se: ['SE Medium', 'SE', 'SE Regular', 'SE Bold', 'SE SemiBold'],
 };
 
 function enforcePptxFontFaceForProfile(codeString, profile) {
@@ -292,6 +297,24 @@ function enforcePptxColorsForProfile(codeString, profile) {
       ['4A4F57', '515360'],
       ['4B4F55', '1D252D'],
       ['E6E9EE', 'DBB8F3'],
+    ]);
+  } else if (profile?.id === 'se') {
+    replacements = new Map([
+      ['111111', '1D252D'],
+      ['222222', '1D252D'],
+      ['A32020', '0080FF'],
+      ['8E1E1E', '001F5E'],
+      ['FF375E', '00FF86'],
+      ['4F008C', '1F4A8E'],
+      ['F7F9FB', 'DCE4F0'],
+      ['EEF2F6', 'DCE4F0'],
+      ['F8E3E3', 'DCE4F0'],
+      ['4A4F57', '5A6B7A'],
+      ['4B4F55', '1D252D'],
+      ['E6E9EE', 'BFBFBF'],
+      ['DBB8F3', 'A6CAEC'],
+      ['ED7D31', '008BB9'],
+      ['F26B43', '1F4A8E'],
     ]);
   } else if (profile?.id === 'dge') {
     // Native DGE master palette (visible blues from header band gradient + observed shapes):

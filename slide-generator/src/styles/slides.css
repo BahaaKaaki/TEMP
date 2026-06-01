@@ -595,7 +595,7 @@
   left: 35px;
   top: 30px;
   width: 890px;
-  max-height: calc(24px * 1.15 * 2);
+  max-height: 66px;
   font: 500 24px/1.15 "SE Medium", "SE", Arial, sans-serif;
   color: var(--heading, #0080FF);
   overflow: hidden;
@@ -603,18 +603,20 @@
 
 .slide[data-client-profile="se"] .subtitle {
   left: 35px;
-  top: 100px;
+  top: 101px;
   width: 890px;
-  min-height: 25px;
+  height: 25px;
+  max-height: 25px;
   font: 700 16px/1.18 "SE", Arial, sans-serif;
   color: var(--kicker, #00FF86);
+  overflow: hidden;
 }
 
 .slide[data-client-profile="se"] .frame {
   left: 35px;
-  top: 132px;
+  top: 137px;
   width: 890px;
-  height: 360px;
+  height: 353px;
 }
 
 .slide[data-client-profile="se"] footer.footer:has(span.source),

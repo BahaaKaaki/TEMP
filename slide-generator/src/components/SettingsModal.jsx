@@ -1,6 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useSlides } from '../context/SlideContext';
-import { DEFAULT_SYSTEM_PROMPT, EDIT_SYSTEM_PROMPT, PROMPT_OVERRIDE_DEFS, VISUAL_UPLIFT_PROMPT, getLastPromptPayloads, setApiMaxConcurrent } from '../services/aiService';
+import {
+  DEFAULT_SYSTEM_PROMPT,
+  EDIT_SYSTEM_PROMPT,
+  PROMPT_OVERRIDE_DEFS,
+  VISUAL_UPLIFT_PROMPT,
+  DEFAULT_LAYOUT_POLISH_SYSTEM,
+  DEFAULT_LAYOUT_POLISH_USER_TEMPLATE,
+  getLastPromptPayloads,
+  setApiMaxConcurrent,
+} from '../services/aiService';
 import { DEFAULT_SHELL, DEFAULT_THEME, DEFAULT_VIBE, DEFAULT_WRITING, DEFAULT_SLIDE_HTML_GENERATOR_PROMPT, FREESTYLE_PRESETS } from '../services/ai/freestylePromptBuilder.js';
 import { getRouterSystemPrompt, TRIAGE_SYSTEM_PROMPT } from '../services/ai/router.js';
 import { DEFAULT_PPTX_SYSTEM_PROMPT, DEFAULT_PPTX_CODE_EXAMPLE } from '../services/pptxService';
@@ -373,6 +382,8 @@ const accentBadge = { fontSize: 9, background: '#8E1E1E', color: '#fff', padding
 // Token dropdown options
 const TOKEN_OPTIONS = [256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 65536, 128000];
 const TOKEN_OPTIONS_SMALL = [256, 500, 1000, 2000, 4000, 8000, 16000, 32000, 64000, 128000];
+
+const LAYOUT_POLISH_PROMPT_KEYS = new Set(['layoutPolish.system', 'layoutPolish.user']);
 
 // ─── Main Component ─────────────────────────────────────────────────────────
 
@@ -1054,7 +1065,7 @@ export default function SettingsModal({ onClose }) {
             style={{ width: 14, height: 14 }}
           />
           <span style={{ fontWeight: 600, fontSize: 13 }}>Post-Generation Layout Polish</span>
-          <span style={{ fontSize: 10, color: '#999' }}>Fast model pass per slide before display (grids, alignment, overflow; chrome locked)</span>
+          <span style={{ fontSize: 10, color: '#999' }}>Fast model pass per slide before display (grids, alignment, overflow; chrome locked). Edit prompts under Settings → Prompts → Layout Polish.</span>
         </label>
       </div>
 
@@ -1625,6 +1636,8 @@ export default function SettingsModal({ onClose }) {
       'slideGen.templateUser': '',
       'edit.system': EDIT_SYSTEM_PROMPT,
       'validation.system': 'You are a strict quality assurance expert for Strategy& consulting slide design.',
+      'layoutPolish.system': DEFAULT_LAYOUT_POLISH_SYSTEM,
+      'layoutPolish.user': DEFAULT_LAYOUT_POLISH_USER_TEMPLATE,
       'pptx.system': DEFAULT_PPTX_SYSTEM_PROMPT,
       'visualUplift.system': VISUAL_UPLIFT_PROMPT,
     };
@@ -1645,6 +1658,35 @@ export default function SettingsModal({ onClose }) {
       delete next[key];
       setSettings({ ...settings, promptOverrides: next });
     };
+
+    const renderPromptOverrideField = (def) => {
+      const value = promptOverrides[def.key] || '';
+      const isCustom = value.trim() !== '';
+      const defaultText = promptOverrideDefaults[def.key] || '';
+      return (
+        <div key={def.key} style={{ ...boxStyle, marginBottom: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+            <div>
+              <div style={{ fontWeight: 600, fontSize: 12 }}>{def.label} <span style={{ color: '#888', fontWeight: 400 }}>({def.key})</span></div>
+              <div style={{ fontSize: 10, color: '#888' }}>{def.description}{def.mode === 'append' ? ' Appended to the user prompt.' : ''}</div>
+            </div>
+            {isCustom && <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => resetPromptOverride(def.key)}>Reset</button>}
+          </div>
+          <details style={{ marginTop: 8 }}>
+            <summary style={{ cursor: 'pointer', fontSize: 11, color: '#666' }}>Default prompt</summary>
+            <pre style={{ maxHeight: 140, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 10, background: '#f7f7f7', padding: 8, borderRadius: 6 }}>{defaultText || '(no default postamble)'}</pre>
+          </details>
+          <textarea
+            value={value}
+            onChange={(e) => updatePromptOverride(def.key, e.target.value)}
+            placeholder={def.mode === 'append' ? 'Optional postamble appended to this prompt surface.' : 'Leave empty to use the default prompt.'}
+            style={{ width: '100%', minHeight: def.key === 'layoutPolish.system' ? 160 : 72, marginTop: 8, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4, borderRadius: 6, border: '1px solid var(--border)', padding: 8 }}
+          />
+        </div>
+      );
+    };
+
+    const layoutPolishPromptDefs = PROMPT_OVERRIDE_DEFS.filter((def) => LAYOUT_POLISH_PROMPT_KEYS.has(def.key));
 
     return (
       <>
@@ -1726,6 +1768,15 @@ export default function SettingsModal({ onClose }) {
 
         <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
 
+        <div style={sectionTitle}>Layout Polish (post-generation)</div>
+        <div style={{ ...hint, marginBottom: 8 }}>
+          Fast-model pass after slide generation (see Generation → Post-Generation Layout Polish). Overrides apply when polish is enabled.
+          User template placeholders: <code style={{ fontSize: 10 }}>{'{instructionBlock}'}</code>, <code style={{ fontSize: 10 }}>{'{slideHtml}'}</code>.
+        </div>
+        {layoutPolishPromptDefs.map(renderPromptOverrideField)}
+
+        <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '16px 0' }} />
+
         <div style={sectionTitle}>Visual Uplift</div>
         <div style={{ ...boxStyle, marginBottom: 12 }}>
           <div style={{ fontSize: 11, color: '#666', marginBottom: 8 }}>
@@ -1762,32 +1813,7 @@ export default function SettingsModal({ onClose }) {
         <div style={{ ...hint, marginBottom: 8 }}>
           Debug-only prompt registry. Overrides replace defaults unless labeled as a postamble, where they are appended to the user prompt.
         </div>
-        {PROMPT_OVERRIDE_DEFS.map(def => {
-          const value = promptOverrides[def.key] || '';
-          const isCustom = value.trim() !== '';
-          const defaultText = promptOverrideDefaults[def.key] || '';
-          return (
-            <div key={def.key} style={{ ...boxStyle, marginBottom: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 12 }}>{def.label} <span style={{ color: '#888', fontWeight: 400 }}>({def.key})</span></div>
-                  <div style={{ fontSize: 10, color: '#888' }}>{def.description}{def.mode === 'append' ? ' Appended to the user prompt.' : ''}</div>
-                </div>
-                {isCustom && <button className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => resetPromptOverride(def.key)}>Reset</button>}
-              </div>
-              <details style={{ marginTop: 8 }}>
-                <summary style={{ cursor: 'pointer', fontSize: 11, color: '#666' }}>Default prompt</summary>
-                <pre style={{ maxHeight: 140, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 10, background: '#f7f7f7', padding: 8, borderRadius: 6 }}>{defaultText || '(no default postamble)'}</pre>
-              </details>
-              <textarea
-                value={value}
-                onChange={(e) => updatePromptOverride(def.key, e.target.value)}
-                placeholder={def.mode === 'append' ? 'Optional postamble appended to this prompt surface.' : 'Leave empty to use the default prompt.'}
-                style={{ width: '100%', minHeight: 90, marginTop: 8, fontFamily: 'monospace', fontSize: 11, lineHeight: 1.4, borderRadius: 6, border: '1px solid var(--border)', padding: 8 }}
-              />
-            </div>
-          );
-        })}
+        {PROMPT_OVERRIDE_DEFS.filter((def) => !LAYOUT_POLISH_PROMPT_KEYS.has(def.key)).map(renderPromptOverrideField)}
 
         <div style={{ ...boxStyle, marginTop: 12 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -1923,9 +1949,83 @@ export default function SettingsModal({ onClose }) {
   );
 
   // ─── Simplified settings for non-debug users ──────────────────────────────
+  const renderLayoutPolishPromptSettings = () => {
+    const promptOverrides = settings.promptOverrides || {};
+    const updatePromptOverride = (key, value) => {
+      setSettings({
+        ...settings,
+        promptOverrides: { ...promptOverrides, [key]: value },
+      });
+    };
+    const resetPromptOverride = (key) => {
+      const next = { ...promptOverrides };
+      delete next[key];
+      setSettings({ ...settings, promptOverrides: next });
+    };
+    const fields = [
+      {
+        key: 'layoutPolish.system',
+        label: 'System prompt',
+        defaultText: DEFAULT_LAYOUT_POLISH_SYSTEM,
+        minHeight: 140,
+        hint: 'Replaces the layout QA system instructions.',
+      },
+      {
+        key: 'layoutPolish.user',
+        label: 'User message template',
+        defaultText: DEFAULT_LAYOUT_POLISH_USER_TEMPLATE,
+        minHeight: 72,
+        hint: 'Placeholders: {instructionBlock}, {slideHtml}',
+      },
+    ];
+    return (
+      <div style={{ padding: '16px 20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>
+        <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 4 }}>Layout polish prompts</div>
+        <div style={{ fontSize: 12, color: 'var(--meta, #888)', marginBottom: 12 }}>
+          Optional overrides for the fast post-generation layout pass. Leave empty to use built-in defaults.
+        </div>
+        {fields.map(({ key, label, defaultText, minHeight, hint }) => {
+          const value = promptOverrides[key] || '';
+          const isCustom = value.trim() !== '';
+          return (
+            <div key={key} style={{ marginBottom: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 600 }}>{label}</label>
+                {isCustom && (
+                  <button type="button" className="btn btn-ghost btn-sm" style={{ fontSize: 10 }} onClick={() => resetPromptOverride(key)}>Reset</button>
+                )}
+              </div>
+              <div style={{ fontSize: 10, color: '#888', marginBottom: 4 }}>{hint}</div>
+              <details style={{ marginBottom: 6 }}>
+                <summary style={{ cursor: 'pointer', fontSize: 11, color: '#666' }}>View default</summary>
+                <pre style={{ maxHeight: 100, overflow: 'auto', whiteSpace: 'pre-wrap', fontSize: 10, background: '#f7f7f7', padding: 8, borderRadius: 6, marginTop: 4 }}>{defaultText}</pre>
+              </details>
+              <textarea
+                value={value}
+                onChange={(e) => updatePromptOverride(key, e.target.value)}
+                placeholder="Leave empty to use the default."
+                style={{
+                  width: '100%',
+                  minHeight,
+                  fontFamily: 'monospace',
+                  fontSize: 11,
+                  lineHeight: 1.4,
+                  borderRadius: 6,
+                  border: '1px solid var(--border, #e2e8f0)',
+                  padding: 8,
+                }}
+              />
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const renderSimplifiedSettings = () => (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       {renderGenerationDefaults()}
+      {renderLayoutPolishPromptSettings()}
 
       {/* User Preferences */}
       <div style={{ padding: '20px', background: 'var(--zone1, #f8fafc)', borderRadius: 10, border: '1px solid var(--border, #e2e8f0)' }}>

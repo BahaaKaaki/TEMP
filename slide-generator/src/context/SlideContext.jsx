@@ -12,6 +12,7 @@ import {
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { getClientDesignProfile, getClientProfileTheme } from '../utils/clientDesignProfiles';
 import { normalizeSlideTypographyHTML, scopeCSS, unscopeCSS } from '../utils/cssScoping';
+import { normalizeDenseFrameLayoutSlide } from '../utils/slideFrameLayoutNormalize';
 import { generateSlideId } from '../utils/slideIds';
 // Import full CSS as raw string so it's available in state for AI and exports
 import SLIDES_CSS from '../styles/slides.css?raw';
@@ -220,6 +221,17 @@ const initialState = {
   },
 };
 
+function scopeDenseFrameLayoutForSlide(slide) {
+  if (!slide?.id || !slide?.html) return slide;
+  const { customCSS } = normalizeDenseFrameLayoutSlide({
+    html: slide.html,
+    customCSS: unscopeCSS(slide.customCSS || ''),
+  });
+  const scoped = scopeCSS(customCSS, slide.id);
+  if (scoped === (slide.customCSS || '')) return slide;
+  return { ...slide, customCSS: scoped };
+}
+
 // Load from localStorage
 function loadState() {
   try {
@@ -344,6 +356,8 @@ function loadState() {
           });
         }
       }
+
+      migratedSlides = migratedSlides.map(scopeDenseFrameLayoutForSlide);
 
       // MIGRATION v10 -> v11: freestyleGuide -> 3 section fields
       if (parsed.settings?.freestyleGuide && parsed.settings.freestyleGuide.trim()) {
@@ -607,10 +621,14 @@ function extractSectionLabelsFromHTML(html) {
 function slideReducer(state, action) {
   switch (action.type) {
     case ACTIONS.ADD_SLIDE: {
-      const html = normalizeSlideTypographyHTML(action.payload.html || getDefaultSlideHTML());
+      const slideId = generateSlideId(state.slides.map(s => s.id));
+      const layoutNorm = normalizeDenseFrameLayoutSlide({
+        html: action.payload.html || getDefaultSlideHTML(),
+        customCSS: action.payload.customCSS || '',
+      });
+      const html = normalizeSlideTypographyHTML(layoutNorm.html);
       const type = action.payload.type || 'custom';
       const title = action.payload.title || 'Untitled Slide';
-      const slideId = generateSlideId(state.slides.map(s => s.id));
       const storyPointId = action.payload.storyPointId || `sp-${slideId}`;
 
       // Detect layout type from HTML for agent awareness
@@ -622,7 +640,7 @@ function slideReducer(state, action) {
         type,
         html,
         layoutType, // Layout type for agent context (cards, bullets, timeline, kpi, grid, etc.)
-        customCSS: scopeCSS(action.payload.customCSS || '', slideId),
+        customCSS: scopeCSS(layoutNorm.customCSS || '', slideId),
         pptxExportCode: action.payload.pptxExportCode || '',
         pptxRendererCode: action.payload.pptxRendererCode || null, // JavaScript code for PPTX export
         summary: action.payload.summary || generateSlideSummary(html, type, title),
@@ -692,10 +710,14 @@ function slideReducer(state, action) {
     case ACTIONS.INSERT_SLIDE_AT: {
       // Insert a slide at a specific position (0 = first, -1 = last)
       const { position, skipActiveChange, ...slideData } = action.payload;
-      const html = normalizeSlideTypographyHTML(slideData.html || getDefaultSlideHTML());
+      const slideId = generateSlideId(state.slides.map(s => s.id));
+      const layoutNorm = normalizeDenseFrameLayoutSlide({
+        html: slideData.html || getDefaultSlideHTML(),
+        customCSS: slideData.customCSS || '',
+      });
+      const html = normalizeSlideTypographyHTML(layoutNorm.html);
       const type = slideData.type || 'custom';
       const title = slideData.title || 'Untitled Slide';
-      const slideId = generateSlideId(state.slides.map(s => s.id));
       const storyPointId = slideData.storyPointId || `sp-${slideId}`;
 
       const newSlide = {
@@ -703,7 +725,7 @@ function slideReducer(state, action) {
         title,
         type,
         html,
-        customCSS: scopeCSS(slideData.customCSS || '', slideId),
+        customCSS: scopeCSS(layoutNorm.customCSS || '', slideId),
         pptxExportCode: slideData.pptxExportCode || '',
         pptxRendererCode: slideData.pptxRendererCode || null, // JavaScript code for PPTX export
         summary: slideData.summary || generateSlideSummary(html, type, title),
@@ -808,9 +830,26 @@ function slideReducer(state, action) {
 
           // Always normalize updated CSS through unscope -> scope. This handles
           // template CSS and partially scoped model CSS consistently.
-          const scopedUpdates = normalizedUpdates.customCSS !== undefined && normalizedUpdates.customCSS
-            ? { ...normalizedUpdates, customCSS: scopeCSS(unscopeCSS(normalizedUpdates.customCSS), slide.id) }
-            : normalizedUpdates;
+          let scopedUpdates = normalizedUpdates;
+          if (normalizedUpdates.html !== undefined || normalizedUpdates.customCSS !== undefined) {
+            const layoutNorm = normalizeDenseFrameLayoutSlide({
+              html: newHtml,
+              customCSS: unscopeCSS(
+                normalizedUpdates.customCSS !== undefined
+                  ? normalizedUpdates.customCSS
+                  : slide.customCSS || ''
+              ),
+            });
+            scopedUpdates = {
+              ...normalizedUpdates,
+              customCSS: scopeCSS(layoutNorm.customCSS || '', slide.id),
+            };
+          } else if (normalizedUpdates.customCSS !== undefined && normalizedUpdates.customCSS) {
+            scopedUpdates = {
+              ...normalizedUpdates,
+              customCSS: scopeCSS(unscopeCSS(normalizedUpdates.customCSS), slide.id),
+            };
+          }
 
           return {
             ...slide,
@@ -1111,12 +1150,16 @@ function slideReducer(state, action) {
           sectionLabel = parsed.sectionLabel;
           subSectionLabel = parsed.subSectionLabel;
         }
+        const layoutNorm = normalizeDenseFrameLayoutSlide({
+          html,
+          customCSS: unscopeCSS(slide.customCSS || ''),
+        });
         return {
           id: newId,
           title,
           type,
           html,
-          customCSS: scopeCSS(unscopeCSS(slide.customCSS || ''), newId),
+          customCSS: scopeCSS(layoutNorm.customCSS || '', newId),
           pptxExportCode: slide.pptxExportCode || '',
           summary: slide.summary || generateSlideSummary(html, type, title),
           sectionLabel,

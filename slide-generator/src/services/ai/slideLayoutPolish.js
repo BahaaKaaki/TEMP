@@ -6,6 +6,7 @@ import {
   buildClientLayoutContractBlock,
   getActiveClientProfile,
 } from '../../utils/clientDesignProfiles.js';
+import { normalizeDenseFrameLayoutSlide } from '../../utils/slideFrameLayoutNormalize.js';
 
 export const DEFAULT_LAYOUT_POLISH_SYSTEM = `You are a slide layout QA engineer for 960x540 consulting slides (HTML + scoped CSS).
 
@@ -15,7 +16,15 @@ Your job is to fix obvious VISUAL and LAYOUT defects in the body area. Typical f
 - Misaligned cards/boxes (uneven tops, ragged columns, different widths when they should match)
 - Overlaps between elements
 - Overflow (text or boxes pushed outside div.frame or past the slide bounds)
+- Dense CSS grids/matrices where the last row is clipped (see DENSE GRIDS below)
 - Weak aesthetics (tighten spacing rhythm, align to a clear grid, balance visual weight)
+
+DENSE GRIDS / PORTFOLIO MATRICES / ROADMAP PHASE COLUMNS (inside div.frame only):
+- div.frame uses overflow:hidden — content taller than the body band is clipped (often the bottom grid row).
+- If .frame is display:flex; flex-direction:column and the table uses flex:1, the flex child needs min-height:0 (and usually min-width:0).
+- Use grid-template-rows with minmax(0, 1fr) (not bare 1fr) so rows can shrink below bullet-list min-content height.
+- Reduce cell padding and font-size slightly before allowing the grid to extend past the frame bottom.
+- Roadmap layouts (.roadmap > .timeline + .phases): .roadmap and .phases need min-height:0; phase cards need height:100% with .pBody { min-height:0 } so card bottoms are not clipped.
 
 STRICT — DO NOT CHANGE:
 - h1.title: same text, attributes, and chrome band (do not move or restyle the title block)
@@ -193,10 +202,14 @@ export function mergePolishedSlide(raw, originalSlide) {
   const polishedCombined = assembleSlideHtmlForPolish(polished);
   const mergedCombined = restoreSlideChrome(originalCombined, polishedCombined);
   const merged = parseGeneratedSlides(mergedCombined)[0] || polished;
+  const layoutNorm = normalizeDenseFrameLayoutSlide({
+    html: merged.html,
+    customCSS: merged.customCSS || originalSlide.customCSS || '',
+  });
   return {
     ...originalSlide,
     html: merged.html,
-    customCSS: merged.customCSS || originalSlide.customCSS,
+    customCSS: layoutNorm.customCSS || originalSlide.customCSS,
     title: originalSlide.title || merged.title,
     layoutPolished: true,
   };

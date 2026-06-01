@@ -105,7 +105,10 @@ export {
   shouldPolishSlide,
   DEFAULT_LAYOUT_POLISH_SYSTEM,
   DEFAULT_LAYOUT_POLISH_USER_TEMPLATE,
+  DEFAULT_STRATEGY_FRAME_GEOMETRY,
   buildLayoutPolishUserPrompt,
+  buildLayoutPolishGeometryBlock,
+  buildLayoutPolishSystemPrompt,
 } from './ai/slideLayoutPolish.js';
 
 // ── slideEditing.js — improve, template switch, batch edit ───────────────────

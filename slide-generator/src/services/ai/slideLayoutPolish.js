@@ -2,6 +2,10 @@ import { callWithModelFallback } from './apiClient.js';
 import { applyPromptOverride, recordPromptPayload } from './promptOverrides.js';
 import { parseGeneratedSlides } from './slideGeneration.js';
 import { slideUsesRasterFrameImage } from './imageGeneration.js';
+import {
+  buildClientLayoutContractBlock,
+  getActiveClientProfile,
+} from '../../utils/clientDesignProfiles.js';
 
 export const DEFAULT_LAYOUT_POLISH_SYSTEM = `You are a slide layout QA engineer for 960x540 consulting slides (HTML + scoped CSS).
 
@@ -24,9 +28,49 @@ STRICT — DO NOT CHANGE:
 You MAY change:
 - CSS in <style> blocks (scoped to this slide)
 - HTML structure and layout INSIDE div.frame only
-- Flex/grid, gaps, sizes, alignment, and overflow rules to fit the 890x353px frame band
+- Flex/grid, gaps, sizes, alignment, and overflow rules so all body content fits inside the active body/content band (coordinates are appended below — use those, not generic 904x366 assumptions)
 
 Return ONLY the corrected <style> block(s) plus the complete .slide HTML. No markdown fences, no commentary.`;
+
+/** Strategy& default when no client layoutContract is active. */
+export const DEFAULT_STRATEGY_FRAME_GEOMETRY = `ACTIVE SLIDE GEOMETRY (Strategy& default, 960x540 canvas):
+- h1.title band: x=28, y=24, w=904, h=66 (locked — do not move)
+- h2.subtitle band: x=28, y=95, w=904, h=25 (locked — do not move)
+- div.frame body band: x=28, y=127, w=904, h=366 — all layout fixes must keep content inside this rectangle
+- Footer/source band: y≈493–510; frame content must not enter the footer band`;
+
+/**
+ * Profile-aware title/subtitle/frame/footer coordinates for the polish model.
+ * @param {object} [settings]
+ * @returns {string}
+ */
+export function buildLayoutPolishGeometryBlock(settings = {}) {
+  const profile = getActiveClientProfile(settings);
+  const contract = buildClientLayoutContractBlock(profile);
+  if (contract) {
+    const label = profile?.name || profile?.id || 'active profile';
+    return `${contract}
+POLISH GEOMETRY RULES (${label}):
+- div.frame must align with the Standard body/content band above (same x, y, w, h).
+- Do not resize or relocate h1.title, h2.subtitle, or footer.footer bands.
+- No element inside .frame may extend below the body band bottom edge or outside its width.`;
+  }
+  return DEFAULT_STRATEGY_FRAME_GEOMETRY;
+}
+
+/**
+ * System prompt = user override (or default) + mandatory geometry block for active profile.
+ * @param {object} [settings]
+ * @returns {string}
+ */
+export function buildLayoutPolishSystemPrompt(settings = {}) {
+  const base = applyPromptOverride(
+    settings,
+    'layoutPolish.system',
+    DEFAULT_LAYOUT_POLISH_SYSTEM
+  );
+  return `${base}\n\n${buildLayoutPolishGeometryBlock(settings)}`;
+}
 
 /** User message template. Placeholders: {instructionBlock}, {slideHtml} */
 export const DEFAULT_LAYOUT_POLISH_USER_TEMPLATE = `Polish this slide for layout quality. Fix frame/body issues only.{instructionBlock}
@@ -177,11 +221,7 @@ export async function polishSlideHtml(slideHtml, settings, options = {}) {
     reasoningEffort: settings.layoutPolishReasoningEffort || 'low',
   };
 
-  const systemPrompt = applyPromptOverride(
-    settings,
-    'layoutPolish.system',
-    DEFAULT_LAYOUT_POLISH_SYSTEM
-  );
+  const systemPrompt = buildLayoutPolishSystemPrompt(settings);
 
   const userPrompt = buildLayoutPolishUserPrompt(slideHtml, settings, options);
 

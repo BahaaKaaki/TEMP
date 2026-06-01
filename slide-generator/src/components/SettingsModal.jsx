@@ -7,6 +7,7 @@ import {
   VISUAL_UPLIFT_PROMPT,
   DEFAULT_LAYOUT_POLISH_SYSTEM,
   DEFAULT_LAYOUT_POLISH_USER_TEMPLATE,
+  buildLayoutPolishSystemPrompt,
   getLastPromptPayloads,
   setApiMaxConcurrent,
 } from '../services/aiService';
@@ -1662,7 +1663,12 @@ export default function SettingsModal({ onClose }) {
     const renderPromptOverrideField = (def) => {
       const value = promptOverrides[def.key] || '';
       const isCustom = value.trim() !== '';
-      const defaultText = promptOverrideDefaults[def.key] || '';
+      const defaultText = def.key === 'layoutPolish.system'
+        ? buildLayoutPolishSystemPrompt({
+          ...settings,
+          promptOverrides: { ...promptOverrides, 'layoutPolish.system': '' },
+        })
+        : (promptOverrideDefaults[def.key] || '');
       return (
         <div key={def.key} style={{ ...boxStyle, marginBottom: 10 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -1772,6 +1778,7 @@ export default function SettingsModal({ onClose }) {
         <div style={{ ...hint, marginBottom: 8 }}>
           Fast-model pass after slide generation (see Generation → Post-Generation Layout Polish). Overrides apply when polish is enabled.
           User template placeholders: <code style={{ fontSize: 10 }}>{'{instructionBlock}'}</code>, <code style={{ fontSize: 10 }}>{'{slideHtml}'}</code>.
+          Profile title/subtitle/frame coordinates are appended automatically to the system prompt (see Default prompt preview).
         </div>
         {layoutPolishPromptDefs.map(renderPromptOverrideField)}
 

@@ -779,7 +779,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 
 59. **Auth session expiry UX**: MSAL silent token refresh failures and unrecovered backend 401s now surface a visible "Your session expired" prompt with a Microsoft sign-in action. Repeated `/api/whoami` 401s after automatic redirect no longer fall through to the editor as allowed; active-use failures appear as a persistent top-center banner styled from `app.css`.
 
-60. **Client profile in header**: Strategy&, STC, PIF, and DGE selection lives in `Header.jsx` as `ClientDesignProfileSwitch.jsx` (searchable dropdown, scales to many profiles). Template is **locked** once `slides.length > 0` (`UPDATE_SETTINGS` in `SlideContext.jsx`). User-facing PIF naming is **PIF**.
+60. **Client profile in header**: Strategy&, STC, PIF, DGE, FYA, MoS, and SE selection lives in `Header.jsx` as `ClientDesignProfileSwitch.jsx` (searchable dropdown, scales to many profiles). Template is **locked** once `slides.length > 0` (`UPDATE_SETTINGS` in `SlideContext.jsx`). User-facing PIF naming is **PIF**.
 
 60. **Cross-slide visual reference and GPT 5.5 router defaults**: AIChatbot now classifies slide/page mentions as targets versus visual references so requests like "make this slide like slide 3" keep the current slide as the edit target while passing slide 3 as reference HTML plus unscoped `customCSS`; the SmartAction target label and executed `slideIndex` are forced to stay aligned. Router planning defaults use `pwc:openai.gpt-5.5`.
 
@@ -840,6 +840,7 @@ No test files exist currently. `backend/package.json` has `"test": "vitest"` but
 101. **PPTX export for uplifted slides**: `pptxService.js` detects raster frame slides and embeds the PNG with `addImage` instead of sending HTML with `[embedded-image]` to the PPTX LLM. **Export Browser PDF** removed from `Header.jsx`.
 102. **Image-slide chat edits**: `slideUsesRasterFrameImage()` + `editRasterImageSlide()` route direct chat, Quick Fixes, and `improveSlideWithSearch` through image regeneration (Visual Uplift when `imageEditPipeline: 'uplift'` or `.frame-image`; same Image role for plan `image-content` / `image-full`). Slides store `imageEditPipeline` after uplift or `generateImageSlide`. Frame `data:image` blobs persist in IndexedDB (`slideFrameImageStorage.js`); localStorage stores placeholders only to avoid quota errors.
 103. **Daily usage email (on-demand)**: `backend/scripts/edwin_daily_usage_report.py` builds HTML for yesterday/today UTC sign-ins (distinct UPNs, OK/Fail counts) plus assigned-user and month-to-date counts; `--outlook-draft` opens Microsoft Outlook for manual send. Runbook `docs/runbooks/edwin-daily-usage-email.md`.
+104. **SE client template profile**: Saudi Electricity (SE) selectable profile in `clientDesignProfiles.js` with brand-guideline blues (#001F5E, #0080FF, #32C2FF), sparing #00FF86 accents, SE Medium/SE typography, layout bands from `SE Slide Repository - New Style.pptx`, bundled `backend/assets/client-templates/se/default-master.pptx` and `logo.png`, SE TTF weights under `backend/assets/fonts/se/`, backend routes `?profileId=se` and `/api/assets/fonts/se/`, canvas chrome in `slides.css` / `slidePreviewMeasureCss.js`, and PPTX font hints in `pptxService.js`.
 
 ---
 

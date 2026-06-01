@@ -1812,6 +1812,8 @@ function injectClientProfileChrome(html, profile, logoUrl) {
   );
   if (isSpecialMaster) return withProfile;
 
+  if (profile.chrome?.injectPreviewLogo === false) return withProfile;
+
   const wordmarkLabel = profile.id === 'pif' ? 'PIF' : profile.id === 'stc' ? 'stc' : (profile.navLabel || profile.name || profile.id);
   const logoMarkup = logoUrl
     ? `<img class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="${escapeHtmlAttr(profile.name || profile.id)}" />`

@@ -147,6 +147,17 @@ const DGE_FONT_FILES: Record<string, string> = {
   'NotoSans-SemiBold.ttf': 'NotoSans-SemiBold.ttf',
   'NotoSans-Bold.ttf': 'NotoSans-Bold.ttf',
 };
+const SE_FONT_ASSETS_DIR = path.join(process.cwd(), 'assets', 'fonts', 'se');
+const SE_FONT_FILES: Record<string, string> = {
+  'SE-Thin.ttf': 'SE-Thin.ttf',
+  'SE-ExtraLight.ttf': 'SE-ExtraLight.ttf',
+  'SE-Light.ttf': 'SE-Light.ttf',
+  'SE-Regular.ttf': 'SE-Regular.ttf',
+  'SE-Medium.ttf': 'SE-Medium.ttf',
+  'SE-SemiBold.ttf': 'SE-SemiBold.ttf',
+  'SE-Bold.ttf': 'SE-Bold.ttf',
+  'SE-ExtraBold.ttf': 'SE-ExtraBold.ttf',
+};
 const CLIENT_TEMPLATE_IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -192,6 +203,20 @@ app.get('/api/assets/fonts/dge-noto/:fileName', (req, res, next) => {
   res.setHeader('Content-Type', 'font/ttf');
   res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
   res.sendFile(path.join(DGE_FONT_ASSETS_DIR, safeFileName), (err) => {
+    if (err) next(err);
+  });
+});
+
+app.get('/api/assets/fonts/se/:fileName', (req, res, next) => {
+  const safeFileName = SE_FONT_FILES[req.params.fileName];
+  if (!safeFileName) {
+    res.status(404).json({ error: 'FONT_NOT_FOUND' });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'font/ttf');
+  res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
+  res.sendFile(path.join(SE_FONT_ASSETS_DIR, safeFileName), (err) => {
     if (err) next(err);
   });
 });

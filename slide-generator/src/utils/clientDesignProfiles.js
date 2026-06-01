@@ -1075,6 +1075,196 @@ const dgeStandardInches = {
   },
 };
 
+const SE_THEME = {
+  name: 'SE',
+  defaultVariant: 'se_blue_energy',
+  // Native master theme slots (theme1.xml): accent1 #001F5E, accent2/dk2 #0080FF,
+  // accent3 #00FF86 (subtitle), accent4 #008BB9, accent6 #BFBFBF.
+  colors: {
+    accent: '#001F5E',
+    accentHover: '#008BB9',
+    accentSoft: '#DCE4F0',
+    onAccent: '#FFFFFF',
+    heading: '#0080FF',
+    body: '#1D252D',
+    muted: '#5A6B7A',
+    page: '#FFFFFF',
+    surface: '#FFFFFF',
+    surfaceAlt: '#F2F2F2',
+    border: '#A6CAEC',
+    success: '#00FF86',
+    successSoft: '#E5FFF3',
+    warning: '#32C2FF',
+    warningSoft: '#E8F7FF',
+    danger: '#1F4A8E',
+    dangerSoft: '#DCE4F0',
+    info: '#008BB9',
+    neutral: '#BFBFBF',
+    coverDark: '#001F5E',
+    kicker: '#00FF86',
+    seDarkBlue: '#001F5E',
+    seMidBlue: '#0080FF',
+    seLightBlue: '#32C2FF',
+    seDeepBlue: '#0027B9',
+    seTeal: '#008BB9',
+    seGreen: '#00FF86',
+    sePanel: '#DCE4F0',
+    sePhaseGrey: '#BFBFBF',
+    sePhaseBlue: '#1F4A8E',
+  },
+  fonts: {
+    title: '"SE Medium", "SE", Arial, sans-serif',
+    heading: '"SE Medium", "SE", Arial, sans-serif',
+    body: '"SE", Arial, sans-serif',
+  },
+  layout: {
+    cssVars: {
+      '--left-x': '35px',
+      '--title-y': '30px',
+      '--title-w': '890px',
+      '--title-font-size': '24px',
+      '--title-font-weight': '500',
+      '--title-line-height': '1.15',
+      '--subtitle-y': '100px',
+      '--subtitle-w': '890px',
+      '--subtitle-color': '#00FF86',
+      '--subtitle-font-size': '16px',
+      '--subtitle-font-weight': '700',
+      '--frame-y': '132px',
+      '--frame-w': '890px',
+      '--frame-h': '360px',
+      '--footer-x': '35px',
+      '--footer-y': '500px',
+      '--footer-bottom': 'auto',
+      '--footer-w': '890px',
+      '--footer-font-size': '8px',
+      '--footer-padding-bottom': '0',
+      '--source-x': '192px',
+      '--source-y': '500px',
+      '--source-w': '576px',
+      '--source-h': '22px',
+      '--slide-num-x': '786px',
+      '--slide-num-y': '511px',
+      '--slide-num-w': '139px',
+      '--slide-num-h': '11px',
+    },
+  },
+};
+
+const SE_LAYOUT_CONTRACT = {
+  canvas: {
+    widthPx: 960,
+    heightPx: 540,
+    widthIn: 13.333,
+    heightIn: 7.5,
+  },
+  standardContent: {
+    logo: { x: 35, y: 500, w: 139, h: 26 },
+    title: { x: 35, y: 30, w: 890, h: 66 },
+    subtitle: { x: 35, y: 100, w: 890, h: 25 },
+    body: { x: 35, y: 132, w: 890, h: 360 },
+    source: { x: 192, y: 500, w: 576, h: 22 },
+    slideNumber: { x: 786, y: 511, w: 139, h: 11 },
+    sectionTracker: { x: 0, y: 16, w: 153, h: 19 },
+  },
+  cover: {
+    logo: { x: 35, y: 500, w: 139, h: 26 },
+    title: { x: 35, y: 120, w: 760, h: 120 },
+    subtitle: { x: 35, y: 250, w: 700, h: 40 },
+  },
+};
+
+const SE_FREESTYLE_OVERRIDES = {
+  shell: `Use the SE (Saudi Electricity) master shell on a 960x540 canvas. These SE positions replace generic shell defaults:
+- h1.title: left 35px, top 30px, width about 890px, SE Medium 24px, bright mid blue #0080FF (not navy).
+- h2.subtitle: left 35px, top 100px, width about 890px, SE bold 16px, brand green #00FF86 when a subtitle is needed.
+- div.frame: left 35px, top 132px, width 890px, height 360px. Keep all exhibits inside this body frame.
+- Footer/source/page chrome sits in the bottom band around y=500-526. Do not add an extra SE logo in HTML — the bundled master already carries footer branding.
+- Top section tracker band sits around y=16px; do not place body content into the tracker band.
+Use the SE standard content slide as the default. Cover/divider variants are allowed only when explicitly requested.`,
+  theme: `Match the native SE master palette. Slide chrome: title text #0080FF, subtitle text #00FF86 (bold). Structural header bars and column caps use navy fill #001F5E with white text. Inside the frame for multi-column roadmaps: pillar 1 accents #008BB9 / #0080FF, pillar 2 accents #BFBFBF / #1D252D, pillar 3 accents #1F4A8E / #1C4792. Soft panels #DCE4F0 / #D6E2F6. Body copy #1D252D on white. Never use pink, coral, maroon, purple, or Strategy& red as pillar accents.`,
+  vibe: `Modern Saudi energy utility style: confident, clean, institutional, and forward-looking. Use crisp blue geometry, thin rules, structured grids, and restrained iconography. Avoid generic Office chart palettes, maroon consulting styling, and playful consumer UI.`,
+  writing: `Write in concise executive energy-sector language: grids, sustainability, reliability, investment, digital, and national energy themes. Keep labels short and outcome-led.`,
+  css: `SE Medium for h1.title in #0080FF. Subtitle in bold #00FF86. Body in SE regular #1D252D. Column header bars: #001F5E fill, white label text. Pillar accents only from the SE blue/grey family (#008BB9, #0080FF, #BFBFBF, #1F4A8E, #1C4792) — no pink/coral fills.`,
+  pptx: `Export on a 13.333 x 7.5 in canvas using SE Medium / SE fonts and the bundled SE master. Do not inject a duplicate footer logo — the master already includes SE branding. Title color 0080FF, subtitle 00FF86, structural fills 001F5E.`,
+};
+
+const SE_COMPONENT_PATTERNS = [
+  {
+    name: 'energy_pillar_cards',
+    structure: 'White or pale-blue cards with dark-blue headers, mid-blue labels, and compact body copy.',
+    useWhen: 'Strategic pillars, initiatives, programs, and operating priorities.',
+    avoid: ['maroon Strategy& bars', 'purple STC styling', 'warm FYA cream cards'],
+  },
+  {
+    name: 'timeline_roadmap',
+    structure: 'Three-phase roadmap: navy #001F5E column headers, timeframe labels in #0080FF, pillar 1 accents #008BB9, pillar 2 #BFBFBF/#1D252D, pillar 3 #1F4A8E, objective panels on #DCE4F0.',
+    useWhen: 'Roadmaps, transformation phases, and delivery horizons.',
+    avoid: ['pink/coral pillar accents', 'dense unbounded lists', 'footer-band content', 'dominant full-slide green fills'],
+  },
+  {
+    name: 'insight_panel',
+    structure: 'Right-side insight column on pale-blue fill with white interior callout and dark-blue headline.',
+    useWhen: 'Key insights, executive takeaways, and synthesis slides.',
+    avoid: ['full-bleed photo without text contrast', 'oversized decorative icons'],
+  },
+];
+
+const SE_PPTX_CONTRACT = {
+  slideSize: { w: 13.333, h: 7.5 },
+  defaultFontFace: 'SE Medium',
+  allowedFontFaces: ['SE Medium', 'SE', 'SE Regular', 'SE Bold', 'SE SemiBold'],
+  logoPolicy: 'Do not add a duplicate SE logo — the bundled master footer already includes branding.',
+  sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',
+  pageNumberPolicy: 'Bottom-right page number in SE regular, muted neutral text.',
+  titlePolicy: 'Content title at x=35 y=30 w=890 on the 960x540 canvas, SE Medium, color 0080FF.',
+  subtitlePolicy: 'Use a compact bold green subtitle (#00FF86) at x=35 y=100 w=890 when the slide has a meaningful lens label.',
+  hiddenPlaceholderPolicy: 'Do not surface hidden template scratch content or unrelated stakeholder logos unless explicitly requested.',
+  borderWeightPt: { min: 0.5, max: 1.25 },
+};
+
+const SE_PROMPT_CONTRACT = `# SE Client Design Contract
+
+## Master
+- Use one Saudi Electricity (SE) master shell. Do not invent Strategy&, STC, PIF, DGE, FYA, or MoS variants.
+- Use the body frame at x=35 y=132 w=890 h=360 on the 960x540 canvas.
+- Keep the bottom footer/logo/page band and top tracker band clear.
+- Do not render Strategy& footer branding.
+
+## Theme
+- Slide chrome: title text #0080FF, subtitle text #00FF86 (bold). Structural bars/column headers: fill #001F5E, white text.
+- Frame content: pillar 1 #008BB9/#0080FF, pillar 2 #BFBFBF/#1D252D, pillar 3 #1F4A8E/#1C4792; panels #DCE4F0; body #1D252D. No pink/coral/maroon pillar accents.
+
+## Typography
+- Use SE Medium for titles and SE for body copy. Keep titles compact and institutional.
+
+## Components
+- Prefer pillar cards, roadmaps, KPI bands, comparison matrices, and insight panels inside the body frame.`;
+
+const SE_PPTX_FONTS = {
+  title: { fontFace: 'SE Medium', fontSize: 24, bold: false, color: '0080FF' },
+  subtitle: { fontFace: 'SE', fontSize: 16, bold: true, color: '00FF86' },
+  body: { fontFace: 'SE', fontSize: 12, bold: false, color: '1D252D' },
+  footer: { fontFace: 'SE', fontSize: 8, italic: false, bold: false, color: '5A6B7A' },
+  slideNum: { fontFace: 'SE', fontSize: 8, bold: false, color: '5A6B7A' },
+};
+
+const seStandardInches = {
+  logo: pxRectToInches(SE_LAYOUT_CONTRACT.standardContent.logo, SE_LAYOUT_CONTRACT.canvas),
+  title: { ...pxRectToInches(SE_LAYOUT_CONTRACT.standardContent.title, SE_LAYOUT_CONTRACT.canvas), font: SE_PPTX_FONTS.title },
+  subtitle: { ...pxRectToInches(SE_LAYOUT_CONTRACT.standardContent.subtitle, SE_LAYOUT_CONTRACT.canvas), font: SE_PPTX_FONTS.subtitle },
+  body: { ...pxRectToInches(SE_LAYOUT_CONTRACT.standardContent.body, SE_LAYOUT_CONTRACT.canvas), font: SE_PPTX_FONTS.body },
+  footer: { ...pxRectToInches(SE_LAYOUT_CONTRACT.standardContent.source, SE_LAYOUT_CONTRACT.canvas), font: SE_PPTX_FONTS.footer },
+  slideNum: { ...pxRectToInches(SE_LAYOUT_CONTRACT.standardContent.slideNumber, SE_LAYOUT_CONTRACT.canvas), font: SE_PPTX_FONTS.slideNum },
+  sectionTracker: {
+    ...pxRectToInches(SE_LAYOUT_CONTRACT.standardContent.sectionTracker, SE_LAYOUT_CONTRACT.canvas),
+    colors: { fill: '001F5E', subFill: '0080FF', text: 'FFFFFF', subText: 'FFFFFF' },
+    font: { fontFace: 'SE Medium', fontSize: 8, bold: false },
+    paddingX: 0.18,
+    textInset: 0.05,
+  },
+};
+
 export const CLIENT_DESIGN_PROFILES = {
   strategy: {
     schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
@@ -1608,6 +1798,107 @@ export const CLIENT_DESIGN_PROFILES = {
       },
       chrome: {
         requireLogo: true,
+        requirePageNumberNonCover: true,
+        requireSourceNonCover: false,
+        forbidHeavyFooterBar: true,
+        forbidAccidentalAppendixNavigation: true,
+      },
+    },
+  },
+  se: {
+    schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
+    id: 'se',
+    navLabel: 'SE',
+    name: 'Saudi Electricity',
+    description: 'SE template: SE custom fonts, blue energy palette, bottom-left logo, institutional content shell.',
+    status: 'brand-0.1',
+    footerBranding: '',
+    theme: SE_THEME,
+    layoutContract: SE_LAYOUT_CONTRACT,
+    freestyleOverrides: SE_FREESTYLE_OVERRIDES,
+    componentPatterns: SE_COMPONENT_PATTERNS,
+    pptxContract: SE_PPTX_CONTRACT,
+    promptContract: SE_PROMPT_CONTRACT,
+    designContract: SE_PROMPT_CONTRACT,
+    pptxMaster: {
+      mode: 'profile-bound',
+      templateId: PROFILE_TEMPLATE_SLOT.DEFAULT,
+      bundled: true,
+      storageKey: 'client-template:se:default',
+      serverSync: 'backend-profile-default',
+      serverProfileId: 'se',
+      forceBundledDefault: true,
+      useProfileChrome: true,
+      assetVersion: 'se-logo-wordmark-v1',
+      notes: 'Bundled SE master from backend assets; uploads stay profile-bound in local storage.',
+    },
+    chrome: {
+      footerText: '',
+      positions: seStandardInches,
+      injectPreviewLogo: false,
+      injectExportLogo: false,
+    },
+    evidence: {
+      sourceDecks: [
+        {
+          label: 'SE Slide Repository - New Style',
+          fileName: 'SE Slide Repository - New Style.pptx',
+          slides: 96,
+          role: 'bundled master and canonical SE visual system',
+        },
+        {
+          label: 'Brand Guidelines (EN)',
+          fileName: 'Brand-Guidelines-en.pdf',
+          role: 'color, logo, and typography authority',
+        },
+      ],
+      rawThemeSlots: {
+        dk1: '#000000',
+        dk2: '#001F5E',
+        lt1: '#F2F2F2',
+        accent1: '#1F4A8E',
+        accent2: '#0080FF',
+        accent3: '#32C2FF',
+        accent4: '#00FF86',
+        accent5: '#D6E2F6',
+      },
+      notes: [
+        'Native deck is 13.333 x 7.5in widescreen mapped to 960 x 540px for canvas preview.',
+        'Visible typography uses SE Medium for headlines; bundled SE TTF weights ship under backend/assets/fonts/se/.',
+        'Logo raster extracted from ppt/media/image22.png in the bundled master.',
+      ],
+    },
+    validationRules: {
+      requiredColors: ['#0080FF', '#00FF86', '#001F5E', '#008BB9', '#FFFFFF', '#1D252D'],
+      preferredSurfaceColors: ['#F2F2F2', '#D6E2F6', '#DCE4F0', '#CCE6FF', '#BFBFBF'],
+      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#F9F7ED', '#073B16', '#F26B43', '#FF375E'],
+      forbiddenDominantColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#F9F7ED', '#F26B43', '#ED7D31'],
+      disallowedFonts: ['Georgia', 'STC Forward', 'Fund Light', 'Noto Sans', 'Poppins', 'Aptos', 'Calibri'],
+      disallowedFooterText: ['Strategy&'],
+      minFontPx: 8,
+      targetBodyFontPx: 12,
+      fontSizesPt: {
+        titleStandard: { min: 22, max: 26 },
+        titleCover: { min: 32, max: 40 },
+        subtitle: { min: 14, max: 18 },
+        body: { min: 10, max: 12 },
+        bodyDense: { min: 8, max: 10 },
+        footer: { min: 7, max: 8 },
+      },
+      layoutBands: {
+        logoSafeBottomPct: 8,
+        titleMaxBottomPct: 20,
+        subtitleMaxBottomPct: 26,
+        contentStartPct: 27,
+        footerStartPct: 92,
+      },
+      density: {
+        maxBulletsStandard: 6,
+        maxModulesStandard: 6,
+        minBodyPt: 8,
+      },
+      chrome: {
+        requireLogo: false,
         requirePageNumberNonCover: true,
         requireSourceNonCover: false,
         forbidHeavyFooterBar: true,

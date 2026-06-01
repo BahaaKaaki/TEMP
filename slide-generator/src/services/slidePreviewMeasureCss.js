@@ -150,5 +150,30 @@ export function getSlideMeasureClientChromeCss() {
   font: 700 10px/1 "Sakkal Majalla", Arial, sans-serif;
   color: #FFFFFF;
 }
+
+.slide[data-client-profile="se"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="se"] .client-chrome-se-logo {
+  left: 35px;
+  top: 500px;
+  width: 139px;
+  height: 26px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="se"] .client-chrome-se-wordmark {
+  left: 35px;
+  top: 500px;
+  width: 139px;
+  height: 26px;
+  font: 500 12px/1 "SE Medium", "SE", Arial, sans-serif;
+  color: #001F5E;
+}
 `;
 }

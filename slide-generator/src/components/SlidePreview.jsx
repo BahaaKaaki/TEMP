@@ -14,6 +14,13 @@ import {
   getSlideMeasureClientChromeCss as getClientChromeCSS,
 } from '../services/slidePreviewMeasureCss.js';
 import {
+  getClientLogoAssetPath,
+  injectClientProfileChrome,
+  injectFooterBranding,
+  injectPageNumber,
+} from '../utils/slideChromeUtils.js';
+import { getClientProfileFooterBranding } from '../utils/clientDesignProfiles.js';
+import {
   filterRenderableSlideSources,
   isSearchEngineResultsUrl,
   isResearchCandidateSource,
@@ -234,11 +241,7 @@ export default function SlidePreview({ onSwitchToCode }) {
   }, [activeSlide?.id]);
 
   useEffect(() => {
-    const logoVersion = activeClientProfile?.pptxMaster?.assetVersion || activeClientProfile?.status || '1';
-    const hasBundledLogo = activeClientProfile?.chrome?.positions?.logo && activeClientProfile?.pptxMaster?.serverSync === 'backend-profile-default';
-    const logoAsset = hasBundledLogo
-      ? `/api/assets/client-templates/${activeClientProfile.id}/logo.png?v=${encodeURIComponent(logoVersion)}`
-      : null;
+    const logoAsset = getClientLogoAssetPath(activeClientProfile);
 
     if (!logoAsset) {
       setClientLogoUrl(null);
@@ -349,7 +352,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
         version: 1,
       });
-      await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename, null, state.theme);
+      await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename, null, state.theme, state.settings);
     } catch (err) {
       console.error('Failed to download PDF:', err);
     } finally {
@@ -621,6 +624,10 @@ export default function SlidePreview({ onSwitchToCode }) {
       html = html.replace(
         /class="slide([^"]*)"/,
         `class="slide$1" data-slide-id="${activeSlide.id}"`
+      );
+      html = injectFooterBranding(
+        html,
+        getClientProfileFooterBranding(state.settings, ''),
       );
       // Inject dynamic page number based on position in deck
       const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
@@ -1665,6 +1672,7 @@ export default function SlidePreview({ onSwitchToCode }) {
           combinedCSS={combinedCSS}
           activeClientProfile={activeClientProfile}
           clientLogoUrl={clientLogoUrl}
+          footerBranding={getClientProfileFooterBranding(state.settings, '')}
           onClose={() => setIsFullscreen(false)}
           onNavigate={(slideId) => actions.setActiveSlide(slideId)}
         />
@@ -1793,35 +1801,6 @@ function estimateTrackerOffset(sectionLabel, activeProfile = null) {
   return Math.min(max, Math.max(min, Math.round(labelLength * charWidth + base)));
 }
 
-function stripClientProfileChrome(html = '') {
-  return html
-    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-logo\b[^"]*"[^>]*>/gi, '')
-    .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
-    .replace(/\s*data-client-profile="[^"]*"/gi, '');
-}
-
-function injectClientProfileChrome(html, profile, logoUrl) {
-  const cleanedHtml = stripClientProfileChrome(html || '');
-  if (!profile?.id || profile.id === 'strategy' || !cleanedHtml) return cleanedHtml;
-
-  const isSpecialMaster = /\b(master-cover|master-blank|master-emptyPage)\b/i.test(cleanedHtml)
-    || /cover-slide|cover-branding|section-divider-slide|separator-slide/i.test(cleanedHtml);
-  const withProfile = cleanedHtml.replace(
-    /class="slide([^"]*)"/,
-    `class="slide$1" data-client-profile="${escapeHtmlAttr(profile.id)}"`
-  );
-  if (isSpecialMaster) return withProfile;
-
-  if (profile.chrome?.injectPreviewLogo === false) return withProfile;
-
-  const wordmarkLabel = profile.id === 'pif' ? 'PIF' : profile.id === 'stc' ? 'stc' : (profile.navLabel || profile.name || profile.id);
-  const logoMarkup = logoUrl
-    ? `<img class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="${escapeHtmlAttr(profile.name || profile.id)}" />`
-    : `<div class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-wordmark" data-no-edit>${escapeHtmlAttr(wordmarkLabel)}</div>`;
-  return withProfile.replace(/(<div\b[^>]*class="[^"]*\bslide\b[^"]*"[^>]*>)/i, `$1${logoMarkup}`);
-}
-
-
 // Inject data-section attribute for section tracker tab
 function injectSectionToHtml(html, sectionLabel) {
   if (!sectionLabel || !html) return html;
@@ -1845,20 +1824,18 @@ function injectSubSectionToHtml(html, subSectionLabel, sectionLabel, activeProfi
   );
 }
 
-// Dynamically inject the correct page number into the footer.
-// Targets the LAST <span> inside <footer class="footer">, which works for both
-// two-span (brand + page) and three-span (brand + source + page) layouts.
-function injectPageNumber(html, pageNumber, totalSlides) {
-  if (!html || !pageNumber) return html;
-  const pageText = String(pageNumber);
-  return html.replace(
-    /(<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*<span(?:\s[^>]*)?>)[^<]*(<\/span>\s*<\/footer>)/i,
-    `$1${pageText}$2`
-  );
-}
-
 // Fullscreen Modal Component with proper scaling and navigation
-function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, activeClientProfile, clientLogoUrl, onClose, onNavigate }) {
+function FullscreenModal({
+  slides,
+  currentSlideId,
+  theme,
+  combinedCSS,
+  activeClientProfile,
+  clientLogoUrl,
+  footerBranding = '',
+  onClose,
+  onNavigate,
+}) {
   const [scale, setScale] = useState(1);
   const [currentIndex, setCurrentIndex] = useState(() =>
     slides.findIndex(s => s.id === currentSlideId)
@@ -1882,6 +1859,7 @@ function FullscreenModal({ slides, currentSlideId, theme, combinedCSS, activeCli
   if (currentSlide?.subSectionLabel && slideHtml) {
     slideHtml = injectSubSectionToHtml(slideHtml, currentSlide.subSectionLabel, currentSlide.sectionLabel, activeClientProfile);
   }
+  slideHtml = injectFooterBranding(slideHtml, footerBranding);
   slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length);
   slideHtml = injectClientProfileChrome(slideHtml, activeClientProfile, clientLogoUrl);
   const fullscreenSlideRef = useRef(null);

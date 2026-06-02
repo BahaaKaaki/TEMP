@@ -158,7 +158,7 @@ export default function Header() {
       alert('No slides to download. Create some slides first!');
       return;
     }
-    downloadAsHTML(state.slides, state.sharedCSS, 'presentation.html', state.theme);
+    downloadAsHTML(state.slides, state.sharedCSS, 'presentation.html', state.theme, state.settings);
     setShowExportMenu(false);
   };
 
@@ -425,7 +425,8 @@ ${previewParts.join('\n\n')}`;
         state.sharedCSS,
         filename,
         (progress) => setExportProgress(progress),
-        state.theme
+        state.theme,
+        state.settings,
       );
 
       setTimeout(() => {
@@ -514,7 +515,7 @@ ${previewParts.join('\n\n')}`;
         nomenclaturePattern: state.settings.nomenclaturePattern || 'yyyymmdd_S&_{name}_V{version}',
         version: 1,
       });
-      await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename, null, state.theme);
+      await exportSingleSlideToPDF(activeSlide, state.sharedCSS, filename, null, state.theme, state.settings);
       setExportProgress({ phase: 'complete', message: 'Download complete!' });
       setTimeout(() => setExportProgress(null), 2000);
     } catch (err) {

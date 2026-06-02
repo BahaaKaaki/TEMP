@@ -257,14 +257,14 @@
 }
 
 /* Three-span footer (Strategy& / default): brand | .source | page — grid keeps brand out of the wide source band */
-.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="neom"]) footer.footer:has(span.source) {
   display: grid;
   grid-template-columns: max-content minmax(0, 1fr) max-content;
   column-gap: 10px;
   align-items: baseline;
 }
 
-.slide:not([data-client-profile="stc"]) footer.footer:has(span.source) > span:first-child {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="neom"]) footer.footer:has(span.source) > span:first-child {
   position: static;
   left: auto;
   top: auto;
@@ -276,7 +276,7 @@
   white-space: nowrap;
 }
 
-.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]):not([data-client-profile="se"]) footer.footer:has(span.source) > span:last-child {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]):not([data-client-profile="se"]):not([data-client-profile="neom"]) footer.footer:has(span.source) > span:last-child {
   position: static;
   left: auto;
   top: auto;
@@ -294,7 +294,7 @@
   text-align: left;
 }
 
-.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]):not([data-client-profile="se"]) footer.footer:has(span.source) .source {
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]):not([data-client-profile="se"]):not([data-client-profile="neom"]) footer.footer:has(span.source) .source {
   min-width: 0;
   padding: 0 4px;
   overflow: hidden;
@@ -698,11 +698,11 @@
 }
 
 .slide[data-client-profile="neom"] .title {
-  left: 29px;
-  top: 29px;
-  width: 902px;
+  left: var(--left-x);
+  top: var(--title-y);
+  width: var(--title-w);
   max-height: calc(20px * 1.1 * 2);
-  font: 700 20px/1.1 Arial, Helvetica, sans-serif;
+  font: 700 var(--title-font-size)/var(--title-line-height) Arial, Helvetica, sans-serif;
   color: #13100D;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -710,12 +710,12 @@
 }
 
 .slide[data-client-profile="neom"] .subtitle {
-  left: 29px;
-  top: 60px;
-  width: 902px;
+  left: var(--left-x);
+  top: var(--subtitle-y);
+  width: var(--subtitle-w);
   height: 25px;
   max-height: 25px;
-  font: 700 18px/1.1 Arial, Helvetica, sans-serif;
+  font: 700 var(--subtitle-font-size)/1.1 Arial, Helvetica, sans-serif;
   color: #13100D;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -723,23 +723,50 @@
 }
 
 .slide[data-client-profile="neom"] .frame {
-  left: 29px;
-  top: 90px;
-  width: 902px;
-  height: 410px;
+  left: var(--left-x);
+  top: var(--frame-y);
+  width: var(--frame-w);
+  height: var(--frame-h);
+}
+
+.slide[data-client-profile="neom"] .client-chrome {
+  position: absolute;
+  z-index: 11;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-logo {
+  left: 35px;
+  top: 505px;
+  width: 70px;
+  height: 19px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-wordmark {
+  left: 35px;
+  top: 505px;
+  width: 70px;
+  height: 19px;
+  font: 700 8px/1 Arial, Helvetica, sans-serif;
+  color: #13100D;
+  text-transform: uppercase;
 }
 
 .slide[data-client-profile="neom"] footer.footer:has(span.source),
 .slide[data-client-profile="neom"] footer.footer {
   display: block;
+  z-index: 12;
   font-family: Arial, Helvetica, sans-serif;
 }
 
-.slide[data-client-profile="neom"] footer.footer > span:first-child:empty {
+.slide[data-client-profile="neom"] footer.footer .source {
   display: none;
 }
 
-.slide[data-client-profile="neom"] footer.footer:not(:has(span.source)) > span:first-child {
+.slide[data-client-profile="neom"] footer.footer > span:first-child {
   position: absolute;
   left: calc(var(--source-x) - var(--footer-x));
   top: calc(var(--source-y) - var(--footer-y));

@@ -185,18 +185,18 @@ export function getSlideMeasureClientChromeCss() {
 
 .slide[data-client-profile="neom"] .client-chrome-neom-logo {
   left: 35px;
-  top: 517px;
-  width: 45px;
-  height: 12px;
+  top: 505px;
+  width: 70px;
+  height: 19px;
   object-fit: contain;
   object-position: left center;
 }
 
 .slide[data-client-profile="neom"] .client-chrome-neom-wordmark {
   left: 35px;
-  top: 517px;
-  width: 45px;
-  height: 12px;
+  top: 505px;
+  width: 70px;
+  height: 19px;
   font: 700 8px/1 Arial, Helvetica, sans-serif;
   color: #13100D;
   text-transform: uppercase;

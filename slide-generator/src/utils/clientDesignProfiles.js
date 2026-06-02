@@ -1315,14 +1315,14 @@ const NEOM_THEME = {
       '--title-font-size': '20px',
       '--title-font-weight': '700',
       '--title-line-height': '1.1',
-      '--subtitle-y': '60px',
+      '--subtitle-y': '77px',
       '--subtitle-w': '902px',
       '--subtitle-color': '#13100D',
       '--subtitle-font-size': '18px',
       '--subtitle-font-weight': '700',
-      '--frame-y': '90px',
+      '--frame-y': '110px',
       '--frame-w': '902px',
-      '--frame-h': '410px',
+      '--frame-h': '390px',
       '--footer-x': '29px',
       '--footer-y': '518px',
       '--footer-bottom': 'auto',
@@ -1352,10 +1352,10 @@ const NEOM_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    logo: { x: 35, y: 517, w: 45, h: 12 },
-    title: { x: 29, y: 29, w: 902, h: 22 },
-    subtitle: { x: 29, y: 60, w: 902, h: 25 },
-    body: { x: 29, y: 90, w: 902, h: 410 },
+    logo: { x: 35, y: 505, w: 70, h: 19 },
+    title: { x: 29, y: 29, w: 902, h: 44 },
+    subtitle: { x: 29, y: 77, w: 902, h: 25 },
+    body: { x: 29, y: 110, w: 902, h: 390 },
     source: { x: 336, y: 520, w: 288, h: 12 },
     slideNumber: { x: 935, y: 518, w: 26, h: 9 },
     activationLine: { x: 336, y: 520, w: 288, h: 12 },
@@ -1369,9 +1369,10 @@ const NEOM_LAYOUT_CONTRACT = {
 
 const NEOM_FREESTYLE_OVERRIDES = {
   shell: `Use the NEOM Authority master shell on 960x540 (13.333x7.5in native, 72px/in).
-- h1.title: left 29px, top 29px, width 902px, height up to 44px, Arial bold 20px, ALL CAPS, color #13100D.
-- h2.subtitle: left 29px, top 60px, width 902px, height 25px, Arial bold 18px, ALL CAPS, color #13100D when used (optional on many body slides).
-- div.frame: left 29px, top 90px, width 902px, height 410px — all exhibit content stays inside.
+- h1.title: left 29px, top 29px, width 902px, height up to 44px (max 2 lines), Arial bold 20px, ALL CAPS, color #13100D.
+- h2.subtitle: left 29px, top 77px, width 902px, height 25px, Arial bold 18px, ALL CAPS, color #13100D when used (optional on many body slides).
+- div.frame: left 29px, top 110px, width 902px, height 390px — all exhibit content stays inside.
+- Do not place logos in the title, subtitle, or top-left corner; the bottom-left logo is injected by preview chrome.
 - Footer activation line: "NEOM AUTHORITY ACTIVATION" centered at y≈520; page number bottom-right at x≈935.
 - Bottom-left logo is injected as preview chrome — do not duplicate a second logo in HTML unless explicitly asked.
 Reference slide 46 (NAFB5) for yellow column headers (#EBC03F fill, #13100D text) and three-column mandate layouts.`,
@@ -1410,9 +1411,9 @@ const NEOM_PPTX_CONTRACT = {
   logoPolicy: 'Master footer includes NEOM logo — do not inject a duplicate logo in export.',
   sourcePolicy: 'Footer center line reads NEOM AUTHORITY ACTIVATION unless user provides real source text.',
   pageNumberPolicy: 'Bottom-right page number, Arial 7-8pt, #13100D.',
-  titlePolicy: 'Title at x=29 y=29 w=902 h=22, Arial bold 20pt ALL CAPS, #13100D.',
-  subtitlePolicy: 'Subtitle at x=29 y=60 w=902 h=25, Arial bold 18pt ALL CAPS, #13100D, optional.',
-  bodyPolicy: 'Body frame x=29 y=90 w=902 h=410; keep content above footer band.',
+  titlePolicy: 'Title at x=29 y=29 w=902 h=44 (max 2 lines), Arial bold 20pt ALL CAPS, #13100D.',
+  subtitlePolicy: 'Subtitle at x=29 y=77 w=902 h=25, Arial bold 18pt ALL CAPS, #13100D, optional.',
+  bodyPolicy: 'Body frame x=29 y=110 w=902 h=390; keep content above footer band.',
   hiddenPlaceholderPolicy: 'Do not surface master placeholder instructional text.',
   borderWeightPt: { min: 0.5, max: 1 },
 };
@@ -1421,7 +1422,7 @@ const NEOM_PROMPT_CONTRACT = `# NEOM Authority Client Design Contract
 
 ## Master
 - NEOM Authority (NAFB5) shell only. Canvas 960x540 mapped from 13.333x7.5in.
-- Body frame: x=29 y=90 w=902 h=410.
+- Body frame: x=29 y=110 w=902 h=390.
 - Footer: NEOM AUTHORITY ACTIVATION centered; page number bottom-right; logo from master/chrome.
 
 ## Theme
@@ -2124,6 +2125,7 @@ export const CLIENT_DESIGN_PROFILES = {
     },
     chrome: {
       footerText: 'NEOM AUTHORITY ACTIVATION',
+      logoPlacement: 'bottom-left',
       positions: neomStandardInches,
       injectPreviewLogo: true,
       injectExportLogo: false,

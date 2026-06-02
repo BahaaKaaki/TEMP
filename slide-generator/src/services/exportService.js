@@ -4,6 +4,13 @@ import { saveAs } from 'file-saver';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import { themeToCSS } from '../utils/themeUtils';
+import { getClientProfileFooterBranding } from '../utils/clientDesignProfiles.js';
+import {
+  fetchClientLogoObjectUrl,
+  prepareSlideHtmlForRender,
+  resolveRenderProfile,
+} from '../utils/slideChromeUtils.js';
+import { authFetch } from './authFetch.js';
 
 // File naming nomenclature utility
 export function generateFileName(baseName, format, settings = {}) {
@@ -138,8 +145,10 @@ html, body {
 // Export BASE_SLIDE_CSS for use in AI prompts
 export { BASE_SLIDE_CSS };
 
-export function generateExportHTML(slides, sharedCSS, title = 'Presentation', theme = null) {
+export function generateExportHTML(slides, sharedCSS, title = 'Presentation', theme = null, settings = null, logoUrl = null) {
   const totalSlides = slides.length;
+  const profile = resolveRenderProfile(settings);
+  const footerBranding = getClientProfileFooterBranding(settings || {}, '');
 
   // Generate slide sections with labels
   const slideSections = slides
@@ -152,6 +161,12 @@ export function generateExportHTML(slides, sharedCSS, title = 'Presentation', th
       if (slide.id && !slideHtml.includes('data-slide-id')) {
         slideHtml = slideHtml.replace(/class="slide([^"]*)"/, `class="slide$1" data-slide-id="${slide.id}"`);
       }
+      slideHtml = prepareSlideHtmlForRender(slideHtml, {
+        profile,
+        logoUrl,
+        pageNumber: slideNumber,
+        footerBranding,
+      });
 
       return `
   <!-- Slide ${slideNumber}: ${slide.title || 'Untitled'} -->
@@ -225,8 +240,8 @@ function escapeHTML(str) {
     .replace(/"/g, '&quot;');
 }
 
-export function downloadAsHTML(slides, sharedCSS, filename = 'presentation.html', theme = null) {
-  const html = generateExportHTML(slides, sharedCSS, filename.replace('.html', ''), theme);
+export function downloadAsHTML(slides, sharedCSS, filename = 'presentation.html', theme = null, settings = null) {
+  const html = generateExportHTML(slides, sharedCSS, filename.replace('.html', ''), theme, settings);
   const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
   saveAs(blob, filename);
 }
@@ -273,9 +288,18 @@ export function parseImportedJSON(jsonString) {
 }
 
 // PDF Export - renders HTML slides to PDF using html2canvas
-export async function exportToPDF(slides, sharedCSS, filename = 'presentation.pdf', onProgress = null, theme = null) {
+export async function exportToPDF(slides, sharedCSS, filename = 'presentation.pdf', onProgress = null, theme = null, settings = null) {
   if (!slides || slides.length === 0) {
     throw new Error('No slides to export');
+  }
+
+  const profile = resolveRenderProfile(settings);
+  const footerBranding = getClientProfileFooterBranding(settings || {}, '');
+  let logoUrl = null;
+  try {
+    logoUrl = await fetchClientLogoObjectUrl(profile, authFetch);
+  } catch {
+    logoUrl = null;
   }
 
   // Create PDF with landscape 16:9 dimensions
@@ -315,13 +339,24 @@ export async function exportToPDF(slides, sharedCSS, filename = 'presentation.pd
     styleEl.textContent = BASE_SLIDE_CSS + '\n' + themeCSSBlock + '\n' + (sharedCSS || '') + '\n' + (slide.customCSS || '');
     container.appendChild(styleEl);
 
-    // Add slide content
-    const slideEl = document.createElement('div');
-    slideEl.className = 'slide';
-    slideEl.innerHTML = slide.html.includes('class="slide"')
-      ? slide.html.replace(/<div class="slide"[^>]*>/, '').replace(/<\/div>\s*$/, '')
-      : slide.html;
-    container.appendChild(slideEl);
+    const preparedHtml = prepareSlideHtmlForRender(slide.html || '', {
+      profile,
+      logoUrl,
+      pageNumber: i + 1,
+      footerBranding,
+    });
+
+    const markupHost = document.createElement('div');
+    markupHost.innerHTML = preparedHtml;
+    const slideRoot = markupHost.querySelector('.slide');
+    if (slideRoot) {
+      container.appendChild(slideRoot);
+    } else {
+      const slideEl = document.createElement('div');
+      slideEl.className = 'slide';
+      slideEl.innerHTML = preparedHtml;
+      container.appendChild(slideEl);
+    }
 
     document.body.appendChild(container);
 
@@ -359,13 +394,17 @@ export async function exportToPDF(slides, sharedCSS, filename = 'presentation.pd
     });
   }
 
+  if (logoUrl) {
+    URL.revokeObjectURL(logoUrl);
+  }
+
   // Save the PDF
   pdf.save(filename);
 }
 
 // Export a single slide to PDF
-export async function exportSingleSlideToPDF(slide, sharedCSS, filename = 'slide.pdf', onProgress = null, theme = null) {
-  return exportToPDF([slide], sharedCSS, filename, onProgress, theme);
+export async function exportSingleSlideToPDF(slide, sharedCSS, filename = 'slide.pdf', onProgress = null, theme = null, settings = null) {
+  return exportToPDF([slide], sharedCSS, filename, onProgress, theme, settings);
 }
 
 function getRenderedSlideSize(slideElement) {

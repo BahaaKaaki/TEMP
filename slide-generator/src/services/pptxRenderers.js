@@ -51,6 +51,11 @@ export function pptxFontSize(size, fallback = 10, floor = 10) {
 let _footerBranding = 'Strategy&';
 let _tplPositions = null;
 let _profileFontFace = null;
+let _exportProfileId = null;
+
+export function setPptxExportProfile(profile) {
+  _exportProfileId = profile?.id || null;
+}
 
 export function setFooterBranding(branding) {
   _footerBranding = branding ?? 'Strategy&';
@@ -75,6 +80,8 @@ function profilePositions() {
 export function addFooter(slide, slideNum, totalSlides, slideType) {
   if (!slide || !slideNum) return;
   if (slideType === 'cover') return;
+  // NEOM: page number + logo are injected at template merge (avoids duplicate with master/layout).
+  if (_exportProfileId === 'neom') return;
 
   const positions = profilePositions();
   const numPos = positions?.slideNum;

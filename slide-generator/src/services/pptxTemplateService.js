@@ -393,16 +393,53 @@ function stripPresentationSections(presXml, profile = null) {
  * layouts ship Picture 22/23 near 1in,0.35in). Master/footer logos stay below ~7in.
  */
 /** Remove master/LLM footer program label from NEOM exports (logo + page number only). */
-function stripNeomFooterActivationText(slideXml, profile = null) {
+function stripNeomFooterActivationText(slideXml, profile = null, options = {}) {
   if (profile?.id !== 'neom') return slideXml;
+  const stripAll = options.stripAllActivation === true;
   return String(slideXml || '').replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (spXml) => {
     if (!/(?:NEOM\s+AUTHORITY(?:\s+ACTIVATION)?|AUTHORITY\s+ACTIVATION)/i.test(spXml)) return spXml;
+    if (stripAll) return '';
+    const off = spXml.match(/<a:off x="(\d+)" y="(\d+)"/);
+    if (!off) return '';
+    const y = parseInt(off[2], 10) / EMU_PER_INCH;
+    if (y >= 5.5) return '';
+    return spXml;
+  });
+}
+
+/** Remove LLM-exported footer page numbers before merge injects a single canonical number. */
+function stripNeomFooterPageNumbers(slideXml, profile = null) {
+  if (profile?.id !== 'neom') return slideXml;
+  return String(slideXml || '').replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (spXml) => {
+    const text = [...spXml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(m => m[1]).join('').trim();
+    if (!/^\d{1,3}$/.test(text)) return spXml;
     const off = spXml.match(/<a:off x="(\d+)" y="(\d+)"/);
     if (!off) return spXml;
     const y = parseInt(off[2], 10) / EMU_PER_INCH;
-    if (y >= 6.0) return '';
+    if (y >= 6.5) return '';
     return spXml;
   });
+}
+
+async function sanitizeNeomTemplatePackage(tplZip, profile = null) {
+  if (profile?.id !== 'neom') return;
+  const partPaths = Object.keys(tplZip.files).filter((path) =>
+    /^ppt\/slideMasters\/slideMaster\d+\.xml$/.test(path)
+    || /^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(path),
+  );
+  for (const path of partPaths) {
+    let xml = await tplZip.files[path].async('string');
+    xml = stripNeomFooterActivationText(xml, profile, { stripAllActivation: true });
+    xml = stripTopBandPicturesFromSlideXml(xml, profile);
+    tplZip.file(path, xml);
+  }
+  const presPath = 'ppt/presentation.xml';
+  if (tplZip.files[presPath]) {
+    let presXml = await tplZip.files[presPath].async('string');
+    presXml = stripPresentationSections(presXml, profile);
+    tplZip.file(presPath, presXml);
+  }
+  console.log('[PPTX Template] NEOM: sanitized %d master/layout parts and presentation sections', partPaths.length);
 }
 
 function stripTopBandPicturesFromSlideXml(slideXml, profile = null) {
@@ -587,7 +624,7 @@ function allocateShapeIds(slideXml, count) {
   return ids;
 }
 
-function injectLogoPic(slideXml, logo, rId) {
+function injectLogoPic(slideXml, logo, rId, name = 'TemplateLogo') {
   if (!logo || !/<\/p:spTree>/.test(slideXml)) return slideXml;
   const [shapeId] = allocateShapeIds(slideXml, 1);
   const x = Math.round(logo.x * EMU_PER_INCH);
@@ -595,9 +632,30 @@ function injectLogoPic(slideXml, logo, rId) {
   const cx = Math.round(logo.w * EMU_PER_INCH);
   const cy = Math.round(logo.h * EMU_PER_INCH);
 
-  const pic = `<p:pic><p:nvPicPr><p:cNvPr id="${shapeId}" name="TemplateLogo"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
+  const pic = `<p:pic><p:nvPicPr><p:cNvPr id="${shapeId}" name="${name}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr><p:blipFill><a:blip r:embed="${rId}"/><a:stretch><a:fillRect/></a:stretch></p:blipFill><p:spPr><a:xfrm><a:off x="${x}" y="${y}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>`;
 
   return insertIntoSlideShapeTree(slideXml, pic);
+}
+
+function injectNeomFooterChrome(slideXml, logo, iconLogo, rIdLogo, rIdIcon, slideNumber, positions) {
+  if (profileMissingNeomPositions(positions)) return slideXml;
+  if (!/<\/p:spTree>/.test(slideXml)) return slideXml;
+  const [pageId] = allocateShapeIds(slideXml, 1);
+  const slideNum = positions.slideNum || {};
+  const pageText = escapeXmlAttr(String(slideNumber || ''));
+  const page = `<p:sp><p:nvSpPr><p:cNvPr id="${pageId}" name="NeomPageNumber"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(slideNum.x ?? 12.57)}" y="${emu(slideNum.y ?? 7.19)}"/><a:ext cx="${emu(slideNum.w ?? 0.36)}" cy="${emu(slideNum.h ?? 0.12)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="none" rtlCol="0" anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="r"/><a:r><a:rPr lang="en-US" sz="800"><a:solidFill><a:srgbClr val="13100D"/></a:solidFill><a:latin typeface="Arial"/><a:ea typeface="Arial"/><a:cs typeface="Arial"/></a:rPr><a:t>${pageText}</a:t></a:r></a:p></p:txBody></p:sp>`;
+  let next = insertIntoSlideShapeTree(slideXml, page);
+  if (iconLogo?.image && rIdIcon) {
+    next = injectLogoPic(next, iconLogo, rIdIcon, 'NeomFooterIcon');
+  }
+  if (logo?.image && rIdLogo) {
+    next = injectLogoPic(next, logo, rIdLogo, 'NeomFooterLogo');
+  }
+  return next;
+}
+
+function profileMissingNeomPositions(positions) {
+  return !positions?.slideNum;
 }
 
 function emu(valueInches) {
@@ -1000,6 +1058,8 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   const slideCount = genSlideFiles.length;
   console.log('[PPTX Template] Generated slide count:', slideCount);
 
+  await sanitizeNeomTemplatePackage(tplZip, profile);
+
   // ── Step 3: Determine target slide layout from template ─────────────────
   const targetLayoutNum = await pickBestLayout(tplZip, profile);
   console.log('[PPTX Template] Using slideLayout' + targetLayoutNum);
@@ -1018,11 +1078,22 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
   // ── Step 4a: Write logo media file if chrome provides one ───────────────
   const LOGO_RID = 'rId900';
+  const ICON_RID = 'rId901';
   const logoMediaExt = String(chrome?.logo?.mediaPath || '').split('.').pop()?.toLowerCase() || 'png';
   const safeLogoExt = ['png', 'jpg', 'jpeg', 'gif', 'svg', 'emf', 'wmf'].includes(logoMediaExt) ? logoMediaExt : 'png';
   const LOGO_MEDIA = `ppt/media/logo_chrome.${safeLogoExt}`;
   const LOGO_TARGET = `../media/logo_chrome.${safeLogoExt}`;
+  const ICON_MEDIA = 'ppt/media/logo_icon_chrome.jpeg';
+  const ICON_TARGET = '../media/logo_icon_chrome.jpeg';
   let hasLogo = false;
+  let hasIcon = false;
+  const neomPositions = chrome?.positions || profile?.chrome?.positions || null;
+  const neomLogoRect = neomPositions?.logo && chrome?.logo
+    ? { ...neomPositions.logo, image: chrome.logo.image }
+    : null;
+  const neomIconRect = neomPositions?.logoIcon && chrome?.iconLogo?.image
+    ? { ...neomPositions.logoIcon, image: chrome.iconLogo.image }
+    : null;
 
   if (!preserveTemplateChrome && chrome?.logo?.image) {
     try {
@@ -1039,6 +1110,20 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
     }
   }
 
+  if (!preserveTemplateChrome && profile?.id === 'neom' && chrome?.iconLogo?.image) {
+    try {
+      const base64 = String(chrome.iconLogo.image).split(',')[1];
+      if (base64) {
+        const binary = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+        tplZip.file(ICON_MEDIA, binary);
+        hasIcon = true;
+        console.log('[PPTX Template] Wrote NEOM icon media file (%d bytes)', binary.length);
+      }
+    } catch (e) {
+      console.warn('[PPTX Template] NEOM icon media write failed:', e.message);
+    }
+  }
+
   // ── Step 4b: Copy generated slides into template ───────────────────────
   for (let i = 0; i < slideCount; i++) {
     const slideNum = i + 1;
@@ -1050,9 +1135,20 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
       if (!preserveTemplateChrome) slideXml = applyMasterShapeVisibility(slideXml, profile);
       slideXml = injectSlideBackground(slideXml, profile);
       slideXml = stripNeomFooterActivationText(slideXml, profile);
+      slideXml = stripNeomFooterPageNumbers(slideXml, profile);
       slideXml = stripTopBandPicturesFromSlideXml(slideXml, profile);
       if (profile?.id === 'mos') {
         slideXml = injectMoSFooterChrome(slideXml, hasLogo ? chrome.logo : null, LOGO_RID, slideNum);
+      } else if (profile?.id === 'neom') {
+        slideXml = injectNeomFooterChrome(
+          slideXml,
+          hasLogo ? neomLogoRect : null,
+          hasIcon ? neomIconRect : null,
+          LOGO_RID,
+          hasIcon ? ICON_RID : null,
+          slideNum,
+          neomPositions,
+        );
       } else if (hasLogo) {
         slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);
       }
@@ -1074,6 +1170,9 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
       if (hasLogo) {
         genRelsXml = addLogoRelationship(genRelsXml, LOGO_RID, LOGO_TARGET);
       }
+      if (hasIcon) {
+        genRelsXml = addLogoRelationship(genRelsXml, ICON_RID, ICON_TARGET);
+      }
       tplZip.file(genSlideRelsPath, genRelsXml);
     } else {
       let slideRel = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
@@ -1081,6 +1180,9 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout" Target="../slideLayouts/slideLayout${targetLayoutNum}.xml"/>`;
       if (hasLogo) {
         slideRel += `\n  <Relationship Id="${LOGO_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${LOGO_TARGET}"/>`;
+      }
+      if (hasIcon) {
+        slideRel += `\n  <Relationship Id="${ICON_RID}" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/image" Target="${ICON_TARGET}"/>`;
       }
       slideRel += '\n</Relationships>';
       tplZip.file(genSlideRelsPath, slideRel);

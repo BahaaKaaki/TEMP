@@ -1447,6 +1447,7 @@ const NEOM_PPTX_FONTS = {
 };
 
 const neomStandardInches = {
+  logoIcon: pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.logoIcon, NEOM_LAYOUT_CONTRACT.canvas),
   logo: pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.logo, NEOM_LAYOUT_CONTRACT.canvas),
   title: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.title, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.title },
   subtitle: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.subtitle, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.subtitle },

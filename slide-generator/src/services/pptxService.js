@@ -14,6 +14,7 @@ import {
   addSourceNote,
   addSectionTracker,
   setFooterBranding,
+  setPptxExportProfile,
   setPptxFontFace,
   setTemplatePositions,
 } from './pptxRenderers';
@@ -1630,6 +1631,52 @@ function isRasterSlideObject(obj) {
   return Boolean(obj?.image || obj?.data || obj?.path);
 }
 
+async function loadBundledAssetDataUri(assetPath) {
+  try {
+    const res = await authFetch(assetPath);
+    if (!res.ok) return null;
+    const blob = await res.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(blob);
+    });
+  } catch (error) {
+    console.warn('[PPTX] Failed to load bundled asset %s: %s', assetPath, error.message);
+    return null;
+  }
+}
+
+async function ensureNeomBundledExportChrome(chrome = {}, profile = null) {
+  if (profile?.id !== 'neom') return chrome;
+  const next = {
+    ...chrome,
+    positions: chrome.positions || profile?.chrome?.positions || null,
+  };
+  if (!next.logo?.image) {
+    const logoUri = await loadBundledAssetDataUri('/api/assets/client-templates/neom/logo.png');
+    if (logoUri) next.logo = { ...(next.logo || {}), image: logoUri };
+  }
+  if (!next.iconLogo?.image) {
+    const iconUri = await loadBundledAssetDataUri('/api/assets/client-templates/neom/logo-icon.jpeg');
+    if (iconUri) next.iconLogo = { image: iconUri };
+  }
+  return next;
+}
+
+function removeNeomActivationAndFooterPageNumbers(pptxSlide, slideNum, profile) {
+  if (profile?.id !== 'neom' || !pptxSlide?._slideObjects) return;
+  const footerY = (profile?.layoutContract?.canvas?.heightIn || 7.5) - 0.35;
+  pptxSlide._slideObjects = pptxSlide._slideObjects.filter((obj) => {
+    const text = getSlideObjectText(obj).trim();
+    if (/NEOM\s+AUTHORITY/i.test(text)) return false;
+    const y = obj.options?.y ?? 0;
+    if (/^\d{1,3}$/.test(text) && y >= footerY) return false;
+    return true;
+  });
+}
+
 function removeNeomTopChromeImages(pptxSlide, profile, slideNum = null) {
   if (profile?.id !== 'neom' || !pptxSlide?._slideObjects) return;
   const next = [];
@@ -1661,6 +1708,7 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
   if (!profile || profile.id === 'strategy' || !pptxSlide?._slideObjects || !positions) return;
 
   removeNeomTopChromeImages(pptxSlide, profile, slideNum);
+  removeNeomActivationAndFooterPageNumbers(pptxSlide, slideNum, profile);
   sanitizeSlideObjectTextForProfile(pptxSlide, profile);
 
   const isCover = /\b(cover-slide|master-cover)\b/.test(sourceSlide?.html || '');
@@ -1801,6 +1849,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
   setTemplatePositions(activeProfilePositions);
   setPptxFontFace(getProfilePptxFontFace(activeProfile));
+  setPptxExportProfile(activeProfile);
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
@@ -2007,15 +2056,17 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
   if (templateData?.data && !shouldUseDirectProfileChromeExport(activeProfile)) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
-      const chrome = {
+      let chrome = {
         ...(templateData.chrome || {}),
         positions: activeProfilePositions || templateData.chrome?.positions || null,
       };
+      chrome = await ensureNeomBundledExportChrome(chrome, activeProfile);
       const useControlledProfileChrome = activeProfile.pptxMaster?.useProfileChrome === true || activeProfile.id === 'stc';
       const merged = useControlledProfileChrome
         ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
           preserveTemplateChrome: activeProfile.id === 'strategy',
+          profile: activeProfile,
         });
       downloadArrayBuffer(merged, filename);
     } catch (e) {
@@ -2057,6 +2108,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   setFooterBranding(getClientProfileFooterBranding(settings || {}, 'Strategy&'));
   setTemplatePositions(activeProfilePositions);
   setPptxFontFace(getProfilePptxFontFace(activeProfile));
+  setPptxExportProfile(activeProfile);
 
   const useAI = settings && hasAnyCredentials(settings);
   const modelRef = settings?.pptxModel || DEFAULT_PPTX_MODEL;
@@ -2122,15 +2174,17 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
   if (templateData?.data && !shouldUseDirectProfileChromeExport(activeProfile)) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
-      const chrome = {
+      let chrome = {
         ...(templateData.chrome || {}),
         positions: activeProfilePositions || templateData.chrome?.positions || null,
       };
+      chrome = await ensureNeomBundledExportChrome(chrome, activeProfile);
       const useControlledProfileChrome = activeProfile.pptxMaster?.useProfileChrome === true || activeProfile.id === 'stc';
       const merged = useControlledProfileChrome
         ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
           preserveTemplateChrome: activeProfile.id === 'strategy',
+          profile: activeProfile,
         });
       downloadArrayBuffer(merged, filename);
     } catch (e) { await writeSanitizedPptxFile(pptx, filename, 'single-slide template fallback'); }

@@ -773,12 +773,26 @@
 .slide[data-client-profile="neom"] footer.footer:has(span.source),
 .slide[data-client-profile="neom"] footer.footer {
   display: block;
+  top: var(--footer-y);
+  height: 32px;
   z-index: 12;
   font-family: Arial, Helvetica, sans-serif;
 }
 
 .slide[data-client-profile="neom"] footer.footer .source {
   display: none;
+}
+
+/* Gold rule from after logo lockup to page number (NAFB5 master band) */
+.slide[data-client-profile="neom"] footer.footer::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--neom-line-x) - var(--footer-x));
+  top: calc(var(--neom-line-y) - var(--footer-y));
+  width: var(--neom-line-w);
+  height: var(--neom-line-h);
+  background: #EBC03F;
+  pointer-events: none;
 }
 
 .slide[data-client-profile="neom"] footer.footer > span:first-child {
@@ -803,6 +817,7 @@
   top: calc(var(--slide-num-y) - var(--footer-y));
   width: var(--slide-num-w);
   height: var(--slide-num-h);
+  line-height: 1;
   text-align: right;
   color: #13100D;
   font: 400 8px/1 Arial, Helvetica, sans-serif;

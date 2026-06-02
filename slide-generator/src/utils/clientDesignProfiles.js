@@ -1352,7 +1352,7 @@ const NEOM_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    logo: { x: 35, y: 505, w: 70, h: 19 },
+    logo: { x: 35, y: 507, w: 90, h: 24 },
     title: { x: 29, y: 29, w: 902, h: 44 },
     subtitle: { x: 29, y: 77, w: 902, h: 25 },
     body: { x: 29, y: 110, w: 902, h: 390 },

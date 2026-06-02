@@ -360,6 +360,25 @@ function hideMasterShapes(slideXml) {
   return String(slideXml || '').replace(/\s+showMasterSp="[^"]*"/g, '');
 }
 
+/**
+ * Remove small header-band pictures LLMs sometimes add to slide XML (NEOM title-only
+ * layouts ship Picture 22/23 near 1in,0.35in). Master/footer logos stay below ~7in.
+ */
+function stripTopBandPicturesFromSlideXml(slideXml, profile = null) {
+  if (profile?.id !== 'neom') return slideXml;
+  return String(slideXml || '').replace(/<p:pic>[\s\S]*?<\/p:pic>/g, (picXml) => {
+    const off = picXml.match(/<a:off x="(\d+)" y="(\d+)"/);
+    const ext = picXml.match(/<a:ext cx="(\d+)" cy="(\d+)"/);
+    if (!off || !ext) return picXml;
+    const x = parseInt(off[1], 10) / EMU_PER_INCH;
+    const y = parseInt(off[2], 10) / EMU_PER_INCH;
+    const h = parseInt(ext[2], 10) / EMU_PER_INCH;
+    const w = parseInt(ext[1], 10) / EMU_PER_INCH;
+    if (y < 1.35 && x < 2.0 && h < 1.2 && w < 2.5) return '';
+    return picXml;
+  });
+}
+
 function stripLayoutChrome(layoutXml) {
   if (!layoutXml || !/<p:spTree>/.test(layoutXml)) return layoutXml;
   return layoutXml.replace(/<p:spTree>([\s\S]*?)<\/p:spTree>/, (match, inner) => {
@@ -801,6 +820,7 @@ export async function applyProfileChromeToGenerated(generatedBuf, chrome = null,
     const genSlideRelsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
     let slideXml = await genZip.files[genSlidePath].async('string');
     slideXml = hideMasterShapes(injectSlideBackground(slideXml, profile));
+    slideXml = stripTopBandPicturesFromSlideXml(slideXml, profile);
     if (profile?.id === 'mos') {
       slideXml = injectMoSFooterChrome(slideXml, hasLogo ? chrome.logo : null, LOGO_RID, slideNum);
     } else if (hasLogo) {
@@ -846,10 +866,22 @@ const LAYOUT_TYPE_MAP = {
  * Scan template layouts and pick the best one for AI-generated content.
  * Preference: blank > titleOnly > content (layout 2) > first available.
  */
-async function pickBestLayout(tplZip) {
+async function pickBestLayout(tplZip, profile = null) {
   const layoutFiles = Object.keys(tplZip.files)
     .filter(f => /^ppt\/slideLayouts\/slideLayout\d+\.xml$/.test(f))
     .sort((a, b) => parseInt(a.match(/(\d+)/g).pop()) - parseInt(b.match(/(\d+)/g).pop()));
+
+  if (profile?.id === 'neom') {
+    for (const path of layoutFiles) {
+      const xml = await tplZip.files[path].async('string');
+      const name = xml.match(/<p:cSld\s+name="([^"]+)"/)?.[1] || '';
+      if (/content\s+1\s+col,\s*white/i.test(name)) {
+        const idx = parseInt(path.match(/slideLayout(\d+)/)[1], 10);
+        console.log('[PPTX Template] NEOM: using layout "%s" (%d) to avoid title-only header logos', name, idx);
+        return idx;
+      }
+    }
+  }
 
   const candidates = { blank: null, titleOnly: null, content: null };
 
@@ -927,7 +959,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   console.log('[PPTX Template] Generated slide count:', slideCount);
 
   // ── Step 3: Determine target slide layout from template ─────────────────
-  const targetLayoutNum = await pickBestLayout(tplZip);
+  const targetLayoutNum = await pickBestLayout(tplZip, profile);
   console.log('[PPTX Template] Using slideLayout' + targetLayoutNum);
 
   const targetLayoutPath = `ppt/slideLayouts/slideLayout${targetLayoutNum}.xml`;
@@ -975,6 +1007,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
       let slideXml = await genZip.files[genSlidePath].async('string');
       if (!preserveTemplateChrome) slideXml = hideMasterShapes(slideXml);
       slideXml = injectSlideBackground(slideXml, profile);
+      slideXml = stripTopBandPicturesFromSlideXml(slideXml, profile);
       if (profile?.id === 'mos') {
         slideXml = injectMoSFooterChrome(slideXml, hasLogo ? chrome.logo : null, LOGO_RID, slideNum);
       } else if (hasLogo) {

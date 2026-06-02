@@ -28,6 +28,10 @@ export function stripClientProfileChrome(html = '') {
 function stripNeomTopLogoDuplicates(html = '') {
   return html
     .replace(
+      /(<div[^>]*class="[^"]*\bslide\b[^"]*"[^>]*>)\s*<img\b(?![^>]*\bclient-chrome-neom-logo\b)[^>]*>/gi,
+      '$1',
+    )
+    .replace(
       /(<h1[^>]*class="[^"]*\btitle\b[^"]*"[^>]*>)([\s\S]*?)(<\/h1>)/gi,
       (_m, open, body, close) => `${open}${body.replace(/<img\b[^>]*>/gi, '')}${close}`,
     )

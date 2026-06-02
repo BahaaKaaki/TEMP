@@ -736,21 +736,26 @@
   user-select: none;
 }
 
+/* Hide stray top-of-slide logos from generated HTML; master/footer logo is injected below */
+.slide[data-client-profile="neom"] > img:not(.client-chrome-neom-logo) {
+  display: none !important;
+}
+
 .slide[data-client-profile="neom"] .client-chrome-neom-logo {
   left: 35px;
-  top: 505px;
-  width: 70px;
-  height: 19px;
+  top: 507px;
+  width: 90px;
+  height: 24px;
   object-fit: contain;
   object-position: left center;
 }
 
 .slide[data-client-profile="neom"] .client-chrome-neom-wordmark {
   left: 35px;
-  top: 505px;
-  width: 70px;
-  height: 19px;
-  font: 700 8px/1 Arial, Helvetica, sans-serif;
+  top: 507px;
+  width: 90px;
+  height: 24px;
+  font: 700 10px/1 Arial, Helvetica, sans-serif;
   color: #13100D;
   text-transform: uppercase;
 }

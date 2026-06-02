@@ -1626,10 +1626,41 @@ function fitObjectsIntoRect(objects, target, padding = 0.02) {
   return true;
 }
 
+function isRasterSlideObject(obj) {
+  return Boolean(obj?.image || obj?.data || obj?.path);
+}
+
+function removeNeomTopChromeImages(pptxSlide, profile, slideNum = null) {
+  if (profile?.id !== 'neom' || !pptxSlide?._slideObjects) return;
+  const next = [];
+  let removed = 0;
+  for (const obj of pptxSlide._slideObjects) {
+    if (!isRasterSlideObject(obj) || getSlideObjectText(obj)) {
+      next.push(obj);
+      continue;
+    }
+    const bounds = objectBounds(obj);
+    if (!bounds) {
+      next.push(obj);
+      continue;
+    }
+    if (bounds.y2 <= 1.35 && bounds.x2 <= 2.0) {
+      removed += 1;
+      continue;
+    }
+    next.push(obj);
+  }
+  if (removed > 0) {
+    pptxSlide._slideObjects = next;
+    console.info('[PPTX] Removed %d NEOM header-band image(s)%s.', removed, slideNum ? ` on slide ${slideNum}` : '');
+  }
+}
+
 function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, profile, positions) {
   sanitizeSlideObjectGeometry(pptxSlide);
   if (!profile || profile.id === 'strategy' || !pptxSlide?._slideObjects || !positions) return;
 
+  removeNeomTopChromeImages(pptxSlide, profile, slideNum);
   sanitizeSlideObjectTextForProfile(pptxSlide, profile);
 
   const isCover = /\b(cover-slide|master-cover)\b/.test(sourceSlide?.html || '');

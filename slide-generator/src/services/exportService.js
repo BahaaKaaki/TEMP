@@ -6,7 +6,7 @@ import jsPDF from 'jspdf';
 import { themeToCSS } from '../utils/themeUtils';
 import { getClientProfileFooterBranding } from '../utils/clientDesignProfiles.js';
 import {
-  fetchClientLogoObjectUrl,
+  fetchClientChromeObjectUrls,
   prepareSlideHtmlForRender,
   resolveRenderProfile,
 } from '../utils/slideChromeUtils.js';
@@ -145,7 +145,7 @@ html, body {
 // Export BASE_SLIDE_CSS for use in AI prompts
 export { BASE_SLIDE_CSS };
 
-export function generateExportHTML(slides, sharedCSS, title = 'Presentation', theme = null, settings = null, logoUrl = null) {
+export function generateExportHTML(slides, sharedCSS, title = 'Presentation', theme = null, settings = null, logoUrl = null, logoIconUrl = null) {
   const totalSlides = slides.length;
   const profile = resolveRenderProfile(settings);
   const footerBranding = getClientProfileFooterBranding(settings || {}, '');
@@ -164,6 +164,7 @@ export function generateExportHTML(slides, sharedCSS, title = 'Presentation', th
       slideHtml = prepareSlideHtmlForRender(slideHtml, {
         profile,
         logoUrl,
+        logoIconUrl,
         pageNumber: slideNumber,
         footerBranding,
       });
@@ -296,10 +297,14 @@ export async function exportToPDF(slides, sharedCSS, filename = 'presentation.pd
   const profile = resolveRenderProfile(settings);
   const footerBranding = getClientProfileFooterBranding(settings || {}, '');
   let logoUrl = null;
+  let logoIconUrl = null;
   try {
-    logoUrl = await fetchClientLogoObjectUrl(profile, authFetch);
+    const chromeUrls = await fetchClientChromeObjectUrls(profile, authFetch);
+    logoUrl = chromeUrls.wordmark;
+    logoIconUrl = chromeUrls.icon;
   } catch {
     logoUrl = null;
+    logoIconUrl = null;
   }
 
   // Create PDF with landscape 16:9 dimensions
@@ -342,6 +347,7 @@ export async function exportToPDF(slides, sharedCSS, filename = 'presentation.pd
     const preparedHtml = prepareSlideHtmlForRender(slide.html || '', {
       profile,
       logoUrl,
+      logoIconUrl,
       pageNumber: i + 1,
       footerBranding,
     });
@@ -394,9 +400,8 @@ export async function exportToPDF(slides, sharedCSS, filename = 'presentation.pd
     });
   }
 
-  if (logoUrl) {
-    URL.revokeObjectURL(logoUrl);
-  }
+  if (logoUrl) URL.revokeObjectURL(logoUrl);
+  if (logoIconUrl) URL.revokeObjectURL(logoIconUrl);
 
   // Save the PDF
   pdf.save(filename);

@@ -1352,7 +1352,8 @@ const NEOM_LAYOUT_CONTRACT = {
     heightIn: 7.5,
   },
   standardContent: {
-    logo: { x: 35, y: 507, w: 90, h: 24 },
+    logoIcon: { x: 5, y: 509, w: 27, h: 26 },
+    logo: { x: 35, y: 517, w: 45, h: 12 },
     title: { x: 29, y: 29, w: 902, h: 44 },
     subtitle: { x: 29, y: 77, w: 902, h: 25 },
     body: { x: 29, y: 110, w: 902, h: 390 },
@@ -1374,7 +1375,7 @@ const NEOM_FREESTYLE_OVERRIDES = {
 - div.frame: left 29px, top 110px, width 902px, height 390px — all exhibit content stays inside.
 - Do not place logos in the title, subtitle, or top-left corner; the bottom-left logo is injected by preview chrome.
 - Footer activation line: "NEOM AUTHORITY ACTIVATION" centered at y≈520; page number bottom-right at x≈935.
-- Bottom-left logo is injected as preview chrome — do not duplicate a second logo in HTML unless explicitly asked.
+- Bottom-left chrome matches master: colored icon (~5,509 27x26) + NEOM wordmark (~35,517 45x12). Do not place logos in HTML.
 Reference slide 46 (NAFB5) for yellow column headers (#EBC03F fill, #13100D text) and three-column mandate layouts.`,
   theme: `NEOM Authority palette from NAFB5 / master theme. Primary dark #13100D, white #FFFFFF, accent yellow #EBC03F for column headers and highlights. Body text #13100D on white; muted labels #4E4C4A / #898786. Inside .frame set --accent: #EBC03F; --neutral-fill: #4E4C4A; --rose-fill: #898786 (never Strategy& pink #d4687a). Do not use tertiary orange/red/purple as dominant fills unless explicitly requested.`,
   vibe: `Institutional Saudi giga-project authority style: clean white field, bold ALL CAPS headlines, yellow structural bars, compact Arial typography, icon-supported rows. Avoid Strategy& maroon, STC purple, or generic Office chart colors.`,

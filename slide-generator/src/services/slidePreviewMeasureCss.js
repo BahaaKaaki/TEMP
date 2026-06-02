@@ -183,20 +183,29 @@ export function getSlideMeasureClientChromeCss() {
   user-select: none;
 }
 
+.slide[data-client-profile="neom"] .client-chrome-neom-icon {
+  left: 5px;
+  top: 509px;
+  width: 27px;
+  height: 26px;
+  object-fit: contain;
+  object-position: left center;
+}
+
 .slide[data-client-profile="neom"] .client-chrome-neom-logo {
   left: 35px;
-  top: 507px;
-  width: 90px;
-  height: 24px;
+  top: 517px;
+  width: 45px;
+  height: 12px;
   object-fit: contain;
   object-position: left center;
 }
 
 .slide[data-client-profile="neom"] .client-chrome-neom-wordmark {
   left: 35px;
-  top: 507px;
-  width: 90px;
-  height: 24px;
+  top: 517px;
+  width: 45px;
+  height: 12px;
   font: 700 8px/1 Arial, Helvetica, sans-serif;
   color: #13100D;
   text-transform: uppercase;

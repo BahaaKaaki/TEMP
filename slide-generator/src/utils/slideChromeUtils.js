@@ -20,7 +20,7 @@ function escapeHtmlText(value) {
 
 export function stripClientProfileChrome(html = '') {
   return html
-    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-logo\b[^"]*"[^>]*>/gi, '')
+    .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-(?:logo|icon)\b[^"]*"[^>]*>/gi, '')
     .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
     .replace(/\s*data-client-profile="[^"]*"/gi, '');
 }
@@ -77,7 +77,25 @@ export function injectPageNumber(html, pageNumber) {
   );
 }
 
-export function injectClientProfileChrome(html, profile, logoUrl) {
+function buildNeomFooterChromeMarkup(logoUrl, logoIconUrl, profile) {
+  const parts = [];
+  if (logoIconUrl) {
+    parts.push(
+      `<img class="client-chrome client-chrome-neom-icon" data-no-edit src="${escapeHtmlAttr(logoIconUrl)}" alt="" />`,
+    );
+  }
+  if (logoUrl) {
+    parts.push(
+      `<img class="client-chrome client-chrome-neom-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="${escapeHtmlAttr(profile.name || 'NEOM')}" />`,
+    );
+  }
+  if (!parts.length) {
+    parts.push('<div class="client-chrome client-chrome-neom-wordmark" data-no-edit>NEOM</div>');
+  }
+  return parts.join('');
+}
+
+export function injectClientProfileChrome(html, profile, logoUrl, logoIconUrl = null) {
   let cleanedHtml = stripClientProfileChrome(html || '');
   if (!profile?.id || profile.id === 'strategy' || !cleanedHtml) return cleanedHtml;
 
@@ -100,9 +118,12 @@ export function injectClientProfileChrome(html, profile, logoUrl) {
     : profile.id === 'stc'
       ? 'stc'
       : (profile.navLabel || profile.name || profile.id);
-  const logoMarkup = logoUrl
-    ? `<img class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="${escapeHtmlAttr(profile.name || profile.id)}" />`
-    : `<div class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-wordmark" data-no-edit>${escapeHtmlText(wordmarkLabel)}</div>`;
+
+  const logoMarkup = profile.id === 'neom'
+    ? buildNeomFooterChromeMarkup(logoUrl, logoIconUrl, profile)
+    : (logoUrl
+      ? `<img class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-logo" data-no-edit src="${escapeHtmlAttr(logoUrl)}" alt="${escapeHtmlAttr(profile.name || profile.id)}" />`
+      : `<div class="client-chrome client-chrome-${escapeHtmlAttr(profile.id)}-wordmark" data-no-edit>${escapeHtmlText(wordmarkLabel)}</div>`);
 
   const placement = getLogoPlacement(profile);
   if (placement === 'bottom-left' && /<footer[^>]*class="[^"]*footer/i.test(withProfile)) {
@@ -118,6 +139,7 @@ export function injectClientProfileChrome(html, profile, logoUrl) {
 export function prepareSlideHtmlForRender(html, {
   profile = null,
   logoUrl = null,
+  logoIconUrl = null,
   pageNumber = null,
   footerBranding = '',
   stripCoverFooter = true,
@@ -135,26 +157,57 @@ export function prepareSlideHtmlForRender(html, {
     || '';
   next = injectFooterBranding(next, branding);
   if (pageNumber) next = injectPageNumber(next, pageNumber);
-  next = injectClientProfileChrome(next, profile, logoUrl);
+  next = injectClientProfileChrome(next, profile, logoUrl, logoIconUrl);
   return next;
 }
 
-export function getClientLogoAssetPath(profile) {
-  const hasBundledLogo = profile?.chrome?.positions?.logo
-    && profile?.pptxMaster?.serverSync === 'backend-profile-default';
-  if (!hasBundledLogo || !profile?.id) return null;
-  const logoVersion = profile?.pptxMaster?.assetVersion || profile?.status || '1';
-  return `/api/assets/client-templates/${profile.id}/logo.png?v=${encodeURIComponent(logoVersion)}`;
+function bundledAssetVersion(profile) {
+  return encodeURIComponent(profile?.pptxMaster?.assetVersion || profile?.status || '1');
 }
 
-export async function fetchClientLogoObjectUrl(profile, authFetch) {
-  const assetPath = getClientLogoAssetPath(profile);
-  if (!assetPath || typeof authFetch !== 'function') return null;
+function hasBundledChrome(profile) {
+  return profile?.chrome?.positions?.logo
+    && profile?.pptxMaster?.serverSync === 'backend-profile-default'
+    && profile?.id;
+}
 
-  const res = await authFetch(assetPath);
+export function getClientLogoAssetPath(profile) {
+  if (!hasBundledChrome(profile)) return null;
+  return `/api/assets/client-templates/${profile.id}/logo.png?v=${bundledAssetVersion(profile)}`;
+}
+
+export function getClientLogoIconAssetPath(profile) {
+  if (profile?.id !== 'neom' || !hasBundledChrome(profile)) return null;
+  return `/api/assets/client-templates/neom/logo-icon.jpeg?v=${bundledAssetVersion(profile)}`;
+}
+
+export async function fetchClientLogoObjectUrl(profile, authFetchFn) {
+  const assetPath = getClientLogoAssetPath(profile);
+  if (!assetPath || typeof authFetchFn !== 'function') return null;
+
+  const res = await authFetchFn(assetPath);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const blob = await res.blob();
   return URL.createObjectURL(blob);
+}
+
+export async function fetchClientLogoIconObjectUrl(profile, authFetchFn) {
+  const assetPath = getClientLogoIconAssetPath(profile);
+  if (!assetPath || typeof authFetchFn !== 'function') return null;
+
+  const res = await authFetchFn(assetPath);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const blob = await res.blob();
+  return URL.createObjectURL(blob);
+}
+
+/** @returns {{ wordmark: string|null, icon: string|null }} blob URLs for preview/export chrome */
+export async function fetchClientChromeObjectUrls(profile, authFetchFn) {
+  const [wordmark, icon] = await Promise.all([
+    fetchClientLogoObjectUrl(profile, authFetchFn).catch(() => null),
+    fetchClientLogoIconObjectUrl(profile, authFetchFn).catch(() => null),
+  ]);
+  return { wordmark, icon };
 }
 
 export function resolveRenderProfile(settings) {

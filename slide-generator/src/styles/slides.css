@@ -737,25 +737,35 @@
 }
 
 /* Hide stray top-of-slide logos from generated HTML; master/footer logo is injected below */
-.slide[data-client-profile="neom"] > img:not(.client-chrome-neom-logo) {
+.slide[data-client-profile="neom"] > img:not(.client-chrome-neom-logo):not(.client-chrome-neom-icon) {
   display: none !important;
+}
+
+/* NAFB5 master: Picture 4 icon + Picture 9 wordmark (72px/in on 960x540) */
+.slide[data-client-profile="neom"] .client-chrome-neom-icon {
+  left: 5px;
+  top: 509px;
+  width: 27px;
+  height: 26px;
+  object-fit: contain;
+  object-position: left center;
 }
 
 .slide[data-client-profile="neom"] .client-chrome-neom-logo {
   left: 35px;
-  top: 507px;
-  width: 90px;
-  height: 24px;
+  top: 517px;
+  width: 45px;
+  height: 12px;
   object-fit: contain;
   object-position: left center;
 }
 
 .slide[data-client-profile="neom"] .client-chrome-neom-wordmark {
   left: 35px;
-  top: 507px;
-  width: 90px;
-  height: 24px;
-  font: 700 10px/1 Arial, Helvetica, sans-serif;
+  top: 517px;
+  width: 45px;
+  height: 12px;
+  font: 700 8px/1 Arial, Helvetica, sans-serif;
   color: #13100D;
   text-transform: uppercase;
 }

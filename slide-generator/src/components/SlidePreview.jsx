@@ -14,7 +14,7 @@ import {
   getSlideMeasureClientChromeCss as getClientChromeCSS,
 } from '../services/slidePreviewMeasureCss.js';
 import {
-  getClientLogoAssetPath,
+  fetchClientChromeObjectUrls,
   injectClientProfileChrome,
   injectFooterBranding,
   injectPageNumber,
@@ -213,6 +213,7 @@ export default function SlidePreview({ onSwitchToCode }) {
   const [showCommentPanel, setShowCommentPanel] = useState(false);
   const [showSourcesPanel, setShowSourcesPanel] = useState(false);
   const [clientLogoUrl, setClientLogoUrl] = useState(null);
+  const [clientLogoIconUrl, setClientLogoIconUrl] = useState(null);
   const downloadMenuRef = useRef(null);
   const commentPanelRef = useRef(null);
 
@@ -241,35 +242,38 @@ export default function SlidePreview({ onSwitchToCode }) {
   }, [activeSlide?.id]);
 
   useEffect(() => {
-    const logoAsset = getClientLogoAssetPath(activeClientProfile);
-
-    if (!logoAsset) {
+    if (!activeClientProfile?.chrome?.positions?.logo) {
       setClientLogoUrl(null);
+      setClientLogoIconUrl(null);
       return undefined;
     }
 
     let cancelled = false;
-    let objectUrl = null;
+    const objectUrls = { wordmark: null, icon: null };
 
-    authFetch(logoAsset)
-      .then(res => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.blob();
-      })
-      .then(blob => {
-        if (cancelled) return;
-        objectUrl = URL.createObjectURL(blob);
-        setClientLogoUrl(objectUrl);
+    fetchClientChromeObjectUrls(activeClientProfile, authFetch)
+      .then(({ wordmark, icon }) => {
+        if (cancelled) {
+          if (wordmark) URL.revokeObjectURL(wordmark);
+          if (icon) URL.revokeObjectURL(icon);
+          return;
+        }
+        objectUrls.wordmark = wordmark;
+        objectUrls.icon = icon;
+        setClientLogoUrl(wordmark);
+        setClientLogoIconUrl(icon);
       })
       .catch(err => {
         if (cancelled) return;
-        console.warn('[SlidePreview] Client logo unavailable:', err.message);
+        console.warn('[SlidePreview] Client chrome unavailable:', err.message);
         setClientLogoUrl(null);
+        setClientLogoIconUrl(null);
       });
 
     return () => {
       cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      if (objectUrls.wordmark) URL.revokeObjectURL(objectUrls.wordmark);
+      if (objectUrls.icon) URL.revokeObjectURL(objectUrls.icon);
     };
   }, [activeClientProfile?.id, activeClientProfile?.pptxMaster?.assetVersion, activeClientProfile?.status]);
 
@@ -634,7 +638,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       if (slideIndex >= 0) {
         html = injectPageNumber(html, slideIndex + 1, state.slides.length);
       }
-      html = injectClientProfileChrome(html, activeClientProfile, clientLogoUrl);
+      html = injectClientProfileChrome(html, activeClientProfile, clientLogoUrl, clientLogoIconUrl);
       slideRef.current.innerHTML = html;
       requestAnimationFrame(() => {
         if (!slideRef.current) return;
@@ -654,7 +658,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         }
       });
     }
-  }, [activeSlide?.id, activeSlide?.html, isEditMode, state.darkMode, state.slides, activeClientProfile, clientLogoUrl]);
+  }, [activeSlide?.id, activeSlide?.html, isEditMode, state.darkMode, state.slides, activeClientProfile, clientLogoUrl, clientLogoIconUrl]);
 
   // Update dark-mode and section-tracker attributes on the slide DOM element
   useEffect(() => {
@@ -1672,6 +1676,7 @@ export default function SlidePreview({ onSwitchToCode }) {
           combinedCSS={combinedCSS}
           activeClientProfile={activeClientProfile}
           clientLogoUrl={clientLogoUrl}
+          clientLogoIconUrl={clientLogoIconUrl}
           footerBranding={getClientProfileFooterBranding(state.settings, '')}
           onClose={() => setIsFullscreen(false)}
           onNavigate={(slideId) => actions.setActiveSlide(slideId)}
@@ -1832,6 +1837,7 @@ function FullscreenModal({
   combinedCSS,
   activeClientProfile,
   clientLogoUrl,
+  clientLogoIconUrl = null,
   footerBranding = '',
   onClose,
   onNavigate,
@@ -1861,7 +1867,7 @@ function FullscreenModal({
   }
   slideHtml = injectFooterBranding(slideHtml, footerBranding);
   slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length);
-  slideHtml = injectClientProfileChrome(slideHtml, activeClientProfile, clientLogoUrl);
+  slideHtml = injectClientProfileChrome(slideHtml, activeClientProfile, clientLogoUrl, clientLogoIconUrl);
   const fullscreenSlideRef = useRef(null);
 
   useLayoutEffect(() => {

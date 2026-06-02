@@ -17,6 +17,7 @@ const PROFILE_DEFAULT_DISPLAY_NAMES: Record<string, string> = {
   fya: 'FYA Template for Edwin.pptx',
   mos: 'MoS Template.pptx',
   se: 'SE Slide Repository - New Style.pptx',
+  neom: 'NEOM Authority NAFB5 master.pptx',
 };
 
 function getProfileDefaultPptx(profileId: string): { path: string; displayName: string } | null {

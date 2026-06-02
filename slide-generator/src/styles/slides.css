@@ -690,6 +690,83 @@
   white-space: nowrap;
 }
 
+/* NEOM Authority profile: NAFB5 activation shell (13.333x7.5in -> 960x540) */
+.slide[data-client-profile="neom"] {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #13100D;
+  background: #FFFFFF;
+}
+
+.slide[data-client-profile="neom"] .title {
+  left: 29px;
+  top: 29px;
+  width: 902px;
+  max-height: calc(20px * 1.1 * 2);
+  font: 700 20px/1.1 Arial, Helvetica, sans-serif;
+  color: #13100D;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.slide[data-client-profile="neom"] .subtitle {
+  left: 29px;
+  top: 60px;
+  width: 902px;
+  height: 25px;
+  max-height: 25px;
+  font: 700 18px/1.1 Arial, Helvetica, sans-serif;
+  color: #13100D;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.slide[data-client-profile="neom"] .frame {
+  left: 29px;
+  top: 90px;
+  width: 902px;
+  height: 410px;
+}
+
+.slide[data-client-profile="neom"] footer.footer:has(span.source),
+.slide[data-client-profile="neom"] footer.footer {
+  display: block;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.slide[data-client-profile="neom"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="neom"] footer.footer:not(:has(span.source)) > span:first-child {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  text-align: center;
+  font: 700 7px/1 Arial, Helvetica, sans-serif;
+  color: #13100D;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slide[data-client-profile="neom"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #13100D;
+  font: 400 8px/1 Arial, Helvetica, sans-serif;
+  white-space: nowrap;
+}
+
 /* DGE profile: Abu Dhabi government editorial shell */
 .slide[data-client-profile="dge"] {
   font-family: "Noto Sans", "Noto Kufi Arabic", "Segoe UI", Arial, sans-serif;

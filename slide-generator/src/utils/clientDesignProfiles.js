@@ -1273,6 +1273,181 @@ const seStandardInches = {
   },
 };
 
+const NEOM_THEME = {
+  name: 'NEOM Authority',
+  defaultVariant: 'neom_authority_activation',
+  colors: {
+    accent: '#EBC03F',
+    accentHover: '#F5DFA2',
+    accentSoft: '#FBF8E9',
+    onAccent: '#13100D',
+    heading: '#13100D',
+    body: '#13100D',
+    muted: '#4E4C4A',
+    page: '#FFFFFF',
+    surface: '#FFFFFF',
+    surfaceAlt: '#FBF8E9',
+    border: '#E6E8EB',
+    success: '#006B44',
+    successSoft: '#C2DBD0',
+    warning: '#EF9B00',
+    warningSoft: '#FBE2CB',
+    danger: '#E10054',
+    dangerSoft: '#F7D0D0',
+    info: '#007BB5',
+    neutral: '#9BA2AF',
+    coverDark: '#13100D',
+    kicker: '#13100D',
+    neomDark: '#13100D',
+    neomYellow: '#EBC03F',
+    neomCream: '#FBF8E9',
+  },
+  fonts: {
+    title: 'Arial, Helvetica, sans-serif',
+    heading: 'Arial, Helvetica, sans-serif',
+    body: 'Arial, Helvetica, sans-serif',
+  },
+  layout: {
+    cssVars: {
+      '--left-x': '29px',
+      '--title-y': '29px',
+      '--title-w': '902px',
+      '--title-font-size': '20px',
+      '--title-font-weight': '700',
+      '--title-line-height': '1.1',
+      '--subtitle-y': '60px',
+      '--subtitle-w': '902px',
+      '--subtitle-color': '#13100D',
+      '--subtitle-font-size': '18px',
+      '--subtitle-font-weight': '700',
+      '--frame-y': '90px',
+      '--frame-w': '902px',
+      '--frame-h': '410px',
+      '--footer-x': '29px',
+      '--footer-y': '518px',
+      '--footer-bottom': 'auto',
+      '--footer-w': '902px',
+      '--footer-font-size': '7px',
+      '--footer-padding-bottom': '0',
+      '--source-x': '336px',
+      '--source-y': '520px',
+      '--source-w': '288px',
+      '--source-h': '12px',
+      '--slide-num-x': '935px',
+      '--slide-num-y': '518px',
+      '--slide-num-w': '26px',
+      '--slide-num-h': '9px',
+      '--accent': '#EBC03F',
+      '--neutral-fill': '#4E4C4A',
+      '--rose-fill': '#898786',
+    },
+  },
+};
+
+const NEOM_LAYOUT_CONTRACT = {
+  canvas: {
+    widthPx: 960,
+    heightPx: 540,
+    widthIn: 13.333,
+    heightIn: 7.5,
+  },
+  standardContent: {
+    logo: { x: 35, y: 517, w: 45, h: 12 },
+    title: { x: 29, y: 29, w: 902, h: 22 },
+    subtitle: { x: 29, y: 60, w: 902, h: 25 },
+    body: { x: 29, y: 90, w: 902, h: 410 },
+    source: { x: 336, y: 520, w: 288, h: 12 },
+    slideNumber: { x: 935, y: 518, w: 26, h: 9 },
+    activationLine: { x: 336, y: 520, w: 288, h: 12 },
+  },
+  cover: {
+    logo: { x: 35, y: 500, w: 45, h: 12 },
+    title: { x: 29, y: 120, w: 760, h: 80 },
+    subtitle: { x: 29, y: 210, w: 700, h: 40 },
+  },
+};
+
+const NEOM_FREESTYLE_OVERRIDES = {
+  shell: `Use the NEOM Authority master shell on 960x540 (13.333x7.5in native, 72px/in).
+- h1.title: left 29px, top 29px, width 902px, height up to 44px, Arial bold 20px, ALL CAPS, color #13100D.
+- h2.subtitle: left 29px, top 60px, width 902px, height 25px, Arial bold 18px, ALL CAPS, color #13100D when used (optional on many body slides).
+- div.frame: left 29px, top 90px, width 902px, height 410px — all exhibit content stays inside.
+- Footer activation line: "NEOM AUTHORITY ACTIVATION" centered at y≈520; page number bottom-right at x≈935.
+- Bottom-left logo is injected as preview chrome — do not duplicate a second logo in HTML unless explicitly asked.
+Reference slide 46 (NAFB5) for yellow column headers (#EBC03F fill, #13100D text) and three-column mandate layouts.`,
+  theme: `NEOM Authority palette from NAFB5 / master theme. Primary dark #13100D, white #FFFFFF, accent yellow #EBC03F for column headers and highlights. Body text #13100D on white; muted labels #4E4C4A / #898786. Inside .frame set --accent: #EBC03F; --neutral-fill: #4E4C4A; --rose-fill: #898786 (never Strategy& pink #d4687a). Do not use tertiary orange/red/purple as dominant fills unless explicitly requested.`,
+  vibe: `Institutional Saudi giga-project authority style: clean white field, bold ALL CAPS headlines, yellow structural bars, compact Arial typography, icon-supported rows. Avoid Strategy& maroon, STC purple, or generic Office chart colors.`,
+  writing: `Executive board/activation language: mandate, authority, regulatory arrangements, phases, stakeholders. Keep labels short; titles and subtitles in Title Case words but rendered ALL CAPS via CSS.`,
+  css: `h1.title and h2.subtitle { text-transform: uppercase; letter-spacing: 0.02em; }. Column/section headers: background #EBC03F, text #13100D, Arial bold 11-12px, square corners. Body 11-12px Arial regular #13100D. Yellow header class example: .neomHead { background: var(--accent); color: var(--on-accent); padding: 8px 10px; font-weight: 700; text-transform: uppercase; }`,
+  pptx: `Export on 13.333x7.5in canvas with bundled NEOM master. Title/subtitle Arial bold ALL CAPS. Footer shows NEOM AUTHORITY ACTIVATION; preserve master logo — do not inject duplicate footer logo in export.`,
+};
+
+const NEOM_COMPONENT_PATTERNS = [
+  {
+    name: 'yellow_column_headers',
+    structure: 'Three- or four-column grid with #EBC03F header bars, dark #13100D labels, white body cells (see slide 46 mandate layout).',
+    useWhen: 'Mandate maps, RA/RI columns, business priorities, service catalogues.',
+    avoid: ['maroon Strategy& bars', 'rounded consumer cards', 'purple STC styling'],
+  },
+  {
+    name: 'icon_text_rows',
+    structure: 'Compact rows with small icons and 11pt Arial labels on white or cream panels.',
+    useWhen: 'Entity lists, deliverables, activation workstreams.',
+    avoid: ['oversized icons', 'footer-band content'],
+  },
+  {
+    name: 'mandate_center_panel',
+    structure: 'Center narrative panel with bordered columns on left/right (slide 46 Authority Mandate pattern).',
+    useWhen: 'Authority aim, regulatory objective, strategic objective slides.',
+    avoid: ['dense 8+ column grids', 'text below footer band'],
+  },
+];
+
+const NEOM_PPTX_CONTRACT = {
+  slideSize: { w: 13.333, h: 7.5 },
+  defaultFontFace: 'Arial',
+  allowedFontFaces: ['Arial', 'Helvetica'],
+  logoPolicy: 'Master footer includes NEOM logo — do not inject a duplicate logo in export.',
+  sourcePolicy: 'Footer center line reads NEOM AUTHORITY ACTIVATION unless user provides real source text.',
+  pageNumberPolicy: 'Bottom-right page number, Arial 7-8pt, #13100D.',
+  titlePolicy: 'Title at x=29 y=29 w=902 h=22, Arial bold 20pt ALL CAPS, #13100D.',
+  subtitlePolicy: 'Subtitle at x=29 y=60 w=902 h=25, Arial bold 18pt ALL CAPS, #13100D, optional.',
+  bodyPolicy: 'Body frame x=29 y=90 w=902 h=410; keep content above footer band.',
+  hiddenPlaceholderPolicy: 'Do not surface master placeholder instructional text.',
+  borderWeightPt: { min: 0.5, max: 1 },
+};
+
+const NEOM_PROMPT_CONTRACT = `# NEOM Authority Client Design Contract
+
+## Master
+- NEOM Authority (NAFB5) shell only. Canvas 960x540 mapped from 13.333x7.5in.
+- Body frame: x=29 y=90 w=902 h=410.
+- Footer: NEOM AUTHORITY ACTIVATION centered; page number bottom-right; logo from master/chrome.
+
+## Theme
+- Dark #13100D text, white page, yellow #EBC03F column headers, cream panels #FBF8E9 optional.
+- Title/subtitle: ALL CAPS, Arial bold 20px / 18px.
+
+## Components
+- Yellow header grids, icon rows, mandate three-column layouts inside frame.`;
+
+const NEOM_PPTX_FONTS = {
+  title: { fontFace: 'Arial', fontSize: 20, bold: true, color: '13100D' },
+  subtitle: { fontFace: 'Arial', fontSize: 18, bold: true, color: '13100D' },
+  body: { fontFace: 'Arial', fontSize: 11, bold: false, color: '13100D' },
+  footer: { fontFace: 'Arial', fontSize: 7, bold: true, color: '13100D' },
+  slideNum: { fontFace: 'Arial', fontSize: 8, bold: false, color: '13100D' },
+};
+
+const neomStandardInches = {
+  logo: pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.logo, NEOM_LAYOUT_CONTRACT.canvas),
+  title: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.title, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.title },
+  subtitle: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.subtitle, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.subtitle },
+  body: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.body, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.body },
+  footer: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.source, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.footer },
+  slideNum: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.slideNumber, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.slideNum },
+};
+
 export const CLIENT_DESIGN_PROFILES = {
   strategy: {
     schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
@@ -1917,6 +2092,103 @@ export const CLIENT_DESIGN_PROFILES = {
         requirePageNumberNonCover: true,
         requireSourceNonCover: false,
         forbidHeavyFooterBar: true,
+        forbidAccidentalAppendixNavigation: true,
+      },
+    },
+  },
+  neom: {
+    schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
+    id: 'neom',
+    navLabel: 'NEOM',
+    name: 'NEOM Authority',
+    description: 'NEOM Authority activation deck: ALL CAPS Arial titles, yellow column headers, bottom logo and activation footer.',
+    status: 'sandbox-0.1',
+    footerBranding: 'NEOM AUTHORITY ACTIVATION',
+    theme: NEOM_THEME,
+    layoutContract: NEOM_LAYOUT_CONTRACT,
+    freestyleOverrides: NEOM_FREESTYLE_OVERRIDES,
+    componentPatterns: NEOM_COMPONENT_PATTERNS,
+    pptxContract: NEOM_PPTX_CONTRACT,
+    promptContract: NEOM_PROMPT_CONTRACT,
+    designContract: NEOM_PROMPT_CONTRACT,
+    pptxMaster: {
+      mode: 'profile-bound',
+      templateId: PROFILE_TEMPLATE_SLOT.DEFAULT,
+      bundled: true,
+      storageKey: 'client-template:neom:default',
+      serverSync: 'backend-profile-default',
+      serverProfileId: 'neom',
+      forceBundledDefault: true,
+      assetVersion: 'neom-nafb5-v1',
+      notes: 'Bundled from 22042026 NEOM Authority NAFB5_vF.pptx; slide 46 + master geometry.',
+    },
+    chrome: {
+      footerText: 'NEOM AUTHORITY ACTIVATION',
+      positions: neomStandardInches,
+      injectPreviewLogo: true,
+      injectExportLogo: false,
+    },
+    evidence: {
+      sourceDecks: [
+        {
+          label: 'NEOM Authority NAFB5 vF',
+          fileName: '22042026- NEOM Authority_NAFB5_vF.pptx',
+          slides: 215,
+          role: 'bundled master; slide 46 mandate / column layout reference',
+        },
+      ],
+      rawThemeSlots: {
+        dk1: '#13100D',
+        dk2: '#2B2725',
+        lt1: '#FFFFFF',
+        accent1: '#EBC03F',
+        accent2: '#FBF8E9',
+        accent3: '#F5DFA2',
+        accent4: '#4E4C4A',
+        accent5: '#898786',
+        accent6: '#E6E8EB',
+      },
+      notes: [
+        'Native 13.333x7.5in mapped to 960x540 at 72px/in.',
+        'Master geometry: title 29,29,902x22; subtitle 29,60,902x25; body 29,90,902x410.',
+        'Footer activation line y≈520; logo bottom-left 35,517,45x12 from master.',
+        'Title 20pt / subtitle 18pt Arial bold, ALL CAPS.',
+      ],
+    },
+    validationRules: {
+      requiredColors: ['#13100D', '#EBC03F', '#FFFFFF', '#FBF8E9'],
+      preferredSurfaceColors: ['#FFFFFF', '#FBF8E9', '#FCF0D1', '#F2F3F5'],
+      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#d4687a', '#D4687A'],
+      forbiddenDominantColors: ['#8E1E1E', '#4F008C', '#C3984D'],
+      disallowedFonts: ['Georgia', 'STC Forward', 'Fund Light', 'SE Medium', 'Noto Sans', 'Poppins'],
+      disallowedFooterText: ['Strategy&'],
+      minFontPx: 8,
+      targetBodyFontPx: 11,
+      fontSizesPt: {
+        titleStandard: { min: 18, max: 20 },
+        titleCover: { min: 24, max: 32 },
+        subtitle: { min: 16, max: 18 },
+        body: { min: 10, max: 12 },
+        bodyDense: { min: 8, max: 10 },
+        footer: { min: 7, max: 8 },
+      },
+      layoutBands: {
+        logoSafeBottomPct: 8,
+        titleMaxBottomPct: 16,
+        subtitleMaxBottomPct: 20,
+        contentStartPct: 17,
+        footerStartPct: 93,
+      },
+      density: {
+        maxBulletsStandard: 6,
+        maxModulesStandard: 6,
+        minBodyPt: 8,
+      },
+      chrome: {
+        requireLogo: true,
+        requirePageNumberNonCover: true,
+        requireSourceNonCover: false,
+        forbidHeavyFooterBar: false,
         forbidAccidentalAppendixNavigation: true,
       },
     },

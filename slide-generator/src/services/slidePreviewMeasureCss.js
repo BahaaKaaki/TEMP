@@ -175,5 +175,31 @@ export function getSlideMeasureClientChromeCss() {
   font: 500 12px/1 "SE Medium", "SE", Arial, sans-serif;
   color: #001F5E;
 }
+
+.slide[data-client-profile="neom"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-logo {
+  left: 35px;
+  top: 517px;
+  width: 45px;
+  height: 12px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-wordmark {
+  left: 35px;
+  top: 517px;
+  width: 45px;
+  height: 12px;
+  font: 700 8px/1 Arial, Helvetica, sans-serif;
+  color: #13100D;
+  text-transform: uppercase;
+}
 `;
 }

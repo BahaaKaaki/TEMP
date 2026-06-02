@@ -360,6 +360,34 @@ function hideMasterShapes(slideXml) {
   return String(slideXml || '').replace(/\s+showMasterSp="[^"]*"/g, '');
 }
 
+/** NEOM: keep master hidden so layout/footer activation text and header logos do not bleed through. */
+function suppressMasterShapes(slideXml) {
+  const xml = String(slideXml || '');
+  if (/\sshowMasterSp="0"/.test(xml)) return xml;
+  if (/<p:sld\b/.test(xml)) {
+    return xml.replace(/<p:sld\b/, '<p:sld showMasterSp="0"');
+  }
+  return xml;
+}
+
+function applyMasterShapeVisibility(slideXml, profile = null) {
+  if (profile?.id === 'neom') return suppressMasterShapes(slideXml);
+  return hideMasterShapes(slideXml);
+}
+
+/** Remove NAFB5 section navigator tree so exported decks are flat slide lists. */
+function stripPresentationSections(presXml, profile = null) {
+  if (profile?.id !== 'neom') return presXml;
+  let xml = String(presXml || '');
+  xml = xml.replace(/<p14:sectionLst[\s\S]*?<\/p14:sectionLst>/g, '');
+  xml = xml.replace(
+    /<p:ext uri="\{521415D9-36F7-43E2-AB2F-B90AF26B5E84\}">[\s\S]*?<\/p:ext>/g,
+    '',
+  );
+  xml = xml.replace(/\s+p14:sectionId="[^"]*"/g, '');
+  return xml;
+}
+
 /**
  * Remove small header-band pictures LLMs sometimes add to slide XML (NEOM title-only
  * layouts ship Picture 22/23 near 1in,0.35in). Master/footer logos stay below ~7in.
@@ -368,7 +396,7 @@ function hideMasterShapes(slideXml) {
 function stripNeomFooterActivationText(slideXml, profile = null) {
   if (profile?.id !== 'neom') return slideXml;
   return String(slideXml || '').replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (spXml) => {
-    if (!/NEOM\s+AUTHORITY\s+ACTIVATION/i.test(spXml)) return spXml;
+    if (!/(?:NEOM\s+AUTHORITY(?:\s+ACTIVATION)?|AUTHORITY\s+ACTIVATION)/i.test(spXml)) return spXml;
     const off = spXml.match(/<a:off x="(\d+)" y="(\d+)"/);
     if (!off) return spXml;
     const y = parseInt(off[2], 10) / EMU_PER_INCH;
@@ -832,7 +860,7 @@ export async function applyProfileChromeToGenerated(generatedBuf, chrome = null,
     const slideNum = parseInt(genSlidePath.match(/slide(\d+)/)[1], 10);
     const genSlideRelsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
     let slideXml = await genZip.files[genSlidePath].async('string');
-    slideXml = hideMasterShapes(injectSlideBackground(slideXml, profile));
+    slideXml = applyMasterShapeVisibility(injectSlideBackground(slideXml, profile), profile);
     slideXml = stripNeomFooterActivationText(slideXml, profile);
     slideXml = stripTopBandPicturesFromSlideXml(slideXml, profile);
     if (profile?.id === 'mos') {
@@ -1019,7 +1047,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
     if (genZip.files[genSlidePath]) {
       let slideXml = await genZip.files[genSlidePath].async('string');
-      if (!preserveTemplateChrome) slideXml = hideMasterShapes(slideXml);
+      if (!preserveTemplateChrome) slideXml = applyMasterShapeVisibility(slideXml, profile);
       slideXml = injectSlideBackground(slideXml, profile);
       slideXml = stripNeomFooterActivationText(slideXml, profile);
       slideXml = stripTopBandPicturesFromSlideXml(slideXml, profile);
@@ -1091,6 +1119,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
 
     // Update slide size to match our generated slides (13.333" x 7.5" = 12192000 x 6858000 EMU)
     presXml = presXml.replace(/<p:sldSz[^>]*\/>/, '<p:sldSz cx="12192000" cy="6858000"/>');
+    presXml = stripPresentationSections(presXml, profile);
 
     tplZip.file(presPath, presXml);
     console.log('[PPTX Template] Updated presentation.xml with', slideCount, 'slides');

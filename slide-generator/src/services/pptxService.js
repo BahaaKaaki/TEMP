@@ -1942,7 +1942,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         }
       }
 
-      if (slide.sectionLabel || slide.subSectionLabel) {
+      if ((slide.sectionLabel || slide.subSectionLabel) && activeProfile?.id !== 'neom') {
         const s = pptx.slides;
         if (s?.length > 0) addSectionTracker(s[s.length - 1], slide.sectionLabel, slide.subSectionLabel);
       }
@@ -1995,7 +1995,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         }
       }
 
-    if (slide.sectionLabel || slide.subSectionLabel) {
+    if ((slide.sectionLabel || slide.subSectionLabel) && activeProfile?.id !== 'neom') {
         const s = pptx.slides;
         if (s?.length > 0) addSectionTracker(s[s.length - 1], slide.sectionLabel, slide.subSectionLabel);
       }
@@ -2112,7 +2112,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
     }
   }
 
-    if (slide.sectionLabel || slide.subSectionLabel) {
+    if ((slide.sectionLabel || slide.subSectionLabel) && activeProfile?.id !== 'neom') {
     const s = pptx.slides;
     if (s?.length > 0) addSectionTracker(s[s.length - 1], slide.sectionLabel, slide.subSectionLabel);
   }

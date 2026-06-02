@@ -3,7 +3,7 @@
  */
 
 import { getActiveClientProfile } from './clientDesignProfiles.js';
-import { normalizeNeomContrastInHtml } from './slideFrameLayoutNormalize.js';
+import { normalizeNeomContrastSlide } from './slideFrameLayoutNormalize.js';
 
 function escapeHtmlAttr(value) {
   return String(value ?? '')
@@ -22,6 +22,7 @@ function escapeHtmlText(value) {
 export function stripClientProfileChrome(html = '') {
   return html
     .replace(/<img\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-(?:logo|icon)\b[^"]*"[^>]*>/gi, '')
+    .replace(/<span\b[^>]*\bclient-chrome-neom-pagenum\b[^>]*>[\s\S]*?<\/span>/gi, '')
     .replace(/<div\b[^>]*class="[^"]*\bclient-chrome-[a-z0-9_-]+-wordmark\b[^"]*"[^>]*>[\s\S]*?<\/div>/gi, '')
     .replace(/\s*data-client-profile="[^"]*"/gi, '');
 }
@@ -69,13 +70,34 @@ export function injectFooterBranding(html, branding) {
   );
 }
 
-export function injectPageNumber(html, pageNumber) {
-  if (!html || !pageNumber) return html;
-  const pageText = String(pageNumber);
+function injectPageNumberInFooter(html, pageNumber) {
+  const pageText = escapeHtmlText(String(pageNumber));
   return html.replace(
     /(<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*<span(?:\s[^>]*)?>)[^<]*(<\/span>\s*<\/footer>)/i,
     `$1${pageText}$2`,
   );
+}
+
+function injectNeomPageNumberChrome(html, pageNumber) {
+  const pageText = escapeHtmlText(String(pageNumber));
+  let next = html.replace(/<span\b[^>]*\bclient-chrome-neom-pagenum\b[^>]*>[\s\S]*?<\/span>/gi, '');
+  if (/<footer[^>]*class="[^"]*footer/i.test(next)) {
+    next = next.replace(
+      /(<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*<span(?:\s[^>]*)?>)[^<]*(<\/span>\s*<\/footer>)/i,
+      '$1$2',
+    );
+  }
+  const pagenum = `<span class="client-chrome client-chrome-neom-pagenum" data-no-edit>${pageText}</span>`;
+  if (/<footer[^>]*class="[^"]*footer/i.test(next)) {
+    return next.replace(/(<footer[^>]*class="[^"]*footer)/i, `${pagenum}$1`);
+  }
+  return next.replace(/(<div\b[^>]*class="[^"]*\bslide\b[^"]*"[^>]*>)/i, `$1${pagenum}`);
+}
+
+export function injectPageNumber(html, pageNumber, profile = null) {
+  if (!html || !pageNumber) return html;
+  if (profile?.id === 'neom') return injectNeomPageNumberChrome(html, pageNumber);
+  return injectPageNumberInFooter(html, pageNumber);
 }
 
 function buildNeomFooterChromeMarkup(logoUrl, logoIconUrl, profile) {
@@ -157,10 +179,11 @@ export function prepareSlideHtmlForRender(html, {
     || profile?.chrome?.footerText
     || '';
   next = injectFooterBranding(next, branding);
-  if (pageNumber) next = injectPageNumber(next, pageNumber);
+  if (pageNumber) next = injectPageNumber(next, pageNumber, profile);
   next = injectClientProfileChrome(next, profile, logoUrl, logoIconUrl);
   if (profile?.id === 'neom') {
-    next = normalizeNeomContrastInHtml(next);
+    const neomNorm = normalizeNeomContrastSlide({ html: next, customCSS: '' });
+    next = neomNorm.html;
   }
   return next;
 }

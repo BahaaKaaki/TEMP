@@ -731,6 +731,30 @@
   --on-neutral-fill: #FFFFFF;
 }
 
+.slide[data-client-profile="neom"] .frame .hub,
+.slide[data-client-profile="neom"] .frame .hub * {
+  color: #FFFFFF;
+}
+
+.slide[data-client-profile="neom"] .frame .hubBar {
+  color: #13100D;
+}
+
+.slide[data-client-profile="neom"] .frame .capNum {
+  background: #13100D;
+  color: #FFFFFF;
+}
+
+.slide[data-client-profile="neom"] .frame .capHead,
+.slide[data-client-profile="neom"] .frame .capTitle {
+  color: #13100D;
+}
+
+.slide[data-client-profile="neom"][data-section]::before,
+.slide[data-client-profile="neom"][data-subsection]::after {
+  display: none !important;
+}
+
 .slide[data-client-profile="neom"] .client-chrome {
   position: absolute;
   z-index: 11;
@@ -802,9 +826,14 @@
 }
 
 .slide[data-client-profile="neom"] footer.footer > span:last-child {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-pagenum {
   position: absolute;
-  left: calc(var(--slide-num-x) - var(--footer-x));
-  top: calc(var(--slide-num-y) - var(--footer-y));
+  left: var(--slide-num-x);
+  top: var(--slide-num-y);
   width: var(--slide-num-w);
   height: var(--slide-num-h);
   line-height: 1;
@@ -812,6 +841,7 @@
   color: #13100D;
   font: 400 8px/1 Arial, Helvetica, sans-serif;
   white-space: nowrap;
+  z-index: 12;
 }
 
 /* DGE profile: Abu Dhabi government editorial shell */

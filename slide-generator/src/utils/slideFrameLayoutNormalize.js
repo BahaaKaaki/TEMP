@@ -173,6 +173,8 @@ export const NEOM_CONTRAST_MARKER = '/* edwin-neom-contrast */';
 
 const NEOM_DARK_TEXT = /#(?:13100[Dd]|007[Bb][Bb]5|000000|222222)|var\(--(?:heading|body|accent|info)\b/;
 
+const NEOM_DARK_FILL_BG = /background(?:-color)?\s*:\s*(?:#13100[dD]|var\(--neutral-fill)/i;
+
 const NEOM_CONTRAST_RULES = `${NEOM_CONTRAST_MARKER}
 .slide[data-client-profile="neom"] .frame {
   --neutral-fill: #13100D;
@@ -187,6 +189,21 @@ const NEOM_CONTRAST_RULES = `${NEOM_CONTRAST_MARKER}
 .slide[data-client-profile="neom"] .frame [style*="background: var(--neutral-fill)"] *,
 .slide[data-client-profile="neom"] .frame [style*="background:var(--neutral-fill)"] * {
   color: #FFFFFF !important;
+}
+.slide[data-client-profile="neom"] .frame .hub,
+.slide[data-client-profile="neom"] .frame .hub * {
+  color: #FFFFFF !important;
+}
+.slide[data-client-profile="neom"] .frame .hubBar {
+  color: #13100D !important;
+}
+.slide[data-client-profile="neom"] .frame .capNum {
+  background: #13100D !important;
+  color: #FFFFFF !important;
+}
+.slide[data-client-profile="neom"] .frame .capHead,
+.slide[data-client-profile="neom"] .frame .capTitle {
+  color: #13100D !important;
 }
 .slide[data-client-profile="neom"] .frame :is(.stepNum, .stepBadge, .phaseNum, .numBadge, .indexBox, .numBox) {
   background: #13100D !important;
@@ -217,14 +234,29 @@ export function normalizeNeomClientColorTokens(css = '') {
 
   next = next.replace(/([^{}@]+)\{([^{}]*)\}/g, (block, selector, body) => {
     const hasGreyBg = /background(?:-color)?\s*:\s*(?:#(?:4[bB]5563|4[Ee]4[Cc]4[aA]|898786)|var\(--neutral-fill)/i.test(body);
-    if (!hasGreyBg) return block;
+    const hasDarkFillBg = NEOM_DARK_FILL_BG.test(body);
+    if (!hasGreyBg && !hasDarkFillBg) return block;
     let fixedBody = body
       .replace(/background(?:-color)?\s*:\s*#(?:4[bB]5563|4[Ee]4[Cc]4[aA]|898786)/gi, 'background: #13100D')
       .replace(/background(?:-color)?\s*:\s*var\(--neutral-fill[^;)]*\)/gi, 'background: var(--neutral-fill, #13100D)');
-    if (NEOM_DARK_TEXT.test(fixedBody) || !/color\s*:/i.test(fixedBody)) {
-      fixedBody = fixedBody.replace(/color\s*:\s*[^;]+/gi, 'color: #FFFFFF');
-      if (!/color\s*:/i.test(fixedBody)) fixedBody += '; color: #FFFFFF';
+    if (hasDarkFillBg || hasGreyBg) {
+      fixedBody = fixedBody.replace(/color\s*:\s*var\(--on-accent\)/gi, 'color: var(--on-neutral-fill, #FFFFFF)');
     }
+    if ((hasDarkFillBg || hasGreyBg) && (NEOM_DARK_TEXT.test(fixedBody) || !/color\s*:/i.test(fixedBody))) {
+      fixedBody = fixedBody.replace(/color\s*:\s*[^;]+/gi, 'color: #FFFFFF');
+      if (!/color\s*:/i.test(fixedBody)) {
+        fixedBody = `${fixedBody.trim().replace(/;\s*$/, '')}; color: #FFFFFF`;
+      }
+    }
+    return `${selector}{${fixedBody}}`;
+  });
+
+  next = next.replace(/([^{}@]+)\{([^{}]*)\}/g, (block, selector, body) => {
+    const hasYellowBg = /background(?:-color)?\s*:\s*(?:#EBC03F|var\(--accent)/i.test(body);
+    if (hasYellowBg || !/color\s*:\s*var\(--on-accent\)/i.test(body)) return block;
+    const darkBadgeSelector = /\.(?:hub|capNum|stepNum|stepBadge|phaseNum|numBadge|indexBox|numBox)\b/i.test(selector);
+    if (!darkBadgeSelector && !NEOM_DARK_FILL_BG.test(body)) return block;
+    const fixedBody = body.replace(/color\s*:\s*var\(--on-accent\)/gi, 'color: var(--on-neutral-fill, #FFFFFF)');
     return `${selector}{${fixedBody}}`;
   });
 

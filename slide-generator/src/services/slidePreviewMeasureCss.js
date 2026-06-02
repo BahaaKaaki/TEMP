@@ -210,5 +210,18 @@ export function getSlideMeasureClientChromeCss() {
   color: #13100D;
   text-transform: uppercase;
 }
+
+.slide[data-client-profile="neom"] .client-chrome-neom-pagenum {
+  left: var(--slide-num-x);
+  top: var(--slide-num-y);
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  line-height: 1;
+  text-align: right;
+  color: #13100D;
+  font: 400 8px/1 Arial, Helvetica, sans-serif;
+  white-space: nowrap;
+  z-index: 12;
+}
 `;
 }

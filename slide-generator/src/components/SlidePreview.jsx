@@ -607,8 +607,8 @@ export default function SlidePreview({ onSwitchToCode }) {
       if (html.includes('cover-slide') || html.includes('cover-branding')) {
         html = html.replace(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/gi, '');
       }
-      // Inject section tracker attribute if slide has a sectionLabel
-      if (activeSlide.sectionLabel) {
+      // Inject section tracker attribute if slide has a sectionLabel (NEOM: flat deck, no section pills)
+      if (activeSlide.sectionLabel && activeClientProfile?.id !== 'neom') {
         const escaped = activeSlide.sectionLabel.replace(/"/g, '&quot;');
         html = html.replace(
           /class="slide([^"]*)"/,
@@ -616,7 +616,7 @@ export default function SlidePreview({ onSwitchToCode }) {
         );
       }
       // Inject sub-section tracker attribute if slide has a subSectionLabel
-      if (activeSlide.subSectionLabel) {
+      if (activeSlide.subSectionLabel && activeClientProfile?.id !== 'neom') {
         const escaped = activeSlide.subSectionLabel.replace(/"/g, '&quot;');
         const trackerOffset = estimateTrackerOffset(activeSlide.sectionLabel, activeClientProfile);
         html = html.replace(
@@ -636,7 +636,7 @@ export default function SlidePreview({ onSwitchToCode }) {
       // Inject dynamic page number based on position in deck
       const slideIndex = state.slides.findIndex(s => s.id === activeSlide.id);
       if (slideIndex >= 0) {
-        html = injectPageNumber(html, slideIndex + 1, state.slides.length);
+        html = injectPageNumber(html, slideIndex + 1, state.slides.length, activeClientProfile);
       }
       html = injectClientProfileChrome(html, activeClientProfile, clientLogoUrl, clientLogoIconUrl);
       slideRef.current.innerHTML = html;
@@ -671,12 +671,12 @@ export default function SlidePreview({ onSwitchToCode }) {
           } else {
             slideEl.removeAttribute('data-dark-mode');
           }
-          if (activeSlide?.sectionLabel) {
+          if (activeSlide?.sectionLabel && activeClientProfile?.id !== 'neom') {
             slideEl.setAttribute('data-section', activeSlide.sectionLabel);
           } else {
             slideEl.removeAttribute('data-section');
           }
-          if (activeSlide?.subSectionLabel) {
+          if (activeSlide?.subSectionLabel && activeClientProfile?.id !== 'neom') {
             slideEl.setAttribute('data-subsection', activeSlide.subSectionLabel);
             if (activeSlide.sectionLabel) {
               const offset = estimateTrackerOffset(activeSlide.sectionLabel, activeClientProfile);
@@ -1857,16 +1857,16 @@ function FullscreenModal({
   if (slideHtml && (slideHtml.includes('cover-slide') || slideHtml.includes('cover-branding'))) {
     slideHtml = slideHtml.replace(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/gi, '');
   }
-  // Inject section tracker
-  if (currentSlide?.sectionLabel && slideHtml) {
+  // Inject section tracker (NEOM: no section pills in canvas)
+  if (currentSlide?.sectionLabel && slideHtml && activeClientProfile?.id !== 'neom') {
     slideHtml = injectSectionToHtml(slideHtml, currentSlide.sectionLabel);
   }
   // Inject sub-section tracker
-  if (currentSlide?.subSectionLabel && slideHtml) {
+  if (currentSlide?.subSectionLabel && slideHtml && activeClientProfile?.id !== 'neom') {
     slideHtml = injectSubSectionToHtml(slideHtml, currentSlide.subSectionLabel, currentSlide.sectionLabel, activeClientProfile);
   }
   slideHtml = injectFooterBranding(slideHtml, footerBranding);
-  slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length);
+  slideHtml = injectPageNumber(slideHtml, currentIndex + 1, slides.length, activeClientProfile);
   slideHtml = injectClientProfileChrome(slideHtml, activeClientProfile, clientLogoUrl, clientLogoIconUrl);
   const fullscreenSlideRef = useRef(null);
 

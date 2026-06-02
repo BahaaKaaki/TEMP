@@ -92,6 +92,9 @@ export function validateFreestyleHTML(html, customCSS) {
     if (greyBadgeBg && darkOnGrey) {
       issues.push('Contrast violation: grey or neutral-fill badge/background with dark text. For NEOM use background #13100D and color #FFFFFF on step/index squares; for Strategy& use var(--on-accent) on var(--neutral-fill) fills.');
     }
+    if (/var\(--neutral-fill\)/i.test(customCSS) && /color\s*:\s*var\(--on-accent\)/i.test(customCSS)) {
+      issues.push('NEOM contrast: on #13100D / var(--neutral-fill) fills use var(--on-neutral-fill) or #FFFFFF, not var(--on-accent). Reserve var(--on-accent) for yellow var(--accent) backgrounds only.');
+    }
   }
 
   // Warn about bare unstyled lists (plain <ul> or <ol> without a styled wrapper)

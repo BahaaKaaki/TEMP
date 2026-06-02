@@ -1331,13 +1331,13 @@ const NEOM_THEME = {
       '--footer-padding-bottom': '0',
       '--neom-line-x': '80px',
       '--neom-line-y': '517px',
-      '--neom-line-w': '813px',
+      '--neom-line-w': '818px',
       '--neom-line-h': '2px',
       '--source-x': '336px',
       '--source-y': '527px',
       '--source-w': '288px',
       '--source-h': '12px',
-      '--slide-num-x': '897px',
+      '--slide-num-x': '905px',
       '--slide-num-y': '518px',
       '--slide-num-w': '26px',
       '--slide-num-h': '9px',
@@ -1362,7 +1362,7 @@ const NEOM_LAYOUT_CONTRACT = {
     subtitle: { x: 29, y: 77, w: 902, h: 25 },
     body: { x: 29, y: 110, w: 902, h: 390 },
     source: { x: 336, y: 527, w: 288, h: 12 },
-    slideNumber: { x: 897, y: 518, w: 26, h: 9 },
+    slideNumber: { x: 905, y: 518, w: 26, h: 9 },
     activationLine: { x: 80, y: 517, w: 813, h: 2 },
   },
   cover: {
@@ -1378,7 +1378,7 @@ const NEOM_FREESTYLE_OVERRIDES = {
 - h2.subtitle: left 29px, top 77px, width 902px, height 25px, Arial bold 18px, ALL CAPS, color #13100D when used (optional on many body slides).
 - div.frame: left 29px, top 110px, width 902px, height 390px — all exhibit content stays inside.
 - Do not place logos in the title, subtitle, or top-left corner; the bottom-left logo is injected by preview chrome.
-- Footer: gold rule (#EBC03F) from x≈80 y≈517 to x≈928; page number on the rule at x≈935; "NEOM AUTHORITY ACTIVATION" centered below the rule at y≈527 (288px band at x≈336).
+- Footer: gold rule (#EBC03F) from x≈80 y≈517 toward the right content edge; page number right-aligned at x≈905 (26px band, flush with 29px margin); "NEOM AUTHORITY ACTIVATION" centered below the rule at y≈527 (288px band at x≈336).
 - Bottom-left chrome matches master: colored icon (~5,509 27x26) + NEOM wordmark (~35,517 45x12). Do not place logos in HTML.
 Reference slide 46 (NAFB5) for yellow column headers (#EBC03F fill, #13100D text) and three-column mandate layouts.`,
   theme: `NEOM Authority palette from NAFB5 / master theme. Primary dark #13100D, white #FFFFFF, accent yellow #EBC03F for column headers and highlights. Body text #13100D on white; muted labels #4E4C4A / #898786. Inside .frame set --accent: #EBC03F; --neutral-fill: #4E4C4A; --rose-fill: #898786 (never Strategy& pink #d4687a). Do not use tertiary orange/red/purple as dominant fills unless explicitly requested.`,

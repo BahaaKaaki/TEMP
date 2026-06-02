@@ -27,6 +27,11 @@ const PORTFOLIO_LAYOUT_RULES = `${PORTFOLIO_PATCH_MARKER}
 `;
 
 const ROADMAP_LAYOUT_RULES = `${ROADMAP_PATCH_MARKER}
+.slide[data-client-profile="se"] .frame {
+  --neutral-fill: #BFBFBF;
+  --rose-fill: #008BB9;
+  --accent: #001F5E;
+}
 .slide .frame {
   padding-top: 4px;
   padding-bottom: 4px;
@@ -143,11 +148,36 @@ export function slideHasRoadmapPhasesLayout(html = '') {
 }
 
 /**
+ * @param {string} html
+ * @returns {boolean}
+ */
+export function slideHasSeClientProfile(html = '') {
+  return /data-client-profile=["']se["']/i.test(html);
+}
+
+/**
+ * Replace Strategy& chart tokens and tertiary pinks on SE slides.
+ * @param {string} css
+ * @returns {string}
+ */
+export function normalizeSeClientColorTokens(css = '') {
+  if (!css) return css;
+  return css
+    .replace(/--rose-fill\s*:\s*#d4687a/gi, '--rose-fill: #008BB9')
+    .replace(/--neutral-fill\s*:\s*#4b5563/gi, '--neutral-fill: #BFBFBF')
+    .replace(/#d4687a/gi, '#008BB9')
+    .replace(/#D4687A/g, '#008BB9');
+}
+
+/**
  * @param {{ html?: string, customCSS?: string }} slide
  * @returns {{ html: string, customCSS: string }}
  */
 export function normalizeDenseFrameLayoutSlide({ html = '', customCSS = '' } = {}) {
-  const css = customCSS || '';
+  let css = customCSS || '';
+  if (slideHasSeClientProfile(html)) {
+    css = normalizeSeClientColorTokens(css);
+  }
   const patches = [];
 
   if (slideHasDensePortfolioMatrix(html) && !hasPortfolioLayoutPatch(css)) {

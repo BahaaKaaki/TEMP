@@ -1120,7 +1120,7 @@ const SE_THEME = {
   layout: {
     cssVars: {
       '--left-x': '35px',
-      '--title-y': '32px',
+      '--title-y': '30px',
       '--title-w': '890px',
       '--title-font-size': '32px',
       '--title-font-weight': '500',
@@ -1128,6 +1128,9 @@ const SE_THEME = {
       '--subtitle-y': '101px',
       '--subtitle-w': '890px',
       '--subtitle-color': '#00FF86',
+      '--accent': '#001F5E',
+      '--neutral-fill': '#BFBFBF',
+      '--rose-fill': '#008BB9',
       '--subtitle-font-size': '18px',
       '--subtitle-font-weight': '700',
       '--frame-y': '137px',
@@ -1161,7 +1164,7 @@ const SE_LAYOUT_CONTRACT = {
   // Audited from bundled master slideLayout13/14/16 (standard content layouts).
   standardContent: {
     logo: { x: 35, y: 511, w: 139, h: 11 },
-    title: { x: 35, y: 32, w: 890, h: 66 },
+    title: { x: 35, y: 30, w: 890, h: 66 },
     subtitle: { x: 35, y: 101, w: 890, h: 25 },
     body: { x: 35, y: 137, w: 890, h: 353 },
     source: { x: 192, y: 500, w: 576, h: 22 },
@@ -1177,19 +1180,19 @@ const SE_LAYOUT_CONTRACT = {
 };
 
 const SE_FREESTYLE_OVERRIDES = {
-  shell: `Use the SE (Saudi Electricity) master shell on a 960x540 canvas. These audited positions replace generic shell defaults (from native slideLayout13/14):
-- h1.title: left 35px, top 32px (first line sits just below the top accent bar at y≈21), width 890px, height up to 66px, SE Medium 32px, color #0080FF.
-- h2.subtitle: left 35px, top 101px, width 890px, height 25px, SE bold 18px, color #00FF86 when needed.
+  shell: `Use the SE (Saudi Electricity) master shell on a 960x540 canvas. These audited positions match Brand Guidelines / native master (13.333x7.5in mapped to 960x540):
+- h1.title: left 35px (0.484in), top 30px (0.420in), width 890px (12.365in), height up to 66px (0.920in), SE Medium 32px, color #0080FF (secondary Mid Blue).
+- h2.subtitle: left 35px, top 101px (1.396in), width 890px, height 25px (0.350in), SE bold 18px, color #00FF86 when needed.
 - div.frame: left 35px, top 137px, width 890px, height 353px — all body content must stay inside this band (ends ~y=490).
 - Footer/source/page chrome: source band y≈500, page number y≈511; do not place frame content below y=490.
 - Top section tracker y≈16px (height 19px); optional top accent bar y≈21px — keep clear of title/subtitle.
 - Do not add an extra SE logo in HTML; the bundled master footer already includes branding.
 Use the SE standard content slide as the default. Cover/divider variants are allowed only when explicitly requested.`,
-  theme: `Match the native SE master palette. Slide chrome: title text #0080FF, subtitle text #00FF86 (bold). Structural header bars and column caps use navy fill #001F5E with white text. Inside the frame for multi-column roadmaps: pillar 1 accents #008BB9 / #0080FF, pillar 2 accents #BFBFBF / #1D252D, pillar 3 accents #1F4A8E / #1C4792. Soft panels #DCE4F0 / #D6E2F6. Body copy #1D252D on white. Never use pink, coral, maroon, purple, or Strategy& red as pillar accents.`,
-  vibe: `Modern Saudi energy utility style: confident, clean, institutional, and forward-looking. Use crisp blue geometry, thin rules, structured grids, and restrained iconography. Avoid generic Office chart palettes, maroon consulting styling, and playful consumer UI.`,
+  theme: `SE Brand Guidelines palette — use PRIMARY and SECONDARY inside slides. PRIMARY: Dark blue #001F5E, White #FFFFFF. SECONDARY: Mid Blue #0080FF, Light Blue #32C2FF, Green #00FF86 (subtitle chrome only), Teal #008BB9, Deep blue #0027B9, greys #BFBFBF / #9BA2AF / #E6E8EB. TERTIARY colors (orange #EF9B00, red #E10054, purple #8035BB, tertiary green #00B476, pink/coral #d4687a, Strategy& maroon) are FORBIDDEN as frame fills, roadmap phases, or chart series. Slide chrome: title #0080FF, subtitle #00FF86 (bold). Structural bars/column caps: #001F5E with white text. Multi-column exhibits: rotate #001F5E, #0080FF, #008BB9, #32C2FF, #BFBFBF, #1F4A8E — never pink/purple/orange.`,
+  vibe: `Modern Saudi energy utility style: confident, clean, institutional, and forward-looking. Use crisp blue geometry, thin rules, structured grids, and restrained iconography. Avoid generic Office chart palettes, maroon consulting styling, dusty-rose Strategy& tokens, and playful consumer UI.`,
   writing: `Write in concise executive energy-sector language: grids, sustainability, reliability, investment, digital, and national energy themes. Keep labels short and outcome-led.`,
-  css: `SE Medium 32px for h1.title in #0080FF. Subtitle SE bold 18px in #00FF86. Body in SE regular #1D252D. Column header bars: #001F5E fill, white label text. Pillar accents only from the SE blue/grey family (#008BB9, #0080FF, #BFBFBF, #1F4A8E, #1C4792) — no pink/coral fills.`,
-  pptx: `Export on a 13.333 x 7.5 in canvas using SE Medium / SE fonts and the bundled SE master. Do not inject a duplicate footer logo — the master already includes SE branding. Title color 0080FF, subtitle 00FF86, structural fills 001F5E.`,
+  css: `SE Medium 32px for h1.title in #0080FF. Subtitle SE bold 18px in #00FF86. Body in SE regular #1D252D. In every .slide .frame { } block set: --accent: #001F5E; --neutral-fill: #BFBFBF; --rose-fill: #008BB9; never #d4687a or #4b5563 Strategy& defaults. Column header bars: #001F5E fill, white label text. Pillar/phase accents only from primary/secondary blues and greys (#001F5E, #0080FF, #008BB9, #32C2FF, #0027B9, #BFBFBF, #1F4A8E).`,
+  pptx: `Export on a 13.333 x 7.5 in canvas using SE Medium / SE fonts and the bundled SE master. Do not inject a duplicate footer logo — the master already includes SE branding. Title 0080FF, subtitle 00FF86, structural fills 001F5E.`,
 };
 
 const SE_COMPONENT_PATTERNS = [
@@ -1201,7 +1204,7 @@ const SE_COMPONENT_PATTERNS = [
   },
   {
     name: 'timeline_roadmap',
-    structure: 'Three-phase roadmap: navy #001F5E column headers, timeframe labels in #0080FF, pillar 1 accents #008BB9, pillar 2 #BFBFBF/#1D252D, pillar 3 #1F4A8E, objective panels on #DCE4F0.',
+    structure: 'Roadmap/phases: navy #001F5E headers, timeframe labels #0080FF, phase accents rotate #0080FF / #008BB9 / #32C2FF / #BFBFBF only; panels #DCE4F0. No pink, green, orange, or purple phase colors.',
     useWhen: 'Roadmaps, transformation phases, and delivery horizons.',
     avoid: ['pink/coral pillar accents', 'dense unbounded lists', 'footer-band content', 'dominant full-slide green fills'],
   },
@@ -1220,8 +1223,8 @@ const SE_PPTX_CONTRACT = {
   logoPolicy: 'Do not add a duplicate SE logo — the bundled master footer already includes branding.',
   sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',
   pageNumberPolicy: 'Bottom-right page number in SE regular, muted neutral text.',
-  titlePolicy: 'Content title at x=35 y=32 w=890 h=66 on the 960x540 canvas, SE Medium 32pt, color 0080FF.',
-  subtitlePolicy: 'Subtitle at x=35 y=101 w=890 h=25, SE bold 18pt, color 00FF86, when the slide has a meaningful lens label.',
+  titlePolicy: 'Content title at x=35 y=30 w=890 h=66 (0.484/0.420/12.365/0.920 in), SE Medium 32pt, color 0080FF.',
+  subtitlePolicy: 'Subtitle at x=35 y=101 w=890 h=25 (1.396/0.350 in), SE bold 18pt, color 00FF86, when the slide has a meaningful lens label.',
   bodyPolicy: 'Body/content frame at x=35 y=137 w=890 h=353; do not extend content into the footer band below y=490.',
   hiddenPlaceholderPolicy: 'Do not surface hidden template scratch content or unrelated stakeholder logos unless explicitly requested.',
   borderWeightPt: { min: 0.5, max: 1.25 },
@@ -1235,9 +1238,10 @@ const SE_PROMPT_CONTRACT = `# SE Client Design Contract
 - Keep the bottom footer/logo/page band and top tracker band clear.
 - Do not render Strategy& footer branding.
 
-## Theme
-- Slide chrome: title text #0080FF, subtitle text #00FF86 (bold). Structural bars/column headers: fill #001F5E, white text.
-- Frame content: pillar 1 #008BB9/#0080FF, pillar 2 #BFBFBF/#1D252D, pillar 3 #1F4A8E/#1C4792; panels #DCE4F0; body #1D252D. No pink/coral/maroon pillar accents.
+## Theme (Brand Guidelines — primary + secondary only)
+- PRIMARY: #001F5E, #FFFFFF. SECONDARY: #0080FF, #32C2FF, #008BB9, #0027B9, greys #BFBFBF/#E6E8EB.
+- Slide chrome: title #0080FF, subtitle #00FF86 (bold). Structural bars: #001F5E, white text.
+- Frame content: rotate blues/greys above; panels #DCE4F0; body #1D252D. FORBIDDEN in frame: tertiary orange/red/purple (#EF9B00, #E10054, #8035BB, #00B476), pink/coral #d4687a, Strategy& maroon. Subtitle green #00FF86 is for h2.subtitle only.
 
 ## Typography
 - Use SE Medium 32px/32pt for slide titles and SE bold 18px/18pt for subtitles. Body in SE regular 12pt. Keep titles compact and institutional.
@@ -1868,16 +1872,22 @@ export const CLIENT_DESIGN_PROFILES = {
       },
       notes: [
         'Native deck is 13.333 x 7.5in widescreen mapped to 960 x 540px for canvas preview.',
-        'Canonical content geometry from slideLayout13/14: title 35,32,890x66 (below top accent bar); subtitle 35,101,890x25; body 35,137,890x353. Title 32pt, subtitle 18pt per SE playbook.',
+        'Canonical geometry (Brand Guidelines / master): title 35,30,890x66 (0.484/0.420/12.365/0.920 in); subtitle 35,101,890x25 (1.396/0.350 in); body 35,137,890x353.',
         'Visible typography uses SE Medium for headlines; bundled SE TTF weights ship under backend/assets/fonts/se/.',
         'Logo raster extracted from ppt/media/image22.png in the bundled master.',
       ],
     },
     validationRules: {
-      requiredColors: ['#0080FF', '#00FF86', '#001F5E', '#008BB9', '#FFFFFF', '#1D252D'],
-      preferredSurfaceColors: ['#F2F2F2', '#D6E2F6', '#DCE4F0', '#CCE6FF', '#BFBFBF'],
-      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#F9F7ED', '#073B16', '#F26B43', '#FF375E'],
-      forbiddenDominantColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#F9F7ED', '#F26B43', '#ED7D31'],
+      requiredColors: ['#001F5E', '#0080FF', '#00FF86', '#008BB9', '#32C2FF', '#FFFFFF', '#1D252D'],
+      preferredSurfaceColors: ['#F2F2F2', '#D6E2F6', '#DCE4F0', '#CCE6FF', '#BFBFBF', '#E6E8EB'],
+      disallowedColors: [
+        '#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#F9F7ED', '#073B16', '#F26B43', '#FF375E',
+        '#d4687a', '#D4687A', '#E10054', '#EF9B00', '#8035BB', '#00B476', '#ED7D31',
+      ],
+      forbiddenDominantColors: [
+        '#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#F9F7ED', '#F26B43', '#ED7D31',
+        '#d4687a', '#E10054', '#EF9B00', '#8035BB', '#00B476',
+      ],
       disallowedFonts: ['Georgia', 'STC Forward', 'Fund Light', 'Noto Sans', 'Poppins', 'Aptos', 'Calibri'],
       disallowedFooterText: ['Strategy&'],
       minFontPx: 8,

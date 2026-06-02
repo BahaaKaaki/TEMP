@@ -3,6 +3,7 @@
  */
 
 import { getActiveClientProfile } from './clientDesignProfiles.js';
+import { normalizeNeomContrastInHtml } from './slideFrameLayoutNormalize.js';
 
 function escapeHtmlAttr(value) {
   return String(value ?? '')
@@ -158,6 +159,9 @@ export function prepareSlideHtmlForRender(html, {
   next = injectFooterBranding(next, branding);
   if (pageNumber) next = injectPageNumber(next, pageNumber);
   next = injectClientProfileChrome(next, profile, logoUrl, logoIconUrl);
+  if (profile?.id === 'neom') {
+    next = normalizeNeomContrastInHtml(next);
+  }
   return next;
 }
 

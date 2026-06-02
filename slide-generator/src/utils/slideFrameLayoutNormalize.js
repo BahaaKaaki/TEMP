@@ -169,14 +169,123 @@ export function normalizeSeClientColorTokens(css = '') {
     .replace(/#D4687A/g, '#008BB9');
 }
 
+export const NEOM_CONTRAST_MARKER = '/* edwin-neom-contrast */';
+
+const NEOM_DARK_TEXT = /#(?:13100[Dd]|007[Bb][Bb]5|000000|222222)|var\(--(?:heading|body|accent|info)\b/;
+
+const NEOM_CONTRAST_RULES = `${NEOM_CONTRAST_MARKER}
+.slide[data-client-profile="neom"] .frame {
+  --neutral-fill: #13100D;
+  --on-neutral-fill: #FFFFFF;
+}
+.slide[data-client-profile="neom"] .frame [style*="background: var(--neutral-fill)"],
+.slide[data-client-profile="neom"] .frame [style*="background:var(--neutral-fill)"],
+.slide[data-client-profile="neom"] .frame [style*="background-color: var(--neutral-fill)"],
+.slide[data-client-profile="neom"] .frame [style*="background-color:var(--neutral-fill)"] {
+  color: #FFFFFF !important;
+}
+.slide[data-client-profile="neom"] .frame [style*="background: var(--neutral-fill)"] *,
+.slide[data-client-profile="neom"] .frame [style*="background:var(--neutral-fill)"] * {
+  color: #FFFFFF !important;
+}
+.slide[data-client-profile="neom"] .frame :is(.stepNum, .stepBadge, .phaseNum, .numBadge, .indexBox, .numBox) {
+  background: #13100D !important;
+  color: #FFFFFF !important;
+}
+`;
+
+/**
+ * @param {string} [html]
+ * @returns {boolean}
+ */
+export function slideHasNeomClientProfile(html = '') {
+  return /data-client-profile=["']neom["']/i.test(html);
+}
+
+/**
+ * NEOM badges use dark #13100D fills with white text (NAFB5). Strategy& grey fills leak in generation.
+ * @param {string} css
+ * @returns {string}
+ */
+export function normalizeNeomClientColorTokens(css = '') {
+  if (!css) return css;
+  let next = css
+    .replace(/--neutral-fill\s*:\s*#4[bB]5563/gi, '--neutral-fill: #13100D')
+    .replace(/--neutral-fill\s*:\s*#4[Ee]4[Cc]4[aA]/gi, '--neutral-fill: #13100D')
+    .replace(/--neutral-fill\s*:\s*#898786/gi, '--neutral-fill: #13100D')
+    .replace(/--on-neutral-fill\s*:\s*#[^;]+/gi, '--on-neutral-fill: #FFFFFF');
+
+  next = next.replace(/([^{}@]+)\{([^{}]*)\}/g, (block, selector, body) => {
+    const hasGreyBg = /background(?:-color)?\s*:\s*(?:#(?:4[bB]5563|4[Ee]4[Cc]4[aA]|898786)|var\(--neutral-fill)/i.test(body);
+    if (!hasGreyBg) return block;
+    let fixedBody = body
+      .replace(/background(?:-color)?\s*:\s*#(?:4[bB]5563|4[Ee]4[Cc]4[aA]|898786)/gi, 'background: #13100D')
+      .replace(/background(?:-color)?\s*:\s*var\(--neutral-fill[^;)]*\)/gi, 'background: var(--neutral-fill, #13100D)');
+    if (NEOM_DARK_TEXT.test(fixedBody) || !/color\s*:/i.test(fixedBody)) {
+      fixedBody = fixedBody.replace(/color\s*:\s*[^;]+/gi, 'color: #FFFFFF');
+      if (!/color\s*:/i.test(fixedBody)) fixedBody += '; color: #FFFFFF';
+    }
+    return `${selector}{${fixedBody}}`;
+  });
+
+  return next;
+}
+
+/**
+ * Fix inline grey badge fills with dark index text on existing NEOM slides.
+ * @param {string} html
+ * @returns {string}
+ */
+export function normalizeNeomContrastInHtml(html = '') {
+  if (!html) return html;
+  return html.replace(/style=(["'])([\s\S]*?)\1/gi, (match, quote, styleBody) => {
+    const hasGreyBg = /background(?:-color)?\s*:\s*(?:#(?:4[bB]5563|4[Ee]4[Cc]4[aA]|898786)|var\(--neutral-fill)/i.test(styleBody);
+    if (!hasGreyBg) return match;
+    let style = styleBody
+      .replace(/background(?:-color)?\s*:\s*#(?:4[bB]5563|4[Ee]4[Cc]4[aA]|898786)/gi, 'background:#13100D')
+      .replace(/background(?:-color)?\s*:\s*var\(--neutral-fill[^;)]*\)/gi, 'background:#13100D');
+    if (NEOM_DARK_TEXT.test(style) || !/color\s*:/i.test(style)) {
+      style = style.replace(/color\s*:\s*[^;]+/gi, 'color:#FFFFFF');
+      if (!/color\s*:/i.test(style)) style += ';color:#FFFFFF';
+    }
+    return `style=${quote}${style}${quote}`;
+  });
+}
+
+function hasNeomContrastPatch(css) {
+  return css.includes(NEOM_CONTRAST_MARKER);
+}
+
+/**
+ * @param {{ html?: string, customCSS?: string }} slide
+ * @returns {{ html: string, customCSS: string }}
+ */
+export function normalizeNeomContrastSlide({ html = '', customCSS = '' } = {}) {
+  if (!slideHasNeomClientProfile(html)) {
+    return { html, customCSS: customCSS || '' };
+  }
+  let css = normalizeNeomClientColorTokens(customCSS || '');
+  const nextHtml = normalizeNeomContrastInHtml(html);
+  if (!hasNeomContrastPatch(css)) {
+    css = css ? `${css.trim()}\n\n${NEOM_CONTRAST_RULES}` : NEOM_CONTRAST_RULES;
+  }
+  return { html: nextHtml, customCSS: css };
+}
+
 /**
  * @param {{ html?: string, customCSS?: string }} slide
  * @returns {{ html: string, customCSS: string }}
  */
 export function normalizeDenseFrameLayoutSlide({ html = '', customCSS = '' } = {}) {
   let css = customCSS || '';
+  let nextHtml = html;
   if (slideHasSeClientProfile(html)) {
     css = normalizeSeClientColorTokens(css);
+  }
+  if (slideHasNeomClientProfile(html)) {
+    const neomNorm = normalizeNeomContrastSlide({ html: nextHtml, customCSS: css });
+    nextHtml = neomNorm.html;
+    css = neomNorm.customCSS;
   }
   const patches = [];
 
@@ -188,7 +297,7 @@ export function normalizeDenseFrameLayoutSlide({ html = '', customCSS = '' } = {
   }
 
   if (patches.length === 0) {
-    return { html, customCSS: css };
+    return { html: nextHtml, customCSS: css };
   }
 
   const blocks = patches.join('\n');
@@ -197,7 +306,7 @@ export function normalizeDenseFrameLayoutSlide({ html = '', customCSS = '' } = {
     : `${DENSE_FRAME_LAYOUT_MARKER}\n${blocks}`;
 
   return {
-    html,
+    html: nextHtml,
     customCSS: css ? `${css.trim()}\n\n${withHeader}` : withHeader,
   };
 }

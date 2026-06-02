@@ -727,6 +727,8 @@
   top: var(--frame-y);
   width: var(--frame-w);
   height: var(--frame-h);
+  --neutral-fill: #13100D;
+  --on-neutral-fill: #FFFFFF;
 }
 
 .slide[data-client-profile="neom"] .client-chrome {

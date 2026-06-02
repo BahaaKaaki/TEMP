@@ -1342,7 +1342,8 @@ const NEOM_THEME = {
       '--slide-num-w': '26px',
       '--slide-num-h': '9px',
       '--accent': '#EBC03F',
-      '--neutral-fill': '#4E4C4A',
+      '--neutral-fill': '#13100D',
+      '--on-neutral-fill': '#FFFFFF',
       '--rose-fill': '#898786',
     },
   },
@@ -1381,10 +1382,10 @@ const NEOM_FREESTYLE_OVERRIDES = {
 - Footer: optional gold rule (#EBC03F) from x≈80 y≈517 toward the right content edge; page number right-aligned at x≈905. Do not add footer branding, program labels, or "NEOM AUTHORITY ACTIVATION" text — leave the first footer span empty.
 - Bottom-left chrome matches master: colored icon (~5,509 27x26) + NEOM wordmark (~35,517 45x12). Do not place logos in HTML.
 Reference slide 46 (NAFB5) for yellow column headers (#EBC03F fill, #13100D text) and three-column layouts.`,
-  theme: `NEOM Authority palette from NAFB5 / master theme. Primary dark #13100D, white #FFFFFF, accent yellow #EBC03F for column headers and highlights. Body text #13100D on white; muted labels #4E4C4A / #898786. Inside .frame set --accent: #EBC03F; --neutral-fill: #4E4C4A; --rose-fill: #898786 (never Strategy& pink #d4687a). Do not use tertiary orange/red/purple as dominant fills unless explicitly requested.`,
+  theme: `NEOM Authority palette from NAFB5 / master theme. Primary dark #13100D, white #FFFFFF, accent yellow #EBC03F for column headers and highlights. Body text #13100D on white; muted labels #4E4C4A for captions only (not badge fills). Inside .frame set --accent: #EBC03F; --neutral-fill: #13100D; --on-neutral-fill: #FFFFFF; --rose-fill: #898786 for borders/dividers only. Never Strategy& pink #d4687a or grey badge fills (#4b5563, #4E4C4A) behind dark text.`,
   vibe: `Institutional Saudi giga-project style: clean white field, bold ALL CAPS title, regular-weight subtitle, yellow structural bars, compact Arial typography, icon-supported rows. Avoid Strategy& maroon, STC purple, or generic Office chart colors.`,
   writing: `Match the user's requested topic and industry — do not assume NEOM Authority, mandates, activation, or regulatory themes unless the user asks for them. Keep labels short and executive. Titles/subtitles render ALL CAPS via CSS only.`,
-  css: `h1.title { text-transform: uppercase; letter-spacing: 0.02em; font-weight: 700; } h2.subtitle { text-transform: uppercase; letter-spacing: 0.02em; font-weight: 400; }. Column/section headers: background #EBC03F, text #13100D, Arial bold 11-12px, square corners. Body 11-12px Arial regular #13100D. Yellow header class example: .neomHead { background: var(--accent); color: var(--on-accent); padding: 8px 10px; font-weight: 700; text-transform: uppercase; }`,
+  css: `h1.title { text-transform: uppercase; letter-spacing: 0.02em; font-weight: 700; } h2.subtitle { text-transform: uppercase; letter-spacing: 0.02em; font-weight: 400; }. Column/section headers: background #EBC03F, text #13100D, Arial bold 11-12px, square corners. Step/index squares in yellow headers: background #13100D, color #FFFFFF (never grey fill with dark or blue text). Body 11-12px Arial regular #13100D. Yellow header class example: .neomHead { background: var(--accent); color: var(--on-accent); padding: 8px 10px; font-weight: 700; text-transform: uppercase; }`,
   pptx: `Export on 13.333x7.5in canvas with bundled NEOM master. Title Arial bold ALL CAPS; subtitle Arial regular 18pt ALL CAPS. No footer program label — bottom-left logo from master/chrome only; page number bottom-right.`,
 };
 
@@ -2165,7 +2166,12 @@ export const CLIENT_DESIGN_PROFILES = {
     validationRules: {
       requiredColors: ['#13100D', '#EBC03F', '#FFFFFF', '#FBF8E9'],
       preferredSurfaceColors: ['#FFFFFF', '#FBF8E9', '#FCF0D1', '#F2F3F5'],
-      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#d4687a', '#D4687A'],
+      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#d4687a', '#D4687A', '#4b5563'],
+      contrastRules: [
+        'Yellow (#EBC03F) headers: label text #13100D on yellow only.',
+        'Index/step squares inside headers: background #13100D, text #FFFFFF — never grey (#898786, #4E4C4A, #4b5563) with dark or blue text.',
+        'Do not use var(--info) blue on dark or grey fills.',
+      ],
       forbiddenDominantColors: ['#8E1E1E', '#4F008C', '#C3984D'],
       disallowedFonts: ['Georgia', 'STC Forward', 'Fund Light', 'SE Medium', 'Noto Sans', 'Poppins'],
       disallowedFooterText: ['Strategy&'],
@@ -2277,6 +2283,7 @@ export function buildClientValidationBlock(profile) {
   if (rules.forbiddenDominantColors?.length) parts.push(`Never use as dominant colors: ${rules.forbiddenDominantColors.join(', ')}`);
   if (rules.disallowedFonts?.length) parts.push(`Do not use fonts: ${rules.disallowedFonts.join(', ')}`);
   if (rules.disallowedFooterText?.length) parts.push(`Do not use footer text: ${rules.disallowedFooterText.join(', ')}`);
+  if (rules.contrastRules?.length) parts.push(...rules.contrastRules);
   if (rules.minFontPx) parts.push(`Minimum visible font size: ${rules.minFontPx}px`);
   return parts.length ? `CLIENT VALIDATION RULES:\n- ${parts.join('\n- ')}` : '';
 }

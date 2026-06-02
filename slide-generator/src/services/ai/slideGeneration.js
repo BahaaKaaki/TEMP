@@ -87,6 +87,11 @@ export function validateFreestyleHTML(html, customCSS) {
     if (hasAccentBg && !customCSS.includes('var(--on-accent)')) {
       issues.push('Contrast violation: element uses var(--accent) background but text is not set to var(--on-accent). Dark text on a dark maroon background is unreadable — add color: var(--on-accent) to elements with accent backgrounds.');
     }
+    const greyBadgeBg = /background[^;{]*(?:#(?:4[bB]5563|4[eE]4[cC]4[aA]|898786)|var\(--neutral-fill)/i.test(customCSS);
+    const darkOnGrey = /color[^;{]*(?:#(?:13100[dD]|007[bB][bB]5|000|222)|var\(--(?:heading|body|info))/i.test(customCSS);
+    if (greyBadgeBg && darkOnGrey) {
+      issues.push('Contrast violation: grey or neutral-fill badge/background with dark text. For NEOM use background #13100D and color #FFFFFF on step/index squares; for Strategy& use var(--on-accent) on var(--neutral-fill) fills.');
+    }
   }
 
   // Warn about bare unstyled lists (plain <ul> or <ol> without a styled wrapper)

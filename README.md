@@ -223,7 +223,7 @@ The frontend ESLint config keeps undefined symbols and parse-level issues as blo
 
 ## Client Design Profiles
 
-The main header includes a **Template** control styled like the other header action buttons (icon + active profile name + chevron). Opening it reveals a compact dropdown listing the available client profiles. Switching applies the new theme/footer immediately and clears cached PPTX export code on existing slides so the next export uses the new profile; HTML content is preserved. PPTX master upload remains in Settings.
+The main header includes a **Template** control styled like the other header action buttons (brand color swatches + active profile name + chevron). Opening it reveals a searchable panel listing client profiles with accent/heading/page color chips and short descriptions. Switching applies the new theme/footer immediately and clears cached PPTX export code on existing slides so the next export uses the new profile; HTML content is preserved. PPTX master upload remains in Settings.
 
 The default profile is Strategy&, while STC, PIF, DGE, FYA, MoS, and SE apply audited client-deck behavior. Uploaded PPTX masters are stored by profile/template slot in IndexedDB, so a client upload does not overwrite the default Strategy& template. The backend `/api/templates/pptx-master` endpoint serves the legacy Strategy& default and built-in masters through `?profileId=stc`, `?profileId=pif`, `?profileId=dge`, `?profileId=fya`, `?profileId=mos`, and `?profileId=se`; user-uploaded client templates remain local profile-bound overrides. Client demo checks are available through `clientProfileValidation.js` for color/font/footer/layout readiness.
 

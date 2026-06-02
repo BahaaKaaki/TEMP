@@ -1331,13 +1331,13 @@ const NEOM_THEME = {
       '--footer-padding-bottom': '0',
       '--neom-line-x': '80px',
       '--neom-line-y': '517px',
-      '--neom-line-w': '848px',
+      '--neom-line-w': '813px',
       '--neom-line-h': '2px',
       '--source-x': '336px',
       '--source-y': '527px',
       '--source-w': '288px',
       '--source-h': '12px',
-      '--slide-num-x': '935px',
+      '--slide-num-x': '897px',
       '--slide-num-y': '518px',
       '--slide-num-w': '26px',
       '--slide-num-h': '9px',
@@ -1362,8 +1362,8 @@ const NEOM_LAYOUT_CONTRACT = {
     subtitle: { x: 29, y: 77, w: 902, h: 25 },
     body: { x: 29, y: 110, w: 902, h: 390 },
     source: { x: 336, y: 527, w: 288, h: 12 },
-    slideNumber: { x: 935, y: 518, w: 26, h: 9 },
-    activationLine: { x: 80, y: 517, w: 848, h: 2 },
+    slideNumber: { x: 897, y: 518, w: 26, h: 9 },
+    activationLine: { x: 80, y: 517, w: 813, h: 2 },
   },
   cover: {
     logo: { x: 35, y: 500, w: 45, h: 12 },
@@ -2208,6 +2208,11 @@ export const CLIENT_DESIGN_PROFILE_OPTIONS = Object.values(CLIENT_DESIGN_PROFILE
   navLabel: profile.navLabel || profile.name,
   description: profile.description,
   status: profile.status,
+  swatch: {
+    accent: profile.theme?.colors?.accent || '#8E1E1E',
+    heading: profile.theme?.colors?.heading || '#111111',
+    page: profile.theme?.colors?.page || '#FFFFFF',
+  },
 }));
 
 export function getClientDesignProfile(profileId) {

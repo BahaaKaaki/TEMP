@@ -364,6 +364,19 @@ function hideMasterShapes(slideXml) {
  * Remove small header-band pictures LLMs sometimes add to slide XML (NEOM title-only
  * layouts ship Picture 22/23 near 1in,0.35in). Master/footer logos stay below ~7in.
  */
+/** Remove master/LLM footer program label from NEOM exports (logo + page number only). */
+function stripNeomFooterActivationText(slideXml, profile = null) {
+  if (profile?.id !== 'neom') return slideXml;
+  return String(slideXml || '').replace(/<p:sp>[\s\S]*?<\/p:sp>/g, (spXml) => {
+    if (!/NEOM\s+AUTHORITY\s+ACTIVATION/i.test(spXml)) return spXml;
+    const off = spXml.match(/<a:off x="(\d+)" y="(\d+)"/);
+    if (!off) return spXml;
+    const y = parseInt(off[2], 10) / EMU_PER_INCH;
+    if (y >= 6.0) return '';
+    return spXml;
+  });
+}
+
 function stripTopBandPicturesFromSlideXml(slideXml, profile = null) {
   if (profile?.id !== 'neom') return slideXml;
   return String(slideXml || '').replace(/<p:pic>[\s\S]*?<\/p:pic>/g, (picXml) => {
@@ -820,6 +833,7 @@ export async function applyProfileChromeToGenerated(generatedBuf, chrome = null,
     const genSlideRelsPath = `ppt/slides/_rels/slide${slideNum}.xml.rels`;
     let slideXml = await genZip.files[genSlidePath].async('string');
     slideXml = hideMasterShapes(injectSlideBackground(slideXml, profile));
+    slideXml = stripNeomFooterActivationText(slideXml, profile);
     slideXml = stripTopBandPicturesFromSlideXml(slideXml, profile);
     if (profile?.id === 'mos') {
       slideXml = injectMoSFooterChrome(slideXml, hasLogo ? chrome.logo : null, LOGO_RID, slideNum);
@@ -1007,6 +1021,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
       let slideXml = await genZip.files[genSlidePath].async('string');
       if (!preserveTemplateChrome) slideXml = hideMasterShapes(slideXml);
       slideXml = injectSlideBackground(slideXml, profile);
+      slideXml = stripNeomFooterActivationText(slideXml, profile);
       slideXml = stripTopBandPicturesFromSlideXml(slideXml, profile);
       if (profile?.id === 'mos') {
         slideXml = injectMoSFooterChrome(slideXml, hasLogo ? chrome.logo : null, LOGO_RID, slideNum);

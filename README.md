@@ -40,7 +40,7 @@ AI-powered presentation generator that creates professional slide decks using Pw
 - Freestyle slide generation with full creative freedom (AI generates custom HTML + scoped CSS per slide)
 - Post-generation layout polish (V1, default on): after each `generateSlides` call, a fast-model pass (`slideLayoutPolish.js`, typically Gemini 3.5 Flash) fixes frame-only layout defects (grids, alignment, overflow, whitespace) before slides appear; title, subtitle, footer, and section trackers are locked
 - Automatic dense frame layout normalization (`slideFrameLayoutNormalize.js`): portfolio matrices and roadmap phase columns get CSS patches (`min-height: 0`, `minmax(0, 1fr)`) so content is not clipped inside fixed-height `div.frame` bands; runs on generation, slide save, and localStorage load
-- **NEOM Authority** client profile (`neom`): NAFB5 master, slide-46 column/mandate patterns, ALL CAPS Arial 20/18pt title/subtitle (non-overlapping bands), yellow `#EBC03F` headers, bottom-left logo + `NEOM AUTHORITY ACTIVATION` footer line (preview and PDF/HTML export match)
+- **NEOM Authority** client profile (`neom`): NAFB5 master, slide-46 column patterns, ALL CAPS Arial 20pt bold title / 18pt regular subtitle, yellow `#EBC03F` headers, bottom-left logo only (no program footer label)
 - Complex chart generation uses fixed-coordinate geometry guidance for waterfall/bridge/bar-style exhibits, with inline numeric positioning allowed only for chart marks
 - Template auto-match now attaches the selected template's extracted CSS consistently across create, insert, fill, and switch paths
 - Reused template CSS is normalized through per-slide `data-slide-id` scoping on add/update, including CSS blocks with comments before selectors

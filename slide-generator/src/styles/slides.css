@@ -715,7 +715,7 @@
   width: var(--subtitle-w);
   height: 25px;
   max-height: 25px;
-  font: 700 var(--subtitle-font-size)/1.1 Arial, Helvetica, sans-serif;
+  font: var(--subtitle-font-weight) var(--subtitle-font-size)/1.1 Arial, Helvetica, sans-serif;
   color: #13100D;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -796,19 +796,7 @@
 }
 
 .slide[data-client-profile="neom"] footer.footer > span:first-child {
-  position: absolute;
-  left: calc(var(--source-x) - var(--footer-x));
-  top: calc(var(--source-y) - var(--footer-y));
-  width: var(--source-w);
-  height: var(--source-h);
-  text-align: center;
-  font: 700 7px/1 Arial, Helvetica, sans-serif;
-  color: #13100D;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  display: none;
 }
 
 .slide[data-client-profile="neom"] footer.footer > span:last-child {

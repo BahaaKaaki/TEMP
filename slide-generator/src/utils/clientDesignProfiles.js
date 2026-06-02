@@ -1319,7 +1319,7 @@ const NEOM_THEME = {
       '--subtitle-w': '902px',
       '--subtitle-color': '#13100D',
       '--subtitle-font-size': '18px',
-      '--subtitle-font-weight': '700',
+      '--subtitle-font-weight': '400',
       '--frame-y': '110px',
       '--frame-w': '902px',
       '--frame-h': '390px',
@@ -1375,17 +1375,17 @@ const NEOM_LAYOUT_CONTRACT = {
 const NEOM_FREESTYLE_OVERRIDES = {
   shell: `Use the NEOM Authority master shell on 960x540 (13.333x7.5in native, 72px/in).
 - h1.title: left 29px, top 29px, width 902px, height up to 44px (max 2 lines), Arial bold 20px, ALL CAPS, color #13100D.
-- h2.subtitle: left 29px, top 77px, width 902px, height 25px, Arial bold 18px, ALL CAPS, color #13100D when used (optional on many body slides).
+- h2.subtitle: left 29px, top 77px, width 902px, height 25px, Arial regular 18px, ALL CAPS, color #13100D when used (optional on many body slides).
 - div.frame: left 29px, top 110px, width 902px, height 390px — all exhibit content stays inside.
 - Do not place logos in the title, subtitle, or top-left corner; the bottom-left logo is injected by preview chrome.
-- Footer: gold rule (#EBC03F) from x≈80 y≈517 toward the right content edge; page number right-aligned at x≈905 (26px band, flush with 29px margin); "NEOM AUTHORITY ACTIVATION" centered below the rule at y≈527 (288px band at x≈336).
+- Footer: optional gold rule (#EBC03F) from x≈80 y≈517 toward the right content edge; page number right-aligned at x≈905. Do not add footer branding, program labels, or "NEOM AUTHORITY ACTIVATION" text — leave the first footer span empty.
 - Bottom-left chrome matches master: colored icon (~5,509 27x26) + NEOM wordmark (~35,517 45x12). Do not place logos in HTML.
-Reference slide 46 (NAFB5) for yellow column headers (#EBC03F fill, #13100D text) and three-column mandate layouts.`,
+Reference slide 46 (NAFB5) for yellow column headers (#EBC03F fill, #13100D text) and three-column layouts.`,
   theme: `NEOM Authority palette from NAFB5 / master theme. Primary dark #13100D, white #FFFFFF, accent yellow #EBC03F for column headers and highlights. Body text #13100D on white; muted labels #4E4C4A / #898786. Inside .frame set --accent: #EBC03F; --neutral-fill: #4E4C4A; --rose-fill: #898786 (never Strategy& pink #d4687a). Do not use tertiary orange/red/purple as dominant fills unless explicitly requested.`,
-  vibe: `Institutional Saudi giga-project authority style: clean white field, bold ALL CAPS headlines, yellow structural bars, compact Arial typography, icon-supported rows. Avoid Strategy& maroon, STC purple, or generic Office chart colors.`,
-  writing: `Executive board/activation language: mandate, authority, regulatory arrangements, phases, stakeholders. Keep labels short; titles and subtitles in Title Case words but rendered ALL CAPS via CSS.`,
-  css: `h1.title and h2.subtitle { text-transform: uppercase; letter-spacing: 0.02em; }. Column/section headers: background #EBC03F, text #13100D, Arial bold 11-12px, square corners. Body 11-12px Arial regular #13100D. Yellow header class example: .neomHead { background: var(--accent); color: var(--on-accent); padding: 8px 10px; font-weight: 700; text-transform: uppercase; }`,
-  pptx: `Export on 13.333x7.5in canvas with bundled NEOM master. Title/subtitle Arial bold ALL CAPS. Footer shows NEOM AUTHORITY ACTIVATION; preserve master logo — do not inject duplicate footer logo in export.`,
+  vibe: `Institutional Saudi giga-project style: clean white field, bold ALL CAPS title, regular-weight subtitle, yellow structural bars, compact Arial typography, icon-supported rows. Avoid Strategy& maroon, STC purple, or generic Office chart colors.`,
+  writing: `Match the user's requested topic and industry — do not assume NEOM Authority, mandates, activation, or regulatory themes unless the user asks for them. Keep labels short and executive. Titles/subtitles render ALL CAPS via CSS only.`,
+  css: `h1.title { text-transform: uppercase; letter-spacing: 0.02em; font-weight: 700; } h2.subtitle { text-transform: uppercase; letter-spacing: 0.02em; font-weight: 400; }. Column/section headers: background #EBC03F, text #13100D, Arial bold 11-12px, square corners. Body 11-12px Arial regular #13100D. Yellow header class example: .neomHead { background: var(--accent); color: var(--on-accent); padding: 8px 10px; font-weight: 700; text-transform: uppercase; }`,
+  pptx: `Export on 13.333x7.5in canvas with bundled NEOM master. Title Arial bold ALL CAPS; subtitle Arial regular 18pt ALL CAPS. No footer program label — bottom-left logo from master/chrome only; page number bottom-right.`,
 };
 
 const NEOM_COMPONENT_PATTERNS = [
@@ -1414,10 +1414,10 @@ const NEOM_PPTX_CONTRACT = {
   defaultFontFace: 'Arial',
   allowedFontFaces: ['Arial', 'Helvetica'],
   logoPolicy: 'Master footer includes NEOM logo — do not inject a duplicate logo in export.',
-  sourcePolicy: 'Footer center line reads NEOM AUTHORITY ACTIVATION unless user provides real source text.',
+  sourcePolicy: 'Keep footer center/source blank unless the user provides real source text. Do not add NEOM AUTHORITY ACTIVATION or other program labels.',
   pageNumberPolicy: 'Bottom-right page number, Arial 7-8pt, #13100D.',
   titlePolicy: 'Title at x=29 y=29 w=902 h=44 (max 2 lines), Arial bold 20pt ALL CAPS, #13100D.',
-  subtitlePolicy: 'Subtitle at x=29 y=77 w=902 h=25, Arial bold 18pt ALL CAPS, #13100D, optional.',
+  subtitlePolicy: 'Subtitle at x=29 y=77 w=902 h=25, Arial regular 18pt ALL CAPS, #13100D, optional.',
   bodyPolicy: 'Body frame x=29 y=110 w=902 h=390; keep content above footer band.',
   hiddenPlaceholderPolicy: 'Do not surface master placeholder instructional text.',
   borderWeightPt: { min: 0.5, max: 1 },
@@ -1428,18 +1428,18 @@ const NEOM_PROMPT_CONTRACT = `# NEOM Authority Client Design Contract
 ## Master
 - NEOM Authority (NAFB5) shell only. Canvas 960x540 mapped from 13.333x7.5in.
 - Body frame: x=29 y=110 w=902 h=390.
-- Footer: NEOM AUTHORITY ACTIVATION centered; page number bottom-right; logo from master/chrome.
+- Footer: page number bottom-right only; bottom-left logo from master/chrome. No program label in footer.
 
 ## Theme
 - Dark #13100D text, white page, yellow #EBC03F column headers, cream panels #FBF8E9 optional.
-- Title/subtitle: ALL CAPS, Arial bold 20px / 18px.
+- Title ALL CAPS Arial bold 20px; subtitle ALL CAPS Arial regular 18px.
 
 ## Components
 - Yellow header grids, icon rows, mandate three-column layouts inside frame.`;
 
 const NEOM_PPTX_FONTS = {
   title: { fontFace: 'Arial', fontSize: 20, bold: true, color: '13100D' },
-  subtitle: { fontFace: 'Arial', fontSize: 18, bold: true, color: '13100D' },
+  subtitle: { fontFace: 'Arial', fontSize: 18, bold: false, color: '13100D' },
   body: { fontFace: 'Arial', fontSize: 11, bold: false, color: '13100D' },
   footer: { fontFace: 'Arial', fontSize: 7, bold: true, color: '13100D' },
   slideNum: { fontFace: 'Arial', fontSize: 8, bold: false, color: '13100D' },
@@ -2107,9 +2107,9 @@ export const CLIENT_DESIGN_PROFILES = {
     id: 'neom',
     navLabel: 'NEOM',
     name: 'NEOM Authority',
-    description: 'NEOM Authority activation deck: ALL CAPS Arial titles, yellow column headers, bottom logo and activation footer.',
+    description: 'NEOM Authority deck shell: ALL CAPS Arial titles, regular subtitles, yellow column headers, bottom-left logo only.',
     status: 'sandbox-0.1',
-    footerBranding: 'NEOM AUTHORITY ACTIVATION',
+    footerBranding: '',
     theme: NEOM_THEME,
     layoutContract: NEOM_LAYOUT_CONTRACT,
     freestyleOverrides: NEOM_FREESTYLE_OVERRIDES,
@@ -2129,7 +2129,7 @@ export const CLIENT_DESIGN_PROFILES = {
       notes: 'Bundled from 22042026 NEOM Authority NAFB5_vF.pptx; slide 46 + master geometry.',
     },
     chrome: {
-      footerText: 'NEOM AUTHORITY ACTIVATION',
+      footerText: '',
       logoPlacement: 'bottom-left',
       positions: neomStandardInches,
       injectPreviewLogo: true,
@@ -2159,7 +2159,7 @@ export const CLIENT_DESIGN_PROFILES = {
         'Native 13.333x7.5in mapped to 960x540 at 72px/in.',
         'Master geometry: title 29,29,902x22; subtitle 29,60,902x25; body 29,90,902x410.',
         'Footer activation line y≈520; logo bottom-left 35,517,45x12 from master.',
-        'Title 20pt / subtitle 18pt Arial bold, ALL CAPS.',
+        'Title 20pt bold / subtitle 18pt regular, ALL CAPS.',
       ],
     },
     validationRules: {
@@ -2229,6 +2229,11 @@ export function getClientProfileTheme(profileId) {
 
 export function getClientProfileFooterBranding(settings = {}, fallback = 'Strategy&') {
   const profile = getActiveClientProfile(settings);
+  if (profile?.id === 'neom') {
+    const userLabel = String(settings.footerBranding ?? '').trim();
+    if (userLabel && !/NEOM\s+AUTHORITY\s+ACTIVATION/i.test(userLabel)) return userLabel;
+    return '';
+  }
   if (profile && Object.prototype.hasOwnProperty.call(profile, 'footerBranding')) {
     return settings.footerBranding ?? profile.footerBranding ?? '';
   }

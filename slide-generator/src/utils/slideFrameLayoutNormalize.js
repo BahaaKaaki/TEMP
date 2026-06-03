@@ -173,7 +173,12 @@ export const NEOM_CONTRAST_MARKER = '/* edwin-neom-contrast */';
 
 const NEOM_DARK_TEXT = /#(?:13100[Dd]|007[Bb][Bb]5|000000|222222)|var\(--(?:heading|body|accent|info)\b/;
 
-const NEOM_DARK_FILL_BG = /background(?:-color)?\s*:\s*(?:#13100[dD]|var\(--neutral-fill)/i;
+const NEOM_DARK_FILL_BG = /background(?:-color)?\s*:\s*(?:#13100[dD]|#000000|var\(--(?:neutral-fill|heading|body))/i;
+
+// Text colours that are unambiguously dark, so they are safe to force to white
+// on a dark fill. Deliberately EXCLUDES var(--accent)/#EBC03F so intentional
+// yellow-on-dark text survives (yellow on #13100D is high-contrast, not a bug).
+const NEOM_UNAMBIGUOUS_DARK_TEXT = /color\s*:\s*(?:#(?:13100[dD]|000000|222222)|var\(--(?:heading|body)\b)/i;
 
 const NEOM_CONTRAST_RULES = `${NEOM_CONTRAST_MARKER}
 .slide[data-client-profile="neom"] .frame {
@@ -207,6 +212,26 @@ const NEOM_CONTRAST_RULES = `${NEOM_CONTRAST_MARKER}
 }
 .slide[data-client-profile="neom"] .frame :is(.stepNum, .stepBadge, .phaseNum, .numBadge, .indexBox, .numBox) {
   background: #13100D !important;
+  color: #FFFFFF !important;
+}
+.slide[data-client-profile="neom"] .frame [style*="background:#13100D"],
+.slide[data-client-profile="neom"] .frame [style*="background: #13100D"],
+.slide[data-client-profile="neom"] .frame [style*="background-color:#13100D"],
+.slide[data-client-profile="neom"] .frame [style*="background-color: #13100D"],
+.slide[data-client-profile="neom"] .frame [style*="background:#000000"],
+.slide[data-client-profile="neom"] .frame [style*="background: #000000"],
+.slide[data-client-profile="neom"] .frame [style*="background: var(--heading)"],
+.slide[data-client-profile="neom"] .frame [style*="background:var(--heading)"] {
+  color: #FFFFFF !important;
+}
+.slide[data-client-profile="neom"] .frame [style*="background:#13100D"] *,
+.slide[data-client-profile="neom"] .frame [style*="background: #13100D"] *,
+.slide[data-client-profile="neom"] .frame [style*="background-color:#13100D"] *,
+.slide[data-client-profile="neom"] .frame [style*="background-color: #13100D"] *,
+.slide[data-client-profile="neom"] .frame [style*="background:#000000"] *,
+.slide[data-client-profile="neom"] .frame [style*="background: #000000"] *,
+.slide[data-client-profile="neom"] .frame [style*="background: var(--heading)"] *,
+.slide[data-client-profile="neom"] .frame [style*="background:var(--heading)"] * {
   color: #FFFFFF !important;
 }
 `;
@@ -272,16 +297,46 @@ export function normalizeNeomContrastInHtml(html = '') {
   if (!html) return html;
   return html.replace(/style=(["'])([\s\S]*?)\1/gi, (match, quote, styleBody) => {
     const hasGreyBg = /background(?:-color)?\s*:\s*(?:#(?:4[bB]5563|4[Ee]4[Cc]4[aA]|898786)|var\(--neutral-fill)/i.test(styleBody);
-    if (!hasGreyBg) return match;
+    const hasDarkBg = NEOM_DARK_FILL_BG.test(styleBody);
+    if (!hasGreyBg && !hasDarkBg) return match;
     let style = styleBody
       .replace(/background(?:-color)?\s*:\s*#(?:4[bB]5563|4[Ee]4[Cc]4[aA]|898786)/gi, 'background:#13100D')
       .replace(/background(?:-color)?\s*:\s*var\(--neutral-fill[^;)]*\)/gi, 'background:#13100D');
-    if (NEOM_DARK_TEXT.test(style) || !/color\s*:/i.test(style)) {
-      style = style.replace(/color\s*:\s*[^;]+/gi, 'color:#FFFFFF');
-      if (!/color\s*:/i.test(style)) style += ';color:#FFFFFF';
+    // Grey fills keep the broad dark-text check; pure-dark fills use the narrow
+    // check so intentional yellow (var(--accent)/#EBC03F) on dark is preserved.
+    const needsWhiten = hasGreyBg
+      ? (NEOM_DARK_TEXT.test(style) || !/color\s*:/i.test(style))
+      : (NEOM_UNAMBIGUOUS_DARK_TEXT.test(style) || !/color\s*:/i.test(style));
+    if (needsWhiten) {
+      // Anchor on start/`;` so we never rewrite `border-color`.
+      style = style.replace(/(^|;)(\s*)color\s*:\s*[^;]+/gi, '$1$2color:#FFFFFF');
+      if (!/(^|;)\s*color\s*:/i.test(style)) style += ';color:#FFFFFF';
     }
     return `style=${quote}${style}${quote}`;
   });
+}
+
+/**
+ * Re-target a client profile's hardcoded signature colours back to theme tokens
+ * so that switching the client design profile actually re-themes existing slides
+ * instead of leaving baked-in hex (the "some pages stay NEOM" bug). Property-aware:
+ * fills map to var(--neutral-fill)/var(--accent), text maps to var(--heading)/
+ * var(--accent). Only declaration-prefixed colours are touched, so plain-text hex
+ * (and unrelated content) is never altered. Safe on CSS text and inline styles.
+ * @param {string} text
+ * @returns {string}
+ */
+export function retargetClientHardcodedColors(text = '') {
+  if (!text) return text;
+  return text
+    // NEOM accent yellow -> var(--accent) (fill, text, and border contexts)
+    .replace(/(background(?:-color)?\s*:\s*)#EBC03F\b/gi, '$1var(--accent)')
+    .replace(/(?<![-\w])(color\s*:\s*)#EBC03F\b/gi, '$1var(--accent)')
+    .replace(/(border(?:-[a-z]+)?\s*:\s*[^;{}"']*?)#EBC03F\b/gi, '$1var(--accent)')
+    // NEOM dark (#13100D / #000000): fills -> neutral-fill, text -> heading
+    .replace(/(background(?:-color)?\s*:\s*)#(?:13100[dD]|000000)\b/gi, '$1var(--neutral-fill)')
+    .replace(/(?<![-\w])(color\s*:\s*)#(?:13100[dD]|000000)\b/gi, '$1var(--heading)')
+    .replace(/(border(?:-[a-z]+)?\s*:\s*[^;{}"']*?)#(?:13100[dD]|000000)\b/gi, '$1var(--neutral-fill)');
 }
 
 function hasNeomContrastPatch(css) {

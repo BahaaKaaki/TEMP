@@ -12,7 +12,7 @@ import {
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { getClientDesignProfile, getClientProfileTheme } from '../utils/clientDesignProfiles';
 import { normalizeSlideTypographyHTML, scopeCSS, unscopeCSS } from '../utils/cssScoping';
-import { normalizeDenseFrameLayoutSlide } from '../utils/slideFrameLayoutNormalize';
+import { normalizeDenseFrameLayoutSlide, retargetClientHardcodedColors } from '../utils/slideFrameLayoutNormalize';
 import { generateSlideId } from '../utils/slideIds';
 // Import full CSS as raw string so it's available in state for AI and exports
 import SLIDES_CSS from '../styles/slides.css?raw';
@@ -1124,6 +1124,12 @@ function slideReducer(state, action) {
         slides: profileChanged
           ? state.slides.map(slide => ({
             ...slide,
+            // Re-target the previous profile's hardcoded signature colours to
+            // theme tokens so the new profile's accents actually take effect
+            // (fixes "some pages switch, some stay NEOM"). customCSS is stored
+            // scoped, so unscope -> retarget -> re-scope, matching CLONE_SLIDE.
+            html: retargetClientHardcodedColors(slide.html || ''),
+            customCSS: scopeCSS(retargetClientHardcodedColors(unscopeCSS(slide.customCSS || '')), slide.id),
             pptxCode: null,
           }))
           : state.slides,

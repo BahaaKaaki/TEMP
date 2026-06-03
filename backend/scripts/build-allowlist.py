@@ -33,15 +33,35 @@ EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 # silently drops these people. Review and prune this list whenever the HR
 # xlsx is refreshed.
 MANUAL_EXTRAS: frozenset[str] = frozenset({
+    "abdulelah.alarifi@pwc.com",
+    "alexandre.n.nakad@pwc.com",
     "amr.shalaby@pwc.com",
+    "aya.n.nader@pwc.com",
+    "david.saadeh@pwc.com",
+    "elissa.saad@pwc.com",
     "gautam.c.sharma@pwc.com",
+    "georges.azar@pwc.com",
+    "ismael.sefiane@pwc.com",
+    "jana.jaffal@pwc.com",
     "karan.tolani@pwc.com",
+    "kevin.k.karkafi@pwc.com",
+    "khalid.alhosani@pwc.com",
     "marianne.alhaj@pwc.com",
+    "mia.nasr@pwc.com",
+    "michel.younes@pwc.com",
     "mina.alyahyai@pwc.com",
+    "mohamad.nassereddine@pwc.com",
     "mohamed.alhajeri@pwc.com",
     "mounir.d.doumani@pwc.com",
     "musab.a.banaamah@pwc.com",
+    "naya.r.rahhal@pwc.com",
+    "ralph.njeim@pwc.com",
+    "rudy.m.mansour@pwc.com",
+    "shadi.jammal@pwc.com",
     "tarek.sultanem@pwc.com",
+    "tareq.kuri@pwc.com",
+    "wahid.s.samad@pwc.com",
+    "zayed.alkaabi@pwc.com",
 })
 
 

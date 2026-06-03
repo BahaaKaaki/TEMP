@@ -1,0 +1,22 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp *)",
+      "Read(//Users/bkaaki001/.claude/**)",
+      "Bash(ls -la ~/.claude/mcpServers*)",
+      "Bash(cat ~/.claude/mcp*.json)",
+      "Bash(claude doctor *)",
+      "Bash(curl *)",
+      "Bash(npx -y @azure/mcp@latest --version)",
+      "mcp__azure-mcp-server__subscription_list",
+      "Bash(python3 -c \"import sys,json; data=json.loads\\(sys.stdin.read\\(\\)\\); tools=data.get\\('result',{}\\).get\\('tools',[]\\); print\\(f'Context7: {len\\(tools\\)} tools available'\\); [print\\(f'  - {t[\\\\\"name\\\\\"]}'\\) for t in tools[:5]]\")",
+      "mcp__context7__resolve-library-id",
+      "mcp__github__get_me",
+      "Bash(npx vite *)",
+      "Bash(git checkout *)",
+      "Bash(ls /Users/bkaaki001/Developer/edwin-slides-creator/backend/uploads/pptx-master.pptx.bak*)",
+      "WebSearch",
+      "mcp__trace-mcp__get_symbol"
+    ]
+  }
+}

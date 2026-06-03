@@ -3,6 +3,8 @@
  * Appends scoped-safe CSS for portfolio matrices and roadmap phase columns.
  */
 
+import { COLOR_TOKEN_MAP } from './themeUtils';
+
 export const DENSE_FRAME_LAYOUT_MARKER = '/* edwin-dense-frame-layout */';
 const PORTFOLIO_PATCH_MARKER = '/* edwin-dense-frame-layout:portfolio */';
 const ROADMAP_PATCH_MARKER = '/* edwin-dense-frame-layout:roadmap */';
@@ -316,27 +318,61 @@ export function normalizeNeomContrastInHtml(html = '') {
   });
 }
 
+// CSS contexts each palette key may legitimately appear in.
+const PALETTE_FILL_KEYS = ['neutralFill', 'accent', 'accentHover', 'accentSoft', 'surface', 'surfaceAlt', 'kicker', 'coverDark', 'surfaceLilac', 'roseFill', 'neutral'];
+const PALETTE_TEXT_KEYS = ['heading', 'body', 'muted', 'accent', 'accentHover', 'kicker', 'onAccent'];
+const PALETTE_BORDER_KEYS = ['border', 'accent', 'neutralFill', 'kicker'];
+
+function normalizeHex6(value) {
+  const raw = String(value || '').trim().replace(/^#/, '');
+  if (/^[0-9a-f]{3}$/i.test(raw)) return raw.split('').map(c => c + c).join('').toUpperCase();
+  if (/^[0-9a-f]{6}$/i.test(raw)) return raw.toUpperCase();
+  return null;
+}
+
+function buildPaletteTokenMaps(profile) {
+  const colors = (profile && profile.theme && profile.theme.colors) || {};
+  const make = (keys) => {
+    const map = {};
+    for (const key of keys) {
+      const token = COLOR_TOKEN_MAP[key];
+      const hex = normalizeHex6(colors[key]);
+      // Skip white/black: too generic to retarget without breaking data-viz/borders.
+      if (!token || !hex || hex === 'FFFFFF' || hex === '000000') continue;
+      if (!(hex in map)) map[hex] = `var(${token})`;
+    }
+    return map;
+  };
+  return { fill: make(PALETTE_FILL_KEYS), text: make(PALETTE_TEXT_KEYS), border: make(PALETTE_BORDER_KEYS) };
+}
+
 /**
- * Re-target a client profile's hardcoded signature colours back to theme tokens
- * so that switching the client design profile actually re-themes existing slides
- * instead of leaving baked-in hex (the "some pages stay NEOM" bug). Property-aware:
- * fills map to var(--neutral-fill)/var(--accent), text maps to var(--heading)/
- * var(--accent). Only declaration-prefixed colours are touched, so plain-text hex
- * (and unrelated content) is never altered. Safe on CSS text and inline styles.
- * @param {string} text
+ * Re-target a client profile's hardcoded signature colours to the matching theme
+ * tokens, so a slide follows whatever profile/theme is active instead of leaving
+ * baked-in hex (the "some pages stay NEOM" bug). Property-aware: fills map to
+ * var(--neutral-fill)/var(--accent)/..., text to var(--heading)/var(--body)/...,
+ * borders to var(--border)/.... Only the profile's DECLARED palette is mapped
+ * (never arbitrary hex), #FFFFFF/#000000 are skipped, and only declaration-
+ * prefixed colours are touched -- so data-viz colours and plain text are safe.
+ * Works on both CSS text and inline style attributes.
+ * @param {string} input
+ * @param {object|null} profile
  * @returns {string}
  */
-export function retargetClientHardcodedColors(text = '') {
-  if (!text) return text;
-  return text
-    // NEOM accent yellow -> var(--accent) (fill, text, and border contexts)
-    .replace(/(background(?:-color)?\s*:\s*)#EBC03F\b/gi, '$1var(--accent)')
-    .replace(/(?<![-\w])(color\s*:\s*)#EBC03F\b/gi, '$1var(--accent)')
-    .replace(/(border(?:-[a-z]+)?\s*:\s*[^;{}"']*?)#EBC03F\b/gi, '$1var(--accent)')
-    // NEOM dark (#13100D / #000000): fills -> neutral-fill, text -> heading
-    .replace(/(background(?:-color)?\s*:\s*)#(?:13100[dD]|000000)\b/gi, '$1var(--neutral-fill)')
-    .replace(/(?<![-\w])(color\s*:\s*)#(?:13100[dD]|000000)\b/gi, '$1var(--heading)')
-    .replace(/(border(?:-[a-z]+)?\s*:\s*[^;{}"']*?)#(?:13100[dD]|000000)\b/gi, '$1var(--neutral-fill)');
+export function tokenizeProfilePalette(input = '', profile = null) {
+  if (!input || !profile) return input;
+  const { fill, text, border } = buildPaletteTokenMaps(profile);
+  let out = input;
+  for (const [hex, token] of Object.entries(fill)) {
+    out = out.replace(new RegExp(`(background(?:-color)?\\s*:\\s*)#${hex}\\b`, 'gi'), `$1${token}`);
+  }
+  for (const [hex, token] of Object.entries(border)) {
+    out = out.replace(new RegExp(`(border(?:-[a-z]+)?\\s*:\\s*[^;{}"']*?)#${hex}\\b`, 'gi'), `$1${token}`);
+  }
+  for (const [hex, token] of Object.entries(text)) {
+    out = out.replace(new RegExp(`(?<![-\\w])(color\\s*:\\s*)#${hex}\\b`, 'gi'), `$1${token}`);
+  }
+  return out;
 }
 
 function hasNeomContrastPatch(css) {
@@ -363,9 +399,16 @@ export function normalizeNeomContrastSlide({ html = '', customCSS = '' } = {}) {
  * @param {{ html?: string, customCSS?: string }} slide
  * @returns {{ html: string, customCSS: string }}
  */
-export function normalizeDenseFrameLayoutSlide({ html = '', customCSS = '' } = {}) {
+export function normalizeDenseFrameLayoutSlide({ html = '', customCSS = '' } = {}, profile = null) {
   let css = customCSS || '';
   let nextHtml = html;
+  // Re-target the active profile's branding palette to theme tokens up front --
+  // before any contrast/defensive rules (which intentionally carry literal hex)
+  // are appended -- so the slide is stored token-based and re-themes on switch.
+  if (profile) {
+    nextHtml = tokenizeProfilePalette(nextHtml, profile);
+    css = tokenizeProfilePalette(css, profile);
+  }
   if (slideHasSeClientProfile(html)) {
     css = normalizeSeClientColorTokens(css);
   }

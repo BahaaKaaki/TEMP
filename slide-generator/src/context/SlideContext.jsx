@@ -12,7 +12,7 @@ import {
 import { DEFAULT_THEME } from '../utils/themeUtils';
 import { getClientDesignProfile, getClientProfileTheme } from '../utils/clientDesignProfiles';
 import { normalizeSlideTypographyHTML, scopeCSS, unscopeCSS } from '../utils/cssScoping';
-import { normalizeDenseFrameLayoutSlide, retargetClientHardcodedColors } from '../utils/slideFrameLayoutNormalize';
+import { normalizeDenseFrameLayoutSlide, tokenizeProfilePalette } from '../utils/slideFrameLayoutNormalize';
 import { generateSlideId } from '../utils/slideIds';
 // Import full CSS as raw string so it's available in state for AI and exports
 import SLIDES_CSS from '../styles/slides.css?raw';
@@ -625,7 +625,7 @@ function slideReducer(state, action) {
       const layoutNorm = normalizeDenseFrameLayoutSlide({
         html: action.payload.html || getDefaultSlideHTML(),
         customCSS: action.payload.customCSS || '',
-      });
+      }, getClientDesignProfile(state.settings.clientDesignProfileId || 'strategy'));
       const html = normalizeSlideTypographyHTML(layoutNorm.html);
       const type = action.payload.type || 'custom';
       const title = action.payload.title || 'Untitled Slide';
@@ -714,7 +714,7 @@ function slideReducer(state, action) {
       const layoutNorm = normalizeDenseFrameLayoutSlide({
         html: slideData.html || getDefaultSlideHTML(),
         customCSS: slideData.customCSS || '',
-      });
+      }, getClientDesignProfile(state.settings.clientDesignProfileId || 'strategy'));
       const html = normalizeSlideTypographyHTML(layoutNorm.html);
       const type = slideData.type || 'custom';
       const title = slideData.title || 'Untitled Slide';
@@ -839,7 +839,7 @@ function slideReducer(state, action) {
                   ? normalizedUpdates.customCSS
                   : slide.customCSS || ''
               ),
-            });
+            }, getClientDesignProfile(state.settings.clientDesignProfileId || 'strategy'));
             scopedUpdates = {
               ...normalizedUpdates,
               customCSS: scopeCSS(layoutNorm.customCSS || '', slide.id),
@@ -1113,6 +1113,7 @@ function slideReducer(state, action) {
       const profileChanged = merged.clientDesignProfileId !== prevProfileId;
       const nextSettings = { ...merged };
       const activeProfile = profileChanged ? getClientDesignProfile(nextSettings.clientDesignProfileId) : null;
+      const prevProfile = profileChanged ? getClientDesignProfile(prevProfileId) : null;
       if (activeProfile) {
         nextSettings.clientProfileVersion = activeProfile.status || String(activeProfile.schemaVersion || '');
         if (Object.prototype.hasOwnProperty.call(activeProfile, 'footerBranding')) {
@@ -1124,12 +1125,12 @@ function slideReducer(state, action) {
         slides: profileChanged
           ? state.slides.map(slide => ({
             ...slide,
-            // Re-target the previous profile's hardcoded signature colours to
-            // theme tokens so the new profile's accents actually take effect
-            // (fixes "some pages switch, some stay NEOM"). customCSS is stored
-            // scoped, so unscope -> retarget -> re-scope, matching CLONE_SLIDE.
-            html: retargetClientHardcodedColors(slide.html || ''),
-            customCSS: scopeCSS(retargetClientHardcodedColors(unscopeCSS(slide.customCSS || '')), slide.id),
+            // Migration for decks created before normalize-on-save: re-target the
+            // PREVIOUS profile's baked-in palette hex to theme tokens so the new
+            // profile's accents take effect (fixes "some pages switch, some stay
+            // NEOM"). customCSS is stored scoped, so unscope -> retarget -> scope.
+            html: tokenizeProfilePalette(slide.html || '', prevProfile),
+            customCSS: scopeCSS(tokenizeProfilePalette(unscopeCSS(slide.customCSS || ''), prevProfile), slide.id),
             pptxCode: null,
           }))
           : state.slides,
@@ -1159,7 +1160,7 @@ function slideReducer(state, action) {
         const layoutNorm = normalizeDenseFrameLayoutSlide({
           html,
           customCSS: unscopeCSS(slide.customCSS || ''),
-        });
+        }, getClientDesignProfile(state.settings.clientDesignProfileId || 'strategy'));
         return {
           id: newId,
           title,

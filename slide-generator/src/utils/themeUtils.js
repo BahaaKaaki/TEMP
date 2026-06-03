@@ -33,7 +33,7 @@ export const DEFAULT_THEME = {
   },
 };
 
-const COLOR_TOKEN_MAP = {
+export const COLOR_TOKEN_MAP = {
   accent: '--accent',
   accentHover: '--accent-hover',
   accentSoft: '--accent-soft',

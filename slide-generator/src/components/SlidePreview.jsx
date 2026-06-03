@@ -671,12 +671,12 @@ export default function SlidePreview({ onSwitchToCode }) {
           } else {
             slideEl.removeAttribute('data-dark-mode');
           }
-          if (activeSlide?.sectionLabel && activeClientProfile?.id !== 'neom') {
+          if (activeSlide?.sectionLabel) {
             slideEl.setAttribute('data-section', activeSlide.sectionLabel);
           } else {
             slideEl.removeAttribute('data-section');
           }
-          if (activeSlide?.subSectionLabel && activeClientProfile?.id !== 'neom') {
+          if (activeSlide?.subSectionLabel) {
             slideEl.setAttribute('data-subsection', activeSlide.subSectionLabel);
             if (activeSlide.sectionLabel) {
               const offset = estimateTrackerOffset(activeSlide.sectionLabel, activeClientProfile);

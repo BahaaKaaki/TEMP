@@ -132,7 +132,15 @@ export function injectClientProfileChrome(html, profile, logoUrl, logoIconUrl = 
     /class="slide([^"]*)"/,
     `class="slide$1" data-client-profile="${escapeHtmlAttr(profile.id)}"`,
   );
-  if (isSpecialMaster) return withProfile;
+  if (isSpecialMaster) {
+    // NEOM covers/special masters carry their own design — strip the body footer
+    // so the footer gold-rule (::before) doesn't render a second yellow line on
+    // top of the cover's own.
+    if (profile.id === 'neom') {
+      return withProfile.replace(/<footer[^>]*class="[^"]*footer[^"]*"[^>]*>[\s\S]*?<\/footer>/gi, '');
+    }
+    return withProfile;
+  }
 
   if (profile.chrome?.injectPreviewLogo === false) return withProfile;
 

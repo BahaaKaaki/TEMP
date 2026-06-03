@@ -1365,6 +1365,7 @@ const NEOM_LAYOUT_CONTRACT = {
     source: { x: 336, y: 527, w: 288, h: 12 },
     slideNumber: { x: 905, y: 518, w: 26, h: 9 },
     activationLine: { x: 80, y: 517, w: 813, h: 2 },
+    sectionTracker: { x: 0, y: 0, w: 280, h: 16 },
   },
   cover: {
     logo: { x: 35, y: 500, w: 45, h: 12 },
@@ -1439,8 +1440,8 @@ const NEOM_PROMPT_CONTRACT = `# NEOM Authority Client Design Contract
 - Yellow header grids, icon rows, mandate three-column layouts inside frame.`;
 
 const NEOM_PPTX_FONTS = {
-  title: { fontFace: 'Arial', fontSize: 20, bold: true, color: '13100D' },
-  subtitle: { fontFace: 'Arial', fontSize: 18, bold: false, color: '13100D' },
+  title: { fontFace: 'Arial', fontSize: 20, bold: true, color: '13100D', uppercase: true },
+  subtitle: { fontFace: 'Arial', fontSize: 18, bold: false, color: '13100D', uppercase: true },
   body: { fontFace: 'Arial', fontSize: 11, bold: false, color: '13100D' },
   footer: { fontFace: 'Arial', fontSize: 7, bold: true, color: '13100D' },
   slideNum: { fontFace: 'Arial', fontSize: 8, bold: false, color: '13100D' },
@@ -1454,6 +1455,13 @@ const neomStandardInches = {
   body: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.body, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.body },
   footer: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.source, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.footer },
   slideNum: { ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.slideNumber, NEOM_LAYOUT_CONTRACT.canvas), font: NEOM_PPTX_FONTS.slideNum },
+  activationLine: pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.activationLine, NEOM_LAYOUT_CONTRACT.canvas),
+  sectionTracker: {
+    ...pxRectToInches(NEOM_LAYOUT_CONTRACT.standardContent.sectionTracker, NEOM_LAYOUT_CONTRACT.canvas),
+    colors: { fill: '13100D', text: 'FFFFFF', subFill: 'EBC03F', subText: '13100D' },
+    font: { fontFace: 'Arial', fontSize: 8, bold: true },
+    placement: 'left',
+  },
 };
 
 export const CLIENT_DESIGN_PROFILES = {

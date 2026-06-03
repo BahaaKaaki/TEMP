@@ -750,9 +750,19 @@
   color: #13100D;
 }
 
-.slide[data-client-profile="neom"][data-section]::before,
+/* NEOM section tracker: dark pill + yellow sub-section pill (NEOM theming,
+   not the default Strategy& maroon). Geometry inherited from the base rules. */
+.slide[data-client-profile="neom"][data-section]::before {
+  background: #13100D;
+  color: #FFFFFF;
+  font: 700 8px/1.35 Arial, Helvetica, sans-serif;
+  border-radius: 0;
+}
 .slide[data-client-profile="neom"][data-subsection]::after {
-  display: none !important;
+  background: #EBC03F;
+  color: #13100D;
+  font: 700 8px/1.35 Arial, Helvetica, sans-serif;
+  border-radius: 0;
 }
 
 .slide[data-client-profile="neom"] .client-chrome {
@@ -821,13 +831,10 @@
   pointer-events: none;
 }
 
-.slide[data-client-profile="neom"] footer.footer > span:first-child {
+/* NEOM footer text is entirely chrome-injected (logo + a positioned page number),
+   so hide every literal footer span to prevent a duplicate page number. */
+.slide[data-client-profile="neom"] footer.footer > span {
   display: none;
-}
-
-.slide[data-client-profile="neom"] footer.footer > span:last-child {
-  visibility: hidden;
-  pointer-events: none;
 }
 
 .slide[data-client-profile="neom"] .client-chrome-neom-pagenum {

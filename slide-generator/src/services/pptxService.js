@@ -347,6 +347,29 @@ function enforcePptxColorsForProfile(codeString, profile) {
       ['32516E', '2A70AD'],
       ['2B5799', '2A70AD'],
     ]);
+  } else if (profile?.id === 'neom') {
+    // NEOM NAFB5 palette: dark #13100D text/fills, yellow #EBC03F accent, cream
+    // #FBF8E9 surfaces. Maps the generator's default Strategy& palette (incl. the
+    // grey neutral-fill #4b5563 that was making dark boxes export grey) to NEOM.
+    replacements = new Map([
+      ['111111', '13100D'],
+      ['222222', '13100D'],
+      ['1D252D', '13100D'],
+      ['A32020', 'EBC03F'],
+      ['8E1E1E', 'EBC03F'],
+      ['FF375E', 'EBC03F'],
+      ['4F008C', '13100D'],
+      ['4b5563', '13100D'],
+      ['4B4F55', '13100D'],
+      ['4A4F57', '4E4C4A'],
+      ['515360', '4E4C4A'],
+      ['6B7280', '4E4C4A'],
+      ['F7F9FB', 'FBF8E9'],
+      ['EEF2F6', 'FBF8E9'],
+      ['F8E3E3', 'FBF8E9'],
+      ['E6E9EE', '898786'],
+      ['DBB8F3', 'EBC03F'],
+    ]);
   }
   if (!replacements) return codeString;
   let next = String(codeString);
@@ -1341,6 +1364,21 @@ function getSlideObjectText(obj) {
   return '';
 }
 
+// Force a slide object's text to upper-case (NEOM title/subtitle render ALL-CAPS
+// in HTML via text-transform; the PPTX must match). Handles string + run-array text.
+function uppercaseSlideObjectText(obj) {
+  if (!obj) return;
+  if (typeof obj.text === 'string') {
+    obj.text = obj.text.toUpperCase();
+  } else if (Array.isArray(obj.text)) {
+    obj.text = obj.text.map(run => {
+      if (typeof run === 'string') return run.toUpperCase();
+      if (run && typeof run.text === 'string') return { ...run, text: run.text.toUpperCase() };
+      return run;
+    });
+  }
+}
+
 function getSourceTextsFromHtml(html) {
   if (!html) return [];
   const doc = parseHTML(html);
@@ -1767,6 +1805,7 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       color: titleColor,
       valign: 'top',
     });
+    if (titlePos.font?.uppercase) uppercaseSlideObjectText(obj);
   }
   for (const obj of subtitleObjects) {
     if (!subtitlePos) continue;
@@ -1781,6 +1820,7 @@ function normalizeGeneratedSlideForProfile(pptxSlide, sourceSlide, slideNum, pro
       color: subtitleColor,
       valign: 'top',
     });
+    if (subtitlePos.font?.uppercase) uppercaseSlideObjectText(obj);
   }
   for (const obj of sourceObjects) {
     if (!footerPos) continue;
@@ -1991,7 +2031,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         }
       }
 
-      if ((slide.sectionLabel || slide.subSectionLabel) && activeProfile?.id !== 'neom') {
+      if ((slide.sectionLabel || slide.subSectionLabel)) {
         const s = pptx.slides;
         if (s?.length > 0) addSectionTracker(s[s.length - 1], slide.sectionLabel, slide.subSectionLabel);
       }
@@ -2044,7 +2084,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         }
       }
 
-    if ((slide.sectionLabel || slide.subSectionLabel) && activeProfile?.id !== 'neom') {
+    if ((slide.sectionLabel || slide.subSectionLabel)) {
         const s = pptx.slides;
         if (s?.length > 0) addSectionTracker(s[s.length - 1], slide.sectionLabel, slide.subSectionLabel);
       }
@@ -2164,7 +2204,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
     }
   }
 
-    if ((slide.sectionLabel || slide.subSectionLabel) && activeProfile?.id !== 'neom') {
+    if ((slide.sectionLabel || slide.subSectionLabel)) {
     const s = pptx.slides;
     if (s?.length > 0) addSectionTracker(s[s.length - 1], slide.sectionLabel, slide.subSectionLabel);
   }

@@ -651,6 +651,12 @@ function injectNeomFooterChrome(slideXml, logo, iconLogo, rIdLogo, rIdIcon, slid
   if (logo?.image && rIdLogo) {
     next = injectLogoPic(next, logo, rIdLogo, 'NeomFooterLogo');
   }
+  const line = positions.activationLine;
+  if (line && Number.isFinite(line.w) && line.w > 0) {
+    const [lineId] = allocateShapeIds(next, 1);
+    const lineShape = `<p:sp><p:nvSpPr><p:cNvPr id="${lineId}" name="NeomActivationLine"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(line.x)}" y="${emu(line.y)}"/><a:ext cx="${emu(line.w)}" cy="${emu(line.h)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="EBC03F"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr></p:sp>`;
+    next = insertIntoSlideShapeTree(next, lineShape);
+  }
   return next;
 }
 

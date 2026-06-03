@@ -755,6 +755,19 @@ function sanitizeSlideXmlForPowerPoint(slideXml, slidePath = '') {
   return fixed;
 }
 
+/**
+ * Strip add-in (e.g. think-cell) embedded OLE objects from master/layout XML.
+ * A hidden <p:graphicFrame> OLE data container is a known PowerPoint "repair"
+ * trigger once a deck is rebuilt by non-PowerPoint tooling, and serves no
+ * purpose in an export shell. We remove only the graphicFrame element; the
+ * now-unreferenced oleObject/tag parts are harmless orphans PowerPoint ignores.
+ */
+function stripAddInOleGraphicFrames(xml) {
+  return String(xml || '').replace(/<p:graphicFrame>[\s\S]*?<\/p:graphicFrame>/g, (frame) => (
+    /think-cell|oleObj|TCLayout|progId=/i.test(frame) ? '' : frame
+  ));
+}
+
 async function sanitizeContentTypesForExistingParts(zip, label = 'presentation') {
   const contentTypesPath = '[Content_Types].xml';
   if (!zip.files[contentTypesPath]) return;
@@ -868,7 +881,12 @@ async function sanitizePptxZipForPowerPoint(zip, label = 'presentation') {
 
   for (const xmlPath of pptXmlFiles) {
     const xml = await zip.files[xmlPath].async('string');
-    const fixed = sanitizeSlideXmlForPowerPoint(xml, xmlPath);
+    let fixed = sanitizeSlideXmlForPowerPoint(xml, xmlPath);
+    // Master/layout add-in OLE objects (e.g. think-cell) trigger PowerPoint
+    // "repair" once the deck is rebuilt by tooling -- strip them defensively.
+    if (/^ppt\/slide(?:Masters|Layouts)\//.test(xmlPath)) {
+      fixed = stripAddInOleGraphicFrames(fixed);
+    }
     if (fixed !== xml) zip.file(xmlPath, fixed);
 
     const slideNum = xmlPath.match(/^ppt\/slides\/slide(\d+)\.xml$/)?.[1];

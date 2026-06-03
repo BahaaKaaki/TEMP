@@ -637,22 +637,22 @@ function injectLogoPic(slideXml, logo, rId, name = 'TemplateLogo') {
   return insertIntoSlideShapeTree(slideXml, pic);
 }
 
-function injectNeomFooterChrome(slideXml, logo, iconLogo, rIdLogo, rIdIcon, slideNumber, positions) {
+function injectNeomFooterChrome(slideXml, logo, iconLogo, rIdLogo, rIdIcon, positions, isCover = false) {
   if (profileMissingNeomPositions(positions)) return slideXml;
   if (!/<\/p:spTree>/.test(slideXml)) return slideXml;
-  const [pageId] = allocateShapeIds(slideXml, 1);
-  const slideNum = positions.slideNum || {};
-  const pageText = escapeXmlAttr(String(slideNumber || ''));
-  const page = `<p:sp><p:nvSpPr><p:cNvPr id="${pageId}" name="NeomPageNumber"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(slideNum.x ?? 12.57)}" y="${emu(slideNum.y ?? 7.19)}"/><a:ext cx="${emu(slideNum.w ?? 0.36)}" cy="${emu(slideNum.h ?? 0.12)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/><a:ln><a:noFill/></a:ln></p:spPr><p:txBody><a:bodyPr wrap="none" rtlCol="0" anchor="ctr"/><a:lstStyle/><a:p><a:pPr algn="r"/><a:r><a:rPr lang="en-US" sz="800"><a:solidFill><a:srgbClr val="13100D"/></a:solidFill><a:latin typeface="Arial"/><a:ea typeface="Arial"/><a:cs typeface="Arial"/></a:rPr><a:t>${pageText}</a:t></a:r></a:p></p:txBody></p:sp>`;
-  let next = insertIntoSlideShapeTree(slideXml, page);
+  // The page number is provided by the master/layout slide-number placeholder
+  // (NAFB5 native chrome) -- do NOT inject a duplicate here.
+  let next = slideXml;
   if (iconLogo?.image && rIdIcon) {
     next = injectLogoPic(next, iconLogo, rIdIcon, 'NeomFooterIcon');
   }
   if (logo?.image && rIdLogo) {
     next = injectLogoPic(next, logo, rIdLogo, 'NeomFooterLogo');
   }
+  // Yellow activation line: body slides only. Covers carry their own accent line
+  // in the generated content, so injecting it there would double the line.
   const line = positions.activationLine;
-  if (line && Number.isFinite(line.w) && line.w > 0) {
+  if (!isCover && line && Number.isFinite(line.w) && line.w > 0) {
     const [lineId] = allocateShapeIds(next, 1);
     const lineShape = `<p:sp><p:nvSpPr><p:cNvPr id="${lineId}" name="NeomActivationLine"/><p:cNvSpPr/><p:nvPr/></p:nvSpPr><p:spPr><a:xfrm><a:off x="${emu(line.x)}" y="${emu(line.y)}"/><a:ext cx="${emu(line.w)}" cy="${emu(line.h)}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:solidFill><a:srgbClr val="EBC03F"/></a:solidFill><a:ln><a:noFill/></a:ln></p:spPr></p:sp>`;
     next = insertIntoSlideShapeTree(next, lineShape);
@@ -1060,6 +1060,7 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
   const tplZip = await JSZip.loadAsync(templateBuf);
   const genZip = await JSZip.loadAsync(generatedBuf);
   const preserveTemplateChrome = options.preserveTemplateChrome === true;
+  const coverSlideNumbers = options.coverSlideNumbers || [];
   const profile = options.profile || (options.profileId ? getClientDesignProfile(options.profileId) : null);
 
   // ── Step 1: Remove template's existing slides + notesSlides ────────────
@@ -1170,8 +1171,8 @@ export async function applyTemplateToGenerated(generatedBuf, templateBuf, chrome
           hasIcon ? neomIconRect : null,
           LOGO_RID,
           hasIcon ? ICON_RID : null,
-          slideNum,
           neomPositions,
+          coverSlideNumbers.includes(slideNum),
         );
       } else if (hasLogo) {
         slideXml = injectLogoPic(slideXml, chrome.logo, LOGO_RID);

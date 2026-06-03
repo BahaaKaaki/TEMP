@@ -2093,6 +2093,12 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
 
   if (onProgress) onProgress({ phase: 'finalizing', processed: totalSlides, total: totalSlides, message: 'Creating PowerPoint file...' });
 
+  // Cover slides keep their own accent line and must not get the injected NEOM
+  // footer activation line (1-based slide numbers, matching the merge order).
+  const coverSlideNumbers = slides
+    .map((s, i) => (/\b(cover-slide|master-cover)\b/.test(s?.html || '') ? i + 1 : null))
+    .filter(n => n != null);
+
   if (templateData?.data && !shouldUseDirectProfileChromeExport(activeProfile)) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
@@ -2107,6 +2113,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
           preserveTemplateChrome: activeProfile.id === 'strategy',
           profile: activeProfile,
+          coverSlideNumbers,
         });
       downloadArrayBuffer(merged, filename);
     } catch (e) {
@@ -2211,6 +2218,8 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
 
   if (onProgress) onProgress({ phase: 'finalizing', message: 'Creating PowerPoint file...' });
 
+  const coverSlideNumbers = /\b(cover-slide|master-cover)\b/.test(slide?.html || '') ? [1] : [];
+
   if (templateData?.data && !shouldUseDirectProfileChromeExport(activeProfile)) {
     try {
       const buf = await pptx.write({ outputType: 'arraybuffer' });
@@ -2225,6 +2234,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
           preserveTemplateChrome: activeProfile.id === 'strategy',
           profile: activeProfile,
+          coverSlideNumbers,
         });
       downloadArrayBuffer(merged, filename);
     } catch (e) { await writeSanitizedPptxFile(pptx, filename, 'single-slide template fallback'); }

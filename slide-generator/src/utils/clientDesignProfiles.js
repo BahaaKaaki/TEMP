@@ -1563,37 +1563,37 @@ const ADSC_LAYOUT_CONTRACT = {
 };
 
 const ADSC_FREESTYLE_OVERRIDES = {
-  shell: `Use the ADSC (Abu Dhabi Sports Council) master shell on a 960x540 canvas. The slide background is a FULL-BLEED dark stadium photo provided by the shell — do NOT add your own background color or image, and do not hide it with an opaque full-slide fill. Positions match the bundled master "One Column" content layout (13.333x7.5in):
+  shell: `Use the ADSC master shell on a 960x540 canvas. The slide background is a FULL-BLEED dark stadium photo provided by the shell — do NOT add your own background color or image, and do not hide it with an opaque full-slide fill. Positions match the bundled master "One Column" content layout (13.333x7.5in):
 - h1.title: left 35px, top 30px, width 890px, height 66px (text bottom-aligned), Georgia 28px, color WHITE #FFFFFF (sits on the dark sky).
 - h2.subtitle: left 35px, top 100px, width 890px, height 25px, Arial bold 18px, color coral #DB536A.
 - div.frame: left 35px, top 134px, width 890px, height 350px — body content lives here over the photo.
-- Keep exhibits/charts/dense content inside WHITE or translucent-dark panels so they stay legible on the photo; short labels placed directly on the photo are white. Keep frame content above the footer band (y<490).
-- Footer/source/page chrome sits in the bottom band; the master provides it. Do not add a client logo on content slides; the cover carries the ADSC logo.`,
-  theme: `Abu Dhabi Sports Council "sports app" identity on a dark stadium-photo background. Title WHITE Georgia 28; subtitle CORAL #DB536A Arial 18 bold. Content panels: white #FFFFFF (with dark #29333F text) OR translucent-dark navy (with white text). ACCENT coral #DB536A. STRUCTURE navy #0C182B / slate #414E5F. SUPPORTING grey #7F7F7F, cyan #12B5C9 (sparingly), bronze #BD825A (sparingly). Structural bars/column caps: navy #0C182B or coral #DB536A with white text. FORBIDDEN: Strategy& maroon #A32020/#8E1E1E, STC purple #4F008C, PIF green, SE/NEOM colors, and any opaque full-slide background that hides the stadium photo.`,
-  vibe: `Premium Gulf sports / fan-engagement style on a cinematic dark stadium field: energetic yet executive, white serif headlines, coral accents, crisp white/translucent content panels, restrained iconography. Avoid maroon consulting styling, dusty-rose Strategy& tokens, flat white backgrounds, and generic Office chart palettes.`,
-  writing: `Write concise executive sports/fan-engagement and digital-platform language: super-app, fan engagement, archetypes, ecosystem, monetization, partnerships, governance. Keep labels short and outcome-led; do not assume ADSC mandates unless the user asks.`,
-  css: `h1.title { font: 400 28px/1.05 Georgia, serif; color: #FFFFFF; } (white serif on the dark photo). Subtitle Arial bold 18px in coral #DB536A. Put content in panels for legibility: white card { background: rgba(255,255,255,0.95); color: #29333F } or dark card { background: rgba(12,24,43,0.78); color: #FFFFFF }. In every .slide .frame { } block set: --accent: #DB536A; --neutral-fill: #0C182B; --rose-fill: #DB536A; never Strategy& #d4687a / #4b5563 / #A32020. Do NOT set a solid full-frame background that hides the stadium photo. Accent highlights coral #DB536A.`,
-  pptx: `Export on a 13.333 x 7.5 in canvas using Georgia for the title and Arial for body, on the bundled ADSC stadium master. Title WHITE Georgia 28pt; subtitle coral DB536A Arial 18pt bold. Content panels white or translucent-dark for legibility over the photo. The master provides the background photo and footer/page chrome; do not inject a duplicate logo or an opaque slide background.`,
+- Put exhibits/charts/dense content inside DARK TRANSLUCENT navy panels (frosted, white text) so the stadium still shows through and content stays legible — do NOT use opaque white card blocks. Short labels placed directly on the photo are white. Keep frame content above the footer band (y<490).
+- Footer/source/page chrome sits in the bottom band; the master provides it. Do not add a client logo on content slides; the cover carries the logo.`,
+  theme: `Dark stadium-photo background. Title WHITE Georgia 28; subtitle CORAL #DB536A Arial 18 bold. Content panels: DARK TRANSLUCENT navy (rgba(12,24,43,0.6-0.85)) with WHITE text and coral accents — never opaque white blocks (they hide the photo). ACCENT coral #DB536A. STRUCTURE navy #0C182B / slate #414E5F. SUPPORTING grey #7F7F7F, cyan #12B5C9 (sparingly), bronze #BD825A (sparingly). Structural bars/column caps: coral #DB536A or navy with white text. FORBIDDEN: opaque white content cards, Strategy& maroon #A32020/#8E1E1E, STC purple #4F008C, PIF green, SE/NEOM colors, and any opaque full-slide background that hides the stadium photo.`,
+  vibe: `Cinematic, premium look on a dark stadium-photo field: energetic yet executive, white serif headlines, coral accents, dark translucent (frosted) content panels with white text, restrained iconography. Avoid opaque white card blocks (they hide the photo), maroon consulting styling, dusty-rose Strategy& tokens, and generic Office chart palettes.`,
+  writing: `Match the user's requested topic and industry — do not assume ADSC, sports, fan-engagement, super-app, or activation themes unless the user asks for them. Write conclusion-led titles and short, executive labels.`,
+  css: `h1.title { font: 400 28px/1.05 Georgia, serif; color: #FFFFFF; } (white serif on the dark photo). Subtitle Arial bold 18px in coral #DB536A. Put content in DARK TRANSLUCENT panels, NOT white: .card/.panel { background: rgba(12,24,43,0.72); color: #FFFFFF; border-top: 2px solid #DB536A } with white text and coral accents. In every .slide .frame { } block set: --accent: #DB536A; --neutral-fill: #0C182B; --rose-fill: #DB536A; never Strategy& #d4687a / #4b5563 / #A32020. Do NOT set a solid full-frame background or opaque white cards that hide the stadium photo.`,
+  pptx: `Export on a 13.333 x 7.5 in canvas using Georgia for the title and Arial for body, on the bundled ADSC stadium master. Title WHITE Georgia 28pt; subtitle coral DB536A Arial 18pt bold. Content panels: dark navy #0C182B (optionally ~20% transparency) with WHITE text and coral accents — never opaque white blocks. The master provides the background photo and footer/page chrome; do not inject a duplicate logo or an opaque slide background.`,
 };
 
 const ADSC_COMPONENT_PATTERNS = [
   {
-    name: 'fan_engagement_cards',
-    structure: 'White or pale-blue cards with navy headers, coral labels/accents, compact Arial body copy.',
-    useWhen: 'Capabilities, archetypes, propositions, and operating priorities.',
-    avoid: ['maroon Strategy& bars', 'purple STC styling', 'cream FYA cards'],
+    name: 'frosted_cards',
+    structure: 'Dark translucent navy cards (rgba navy ~0.72) with white headers/body, a coral top-border or coral label accents; compact Arial copy. Never opaque white.',
+    useWhen: 'Grouped points, capabilities, options, or summary tiles.',
+    avoid: ['opaque white card blocks', 'maroon Strategy& bars', 'purple STC styling'],
   },
   {
-    name: 'super_app_ecosystem',
-    structure: 'Hub-and-spoke or layered ecosystem with a navy core, coral connectors, and slate/grey supporting nodes.',
-    useWhen: 'Platform ecosystems, super-app modules, partner maps.',
-    avoid: ['rainbow Office palettes', 'oversized decorative icons', 'footer-band content'],
+    name: 'ecosystem_map',
+    structure: 'Hub-and-spoke or layered diagram with a navy/coral core, coral connectors, and dark translucent supporting nodes with white labels.',
+    useWhen: 'Ecosystems, module maps, stakeholder or relationship diagrams.',
+    avoid: ['rainbow Office palettes', 'oversized decorative icons', 'footer-band content', 'opaque white panels'],
   },
   {
     name: 'phased_roadmap',
-    structure: 'Roadmap/phases: navy #0C182B headers, coral #DB536A phase accents, slate/grey panels; timeframe labels coral.',
-    useWhen: 'Roadmaps, implementation horizons, delivery phases.',
-    avoid: ['pink/maroon phase accents', 'dense unbounded lists'],
+    structure: 'Roadmap/phases on dark translucent panels: white headers, coral #DB536A phase accents, slate supporting text; timeframe labels coral.',
+    useWhen: 'Roadmaps, horizons, delivery phases.',
+    avoid: ['pink/maroon phase accents', 'opaque white panels', 'dense unbounded lists'],
   },
 ];
 
@@ -1601,7 +1601,7 @@ const ADSC_PPTX_CONTRACT = {
   slideSize: { w: 13.333, h: 7.5 },
   defaultFontFace: 'Arial',
   allowedFontFaces: ['Arial', 'Helvetica'],
-  backgroundPolicy: 'The bundled master carries a full-bleed dark stadium photo background; do not inject an opaque slide background that hides it. Place dense content in white or translucent-dark panels for legibility.',
+  backgroundPolicy: 'The bundled master carries a full-bleed dark stadium photo background; do not inject an opaque slide background or opaque white cards that hide it. Place content in dark translucent/solid navy panels with white text for legibility.',
   logoPolicy: 'Do not add a per-slide client logo; the bundled master provides the background, footer/page chrome, and the cover carries the ADSC logo.',
   sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',
   pageNumberPolicy: 'Bottom-right page number from the master placeholder, Arial, muted grey.',
@@ -1615,21 +1615,22 @@ const ADSC_PPTX_CONTRACT = {
 const ADSC_PROMPT_CONTRACT = `# ADSC Client Design Contract
 
 ## Master
-- Use one Abu Dhabi Sports Council (ADSC) master shell on the 960x540 canvas. Do not invent Strategy&, STC, PIF, DGE, FYA, MoS, SE, or NEOM variants.
-- The master carries a FULL-BLEED dark stadium photo background — do not add an opaque slide background that hides it.
+- Use one ADSC master shell on the 960x540 canvas. Do not invent Strategy&, STC, PIF, DGE, FYA, MoS, SE, or NEOM variants.
+- The master carries a FULL-BLEED dark stadium photo background — do not add an opaque slide background or opaque white cards that hide it.
 - Body frame x=35 y=134 w=890 h=350. Keep the bottom footer/page band clear.
 
-## Theme (sports-app palette on dark photo)
-- Title WHITE #FFFFFF; subtitle CORAL #DB536A (Arial bold). Content panels: white #FFFFFF (dark #29333F text) or translucent-dark navy (white text).
+## Theme (dark photo)
+- Title WHITE #FFFFFF; subtitle CORAL #DB536A (Arial bold). Content panels: dark translucent navy with WHITE text and coral accents — never opaque white.
 - ACCENT coral #DB536A. STRUCTURE navy #0C182B / slate #414E5F/#29333F. SUPPORTING grey #7F7F7F, cyan #12B5C9 (sparingly).
-- Structural bars/column caps: navy or coral with white text.
-- FORBIDDEN: Strategy& maroon, STC purple, PIF/SE/NEOM brand colors, and any opaque full-slide background that hides the stadium photo.
+- Structural bars/column caps: coral or navy with white text.
+- FORBIDDEN: opaque white content cards, Strategy& maroon, STC purple, PIF/SE/NEOM brand colors, and any opaque full-slide background that hides the stadium photo.
 
 ## Typography
-- Georgia 28px/28pt for titles (white); Arial bold 18px/18pt for subtitles (coral); Arial ~11pt body.
+- Georgia 28px/28pt for titles (white); Arial bold 18px/18pt for subtitles (coral); Arial ~11pt body (white on panels).
 
-## Components
-- Prefer ecosystem maps, capability cards, archetype grids, KPI bands, and phased roadmaps inside white/translucent panels in the body frame.`;
+## Content
+- Match the user's requested topic and industry. Do NOT assume ADSC, sports, fan-engagement, super-app, or activation themes unless the user asks for them.
+- Prefer ecosystem maps, capability cards, KPI bands, and phased roadmaps rendered as dark translucent panels in the body frame.`;
 
 const ADSC_PPTX_FONTS = {
   title: { fontFace: 'Georgia', fontSize: 28, bold: false, color: 'FFFFFF' },
@@ -1661,7 +1662,7 @@ export const CLIENT_DESIGN_PROFILES = {
     id: 'adsc',
     navLabel: 'ADSC',
     name: 'Abu Dhabi Sports Council',
-    description: 'ADSC sports / fan-engagement template: full-bleed dark stadium-photo master, white Georgia 28 title, coral Arial 18 subtitle, coral + navy palette.',
+    description: 'ADSC template: full-bleed dark stadium-photo master, white Georgia 28 title, coral Arial 18 subtitle, dark translucent content panels, coral + navy palette.',
     status: 'brand-0.1',
     footerBranding: '',
     theme: ADSC_THEME,

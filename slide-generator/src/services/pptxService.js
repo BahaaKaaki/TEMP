@@ -51,6 +51,7 @@ const PROFILE_PPTX_FONT_FACE = {
   dge: 'Noto Sans',
   mos: 'Sakkal Majalla',
   se: 'SE Medium',
+  adsc: 'Arial',
 };
 
 const DIRECT_PROFILE_CHROME_EXPORTS = new Set(['mos']);
@@ -369,6 +370,29 @@ function enforcePptxColorsForProfile(codeString, profile) {
       ['F8E3E3', 'FBF8E9'],
       ['E6E9EE', '898786'],
       ['DBB8F3', 'EBC03F'],
+    ]);
+  } else if (profile?.id === 'adsc') {
+    // ADSC sports palette: coral #DB536A accent, navy #0C182B structure, slate/grey
+    // supporting, light surfaces. Map the generator's default Strategy& palette.
+    replacements = new Map([
+      ['111111', '0C182B'],
+      ['222222', '29333F'],
+      ['1D252D', '0C182B'],
+      ['A32020', 'DB536A'],
+      ['8E1E1E', 'DB536A'],
+      ['FF375E', 'DB536A'],
+      ['D4687A', 'DB536A'],
+      ['4F008C', '0C182B'],
+      ['4b5563', '0C182B'],
+      ['4B4F55', '0C182B'],
+      ['4A4F57', '7F7F7F'],
+      ['515360', '7F7F7F'],
+      ['6B7280', '7F7F7F'],
+      ['F7F9FB', 'F4F8FF'],
+      ['EEF2F6', 'EEF5F9'],
+      ['F8E3E3', 'FBE7EA'],
+      ['E6E9EE', 'D9D9D9'],
+      ['DBB8F3', 'DB536A'],
     ]);
   }
   if (!replacements) return codeString;

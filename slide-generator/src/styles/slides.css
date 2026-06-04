@@ -690,6 +690,93 @@
   white-space: nowrap;
 }
 
+/* ADSC (Abu Dhabi Sports Council) profile: Strategy& Digital base, coral + navy */
+.slide[data-client-profile="adsc"] {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #29333F;
+  background: #FFFFFF;
+}
+
+.slide[data-client-profile="adsc"] .title {
+  left: 35px;
+  top: 30px;
+  width: 890px;
+  max-height: 66px;
+  font: 700 20px/1.15 Arial, Helvetica, sans-serif;
+  color: var(--heading, #0C182B);
+  overflow: hidden;
+}
+
+.slide[data-client-profile="adsc"] .subtitle {
+  left: 35px;
+  top: 100px;
+  width: 890px;
+  height: 25px;
+  max-height: 25px;
+  font: 700 14px/1.18 Arial, Helvetica, sans-serif;
+  color: var(--subtitle-color, #DB536A);
+  overflow: hidden;
+}
+
+.slide[data-client-profile="adsc"] .frame {
+  left: 35px;
+  top: 134px;
+  width: 890px;
+  height: 350px;
+}
+
+.slide[data-client-profile="adsc"] footer.footer:has(span.source),
+.slide[data-client-profile="adsc"] footer.footer {
+  display: block;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.slide[data-client-profile="adsc"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="adsc"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #7F7F7F;
+}
+
+.slide[data-client-profile="adsc"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #7F7F7F;
+  font: 400 8px/1 Arial, Helvetica, sans-serif;
+  white-space: nowrap;
+}
+
+/* ADSC section tracker: navy pill + coral sub-section pill */
+.slide[data-client-profile="adsc"][data-section]::before {
+  background: #0C182B;
+  color: #FFFFFF;
+  font: 700 8px/1.35 Arial, Helvetica, sans-serif;
+  border-radius: 0;
+}
+.slide[data-client-profile="adsc"][data-subsection]::after {
+  background: #DB536A;
+  color: #FFFFFF;
+  font: 700 8px/1.35 Arial, Helvetica, sans-serif;
+  border-radius: 0;
+}
+
 /* NEOM Authority profile: NAFB5 activation shell (13.333x7.5in -> 960x540) */
 .slide[data-client-profile="neom"] {
   font-family: Arial, Helvetica, sans-serif;

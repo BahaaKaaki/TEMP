@@ -1464,7 +1464,260 @@ const neomStandardInches = {
   },
 };
 
+const ADSC_THEME = {
+  name: 'ADSC',
+  defaultVariant: 'adsc_sports',
+  // Abu Dhabi Sports Council deck (Strategy& Digital template base): coral accent,
+  // navy/slate structure, grey muted, light surfaces, cyan/bronze pops.
+  colors: {
+    accent: '#DB536A',
+    accentHover: '#C2445A',
+    accentSoft: '#FBE7EA',
+    onAccent: '#FFFFFF',
+    heading: '#0C182B',
+    body: '#29333F',
+    muted: '#7F7F7F',
+    page: '#FFFFFF',
+    surface: '#F4F8FF',
+    surfaceAlt: '#EEF5F9',
+    border: '#D9D9D9',
+    success: '#1E9E77',
+    successSoft: '#E4F5EE',
+    warning: '#C98A1E',
+    warningSoft: '#FBF1DE',
+    danger: '#C0392B',
+    dangerSoft: '#F8E4E1',
+    info: '#0FB5C4',
+    infoSoft: '#E2F7FA',
+    neutral: '#7F7F7F',
+    coverDark: '#0C182B',
+    kicker: '#DB536A',
+    neutralFill: '#0C182B',
+    onNeutralFill: '#FFFFFF',
+    roseFill: '#DB536A',
+    adscCoral: '#DB536A',
+    adscNavy: '#0C182B',
+    adscSlate: '#414E5F',
+    adscCyan: '#12B5C9',
+    adscBronze: '#BD825A',
+  },
+  fonts: {
+    title: 'Arial, Helvetica, sans-serif',
+    heading: 'Arial, Helvetica, sans-serif',
+    body: 'Arial, Helvetica, sans-serif',
+  },
+  layout: {
+    cssVars: {
+      '--left-x': '35px',
+      '--title-y': '30px',
+      '--title-w': '890px',
+      '--title-font-size': '20px',
+      '--title-font-weight': '700',
+      '--title-line-height': '1.15',
+      '--subtitle-y': '100px',
+      '--subtitle-w': '890px',
+      '--subtitle-color': '#DB536A',
+      '--accent': '#DB536A',
+      '--neutral-fill': '#0C182B',
+      '--rose-fill': '#DB536A',
+      '--subtitle-font-size': '14px',
+      '--subtitle-font-weight': '700',
+      '--frame-y': '134px',
+      '--frame-w': '890px',
+      '--frame-h': '350px',
+      '--footer-x': '35px',
+      '--footer-y': '500px',
+      '--footer-bottom': 'auto',
+      '--footer-w': '139px',
+      '--footer-font-size': '8px',
+      '--footer-padding-bottom': '0',
+      '--source-x': '192px',
+      '--source-y': '500px',
+      '--source-w': '576px',
+      '--source-h': '22px',
+      '--slide-num-x': '786px',
+      '--slide-num-y': '511px',
+      '--slide-num-w': '139px',
+      '--slide-num-h': '11px',
+    },
+  },
+};
+
+const ADSC_LAYOUT_CONTRACT = {
+  canvas: { widthPx: 960, heightPx: 540, widthIn: 13.333, heightIn: 7.5 },
+  // Audited from the bundled master "2_One Column" content layout (slideLayout1).
+  standardContent: {
+    logo: { x: 16, y: 415, w: 204, h: 102 },
+    title: { x: 35, y: 30, w: 890, h: 66 },
+    subtitle: { x: 35, y: 100, w: 890, h: 25 },
+    body: { x: 35, y: 134, w: 890, h: 350 },
+    source: { x: 192, y: 500, w: 576, h: 22 },
+    slideNumber: { x: 786, y: 511, w: 139, h: 11 },
+    sectionTracker: { x: 0, y: 0, w: 280, h: 16 },
+  },
+  cover: {
+    logo: { x: 16, y: 415, w: 204, h: 102 },
+    title: { x: 37, y: 120, w: 431, h: 170 },
+    subtitle: { x: 37, y: 328, w: 431, h: 22 },
+  },
+};
+
+const ADSC_FREESTYLE_OVERRIDES = {
+  shell: `Use the ADSC (Abu Dhabi Sports Council) master shell on a 960x540 canvas. These positions match the bundled master "One Column" content layout (13.333x7.5in):
+- h1.title: left 35px (0.484in), top 30px (0.420in), width 890px (12.365in), height up to 66px, Arial bold 20px, color navy #0C182B.
+- h2.subtitle: left 35px, top 100px, width 890px, height 25px, Arial bold 14px, color coral #DB536A when used.
+- div.frame: left 35px, top 134px, width 890px, height 350px — all body content stays inside this band (ends ~y=484).
+- Footer/source/page chrome: footer bottom-left x=35 y=500; source band x=192 y=500; page number bottom-right x=786 y=511. Keep frame content above y=490.
+- Do not add a client logo inside content slides; the cover carries the ADSC logo.
+Use the standard ADSC content slide as the default; cover/divider variants only when explicitly requested.`,
+  theme: `Abu Dhabi Sports Council "sports app" palette on the Strategy& Digital base. PRIMARY: coral #DB536A (accent), navy #0C182B (headings/structure), white #FFFFFF. SECONDARY: slate #414E5F / #29333F, grey #7F7F7F, light surfaces #F4F8FF / #EEF5F9, borders #D9D9D9, cyan #12B5C9 (sparingly), bronze #BD825A (sparingly). Slide chrome: title navy #0C182B, subtitle coral #DB536A (bold). Structural bars/column caps: navy #0C182B with white text. Multi-column exhibits: rotate #0C182B, #DB536A, #414E5F, #7F7F7F, #12B5C9. FORBIDDEN as frame fills: Strategy& maroon #A32020/#8E1E1E, STC purple #4F008C, PIF green, SE/NEOM brand colors.`,
+  vibe: `Modern Gulf sports / fan-engagement style: energetic but executive, clean white field, coral accents, navy structure, crisp geometry, restrained iconography. Avoid maroon consulting styling, dusty-rose Strategy& tokens, and generic Office chart palettes.`,
+  writing: `Write concise executive sports/fan-engagement and digital-platform language: super-app, fan engagement, archetypes, ecosystem, monetization, partnerships, governance. Keep labels short and outcome-led; do not assume ADSC mandates unless the user asks.`,
+  css: `Arial 20px bold for h1.title in navy #0C182B. Subtitle Arial bold 14px in coral #DB536A. Body Arial #29333F. In every .slide .frame { } block set: --accent: #DB536A; --neutral-fill: #0C182B; --rose-fill: #DB536A; never Strategy& #d4687a / #4b5563 / #A32020. Column header bars: navy #0C182B fill, white label text. Accent highlights coral #DB536A; supporting fills navy/slate/grey only.`,
+  pptx: `Export on a 13.333 x 7.5 in canvas using Arial and the bundled ADSC master. Title navy 0C182B, subtitle coral DB536A, structural fills navy 0C182B. The master footer/page-number placeholders provide chrome; do not inject a duplicate logo.`,
+};
+
+const ADSC_COMPONENT_PATTERNS = [
+  {
+    name: 'fan_engagement_cards',
+    structure: 'White or pale-blue cards with navy headers, coral labels/accents, compact Arial body copy.',
+    useWhen: 'Capabilities, archetypes, propositions, and operating priorities.',
+    avoid: ['maroon Strategy& bars', 'purple STC styling', 'cream FYA cards'],
+  },
+  {
+    name: 'super_app_ecosystem',
+    structure: 'Hub-and-spoke or layered ecosystem with a navy core, coral connectors, and slate/grey supporting nodes.',
+    useWhen: 'Platform ecosystems, super-app modules, partner maps.',
+    avoid: ['rainbow Office palettes', 'oversized decorative icons', 'footer-band content'],
+  },
+  {
+    name: 'phased_roadmap',
+    structure: 'Roadmap/phases: navy #0C182B headers, coral #DB536A phase accents, slate/grey panels; timeframe labels coral.',
+    useWhen: 'Roadmaps, implementation horizons, delivery phases.',
+    avoid: ['pink/maroon phase accents', 'dense unbounded lists'],
+  },
+];
+
+const ADSC_PPTX_CONTRACT = {
+  slideSize: { w: 13.333, h: 7.5 },
+  defaultFontFace: 'Arial',
+  allowedFontFaces: ['Arial', 'Helvetica'],
+  logoPolicy: 'Do not add a per-slide client logo; the bundled master provides footer/page chrome and the cover carries the ADSC logo.',
+  sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',
+  pageNumberPolicy: 'Bottom-right page number from the master placeholder, Arial, muted grey.',
+  titlePolicy: 'Content title at x=35 y=30 w=890 h=66, Arial bold 20pt, navy 0C182B.',
+  subtitlePolicy: 'Subtitle at x=35 y=100 w=890 h=25, Arial bold 14pt, coral DB536A, when the slide has a lens label.',
+  bodyPolicy: 'Body/content frame at x=35 y=134 w=890 h=350; keep content above the footer band (y<490).',
+  hiddenPlaceholderPolicy: 'Do not surface hidden template scratch content or PRELIMINARY/DRAFT stamps unless requested.',
+  borderWeightPt: { min: 0.5, max: 1.25 },
+};
+
+const ADSC_PROMPT_CONTRACT = `# ADSC Client Design Contract
+
+## Master
+- Use one Abu Dhabi Sports Council (ADSC) master shell on the 960x540 canvas. Do not invent Strategy&, STC, PIF, DGE, FYA, MoS, SE, or NEOM variants.
+- Body frame x=35 y=134 w=890 h=350. Keep the bottom footer/page band clear.
+
+## Theme (sports-app palette)
+- PRIMARY: coral #DB536A, navy #0C182B, white. SECONDARY: slate #414E5F/#29333F, grey #7F7F7F, surfaces #F4F8FF/#EEF5F9, cyan #12B5C9 (sparingly).
+- Slide chrome: title navy #0C182B, subtitle coral #DB536A (bold). Structural bars: navy, white text.
+- FORBIDDEN in frame: Strategy& maroon, STC purple, PIF/SE/NEOM brand colors.
+
+## Typography
+- Arial 20px/20pt bold for titles; Arial bold 14px/14pt for subtitles; Arial ~11pt body.
+
+## Components
+- Prefer ecosystem maps, capability cards, archetype grids, KPI bands, and phased roadmaps inside the body frame.`;
+
+const ADSC_PPTX_FONTS = {
+  title: { fontFace: 'Arial', fontSize: 20, bold: true, color: '0C182B' },
+  subtitle: { fontFace: 'Arial', fontSize: 14, bold: true, color: 'DB536A' },
+  body: { fontFace: 'Arial', fontSize: 11, bold: false, color: '29333F' },
+  footer: { fontFace: 'Arial', fontSize: 8, bold: false, color: '7F7F7F' },
+  slideNum: { fontFace: 'Arial', fontSize: 8, bold: false, color: '7F7F7F' },
+};
+
+const adscStandardInches = {
+  logo: pxRectToInches(ADSC_LAYOUT_CONTRACT.standardContent.logo, ADSC_LAYOUT_CONTRACT.canvas),
+  title: { ...pxRectToInches(ADSC_LAYOUT_CONTRACT.standardContent.title, ADSC_LAYOUT_CONTRACT.canvas), font: ADSC_PPTX_FONTS.title },
+  subtitle: { ...pxRectToInches(ADSC_LAYOUT_CONTRACT.standardContent.subtitle, ADSC_LAYOUT_CONTRACT.canvas), font: ADSC_PPTX_FONTS.subtitle },
+  body: { ...pxRectToInches(ADSC_LAYOUT_CONTRACT.standardContent.body, ADSC_LAYOUT_CONTRACT.canvas), font: ADSC_PPTX_FONTS.body },
+  footer: { ...pxRectToInches(ADSC_LAYOUT_CONTRACT.standardContent.source, ADSC_LAYOUT_CONTRACT.canvas), font: ADSC_PPTX_FONTS.footer },
+  slideNum: { ...pxRectToInches(ADSC_LAYOUT_CONTRACT.standardContent.slideNumber, ADSC_LAYOUT_CONTRACT.canvas), font: ADSC_PPTX_FONTS.slideNum },
+  sectionTracker: {
+    ...pxRectToInches(ADSC_LAYOUT_CONTRACT.standardContent.sectionTracker, ADSC_LAYOUT_CONTRACT.canvas),
+    colors: { fill: '0C182B', subFill: 'DB536A', text: 'FFFFFF', subText: 'FFFFFF' },
+    font: { fontFace: 'Arial', fontSize: 8, bold: true },
+    paddingX: 0.18,
+    textInset: 0.05,
+  },
+};
+
 export const CLIENT_DESIGN_PROFILES = {
+  adsc: {
+    schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
+    id: 'adsc',
+    navLabel: 'ADSC',
+    name: 'Abu Dhabi Sports Council',
+    description: 'ADSC sports / fan-engagement template: coral + navy palette, Arial, One Column content shell on the Strategy& Digital base.',
+    status: 'brand-0.1',
+    footerBranding: '',
+    theme: ADSC_THEME,
+    layoutContract: ADSC_LAYOUT_CONTRACT,
+    freestyleOverrides: ADSC_FREESTYLE_OVERRIDES,
+    componentPatterns: ADSC_COMPONENT_PATTERNS,
+    pptxContract: ADSC_PPTX_CONTRACT,
+    promptContract: ADSC_PROMPT_CONTRACT,
+    designContract: ADSC_PROMPT_CONTRACT,
+    pptxMaster: {
+      mode: 'profile-bound',
+      templateId: PROFILE_TEMPLATE_SLOT.DEFAULT,
+      bundled: true,
+      storageKey: 'client-template:adsc:default',
+      serverSync: 'backend-profile-default',
+      serverProfileId: 'adsc',
+      forceBundledDefault: true,
+      useProfileChrome: false,
+      assetVersion: 'adsc-master-v1',
+      notes: 'Bundled ADSC master (slimmed from the ADSC Sports super-app deck); uploads stay profile-bound in local storage.',
+    },
+    chrome: {
+      footerText: '',
+      positions: adscStandardInches,
+      injectPreviewLogo: false,
+      injectExportLogo: false,
+    },
+    evidence: {
+      sourceDecks: [
+        {
+          label: 'ADSC Sports - Super App Blueprint Discussion v4',
+          fileName: '260120_ADSC Sports_Super App Blueprint Discussion_v4.pptx',
+          slides: 52,
+          role: 'bundled master and canonical ADSC visual system',
+        },
+      ],
+      rawThemeSlots: {
+        dk1: '#000000',
+        lt1: '#FFFFFF',
+        dk2: '#A32020',
+        accent1: '#A32020',
+        accent2: '#DB536A',
+      },
+      notes: [
+        'Source deck uses the Strategy&_Digital template theme; ADSC identity is the coral #DB536A accent + navy structure used in content, plus the ADSC cover logo.',
+        'Native deck is 13.333 x 7.5in widescreen mapped to 960 x 540px. Geometry from the "2_One Column" content layout: title 35,30,890x66; subtitle 35,100; body 35,134,890x350; source 192,500; page# 786,511.',
+        'Master slimmed from 194MB/9-masters: kept slideMaster1 + slideLayout1 + theme1, stripped think-cell OLE + webextension taskpanes, forced white background.',
+        'Logo raster extracted from ppt/media/image26.png (greyed ADSC wordmark) in the source deck.',
+      ],
+    },
+    validationRules: {
+      requiredColors: ['#DB536A', '#0C182B', '#FFFFFF', '#29333F', '#7F7F7F'],
+      preferredSurfaceColors: ['#F4F8FF', '#EEF5F9', '#F8F8F8', '#D9D9D9', '#DEDEDE'],
+      disallowedColors: ['#8E1E1E', '#A32020', '#4F008C', '#C3984D', '#073B16', '#00FF86', '#EBC03F', '#13100D'],
+      disallowedFonts: [],
+      disallowedFooterText: [],
+    },
+  },
   strategy: {
     schemaVersion: CLIENT_PROFILE_SCHEMA_VERSION,
     id: 'strategy',

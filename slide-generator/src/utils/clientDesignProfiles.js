@@ -1474,7 +1474,7 @@ const ADSC_THEME = {
     accentHover: '#C2445A',
     accentSoft: '#FBE7EA',
     onAccent: '#FFFFFF',
-    heading: '#0C182B',
+    heading: '#FFFFFF',
     body: '#29333F',
     muted: '#7F7F7F',
     page: '#FFFFFF',
@@ -1502,7 +1502,7 @@ const ADSC_THEME = {
     adscBronze: '#BD825A',
   },
   fonts: {
-    title: 'Arial, Helvetica, sans-serif',
+    title: 'Georgia, "Times New Roman", serif',
     heading: 'Arial, Helvetica, sans-serif',
     body: 'Arial, Helvetica, sans-serif',
   },
@@ -1511,16 +1511,16 @@ const ADSC_THEME = {
       '--left-x': '35px',
       '--title-y': '30px',
       '--title-w': '890px',
-      '--title-font-size': '20px',
-      '--title-font-weight': '700',
-      '--title-line-height': '1.15',
+      '--title-font-size': '28px',
+      '--title-font-weight': '400',
+      '--title-line-height': '1.05',
       '--subtitle-y': '100px',
       '--subtitle-w': '890px',
       '--subtitle-color': '#DB536A',
       '--accent': '#DB536A',
       '--neutral-fill': '#0C182B',
       '--rose-fill': '#DB536A',
-      '--subtitle-font-size': '14px',
+      '--subtitle-font-size': '18px',
       '--subtitle-font-weight': '700',
       '--frame-y': '134px',
       '--frame-w': '890px',
@@ -1563,18 +1563,17 @@ const ADSC_LAYOUT_CONTRACT = {
 };
 
 const ADSC_FREESTYLE_OVERRIDES = {
-  shell: `Use the ADSC (Abu Dhabi Sports Council) master shell on a 960x540 canvas. These positions match the bundled master "One Column" content layout (13.333x7.5in):
-- h1.title: left 35px (0.484in), top 30px (0.420in), width 890px (12.365in), height up to 66px, Arial bold 20px, color navy #0C182B.
-- h2.subtitle: left 35px, top 100px, width 890px, height 25px, Arial bold 14px, color coral #DB536A when used.
-- div.frame: left 35px, top 134px, width 890px, height 350px — all body content stays inside this band (ends ~y=484).
-- Footer/source/page chrome: footer bottom-left x=35 y=500; source band x=192 y=500; page number bottom-right x=786 y=511. Keep frame content above y=490.
-- Do not add a client logo inside content slides; the cover carries the ADSC logo.
-Use the standard ADSC content slide as the default; cover/divider variants only when explicitly requested.`,
-  theme: `Abu Dhabi Sports Council "sports app" palette on the Strategy& Digital base. PRIMARY: coral #DB536A (accent), navy #0C182B (headings/structure), white #FFFFFF. SECONDARY: slate #414E5F / #29333F, grey #7F7F7F, light surfaces #F4F8FF / #EEF5F9, borders #D9D9D9, cyan #12B5C9 (sparingly), bronze #BD825A (sparingly). Slide chrome: title navy #0C182B, subtitle coral #DB536A (bold). Structural bars/column caps: navy #0C182B with white text. Multi-column exhibits: rotate #0C182B, #DB536A, #414E5F, #7F7F7F, #12B5C9. FORBIDDEN as frame fills: Strategy& maroon #A32020/#8E1E1E, STC purple #4F008C, PIF green, SE/NEOM brand colors.`,
-  vibe: `Modern Gulf sports / fan-engagement style: energetic but executive, clean white field, coral accents, navy structure, crisp geometry, restrained iconography. Avoid maroon consulting styling, dusty-rose Strategy& tokens, and generic Office chart palettes.`,
+  shell: `Use the ADSC (Abu Dhabi Sports Council) master shell on a 960x540 canvas. The slide background is a FULL-BLEED dark stadium photo provided by the shell — do NOT add your own background color or image, and do not hide it with an opaque full-slide fill. Positions match the bundled master "One Column" content layout (13.333x7.5in):
+- h1.title: left 35px, top 30px, width 890px, height 66px (text bottom-aligned), Georgia 28px, color WHITE #FFFFFF (sits on the dark sky).
+- h2.subtitle: left 35px, top 100px, width 890px, height 25px, Arial bold 18px, color coral #DB536A.
+- div.frame: left 35px, top 134px, width 890px, height 350px — body content lives here over the photo.
+- Keep exhibits/charts/dense content inside WHITE or translucent-dark panels so they stay legible on the photo; short labels placed directly on the photo are white. Keep frame content above the footer band (y<490).
+- Footer/source/page chrome sits in the bottom band; the master provides it. Do not add a client logo on content slides; the cover carries the ADSC logo.`,
+  theme: `Abu Dhabi Sports Council "sports app" identity on a dark stadium-photo background. Title WHITE Georgia 28; subtitle CORAL #DB536A Arial 18 bold. Content panels: white #FFFFFF (with dark #29333F text) OR translucent-dark navy (with white text). ACCENT coral #DB536A. STRUCTURE navy #0C182B / slate #414E5F. SUPPORTING grey #7F7F7F, cyan #12B5C9 (sparingly), bronze #BD825A (sparingly). Structural bars/column caps: navy #0C182B or coral #DB536A with white text. FORBIDDEN: Strategy& maroon #A32020/#8E1E1E, STC purple #4F008C, PIF green, SE/NEOM colors, and any opaque full-slide background that hides the stadium photo.`,
+  vibe: `Premium Gulf sports / fan-engagement style on a cinematic dark stadium field: energetic yet executive, white serif headlines, coral accents, crisp white/translucent content panels, restrained iconography. Avoid maroon consulting styling, dusty-rose Strategy& tokens, flat white backgrounds, and generic Office chart palettes.`,
   writing: `Write concise executive sports/fan-engagement and digital-platform language: super-app, fan engagement, archetypes, ecosystem, monetization, partnerships, governance. Keep labels short and outcome-led; do not assume ADSC mandates unless the user asks.`,
-  css: `Arial 20px bold for h1.title in navy #0C182B. Subtitle Arial bold 14px in coral #DB536A. Body Arial #29333F. In every .slide .frame { } block set: --accent: #DB536A; --neutral-fill: #0C182B; --rose-fill: #DB536A; never Strategy& #d4687a / #4b5563 / #A32020. Column header bars: navy #0C182B fill, white label text. Accent highlights coral #DB536A; supporting fills navy/slate/grey only.`,
-  pptx: `Export on a 13.333 x 7.5 in canvas using Arial and the bundled ADSC master. Title navy 0C182B, subtitle coral DB536A, structural fills navy 0C182B. The master footer/page-number placeholders provide chrome; do not inject a duplicate logo.`,
+  css: `h1.title { font: 400 28px/1.05 Georgia, serif; color: #FFFFFF; } (white serif on the dark photo). Subtitle Arial bold 18px in coral #DB536A. Put content in panels for legibility: white card { background: rgba(255,255,255,0.95); color: #29333F } or dark card { background: rgba(12,24,43,0.78); color: #FFFFFF }. In every .slide .frame { } block set: --accent: #DB536A; --neutral-fill: #0C182B; --rose-fill: #DB536A; never Strategy& #d4687a / #4b5563 / #A32020. Do NOT set a solid full-frame background that hides the stadium photo. Accent highlights coral #DB536A.`,
+  pptx: `Export on a 13.333 x 7.5 in canvas using Georgia for the title and Arial for body, on the bundled ADSC stadium master. Title WHITE Georgia 28pt; subtitle coral DB536A Arial 18pt bold. Content panels white or translucent-dark for legibility over the photo. The master provides the background photo and footer/page chrome; do not inject a duplicate logo or an opaque slide background.`,
 };
 
 const ADSC_COMPONENT_PATTERNS = [
@@ -1602,11 +1601,12 @@ const ADSC_PPTX_CONTRACT = {
   slideSize: { w: 13.333, h: 7.5 },
   defaultFontFace: 'Arial',
   allowedFontFaces: ['Arial', 'Helvetica'],
-  logoPolicy: 'Do not add a per-slide client logo; the bundled master provides footer/page chrome and the cover carries the ADSC logo.',
+  backgroundPolicy: 'The bundled master carries a full-bleed dark stadium photo background; do not inject an opaque slide background that hides it. Place dense content in white or translucent-dark panels for legibility.',
+  logoPolicy: 'Do not add a per-slide client logo; the bundled master provides the background, footer/page chrome, and the cover carries the ADSC logo.',
   sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',
   pageNumberPolicy: 'Bottom-right page number from the master placeholder, Arial, muted grey.',
-  titlePolicy: 'Content title at x=35 y=30 w=890 h=66, Arial bold 20pt, navy 0C182B.',
-  subtitlePolicy: 'Subtitle at x=35 y=100 w=890 h=25, Arial bold 14pt, coral DB536A, when the slide has a lens label.',
+  titlePolicy: 'Content title at x=35 y=30 w=890 h=66 (text bottom-aligned), Georgia 28pt, white FFFFFF (sits on the dark photo).',
+  subtitlePolicy: 'Subtitle at x=35 y=100 w=890 h=25, Arial bold 18pt, coral DB536A, when the slide has a lens label.',
   bodyPolicy: 'Body/content frame at x=35 y=134 w=890 h=350; keep content above the footer band (y<490).',
   hiddenPlaceholderPolicy: 'Do not surface hidden template scratch content or PRELIMINARY/DRAFT stamps unless requested.',
   borderWeightPt: { min: 0.5, max: 1.25 },
@@ -1616,22 +1616,24 @@ const ADSC_PROMPT_CONTRACT = `# ADSC Client Design Contract
 
 ## Master
 - Use one Abu Dhabi Sports Council (ADSC) master shell on the 960x540 canvas. Do not invent Strategy&, STC, PIF, DGE, FYA, MoS, SE, or NEOM variants.
+- The master carries a FULL-BLEED dark stadium photo background — do not add an opaque slide background that hides it.
 - Body frame x=35 y=134 w=890 h=350. Keep the bottom footer/page band clear.
 
-## Theme (sports-app palette)
-- PRIMARY: coral #DB536A, navy #0C182B, white. SECONDARY: slate #414E5F/#29333F, grey #7F7F7F, surfaces #F4F8FF/#EEF5F9, cyan #12B5C9 (sparingly).
-- Slide chrome: title navy #0C182B, subtitle coral #DB536A (bold). Structural bars: navy, white text.
-- FORBIDDEN in frame: Strategy& maroon, STC purple, PIF/SE/NEOM brand colors.
+## Theme (sports-app palette on dark photo)
+- Title WHITE #FFFFFF; subtitle CORAL #DB536A (Arial bold). Content panels: white #FFFFFF (dark #29333F text) or translucent-dark navy (white text).
+- ACCENT coral #DB536A. STRUCTURE navy #0C182B / slate #414E5F/#29333F. SUPPORTING grey #7F7F7F, cyan #12B5C9 (sparingly).
+- Structural bars/column caps: navy or coral with white text.
+- FORBIDDEN: Strategy& maroon, STC purple, PIF/SE/NEOM brand colors, and any opaque full-slide background that hides the stadium photo.
 
 ## Typography
-- Arial 20px/20pt bold for titles; Arial bold 14px/14pt for subtitles; Arial ~11pt body.
+- Georgia 28px/28pt for titles (white); Arial bold 18px/18pt for subtitles (coral); Arial ~11pt body.
 
 ## Components
-- Prefer ecosystem maps, capability cards, archetype grids, KPI bands, and phased roadmaps inside the body frame.`;
+- Prefer ecosystem maps, capability cards, archetype grids, KPI bands, and phased roadmaps inside white/translucent panels in the body frame.`;
 
 const ADSC_PPTX_FONTS = {
-  title: { fontFace: 'Arial', fontSize: 20, bold: true, color: '0C182B' },
-  subtitle: { fontFace: 'Arial', fontSize: 14, bold: true, color: 'DB536A' },
+  title: { fontFace: 'Georgia', fontSize: 28, bold: false, color: 'FFFFFF' },
+  subtitle: { fontFace: 'Arial', fontSize: 18, bold: true, color: 'DB536A' },
   body: { fontFace: 'Arial', fontSize: 11, bold: false, color: '29333F' },
   footer: { fontFace: 'Arial', fontSize: 8, bold: false, color: '7F7F7F' },
   slideNum: { fontFace: 'Arial', fontSize: 8, bold: false, color: '7F7F7F' },
@@ -1659,7 +1661,7 @@ export const CLIENT_DESIGN_PROFILES = {
     id: 'adsc',
     navLabel: 'ADSC',
     name: 'Abu Dhabi Sports Council',
-    description: 'ADSC sports / fan-engagement template: coral + navy palette, Arial, One Column content shell on the Strategy& Digital base.',
+    description: 'ADSC sports / fan-engagement template: full-bleed dark stadium-photo master, white Georgia 28 title, coral Arial 18 subtitle, coral + navy palette.',
     status: 'brand-0.1',
     footerBranding: '',
     theme: ADSC_THEME,
@@ -1705,9 +1707,9 @@ export const CLIENT_DESIGN_PROFILES = {
       },
       notes: [
         'Source deck uses the Strategy&_Digital template theme; ADSC identity is the coral #DB536A accent + navy structure used in content, plus the ADSC cover logo.',
-        'Native deck is 13.333 x 7.5in widescreen mapped to 960 x 540px. Geometry from the "2_One Column" content layout: title 35,30,890x66; subtitle 35,100; body 35,134,890x350; source 192,500; page# 786,511.',
-        'Master slimmed from 194MB/9-masters: kept slideMaster1 + slideLayout1 + theme1, stripped think-cell OLE + webextension taskpanes, forced white background.',
-        'Logo raster extracted from ppt/media/image26.png (greyed ADSC wordmark) in the source deck.',
+        'Native deck is 13.333 x 7.5in widescreen mapped to 960 x 540px. Geometry from the "2_One Column" content layout: title 35,30,890x66 (Georgia 28 white); subtitle 35,100 (Arial 18 coral); body 35,134,890x350; source 192,500; page# 786,511.',
+        'Master slimmed from 194MB/9-masters: kept slideMaster1 + slideLayout1 + theme1, stripped think-cell OLE + webextension taskpanes. The full-bleed dark stadium photo (Picture 8 -> ppt/media/image3.jpeg, 1.2MB) is preserved in slideLayout1 and shows on content slides; export uses preserveTemplateChrome so the layout (and its photo) survive the merge.',
+        'Logo raster extracted from ppt/media/image26.png (greyed ADSC wordmark) in the source deck; not injected on content slides (master provides chrome).',
       ],
     },
     validationRules: {

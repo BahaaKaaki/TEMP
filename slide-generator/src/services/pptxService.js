@@ -2135,7 +2135,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       const merged = useControlledProfileChrome
         ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
-          preserveTemplateChrome: activeProfile.id === 'strategy',
+          preserveTemplateChrome: activeProfile.id === 'strategy' || activeProfile.id === 'adsc',
           profile: activeProfile,
           coverSlideNumbers,
         });
@@ -2256,7 +2256,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
       const merged = useControlledProfileChrome
         ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
-          preserveTemplateChrome: activeProfile.id === 'strategy',
+          preserveTemplateChrome: activeProfile.id === 'strategy' || activeProfile.id === 'adsc',
           profile: activeProfile,
           coverSlideNumbers,
         });

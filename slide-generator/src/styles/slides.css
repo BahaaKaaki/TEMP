@@ -690,20 +690,28 @@
   white-space: nowrap;
 }
 
-/* ADSC (Abu Dhabi Sports Council) profile: Strategy& Digital base, coral + navy */
+/* ADSC (Abu Dhabi Sports Council) profile: full-bleed stadium photo background,
+   white Georgia title, coral Arial subtitle (Strategy& Digital base). */
 .slide[data-client-profile="adsc"] {
   font-family: Arial, Helvetica, sans-serif;
-  color: #29333F;
-  background: #FFFFFF;
+  color: #FFFFFF;
+  background-color: #141C2B;
+  background-image: url('/api/assets/client-templates/adsc/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .slide[data-client-profile="adsc"] .title {
   left: 35px;
   top: 30px;
   width: 890px;
+  height: 66px;
   max-height: 66px;
-  font: 700 20px/1.15 Arial, Helvetica, sans-serif;
-  color: var(--heading, #0C182B);
+  display: flex;
+  align-items: flex-end;
+  font: 400 28px/1.05 Georgia, "Times New Roman", serif;
+  color: var(--heading, #FFFFFF);
   overflow: hidden;
 }
 
@@ -713,7 +721,7 @@
   width: 890px;
   height: 25px;
   max-height: 25px;
-  font: 700 14px/1.18 Arial, Helvetica, sans-serif;
+  font: 700 18px/1.18 Arial, Helvetica, sans-serif;
   color: var(--subtitle-color, #DB536A);
   overflow: hidden;
 }

@@ -1032,9 +1032,16 @@ async function pickBestLayout(tplZip, profile = null) {
     else if (type === 'content' && !candidates.content) candidates.content = idx;
   }
 
-  const pick = candidates.blank || candidates.titleOnly || candidates.content || 1;
-  console.log('[PPTX Template] Layout candidates: blank=%s titleOnly=%s content=%s -> using %d',
-    candidates.blank, candidates.titleOnly, candidates.content, pick);
+  // Fall back to the first AVAILABLE layout, not a hardcoded "1": slimmed
+  // single-layout masters (e.g. Remat's "Custom Layout" with no type attr) may
+  // not classify, and pointing slides at a non-existent slideLayout1 drops all
+  // layout-level chrome (footer logos, decorations) on export.
+  const firstAvailable = layoutFiles.length
+    ? parseInt(layoutFiles[0].match(/slideLayout(\d+)/)[1], 10)
+    : 1;
+  const pick = candidates.blank || candidates.titleOnly || candidates.content || firstAvailable;
+  console.log('[PPTX Template] Layout candidates: blank=%s titleOnly=%s content=%s firstAvailable=%s -> using %d',
+    candidates.blank, candidates.titleOnly, candidates.content, firstAvailable, pick);
   return pick;
 }
 

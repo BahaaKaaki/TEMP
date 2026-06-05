@@ -709,15 +709,9 @@
   overflow: hidden;
 }
 
+/* Remat content layout has no subtitle; suppress any stray one. */
 .slide[data-client-profile="remat"] .subtitle {
-  left: 52px;
-  top: 64px;
-  width: 842px;
-  height: 20px;
-  max-height: 20px;
-  font: 400 14px/1.2 "SST Arabic Roman", "SST Arabic", Arial, sans-serif;
-  color: var(--subtitle-color, #B6833A);
-  overflow: hidden;
+  display: none;
 }
 
 .slide[data-client-profile="remat"] .frame {
@@ -735,6 +729,18 @@
   height: 54px;
   object-fit: contain;
   object-position: left bottom;
+  pointer-events: none;
+}
+
+/* Bottom-right Remat wordmark (matches master slideLayout3 "Graphic 8"). */
+.slide[data-client-profile="remat"]::after {
+  content: "";
+  position: absolute;
+  left: 772px;
+  top: 503px;
+  width: 66px;
+  height: 24px;
+  background: url('/api/assets/client-templates/remat/logo-mark.svg') no-repeat center / contain;
   pointer-events: none;
 }
 
@@ -772,7 +778,7 @@
   height: var(--slide-num-h);
   text-align: right;
   color: #759F8D;
-  font: 400 8px/1 "SST Arabic Roman", Arial, sans-serif;
+  font: 400 12px/1 "SST Arabic Roman", Arial, sans-serif;
   white-space: nowrap;
 }
 

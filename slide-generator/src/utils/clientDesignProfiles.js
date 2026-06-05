@@ -1756,15 +1756,14 @@ const REMAT_LAYOUT_CONTRACT = {
 };
 
 const REMAT_FREESTYLE_OVERRIDES = {
-  shell: `Use the Remat master shell on a 960x540 canvas. The bundled master provides a clean WHITE background with subtle green line-art decorations and a green footer logo band — do NOT add your own full-slide background. Positions match the bundled content layout (13.333x7.5in):
+  shell: `Use the Remat master shell on a 960x540 canvas. The bundled master provides a clean WHITE background with subtle green line-art decorations and two logos in the footer band (green wordmark band bottom-left, Remat mark bottom-right) — do NOT add your own full-slide background or logos. Positions match the bundled content layout (13.333x7.5in):
 - h1.title: left 52px, top 16px, width 842px, height 58px, SST Arabic Roman 28px, color GREEN #00785C.
-- h2.subtitle (optional kicker): left 52px, top 64px, width 842px, height 20px, SST Arabic Roman ~14px, color BRONZE #B6833A.
-- div.frame: left 52px, top 87px, width 842px, height 396px — all body content lives here.
-- Footer/page chrome sits in the bottom band; the master provides the green logo band (bottom-left) and the page number (bottom-right). Keep frame content above the footer band (y<486) and clear of the bottom-left logo.`,
-  theme: `Remat brand identity on a WHITE background. PRIMARY green #00785C (titles, key accents). SECONDARY bronze/gold #B6833A. STRUCTURE navy #1F3864, body dark grey #3A3838. SUPPORTING cyan #44C1C3, blue #007EA6, light-blue #00ADCE, purple #A397C0 (sparingly, for categorical series). SURFACES: white #FFFFFF, pale green #EDF1EE, cream #F8F3ED, grey #E7E6E6. Headings/titles GREEN #00785C; body dark grey #3A3838. Structural bars/cards: green #00785C or navy #1F3864 with white text; bronze #B6833A for secondary accents. FORBIDDEN: Strategy& maroon #A32020/#8E1E1E, STC purple #4F008C, NEOM yellow #EBC03F, ADSC coral #DB536A.`,
-  vibe: `Clean, modern Saudi corporate look on white: green primary with bronze and navy accents, generous whitespace, crisp green line-art motifs, restrained iconography. Avoid maroon consulting styling, dark heavy backgrounds, and generic Office chart palettes.`,
-  writing: `Match the user's requested topic and industry — do not assume Remat, recycling, environment, or any specific sector unless the user asks for them. Write conclusion-led titles and short, executive labels.`,
-  css: `h1.title { font: 400 28px/1.15 "SST Arabic Roman", Arial, sans-serif; color: #00785C; } (green on white). Subtitle "SST Arabic Roman" ~14px bronze #B6833A. Body "SST Arabic Roman" #3A3838 on white. In every .slide .frame { } block set: --accent: #00785C; --neutral-fill: #00785C; --rose-fill: #B6833A; never Strategy& #d4687a / #4b5563 / #A32020. Cards: white #FFFFFF or pale green #EDF1EE with green #00785C headers/top-borders; bronze #B6833A for secondary accents. Keep a clean white slide background.`,
+- div.frame: left 52px, top 87px, width 842px, height 396px — all body content lives here. There is NO subtitle in this template; do not emit an h2.subtitle.
+- Footer/page chrome sits in the bottom band; the master provides the logos and the page number. Keep frame content above the footer band (y<486) and clear of the bottom logos.`,
+  theme: `Remat brand identity on a WHITE background. ALWAYS use the brand colours as the dominant accents in every exhibit: PRIMARY green #00785C (titles, headers, key accents, ~main series) and SECONDARY bronze/gold #B6833A (secondary accents, second series). STRUCTURE navy #1F3864, body dark grey #3A3838. SUPPORTING cyan #44C1C3, blue #007EA6, light-blue #00ADCE, purple #A397C0 ONLY for additional categorical series. SURFACES: white #FFFFFF, pale green #EDF1EE, cream #F8F3ED, grey #E7E6E6. Headings/titles GREEN #00785C; body dark grey #3A3838. Structural bars/cards: green #00785C or navy #1F3864 with white text; bronze #B6833A for secondary accents. FORBIDDEN: Strategy& maroon #A32020/#8E1E1E, STC purple #4F008C, NEOM yellow #EBC03F, ADSC coral #DB536A, and default blue/grey Office palettes.`,
+  vibe: `Clean, modern Saudi corporate look on white: green #00785C primary with bronze #B6833A and navy accents, generous whitespace, crisp green line-art motifs, restrained iconography. Avoid maroon consulting styling, dark heavy backgrounds, and generic Office chart palettes.`,
+  writing: `Match the user's requested topic and industry — do not assume Remat, recycling, environment, or any specific sector unless the user asks for them. Write conclusion-led titles and short, executive labels. Do not add a subtitle line.`,
+  css: `h1.title { font: 400 28px/1.15 "SST Arabic Roman", Arial, sans-serif; color: #00785C; } (green on white). No subtitle. Body "SST Arabic Roman" #3A3838 on white. In every .slide .frame { } block set: --accent: #00785C; --neutral-fill: #00785C; --rose-fill: #B6833A; never Strategy& #d4687a / #4b5563 / #A32020. Use green #00785C and bronze #B6833A as the dominant exhibit colours: cards white #FFFFFF or pale green #EDF1EE with green #00785C headers/top-borders and bronze #B6833A secondary accents; chart series rotate green -> bronze -> navy -> cyan. Keep a clean white slide background.`,
   pptx: `Export on a 13.333 x 7.5 in canvas using SST Arabic Roman on the bundled Remat master. Title GREEN 00785C 28pt; body dark grey 3A3838; bronze B6833A and navy 1F3864 as secondary accents. The master provides the white background, green decorations, footer logo, and page number; do not inject a duplicate logo or a full-slide background.`,
 };
 
@@ -1794,11 +1793,11 @@ const REMAT_PPTX_CONTRACT = {
   defaultFontFace: 'SST Arabic Roman',
   allowedFontFaces: ['SST Arabic Roman', 'SST Arabic', 'SST Arabic Light', 'Arial'],
   backgroundPolicy: 'The bundled master provides a white background with green line-art decorations and a green footer logo band; do not inject an opaque full-slide background or a duplicate logo.',
-  logoPolicy: 'Do not add a per-slide logo; the bundled master carries the green footer logo band and the page number.',
+  logoPolicy: 'Do not add a per-slide logo; the bundled master carries both footer logos (green wordmark band bottom-left, Remat mark bottom-right) and the page number.',
   sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',
-  pageNumberPolicy: 'Bottom-right page number from the master placeholder, SST Arabic, muted.',
+  pageNumberPolicy: 'Bottom-right page number, SST Arabic 12pt, muted (matches the native template slide number).',
   titlePolicy: 'Content title at x=52 y=16 w=842 h=58, SST Arabic Roman 28pt, green 00785C.',
-  subtitlePolicy: 'Optional subtitle/kicker at x=52 y=64 w=842 h=20, SST Arabic Roman ~14pt, bronze B6833A.',
+  subtitlePolicy: 'No subtitle: the Remat content layout has title + body only.',
   bodyPolicy: 'Body/content frame at x=52 y=87 w=842 h=396; keep content above the footer band (y<486).',
   hiddenPlaceholderPolicy: 'Do not surface hidden template scratch content or DRAFT stamps unless requested.',
   borderWeightPt: { min: 0.5, max: 1.25 },
@@ -1812,13 +1811,13 @@ const REMAT_PROMPT_CONTRACT = `# Remat Client Design Contract
 - Body frame x=52 y=87 w=842 h=396. Keep the bottom footer/page band clear.
 
 ## Theme (white background)
-- Title GREEN #00785C; optional subtitle/kicker BRONZE #B6833A. Body dark grey #3A3838.
-- PRIMARY green #00785C. SECONDARY bronze #B6833A, navy #1F3864. SUPPORTING cyan #44C1C3, blue #007EA6, purple #A397C0 (sparingly).
+- Title GREEN #00785C. Body dark grey #3A3838. No subtitle (this template has none).
+- Always use the brand colours as dominant accents: PRIMARY green #00785C, SECONDARY bronze #B6833A, then navy #1F3864. SUPPORTING cyan #44C1C3, blue #007EA6, purple #A397C0 only for extra categorical series.
 - Cards: white or pale-green #EDF1EE with green headers; bronze secondary accents.
-- FORBIDDEN: Strategy& maroon, STC purple, NEOM yellow, ADSC coral, and any opaque full-slide background.
+- FORBIDDEN: Strategy& maroon, STC purple, NEOM yellow, ADSC coral, default Office blue/grey, and any opaque full-slide background.
 
 ## Typography
-- SST Arabic Roman throughout. Title 28px/28pt green; subtitle ~14px bronze; body ~11pt dark grey.
+- SST Arabic Roman throughout. Title 28px/28pt green; body ~11pt dark grey; slide number 12pt. No subtitle.
 
 ## Content
 - Match the user's requested topic and industry. Do NOT assume Remat, recycling, environment, or any specific sector unless the user asks for them.
@@ -1826,16 +1825,16 @@ const REMAT_PROMPT_CONTRACT = `# Remat Client Design Contract
 
 const REMAT_PPTX_FONTS = {
   title: { fontFace: 'SST Arabic Roman', fontSize: 28, bold: false, color: '00785C' },
-  subtitle: { fontFace: 'SST Arabic Roman', fontSize: 14, bold: false, color: 'B6833A' },
   body: { fontFace: 'SST Arabic Roman', fontSize: 11, bold: false, color: '3A3838' },
   footer: { fontFace: 'SST Arabic Roman', fontSize: 8, bold: false, color: '759F8D' },
-  slideNum: { fontFace: 'SST Arabic Roman', fontSize: 8, bold: false, color: '759F8D' },
+  // Native template slide number is 12pt (sz=1200 in slideLayout3).
+  slideNum: { fontFace: 'SST Arabic Roman', fontSize: 12, bold: false, color: '759F8D' },
 };
 
 const rematStandardInches = {
   logo: pxRectToInches(REMAT_LAYOUT_CONTRACT.standardContent.logo, REMAT_LAYOUT_CONTRACT.canvas),
   title: { ...pxRectToInches(REMAT_LAYOUT_CONTRACT.standardContent.title, REMAT_LAYOUT_CONTRACT.canvas), font: REMAT_PPTX_FONTS.title },
-  subtitle: { ...pxRectToInches(REMAT_LAYOUT_CONTRACT.standardContent.subtitle, REMAT_LAYOUT_CONTRACT.canvas), font: REMAT_PPTX_FONTS.subtitle },
+  // No subtitle: the Remat content layout (slide 5 / slideLayout3) has title + body only.
   body: { ...pxRectToInches(REMAT_LAYOUT_CONTRACT.standardContent.body, REMAT_LAYOUT_CONTRACT.canvas), font: REMAT_PPTX_FONTS.body },
   footer: { ...pxRectToInches(REMAT_LAYOUT_CONTRACT.standardContent.source, REMAT_LAYOUT_CONTRACT.canvas), font: REMAT_PPTX_FONTS.footer },
   slideNum: { ...pxRectToInches(REMAT_LAYOUT_CONTRACT.standardContent.slideNumber, REMAT_LAYOUT_CONTRACT.canvas), font: REMAT_PPTX_FONTS.slideNum },

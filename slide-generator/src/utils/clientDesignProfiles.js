@@ -1792,6 +1792,7 @@ const REMAT_PPTX_CONTRACT = {
   slideSize: { w: 13.333, h: 7.5 },
   defaultFontFace: 'SST Arabic Roman',
   allowedFontFaces: ['SST Arabic Roman', 'SST Arabic', 'SST Arabic Light', 'Arial'],
+  colorFidelityPolicy: 'Preserve the EXACT colours from the slide CSS. Remat is a multi-colour brand: primary green #00785C AND secondary/supporting colours bronze #B6833A, navy #1F3864, blue #007EA6, cyan #44C1C3, light-blue #00ADCE, purple #A397C0 must all survive the export. NEVER recolour a blue/bronze/navy/cyan element to the primary green — keep each element the colour the CSS gives it.',
   backgroundPolicy: 'The bundled master provides a white background with green line-art decorations and a green footer logo band; do not inject an opaque full-slide background or a duplicate logo.',
   logoPolicy: 'Do not add a per-slide logo; the bundled master carries both footer logos (green wordmark band bottom-left, Remat mark bottom-right) and the page number.',
   sourcePolicy: 'Use footer/source text only when real source text exists; keep it compact in the bottom band.',

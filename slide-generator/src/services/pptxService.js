@@ -467,15 +467,16 @@ export function themeToPptxPalette(theme) {
 
   const neutralFill = c.neutralFill ?? DEFAULT_THEME.colors.neutralFill;
   const roseFill = c.roseFill ?? DEFAULT_THEME.colors.roseFill;
+  const info = c.info ?? DEFAULT_THEME.colors.info ?? '';
 
-  const colorCode = `const c = {main:'${strip(c.heading)}',secondary:'${strip(c.body)}',accent:'${strip(c.accent)}',accentHover:'${strip(c.accentHover)}',accentSoft:'${strip(c.accentSoft)}',onAccent:'${strip(c.onAccent)}',muted:'${strip(c.muted)}',page:'${strip(c.page)}',surface:'${strip(c.surface)}',surfaceAlt:'${strip(c.surfaceAlt)}',border:'${strip(c.border)}',success:'${strip(c.success)}',danger:'${strip(c.danger)}',warning:'${strip(c.warning)}',neutralFill:'${strip(neutralFill)}',roseFill:'${strip(roseFill)}'};`;
+  const colorCode = `const c = {main:'${strip(c.heading)}',secondary:'${strip(c.body)}',accent:'${strip(c.accent)}',accentHover:'${strip(c.accentHover)}',accentSoft:'${strip(c.accentSoft)}',onAccent:'${strip(c.onAccent)}',muted:'${strip(c.muted)}',page:'${strip(c.page)}',surface:'${strip(c.surface)}',surfaceAlt:'${strip(c.surfaceAlt)}',border:'${strip(c.border)}',success:'${strip(c.success)}',danger:'${strip(c.danger)}',warning:'${strip(c.warning)}',info:'${strip(info)}',neutralFill:'${strip(neutralFill)}',roseFill:'${strip(roseFill)}'};`;
 
-  const hint = `THEME: ${t.name || 'Custom'} - Use accent (${c.accent}) for emphasis, heading (${c.heading}) for titles, body (${c.body}) for text.`;
+  const hint = `THEME: ${t.name || 'Custom'} - Use accent (${c.accent}) for primary emphasis only; keep any secondary/supporting colors (warning ${c.warning}, info ${info}, etc.) that the slide CSS already uses. heading (${c.heading}) for titles, body (${c.body}) for text.`;
 
   const resolvedVars = `--heading = ${c.heading}, --body = ${c.body}, --muted = ${c.muted}
 --accent = ${c.accent}, --accent-hover = ${c.accentHover}, --accent-soft = ${c.accentSoft}, --on-accent = ${c.onAccent}
 --page = ${c.page}, --surface = ${c.surface}, --surface-alt = ${c.surfaceAlt}, --border = ${c.border}
---success = ${c.success}, --danger = ${c.danger}, --warning = ${c.warning}
+--success = ${c.success}, --danger = ${c.danger}, --warning = ${c.warning}, --info = ${info}
 --neutral-fill = ${neutralFill}, --rose-fill = ${roseFill}`;
 
   return { colorCode, hint, resolvedVars, colors: {
@@ -1022,6 +1023,7 @@ The CSS RULES section above is the RESOLVED stylesheet for this slide -- treat i
 4. For background-color in CSS or inline -> fill:{color:'HEX'}
 5. Do NOT invent your own colors. Do NOT use gray/light colors for elements that are red/maroon in the CSS.
 6. The reference example is just a STRUCTURAL guide. Always use the ACTUAL colors from THIS slide's CSS/HTML.
+7. PRESERVE NON-ACCENT/SECONDARY COLORS: if the CSS colors an element blue, teal, cyan, bronze, gold, navy, purple, or any secondary/supporting brand color, reproduce THAT exact hex. NEVER substitute the theme accent/primary color (c.accent) for an element the CSS colored with a different hex. The accent applies ONLY where the CSS actually uses it; multi-color palettes must survive the export.
 
 MANDATORY -- TYPOGRAPHY FIDELITY AND READABILITY:
 ${profileFontFace ? `- For this client profile, every text box MUST set fontFace:'${profileFontFace}'. Do not use Arial, Georgia, Calibri, Aptos, or generic font fallbacks.\n` : ''}

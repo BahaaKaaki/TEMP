@@ -52,6 +52,7 @@ const PROFILE_PPTX_FONT_FACE = {
   mos: 'Sakkal Majalla',
   se: 'SE Medium',
   adsc: 'Arial',
+  remat: 'SST Arabic Roman',
 };
 
 const DIRECT_PROFILE_CHROME_EXPORTS = new Set(['mos']);
@@ -370,6 +371,31 @@ function enforcePptxColorsForProfile(codeString, profile) {
       ['F8E3E3', 'FBF8E9'],
       ['E6E9EE', '898786'],
       ['DBB8F3', 'EBC03F'],
+    ]);
+  } else if (profile?.id === 'remat') {
+    // Remat palette: green #00785C primary, bronze #B6833A secondary, navy #1F3864
+    // structure, dark grey #3A3838 body, on white. Map the default Strategy& palette.
+    replacements = new Map([
+      ['111111', '3A3838'],
+      ['222222', '3A3838'],
+      ['1D252D', '3A3838'],
+      ['A32020', '00785C'],
+      ['8E1E1E', '00785C'],
+      ['FF375E', '00785C'],
+      ['D4687A', '00785C'],
+      ['4F008C', '1F3864'],
+      ['4b5563', '1F3864'],
+      ['4B4F55', '3A3838'],
+      ['4A4F57', '759F8D'],
+      ['515360', '759F8D'],
+      ['6B7280', '759F8D'],
+      ['C3984D', 'B6833A'],
+      ['D4A017', 'B6833A'],
+      ['F7F9FB', 'EDF1EE'],
+      ['EEF2F6', 'EDF1EE'],
+      ['F8E3E3', 'F8F3ED'],
+      ['E6E9EE', 'E7E6E6'],
+      ['DBB8F3', 'B6833A'],
     ]);
   } else if (profile?.id === 'adsc') {
     // ADSC sports palette: coral #DB536A accent, navy #0C182B structure, slate/grey
@@ -2135,7 +2161,7 @@ export async function exportToPPTX(slides, filename = 'presentation.pptx', setti
       const merged = useControlledProfileChrome
         ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
-          preserveTemplateChrome: activeProfile.id === 'strategy' || activeProfile.id === 'adsc',
+          preserveTemplateChrome: activeProfile.id === 'strategy' || activeProfile.id === 'adsc' || activeProfile.id === 'remat',
           profile: activeProfile,
           coverSlideNumbers,
         });
@@ -2256,7 +2282,7 @@ export async function exportSingleSlideToPPTX(slide, slideNumber, totalSlides, f
       const merged = useControlledProfileChrome
         ? await applyProfileChromeToGenerated(buf, chrome, { profile: activeProfile, templateData: templateData.data })
         : await applyTemplateToGenerated(buf, templateData.data, chrome, {
-          preserveTemplateChrome: activeProfile.id === 'strategy' || activeProfile.id === 'adsc',
+          preserveTemplateChrome: activeProfile.id === 'strategy' || activeProfile.id === 'adsc' || activeProfile.id === 'remat',
           profile: activeProfile,
           coverSlideNumbers,
         });

@@ -690,6 +690,106 @@
   white-space: nowrap;
 }
 
+/* Remat profile: clean white shell, green SST Arabic title, bronze kicker,
+   green footer logo band (slide 5 / slideLayout3). */
+.slide[data-client-profile="remat"] {
+  font-family: "SST Arabic Roman", "SST Arabic", Arial, sans-serif;
+  color: #3A3838;
+  background: #FFFFFF;
+}
+
+.slide[data-client-profile="remat"] .title {
+  left: 52px;
+  top: 16px;
+  width: 842px;
+  height: 58px;
+  max-height: 58px;
+  font: 400 28px/1.15 "SST Arabic Roman", "SST Arabic", Arial, sans-serif;
+  color: var(--heading, #00785C);
+  overflow: hidden;
+}
+
+.slide[data-client-profile="remat"] .subtitle {
+  left: 52px;
+  top: 64px;
+  width: 842px;
+  height: 20px;
+  max-height: 20px;
+  font: 400 14px/1.2 "SST Arabic Roman", "SST Arabic", Arial, sans-serif;
+  color: var(--subtitle-color, #B6833A);
+  overflow: hidden;
+}
+
+.slide[data-client-profile="remat"] .frame {
+  left: 52px;
+  top: 87px;
+  width: 842px;
+  height: 396px;
+}
+
+.slide[data-client-profile="remat"] .client-chrome-remat-logo {
+  position: absolute;
+  left: 0;
+  top: 486px;
+  width: 265px;
+  height: 54px;
+  object-fit: contain;
+  object-position: left bottom;
+  pointer-events: none;
+}
+
+.slide[data-client-profile="remat"] footer.footer:has(span.source),
+.slide[data-client-profile="remat"] footer.footer {
+  display: block;
+  font-family: "SST Arabic Roman", Arial, sans-serif;
+}
+
+.slide[data-client-profile="remat"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="remat"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #759F8D;
+}
+
+.slide[data-client-profile="remat"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #759F8D;
+  font: 400 8px/1 "SST Arabic Roman", Arial, sans-serif;
+  white-space: nowrap;
+}
+
+/* Remat section tracker: green pill + bronze sub-section pill */
+.slide[data-client-profile="remat"][data-section]::before {
+  background: #00785C;
+  color: #FFFFFF;
+  font: 700 8px/1.35 "SST Arabic Roman", Arial, sans-serif;
+  border-radius: 0;
+}
+.slide[data-client-profile="remat"][data-subsection]::after {
+  background: #B6833A;
+  color: #FFFFFF;
+  font: 700 8px/1.35 "SST Arabic Roman", Arial, sans-serif;
+  border-radius: 0;
+}
+
 /* ADSC (Abu Dhabi Sports Council) profile: full-bleed stadium photo background,
    white Georgia title, coral Arial subtitle (Strategy& Digital base). */
 .slide[data-client-profile="adsc"] {

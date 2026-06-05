@@ -287,6 +287,7 @@ function ProtectedRoute({ children }) {
             loadClientProfileFonts('pif'),
             loadClientProfileFonts('dge'),
             loadClientProfileFonts('se'),
+            loadClientProfileFonts('remat'),
           ]);
           if (cancelled) return;
         }

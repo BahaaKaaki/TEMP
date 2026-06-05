@@ -28,10 +28,20 @@ const SE_FONT_FACES = [
   { file: 'SE-Bold.ttf', family: 'SE', weight: '700', route: 'se' },
 ];
 
+// Remat: SST Arabic Roman is the standard face; Light for lighter weights.
+// Alias the bare "SST Arabic" family (used by the bundled master) to Roman.
+const SST_ARABIC_FONT_FACES = [
+  { file: 'SST-Arabic-Light.ttf', family: 'SST Arabic Light', weight: '300', route: 'sst-arabic' },
+  { file: 'SST-Arabic-Roman.ttf', family: 'SST Arabic Roman', weight: '400', route: 'sst-arabic' },
+  { file: 'SST-Arabic-Roman.ttf', family: 'SST Arabic', weight: '400', route: 'sst-arabic' },
+  { file: 'SST-Arabic-Roman.ttf', family: 'SST Arabic Roman', weight: '700', route: 'sst-arabic' },
+];
+
 let stcLoadPromise = null;
 let pifLoadPromise = null;
 let dgeLoadPromise = null;
 let seLoadPromise = null;
+let sstArabicLoadPromise = null;
 
 function loadFontFaces(fontFaces, label) {
   if (typeof window === 'undefined' || typeof FontFace === 'undefined' || !document.fonts) {
@@ -111,10 +121,24 @@ export function loadSeFonts() {
   return seLoadPromise;
 }
 
+export function loadSstArabicFonts() {
+  if (sstArabicLoadPromise) return sstArabicLoadPromise;
+
+  sstArabicLoadPromise = loadFontFaces(SST_ARABIC_FONT_FACES, 'SST Arabic')
+    .catch((err) => {
+      console.warn('[Fonts] SST Arabic fonts could not be loaded:', err.message);
+      sstArabicLoadPromise = null;
+      return false;
+    });
+
+  return sstArabicLoadPromise;
+}
+
 export function loadClientProfileFonts(profileId) {
   if (profileId === 'stc') return loadStcForwardFonts();
   if (profileId === 'pif') return loadPifFundFonts();
   if (profileId === 'dge') return loadDgeNotoFonts();
   if (profileId === 'se') return loadSeFonts();
+  if (profileId === 'remat') return loadSstArabicFonts();
   return Promise.resolve(false);
 }

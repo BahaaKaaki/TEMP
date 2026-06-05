@@ -158,6 +158,11 @@ const SE_FONT_FILES: Record<string, string> = {
   'SE-Bold.ttf': 'SE-Bold.ttf',
   'SE-ExtraBold.ttf': 'SE-ExtraBold.ttf',
 };
+const SST_ARABIC_FONT_ASSETS_DIR = path.join(process.cwd(), 'assets', 'fonts', 'sst-arabic');
+const SST_ARABIC_FONT_FILES: Record<string, string> = {
+  'SST-Arabic-Light.ttf': 'SST-Arabic-Light.ttf',
+  'SST-Arabic-Roman.ttf': 'SST-Arabic-Roman.ttf',
+};
 const CLIENT_TEMPLATE_IMAGE_TYPES: Record<string, string> = {
   '.png': 'image/png',
   '.jpg': 'image/jpeg',
@@ -217,6 +222,20 @@ app.get('/api/assets/fonts/se/:fileName', (req, res, next) => {
   res.setHeader('Content-Type', 'font/ttf');
   res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
   res.sendFile(path.join(SE_FONT_ASSETS_DIR, safeFileName), (err) => {
+    if (err) next(err);
+  });
+});
+
+app.get('/api/assets/fonts/sst-arabic/:fileName', (req, res, next) => {
+  const safeFileName = SST_ARABIC_FONT_FILES[req.params.fileName];
+  if (!safeFileName) {
+    res.status(404).json({ error: 'FONT_NOT_FOUND' });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'font/ttf');
+  res.setHeader('Cache-Control', 'private, max-age=604800, immutable');
+  res.sendFile(path.join(SST_ARABIC_FONT_ASSETS_DIR, safeFileName), (err) => {
     if (err) next(err);
   });
 });

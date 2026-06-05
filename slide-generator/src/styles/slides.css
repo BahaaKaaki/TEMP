@@ -702,8 +702,10 @@
   left: 52px;
   top: 16px;
   width: 842px;
-  height: 58px;
-  max-height: 58px;
+  /* Allow up to two lines (28px/1.15 ~= 32px/line) without clipping; the frame
+     starts at y=87, so the title has room to grow to ~66px before crowding it. */
+  height: auto;
+  max-height: 66px;
   font: 400 28px/1.15 "SST Arabic Roman", "SST Arabic", Arial, sans-serif;
   color: var(--heading, #00785C);
   overflow: hidden;

@@ -1,0 +1,31 @@
+---
+description: Assign Bahaa Kaaki on every pull request the agent creates
+alwaysApply: true
+---
+
+# Pull request assignee
+
+When creating or finishing a GitHub pull request (MR) for this repo, **always assign Bahaa Kaaki**.
+
+## `gh pr create`
+
+Include the assignee flag on every `gh pr create`:
+
+```bash
+gh pr create ... --assignee bahaa-kaaki_pwcit
+```
+
+If the command was already run without `--assignee`, immediately run:
+
+```bash
+gh pr edit <PR_NUMBER> --add-assignee bahaa-kaaki_pwcit
+```
+
+## After merge / handoff
+
+Before reporting the PR URL to the user, confirm assignee is set (`gh pr view <n> --json assignees`). Add the assignee if missing.
+
+## Do not
+
+- Skip assignee for "small" or chore PRs.
+- Use `@me` unless `gh api user` confirms the login is `bahaa-kaaki_pwcit` (prefer the explicit login for this org).

@@ -1,0 +1,1585 @@
+/* ===== MINIMAL SHARED SLIDE CSS ===== */
+
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward"),
+    local("STC Forward Regular"),
+    local("stc Forward"),
+    local("stc Forward Regular"),
+    local("STCForward"),
+    local("STCForward-Regular");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward Medium"),
+    local("stc Forward Medium"),
+    local("STCForward-Medium"),
+    local("STC Forward"),
+    local("stc Forward");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "STC Forward";
+  src:
+    local("STC Forward Bold"),
+    local("stc Forward Bold"),
+    local("STCForward-Bold");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+.slide {
+  /* Layout */
+  --slide-w: 960px;
+  --slide-h: 540px;
+  --left-x: 28px;
+  --title-w: 904px;
+  --subtitle-w: 904px;
+  --title-y: 24px;
+  --subtitle-y: 95px;
+  --frame-y: 127px;
+  --frame-w: 904px;
+  --frame-h: 366px;
+  --footer-x: var(--left-x);
+  --footer-y: 516px;
+  --footer-bottom: auto;
+  --footer-w: var(--frame-w);
+  --footer-padding-bottom: 0;
+  --footer-font-size: 10px;
+  --source-x: var(--footer-x);
+  --source-y: var(--footer-y);
+  --source-w: calc(var(--footer-w) - 32px);
+  --source-h: 16px;
+  --slide-num-x: calc(var(--footer-x) + var(--footer-w) - 16px);
+  --slide-num-y: var(--footer-y);
+  --slide-num-w: 16px;
+  --slide-num-h: 16px;
+  --title-font-size: 28px;
+  --title-font-weight: 400;
+  --title-line-height: 1.2;
+  --subtitle-font-size: 18px;
+  --subtitle-font-weight: 700;
+  --subtitle-line-height: 1.2;
+  --subtitle-color: var(--accent);
+  --gH: 16px;
+  --radius: 10px;
+
+  /* Core colors (semantic tokens) */
+  --heading: #111111;
+  --body: #222222;
+  --muted: #6b7280;
+  --accent: #8E1E1E;
+  --accent-hover: #A32020;
+  --accent-soft: #F8E3E3;
+  --on-accent: #FFFFFF;
+  --page: #FFFFFF;
+  --surface: #F7F9FB;
+  --surface-alt: #EEF2F6;
+  --border: #E6E9EE;
+  --success: #059669;
+  --success-soft: rgba(16, 185, 129, 0.15);
+  --warning: #d97706;
+  --warning-soft: rgba(245, 158, 11, 0.15);
+  --danger: #dc2626;
+  --danger-soft: rgba(220, 38, 38, 0.15);
+  --info: #2563eb;
+  --info-soft: rgba(37, 99, 235, 0.15);
+  /* Strategy& chart / diagram fills (distinct from legacy --rose alias = accent-soft) */
+  --neutral-fill: #4b5563;
+  --rose-fill: #d4687a;
+
+  /* Legacy aliases (backward compat with template component CSS) */
+  --main: var(--heading);
+  --secondary: var(--body);
+  --meta: var(--muted);
+  --coal: #4A4F57;
+  --maroon: var(--accent);
+  --red: var(--accent-hover);
+  --rose: var(--accent-soft);
+  --zone1: var(--surface);
+  --zone2: var(--surface-alt);
+
+  position: relative;
+  width: var(--slide-w);
+  height: var(--slide-h);
+  background: var(--page);
+  overflow: hidden;
+  box-sizing: border-box;
+  font-family: var(--font-body, Arial, sans-serif);
+  font-synthesis: none;
+  color: var(--body);
+}
+
+/* Title */
+.slide .title {
+  position: absolute;
+  left: var(--left-x);
+  top: var(--title-y);
+  width: var(--title-w);
+  margin: 0;
+  font: var(--title-font-weight) var(--title-font-size)/var(--title-line-height) var(--font-title, Georgia, serif);
+  color: var(--heading);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Prevent bolded inline title text */
+.slide .title strong,
+.slide .title b {
+  font-weight: var(--title-font-weight) !important;
+}
+
+/* Subtitle */
+.slide .subtitle {
+  position: absolute;
+  left: var(--left-x);
+  top: var(--subtitle-y);
+  width: var(--subtitle-w);
+  margin: 0;
+  font: var(--subtitle-font-weight) var(--subtitle-font-size)/var(--subtitle-line-height) var(--font-heading, Arial, sans-serif);
+  color: var(--subtitle-color);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Frame */
+.slide .frame {
+  position: absolute;
+  left: var(--left-x);
+  top: var(--frame-y);
+  width: var(--frame-w);
+  height: var(--frame-h);
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+/*
+ * AI-generated HTML often sets display:flex on prose blocks. Flex items are
+ * direct children only — so raw text + <strong> become separate columns.
+ * Keep emphasis inline; DOM normalization also wraps mixed prose (slideDomNormalize.js).
+ */
+.slide .frame strong,
+.slide .frame em,
+.slide .frame b,
+.slide .frame i {
+  display: inline !important;
+}
+
+.slide .frame .slide-prose-flow-wrap {
+  display: block;
+  white-space: normal;
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Headings */
+.slide h1,
+.slide h2,
+.slide h3,
+.slide h4,
+.slide h5,
+.slide h6 {
+  color: var(--heading);
+  margin-top: 0;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Basic text */
+.slide p,
+.slide li,
+.slide span {
+  color: var(--body);
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Accent utility */
+.slide .accent,
+.slide .highlight,
+.slide .value,
+.slide .number {
+  color: var(--accent);
+}
+
+.slide .accent-bg {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+/* Footer */
+.slide footer.footer {
+  position: absolute;
+  left: var(--footer-x);
+  top: var(--footer-y);
+  bottom: var(--footer-bottom);
+  width: var(--footer-w);
+  height: var(--source-h);
+  padding-bottom: var(--footer-padding-bottom);
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font: var(--footer-font-size)/1 var(--font-body, Arial, sans-serif);
+  color: var(--muted);
+  box-sizing: border-box;
+}
+
+/* Two-span footer: first span is brand OR sole source line; last span is page number. */
+.slide footer.footer:not(:has(span.source)) > span:first-child {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  text-align: left;
+  color: var(--muted);
+}
+
+.slide footer.footer:not(:has(span.source)) > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: var(--muted);
+}
+
+/* Three-span footer (Strategy& / default): brand | .source | page — grid keeps brand out of the wide source band */
+.slide:not([data-client-profile="stc"]):not([data-client-profile="neom"]) footer.footer:has(span.source) {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr) max-content;
+  column-gap: 10px;
+  align-items: baseline;
+}
+
+.slide:not([data-client-profile="stc"]):not([data-client-profile="neom"]) footer.footer:has(span.source) > span:first-child {
+  position: static;
+  left: auto;
+  top: auto;
+  width: auto;
+  max-width: 34%;
+  height: auto;
+  text-align: left;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="tdredc"]):not([data-client-profile="npc"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]):not([data-client-profile="se"]):not([data-client-profile="neom"]) footer.footer:has(span.source) > span:last-child {
+  position: static;
+  left: auto;
+  top: auto;
+  width: auto;
+  min-width: var(--slide-num-w);
+  height: auto;
+  text-align: right;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.slide footer.footer .source {
+  font-style: italic;
+  opacity: 0.8;
+  text-align: left;
+}
+
+.slide:not([data-client-profile="stc"]):not([data-client-profile="pif"]):not([data-client-profile="tdredc"]):not([data-client-profile="npc"]):not([data-client-profile="dge"]):not([data-client-profile="fya"]):not([data-client-profile="mos"]):not([data-client-profile="se"]):not([data-client-profile="neom"]) footer.footer:has(span.source) .source {
+  min-width: 0;
+  padding: 0 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* STC profile: keep master geometry from theme layout vars; do not use Strategy& grid or italic source */
+.slide[data-client-profile="stc"] footer.footer:has(span.source) {
+  display: block;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source) > span:first-child:not(:empty) {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  max-width: 120px;
+  height: auto;
+  text-align: left;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slide[data-client-profile="stc"] footer.footer:has(span.source):has(> span:first-child:not(:empty)) .source {
+  left: calc(var(--source-x) - var(--footer-x) + 124px);
+  width: calc(var(--source-w) - 124px);
+}
+
+/* STC profile: title / subtitle / frame geometry (theme cssVars also set these; rules
+   ensure correct band when preview/export omits themeToCSS). Body band is 931x340. */
+.slide[data-client-profile="stc"] {
+  font-family: "STC Forward", Arial, sans-serif;
+  color: #1D252D;
+}
+
+.slide[data-client-profile="stc"] .title {
+  left: 15px;
+  top: 28px;
+  width: 931px;
+  max-height: calc(24px * 1.15 * 2);
+  font: 400 24px/1.15 "STC Forward", Arial, sans-serif;
+  color: #4F008C;
+  overflow: hidden;
+}
+
+.slide[data-client-profile="stc"] .subtitle {
+  left: 15px;
+  top: 105px;
+  width: 931px;
+  min-height: 22px;
+  font: 400 18px/1.15 "STC Forward", Arial, sans-serif;
+  color: #FF375E;
+}
+
+.slide[data-client-profile="stc"] .frame {
+  left: 15px;
+  top: 134px;
+  width: 931px;
+  height: 340px;
+}
+
+/* PIF LDC profile: verified implementation-guide shell */
+.slide[data-client-profile="pif"] {
+  font-family: "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #00332A;
+}
+
+.slide[data-client-profile="pif"] .title {
+  left: 132px;
+  top: 27px;
+  width: 597px;
+  min-height: 25px;
+  font: 400 15px/1.12 "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #C3984D;
+}
+
+.slide[data-client-profile="pif"] .title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 25px;
+  width: 597px;
+  height: 1px;
+  background: #C3984D;
+}
+
+.slide[data-client-profile="pif"] .subtitle {
+  display: none;
+}
+
+.slide[data-client-profile="pif"] .frame {
+  left: 35px;
+  top: 81px;
+  width: 891px;
+  height: 397px;
+}
+
+.slide[data-client-profile="pif"] footer.footer:has(span.source),
+.slide[data-client-profile="pif"] footer.footer {
+  display: block;
+  font-family: "Fund Light", "Fund Regular", Arial, sans-serif;
+}
+
+.slide[data-client-profile="pif"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="pif"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #7F7F7F;
+}
+
+.slide[data-client-profile="pif"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #C3984D;
+  color: #FFFFFF;
+  font: 400 8px/1 "Fund Regular", "Fund Light", Arial, sans-serif;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* TDREDC profile: PIF-adjacent ExCom shell on 16:9 canvas */
+.slide[data-client-profile="tdredc"] {
+  font-family: "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #00332A;
+}
+
+.slide[data-client-profile="tdredc"] > img:not(.client-chrome-tdredc-logo) {
+  display: none !important;
+}
+
+.slide[data-client-profile="tdredc"] .title img,
+.slide[data-client-profile="tdredc"] .frame > img[class*="logo" i],
+.slide[data-client-profile="tdredc"] .frame > img[alt*="logo" i],
+.slide[data-client-profile="tdredc"] .frame > img[alt*="PIF" i],
+.slide[data-client-profile="tdredc"] .frame > img[alt*="TDREDC" i] {
+  display: none !important;
+}
+
+.slide[data-client-profile="tdredc"] .title {
+  left: 112px;
+  top: 45px;
+  width: 805px;
+  min-height: 29px;
+  font: 400 22px/1.12 "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #595959;
+}
+
+.slide[data-client-profile="tdredc"] .subtitle {
+  display: none;
+}
+
+.slide[data-client-profile="tdredc"] .frame {
+  left: 33px;
+  top: 80px;
+  width: 885px;
+  height: 418px;
+}
+
+.slide[data-client-profile="tdredc"] footer.footer:has(span.source),
+.slide[data-client-profile="tdredc"] footer.footer {
+  display: block;
+  font-family: "Fund Light", "Fund Regular", Arial, sans-serif;
+}
+
+.slide[data-client-profile="tdredc"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="tdredc"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #7F7F7F;
+}
+
+.slide[data-client-profile="tdredc"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #C4995B;
+  color: #FFFFFF;
+  font: 400 8px/1 "Fund Regular", "Fund Light", Arial, sans-serif;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* NPC profile: National Planning Council (State of Qatar) government shell on 16:9 canvas */
+.slide[data-client-profile="npc"] {
+  font-family: Calibri, Arial, sans-serif;
+  color: #000000;
+}
+
+.slide[data-client-profile="npc"] > img:not(.client-chrome-npc-logo) {
+  display: none !important;
+}
+
+.slide[data-client-profile="npc"] .title img,
+.slide[data-client-profile="npc"] .frame > img[class*="logo" i],
+.slide[data-client-profile="npc"] .frame > img[alt*="logo" i],
+.slide[data-client-profile="npc"] .frame > img[alt*="NPC" i] {
+  display: none !important;
+}
+
+.slide[data-client-profile="npc"] .title {
+  left: 21px;
+  top: 31px;
+  width: 909px;
+  min-height: 60px;
+  font: 700 28px/1.12 Calibri, Arial, sans-serif;
+  color: #89143C;
+}
+
+.slide[data-client-profile="npc"] .subtitle {
+  left: 21px;
+  top: 96px;
+  width: 909px;
+  min-height: 30px;
+  font: 700 18px/1.15 Calibri, Arial, sans-serif;
+  color: #000000;
+}
+
+.slide[data-client-profile="npc"] .frame {
+  left: 21px;
+  top: 133px;
+  width: 909px;
+  height: 345px;
+}
+
+.slide[data-client-profile="npc"] footer.footer:has(span.source),
+.slide[data-client-profile="npc"] footer.footer {
+  display: block;
+  font-family: Calibri, Arial, sans-serif;
+}
+
+.slide[data-client-profile="npc"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="npc"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #595959;
+}
+
+/* Signature NPC chrome: page number centered inside a gold-outlined diamond marker */
+.slide[data-client-profile="npc"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #89143C;
+  font: 400 8px/1 Calibri, Arial, sans-serif;
+  text-align: center;
+  white-space: nowrap;
+}
+
+.slide[data-client-profile="npc"] footer.footer > span:last-child::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 31px;
+  height: 31px;
+  transform: translate(-50%, -50%) rotate(45deg);
+  border: 1.25px solid #A29160;
+}
+
+/* FYA profile: Federal Youth Authority warm institutional shell */
+.slide[data-client-profile="fya"] {
+  font-family: Poppins, Arial, sans-serif;
+  color: #111111;
+  background: #F9F7ED;
+}
+
+.slide[data-client-profile="fya"] .title {
+  left: 26px;
+  top: 41px;
+  width: 867px;
+  max-height: calc(22px * 1.18 * 2);
+  font: 400 22px/1.18 Poppins, Arial, sans-serif;
+  color: #000000;
+  overflow: hidden;
+}
+
+.slide[data-client-profile="fya"] .subtitle {
+  left: 26px;
+  top: 100px;
+  width: 597px;
+  min-height: 25px;
+  font: 400 18px/1.18 Poppins, Arial, sans-serif;
+  color: #CE9C3E;
+}
+
+.slide[data-client-profile="fya"] .frame {
+  left: 26px;
+  top: 132px;
+  width: 904px;
+  height: 363px;
+}
+
+.slide[data-client-profile="fya"] footer.footer:has(span.source),
+.slide[data-client-profile="fya"] footer.footer {
+  display: block;
+  font-family: Poppins, Arial, sans-serif;
+}
+
+.slide[data-client-profile="fya"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="fya"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #6F6A5F;
+}
+
+.slide[data-client-profile="fya"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #6F6A5F;
+  font: 400 8px/1 Poppins, Arial, sans-serif;
+  white-space: nowrap;
+}
+
+/* MoS profile: Ministry of Sport performance-management shell */
+.slide[data-client-profile="mos"] {
+  font-family: "Sakkal Majalla", Arial, sans-serif;
+  color: #2C2C2C;
+  background: #FFFFFF;
+}
+
+.slide[data-client-profile="mos"] .title {
+  left: 35px;
+  top: 28px;
+  width: 890px;
+  max-height: calc(28px * 1.12 * 2);
+  font: 700 28px/1.12 "Sakkal Majalla", Arial, sans-serif;
+  color: #000000;
+  overflow: hidden;
+}
+
+.slide[data-client-profile="mos"] .subtitle {
+  left: 35px;
+  top: 104px;
+  width: 890px;
+  min-height: 24px;
+  font: 700 18px/1.12 "Sakkal Majalla", Arial, sans-serif;
+  color: #073B16;
+}
+
+.slide[data-client-profile="mos"] .frame {
+  left: 35px;
+  top: 132px;
+  width: 890px;
+  height: 349px;
+}
+
+.slide[data-client-profile="mos"] footer.footer:has(span.source),
+.slide[data-client-profile="mos"] footer.footer {
+  display: block;
+  font-family: "Sakkal Majalla", Arial, sans-serif;
+  left: 0;
+  top: 503px;
+  width: 960px;
+  height: 37px;
+  background: #073B16;
+  color: #FFFFFF;
+}
+
+.slide[data-client-profile="mos"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="mos"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #FFFFFF;
+}
+
+.slide[data-client-profile="mos"] footer.footer .source:empty::before {
+  content: "Sources:";
+}
+
+.slide[data-client-profile="mos"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #FFFFFF;
+  font: 400 13px/1 "Sakkal Majalla", Arial, sans-serif;
+  white-space: nowrap;
+}
+
+/* SE profile: Saudi Electricity blue energy shell */
+.slide[data-client-profile="se"] {
+  font-family: "SE", "SE Medium", Arial, sans-serif;
+  color: #1D252D;
+  background: #FFFFFF;
+}
+
+.slide[data-client-profile="se"] .title {
+  left: 35px;
+  top: 30px;
+  width: 890px;
+  max-height: 66px;
+  font: 500 32px/1.15 "SE Medium", "SE", Arial, sans-serif;
+  color: var(--heading, #0080FF);
+  overflow: hidden;
+}
+
+.slide[data-client-profile="se"] .subtitle {
+  left: 35px;
+  top: 101px;
+  width: 890px;
+  height: 25px;
+  max-height: 25px;
+  font: 700 18px/1.18 "SE", Arial, sans-serif;
+  color: var(--kicker, #00FF86);
+  overflow: hidden;
+}
+
+.slide[data-client-profile="se"] .frame {
+  left: 35px;
+  top: 137px;
+  width: 890px;
+  height: 353px;
+}
+
+.slide[data-client-profile="se"] footer.footer:has(span.source),
+.slide[data-client-profile="se"] footer.footer {
+  display: block;
+  font-family: "SE", Arial, sans-serif;
+}
+
+.slide[data-client-profile="se"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="se"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #5A6B7A;
+}
+
+.slide[data-client-profile="se"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #5A6B7A;
+  font: 400 8px/1 "SE", Arial, sans-serif;
+  white-space: nowrap;
+}
+
+/* Remat profile: clean white shell, green SST Arabic title, bronze kicker,
+   green footer logo band (slide 5 / slideLayout3). */
+.slide[data-client-profile="remat"] {
+  font-family: "SST Arabic Roman", "SST Arabic", Arial, sans-serif;
+  color: #3A3838;
+  background: #FFFFFF;
+}
+
+.slide[data-client-profile="remat"] .title {
+  left: 52px;
+  top: 16px;
+  width: 842px;
+  /* Allow up to two lines (28px/1.15 ~= 32px/line) without clipping; the frame
+     starts at y=87, so the title has room to grow to ~66px before crowding it. */
+  height: auto;
+  max-height: 66px;
+  font: 400 28px/1.15 "SST Arabic Roman", "SST Arabic", Arial, sans-serif;
+  color: var(--heading, #00785C);
+  overflow: hidden;
+}
+
+/* Remat content layout has no subtitle; suppress any stray one. */
+.slide[data-client-profile="remat"] .subtitle {
+  display: none;
+}
+
+.slide[data-client-profile="remat"] .frame {
+  left: 52px;
+  top: 87px;
+  width: 842px;
+  height: 396px;
+}
+
+.slide[data-client-profile="remat"] .client-chrome-remat-logo {
+  position: absolute;
+  left: 0;
+  top: 486px;
+  width: 265px;
+  height: 54px;
+  object-fit: contain;
+  object-position: left bottom;
+  pointer-events: none;
+}
+
+/* Bottom-right Remat wordmark (matches master slideLayout3 "Graphic 8"). */
+.slide[data-client-profile="remat"]::after {
+  content: "";
+  position: absolute;
+  left: 772px;
+  top: 503px;
+  width: 66px;
+  height: 24px;
+  background: url('/api/assets/client-templates/remat/logo-mark.svg') no-repeat center / contain;
+  pointer-events: none;
+}
+
+.slide[data-client-profile="remat"] footer.footer:has(span.source),
+.slide[data-client-profile="remat"] footer.footer {
+  display: block;
+  font-family: "SST Arabic Roman", Arial, sans-serif;
+}
+
+.slide[data-client-profile="remat"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="remat"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #759F8D;
+}
+
+.slide[data-client-profile="remat"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #759F8D;
+  font: 400 12px/1 "SST Arabic Roman", Arial, sans-serif;
+  white-space: nowrap;
+}
+
+/* Remat section tracker: green pill + bronze sub-section pill */
+.slide[data-client-profile="remat"][data-section]::before {
+  background: #00785C;
+  color: #FFFFFF;
+  font: 700 8px/1.35 "SST Arabic Roman", Arial, sans-serif;
+  border-radius: 0;
+}
+.slide[data-client-profile="remat"][data-subsection]::after {
+  background: #B6833A;
+  color: #FFFFFF;
+  font: 700 8px/1.35 "SST Arabic Roman", Arial, sans-serif;
+  border-radius: 0;
+}
+
+/* ADSC (Abu Dhabi Sports Council) profile: full-bleed stadium photo background,
+   white Georgia title, coral Arial subtitle (Strategy& Digital base). */
+.slide[data-client-profile="adsc"] {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #FFFFFF;
+  background-color: #141C2B;
+  background-image: url('/api/assets/client-templates/adsc/background.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.slide[data-client-profile="adsc"] .title {
+  left: 35px;
+  top: 30px;
+  width: 890px;
+  height: 66px;
+  max-height: 66px;
+  display: flex;
+  align-items: flex-end;
+  font: 400 28px/1.05 Georgia, "Times New Roman", serif;
+  color: var(--heading, #FFFFFF);
+  overflow: hidden;
+}
+
+.slide[data-client-profile="adsc"] .subtitle {
+  left: 35px;
+  top: 100px;
+  width: 890px;
+  height: 25px;
+  max-height: 25px;
+  font: 700 18px/1.18 Arial, Helvetica, sans-serif;
+  color: var(--subtitle-color, #DB536A);
+  overflow: hidden;
+}
+
+.slide[data-client-profile="adsc"] .frame {
+  left: 35px;
+  top: 134px;
+  width: 890px;
+  height: 350px;
+}
+
+.slide[data-client-profile="adsc"] footer.footer:has(span.source),
+.slide[data-client-profile="adsc"] footer.footer {
+  display: block;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.slide[data-client-profile="adsc"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="adsc"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #7F7F7F;
+}
+
+.slide[data-client-profile="adsc"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #7F7F7F;
+  font: 400 8px/1 Arial, Helvetica, sans-serif;
+  white-space: nowrap;
+}
+
+/* ADSC section tracker: navy pill + coral sub-section pill */
+.slide[data-client-profile="adsc"][data-section]::before {
+  background: #0C182B;
+  color: #FFFFFF;
+  font: 700 8px/1.35 Arial, Helvetica, sans-serif;
+  border-radius: 0;
+}
+.slide[data-client-profile="adsc"][data-subsection]::after {
+  background: #DB536A;
+  color: #FFFFFF;
+  font: 700 8px/1.35 Arial, Helvetica, sans-serif;
+  border-radius: 0;
+}
+
+/* NEOM Authority profile: NAFB5 activation shell (13.333x7.5in -> 960x540) */
+.slide[data-client-profile="neom"] {
+  font-family: Arial, Helvetica, sans-serif;
+  color: #13100D;
+  background: #FFFFFF;
+}
+
+.slide[data-client-profile="neom"] .title {
+  left: var(--left-x);
+  top: var(--title-y);
+  width: var(--title-w);
+  max-height: calc(20px * 1.1 * 2);
+  font: 700 var(--title-font-size)/var(--title-line-height) Arial, Helvetica, sans-serif;
+  color: #13100D;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.slide[data-client-profile="neom"] .subtitle {
+  left: var(--left-x);
+  top: var(--subtitle-y);
+  width: var(--subtitle-w);
+  height: 25px;
+  max-height: 25px;
+  font: var(--subtitle-font-weight) var(--subtitle-font-size)/1.1 Arial, Helvetica, sans-serif;
+  color: #13100D;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  overflow: hidden;
+}
+
+.slide[data-client-profile="neom"] .frame {
+  left: var(--left-x);
+  top: var(--frame-y);
+  width: var(--frame-w);
+  height: var(--frame-h);
+  --neutral-fill: #13100D;
+  --on-neutral-fill: #FFFFFF;
+}
+
+.slide[data-client-profile="neom"] .frame .hub,
+.slide[data-client-profile="neom"] .frame .hub * {
+  color: #FFFFFF;
+}
+
+.slide[data-client-profile="neom"] .frame .hubBar {
+  color: #13100D;
+}
+
+.slide[data-client-profile="neom"] .frame .capNum {
+  background: #13100D;
+  color: #FFFFFF;
+}
+
+.slide[data-client-profile="neom"] .frame .capHead,
+.slide[data-client-profile="neom"] .frame .capTitle {
+  color: #13100D;
+}
+
+/* NEOM section tracker: dark pill + yellow sub-section pill (NEOM theming,
+   not the default Strategy& maroon). Geometry inherited from the base rules. */
+.slide[data-client-profile="neom"][data-section]::before {
+  background: #13100D;
+  color: #FFFFFF;
+  font: 700 8px/1.35 Arial, Helvetica, sans-serif;
+  border-radius: 0;
+}
+.slide[data-client-profile="neom"][data-subsection]::after {
+  background: #EBC03F;
+  color: #13100D;
+  font: 700 8px/1.35 Arial, Helvetica, sans-serif;
+  border-radius: 0;
+}
+
+.slide[data-client-profile="neom"] .client-chrome {
+  position: absolute;
+  z-index: 11;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Hide stray top-of-slide logos from generated HTML; master/footer logo is injected below */
+.slide[data-client-profile="neom"] > img:not(.client-chrome-neom-logo):not(.client-chrome-neom-icon) {
+  display: none !important;
+}
+
+/* NAFB5 master: Picture 4 icon + Picture 9 wordmark (72px/in on 960x540) */
+.slide[data-client-profile="neom"] .client-chrome-neom-icon {
+  left: 5px;
+  top: 509px;
+  width: 27px;
+  height: 26px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-logo {
+  left: 35px;
+  top: 517px;
+  width: 45px;
+  height: 12px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-wordmark {
+  left: 35px;
+  top: 517px;
+  width: 45px;
+  height: 12px;
+  font: 700 8px/1 Arial, Helvetica, sans-serif;
+  color: #13100D;
+  text-transform: uppercase;
+}
+
+.slide[data-client-profile="neom"] footer.footer:has(span.source),
+.slide[data-client-profile="neom"] footer.footer {
+  display: block;
+  top: var(--footer-y);
+  height: 32px;
+  z-index: 12;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.slide[data-client-profile="neom"] footer.footer .source {
+  display: none;
+}
+
+/* Gold rule from after logo lockup to page number (NAFB5 master band) */
+.slide[data-client-profile="neom"] footer.footer::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--neom-line-x) - var(--footer-x));
+  top: calc(var(--neom-line-y) - var(--footer-y));
+  width: var(--neom-line-w);
+  height: var(--neom-line-h);
+  background: #EBC03F;
+  pointer-events: none;
+}
+
+/* NEOM footer text is entirely chrome-injected (logo + a positioned page number),
+   so hide every literal footer span to prevent a duplicate page number. */
+.slide[data-client-profile="neom"] footer.footer > span {
+  display: none;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-pagenum {
+  position: absolute;
+  left: var(--slide-num-x);
+  top: var(--slide-num-y);
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  line-height: 1;
+  text-align: right;
+  color: #13100D;
+  font: 400 8px/1 Arial, Helvetica, sans-serif;
+  white-space: nowrap;
+  z-index: 12;
+}
+
+/* DGE profile: Abu Dhabi government editorial shell */
+.slide[data-client-profile="dge"] {
+  font-family: "Noto Sans", "Noto Kufi Arabic", "Segoe UI", Arial, sans-serif;
+  color: #1A1A1A;
+}
+
+.slide[data-client-profile="dge"] .title {
+  left: 33px;
+  top: 30px;
+  width: 660px;
+  max-height: calc(30px * 1.15 * 2);
+  font: 600 30px/1.15 "Noto Sans", "Segoe UI", Arial, sans-serif;
+  color: #000000;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  word-break: break-word;
+}
+
+.slide[data-client-profile="dge"] .subtitle {
+  display: none;
+}
+
+.slide[data-client-profile="dge"] .frame {
+  left: 24px;
+  top: 112px;
+  width: 912px;
+  height: 371px;
+}
+
+.slide[data-client-profile="dge"] footer.footer:has(span.source),
+.slide[data-client-profile="dge"] footer.footer {
+  display: block;
+  font-family: "Noto Sans", "Segoe UI", Arial, sans-serif;
+}
+
+.slide[data-client-profile="dge"] footer.footer > span:first-child:empty {
+  display: none;
+}
+
+.slide[data-client-profile="dge"] footer.footer .source {
+  position: absolute;
+  left: calc(var(--source-x) - var(--footer-x));
+  top: calc(var(--source-y) - var(--footer-y));
+  width: var(--source-w);
+  height: var(--source-h);
+  min-width: 0;
+  padding: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-style: normal;
+  opacity: 1;
+  color: #4A5568;
+}
+
+.slide[data-client-profile="dge"] footer.footer > span:last-child {
+  position: absolute;
+  left: calc(var(--slide-num-x) - var(--footer-x));
+  top: calc(var(--slide-num-y) - var(--footer-y));
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  text-align: right;
+  color: #4A5568;
+  font: 400 9px/1 "Noto Sans", "Segoe UI", Arial, sans-serif;
+  white-space: nowrap;
+}
+
+.slide[data-client-profile="dge"][data-section]::before {
+  /* Native DGE band chrome — middle gradient stop is the dominant visible blue */
+  background: #005393;
+  color: #fff;
+  font: 500 8px/1.35 "Noto Sans", "Segoe UI", Arial, sans-serif;
+}
+
+.slide[data-client-profile="dge"][data-section][data-subsection]::after,
+.slide[data-client-profile="dge"]:not([data-section])[data-subsection]::after {
+  background: #005393;
+  color: #fff;
+  font: 500 8px/1.35 "Noto Sans", "Segoe UI", Arial, sans-serif;
+}
+
+.slide footer.footer:not(:has(span.source)) .source {
+  flex: 1;
+  padding: 0 12px;
+}
+
+/* ===== MASTER OVERRIDES ===== */
+
+/* Blank: no title/subtitle, expanded frame */
+.slide.master-blank .title,
+.slide.master-blank .subtitle { display: none; }
+.slide.master-blank .frame {
+  top: var(--left-x);
+  height: 468px;
+}
+
+/* Title-only: no subtitle, expanded frame */
+.slide.master-titleOnly .subtitle { display: none; }
+.slide.master-titleOnly .frame {
+  top: 72px;
+  height: 424px;
+}
+
+/* Cover: no standard title/subtitle/footer, frame positioned for cover layout */
+.slide.master-cover .title,
+.slide.master-cover .subtitle { display: none; }
+.slide.master-cover .footer { display: none; }
+.slide.master-cover .frame {
+  top: 140px;
+  height: auto;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 16px;
+}
+.slide .cover-category {
+  font: 700 18px/1.2 Arial, sans-serif;
+  color: var(--red);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.slide .cover-title {
+  font: 400 42px/1.15 Georgia, serif;
+  color: var(--main);
+  max-width: 900px;
+}
+.slide .cover-branding {
+  position: absolute;
+  left: var(--left-x);
+  bottom: 50px;
+  font: 700 16px/1 Arial, sans-serif;
+  color: var(--meta);
+}
+.slide .cover-date {
+  position: absolute;
+  right: var(--left-x);
+  bottom: 50px;
+  font: 400 13px/1 Arial, sans-serif;
+  color: var(--meta);
+}
+
+/* Empty page: full canvas, no chrome */
+.slide.master-emptyPage .title,
+.slide.master-emptyPage .subtitle { display: none; }
+.slide.master-emptyPage .footer { display: none; }
+.slide.master-emptyPage .frame {
+  top: 0;
+  left: 0;
+  width: 960px;
+  height: 540px;
+}
+
+/* ===== SECTION TRACKER TABS ===== */
+
+.slide[data-section]::before {
+  content: attr(data-section);
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 10;
+  padding: 3px 10px;
+  background: var(--maroon, #800020);
+  color: #fff;
+  font: 700 8px/1.35 Arial, sans-serif;
+  letter-spacing: 0.3px;
+  border-radius: 0 0 4px 0;
+  max-width: 480px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slide[data-section][data-subsection]::before {
+  border-radius: 0;
+}
+
+.slide[data-subsection]::after {
+  content: attr(data-subsection);
+  position: absolute;
+  top: 0;
+  z-index: 10;
+  padding: 3px 9px;
+  background: #6b7280;
+  color: #fff;
+  font: 600 8px/1.35 Arial, sans-serif;
+  letter-spacing: 0.2px;
+  border-radius: 0 0 4px 0;
+  max-width: 420px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.slide[data-section][data-subsection]::after {
+  left: var(--tracker-offset, 80px);
+  border-radius: 0 0 4px 0;
+}
+.slide:not([data-section])[data-subsection]::after {
+  left: 0;
+  border-radius: 0 0 4px 0;
+}
+
+/* STC slides reserve the top-left logo space and render section trackers as
+   quiet text-only chrome after the logo, not as filled tabs. */
+.slide[data-client-profile="stc"][data-section]::before {
+  top: 10px;
+  left: 57px;
+  min-width: 190px;
+  max-width: 360px;
+  height: 12px;
+  padding: 0;
+  background-color: transparent;
+  color: #9E21FF;
+  font: 700 9px/12px "STC Forward", Arial, sans-serif;
+  letter-spacing: 0.1px;
+  border-radius: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.slide[data-client-profile="stc"][data-section][data-subsection]::before {
+  border-radius: 0;
+}
+
+.slide[data-client-profile="stc"][data-section][data-subsection]::after {
+  top: 10px;
+  left: calc(57px + var(--tracker-offset, 190px) + 12px);
+  max-width: 360px;
+  height: 12px;
+  padding: 0;
+  background: transparent;
+  color: #515360;
+  font: 600 9px/12px "STC Forward", Arial, sans-serif;
+  letter-spacing: 0.1px;
+  border-radius: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* PIF: centered dark-green pill at the very top of the slide. Geometry matches
+   the LDC Implementation Guide (slide 22+): pill at x≈4.022in y≈0in w≈1.957in
+   h≈0.186in on a 10in canvas — so it sits horizontally centered. Font is Fund
+   Light at ~8pt, not bold. Sub-section pill, when present, sits centered next
+   to the section pill for canvas/export parity; the LDC's separate top-right
+   "step indicator" chrome is a follow-up. */
+.slide[data-client-profile="pif"][data-section]::before {
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 14px;
+  background: #00332A;
+  color: #fff;
+  font: 500 8px/14px "Fund Light", "Fund Regular", Georgia, serif;
+  letter-spacing: 0.2px;
+  border-radius: 0;
+  height: 16px;
+  max-width: 360px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.slide[data-client-profile="pif"][data-section][data-subsection]::before {
+  border-radius: 0;
+  /* When both pills are present, the centered "pair" still anchors the section
+     pill near center-left so the sub-section pill renders to its right. */
+  left: calc(50% - var(--tracker-offset, 90px));
+  transform: none;
+}
+
+.slide[data-client-profile="pif"][data-section][data-subsection]::after,
+.slide[data-client-profile="pif"]:not([data-section])[data-subsection]::after {
+  top: 0;
+  background: #005C4D;
+  color: #fff;
+  font: 500 8px/14px "Fund Light", "Fund Regular", Georgia, serif;
+  letter-spacing: 0.2px;
+  padding: 1px 12px;
+  height: 16px;
+  border-radius: 0;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+}
+
+.slide[data-client-profile="pif"][data-section][data-subsection]::after {
+  left: calc(50% + 6px);
+}
+
+.slide[data-client-profile="pif"]:not([data-section])[data-subsection]::after {
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+.slide[data-client-profile="fya"][data-section]::before {
+  background: #CE9C3E;
+  color: #000000;
+  font: 700 8px/1.35 Poppins, Arial, sans-serif;
+}
+
+.slide[data-client-profile="fya"][data-section][data-subsection]::after,
+.slide[data-client-profile="fya"]:not([data-section])[data-subsection]::after {
+  background: #92732A;
+  color: #FFFFFF;
+  font: 700 8px/1.35 Poppins, Arial, sans-serif;
+}
+
+.slide[data-client-profile="mos"][data-section]::before {
+  background: #0B5921;
+  color: #FFFFFF;
+  font: 700 8px/1.35 "Sakkal Majalla", Arial, sans-serif;
+}
+
+.slide[data-client-profile="mos"][data-section][data-subsection]::after,
+.slide[data-client-profile="mos"]:not([data-section])[data-subsection]::after {
+  background: #073B16;
+  color: #FFFFFF;
+  font: 700 8px/1.35 "Sakkal Majalla", Arial, sans-serif;
+}
+
+.slide[data-client-profile="se"][data-section]::before {
+  top: 16px;
+  left: 0;
+  min-width: 153px;
+  max-width: 360px;
+  height: 19px;
+  padding: 2px 10px;
+  line-height: 15px;
+  border-radius: 0;
+  background: #001F5E;
+  color: #FFFFFF;
+  font: 500 8px/1.35 "SE Medium", "SE", Arial, sans-serif;
+}
+
+.slide[data-client-profile="se"][data-section][data-subsection]::after,
+.slide[data-client-profile="se"]:not([data-section])[data-subsection]::after {
+  top: 16px;
+  left: var(--tracker-offset, 153px);
+  min-width: 120px;
+  max-width: 360px;
+  height: 19px;
+  padding: 2px 10px;
+  line-height: 15px;
+  border-radius: 0;
+  background: #0080FF;
+  color: #FFFFFF;
+  font: 500 8px/1.35 "SE Medium", "SE", Arial, sans-serif;
+}

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Sustainability & ESG — Strategy&</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  :root{--slide-w:960pt;--slide-min-h:540pt;--left-x:34.58pt;--title-w:890.08pt;--subtitle-w:890.08pt;--title-y:30.33pt;--subtitle-y:100.91pt;--frame-y:136.91pt;--frame-w:890.08pt;--bg:#fff;--main:#111111;--secondary:#222222;--meta:#4A4F57;--red:#A32020;--zone1:#F7F9FB;--zone2:#EEF2F6;--maroon:#8E1E1E;--rose:#F8E3E3;--coal:#4B4F55;--gH:16pt;--gV:12pt;--radius:4pt;--border:#E6E9EE;}
+  html,body{margin:0;background:#e0e0e0;color:var(--main);font-family:Arial,sans-serif;}
+  .deck{display:flex;flex-direction:column;gap:30pt;padding:30pt;padding-bottom:100px;max-width:1020pt;margin:0 auto;}
+  .slide-section{display:flex;flex-direction:column;gap:10pt;}
+  .slide-label{font-size:11pt;color:var(--meta);font-weight:bold;text-transform:uppercase;letter-spacing:1pt;padding-left:5pt;}
+  .slide{position:relative;width:var(--slide-w);height:var(--slide-min-h);margin:0 auto;border:1px solid var(--border);background:var(--bg);box-sizing:border-box;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.12);border-radius:4pt;}
+  .title{position:absolute;left:var(--left-x);top:var(--title-y);width:var(--title-w);font:400 28pt/1.2 Georgia,serif;color:var(--main);}
+  .subtitle{position:absolute;left:var(--left-x);top:var(--subtitle-y);width:var(--subtitle-w);font:700 18pt/1.2 Arial,sans-serif;color:var(--red);}
+  .frame{position:absolute;left:var(--left-x);top:var(--frame-y);width:var(--frame-w);height:352.91pt;display:flex;flex-direction:column;}
+  footer.footer{position:absolute;bottom:0;left:var(--left-x);width:890.08pt;padding-bottom:14pt;display:flex;justify-content:space-between;font-size:10pt;color:var(--meta);}
+  .cover-slide .frame{top:140pt;height:auto;display:flex;flex-direction:column;gap:16pt;}
+  .cover-category{font:700 18pt/1.2 Arial,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:1pt;}
+  .cover-title{font:400 42pt/1.15 Georgia,serif;color:var(--main);max-width:700pt;}
+  .cover-branding{position:absolute;left:var(--left-x);bottom:50pt;font:700 16pt/1 Arial,sans-serif;color:var(--meta);}
+  .cover-date{position:absolute;right:var(--left-x);bottom:14pt;font:400 13pt/1 Arial,sans-serif;color:var(--meta);}
+
+  /* ========== SLIDE 2: Big Stat with Donut ========== */
+  .stat-donut{display:flex;gap:50pt;height:100%;align-items:center;}
+  .donut-visual{flex:0 0 200pt;height:200pt;border-radius:50%;background:conic-gradient(var(--maroon) 0deg 270deg, var(--rose) 270deg 360deg);display:flex;align-items:center;justify-content:center;position:relative;}
+  .donut-visual::after{content:'';position:absolute;width:120pt;height:120pt;background:var(--bg);border-radius:50%;}
+  .donut-center{position:relative;z-index:1;font:700 48pt/1 Georgia,serif;color:var(--maroon);}
+  .stat-details{flex:1;display:flex;flex-direction:column;gap:18pt;}
+  .stat-detail-item{padding-bottom:16pt;border-bottom:1px solid var(--border);}
+  .stat-detail-item:last-child{border-bottom:none;}
+  .stat-detail-item h4{margin:0 0 6pt 0;font:700 16pt/1.3 Arial,sans-serif;color:var(--main);}
+  .stat-detail-item p{margin:0;font:400 13pt/1.55 Arial,sans-serif;color:var(--secondary);}
+
+  /* ========== SLIDE 3: Stacked Progress Bars ========== */
+  .progress-stack{display:flex;flex-direction:column;gap:24pt;height:100%;justify-content:center;}
+  .progress-row{display:flex;flex-direction:column;gap:8pt;}
+  .progress-header{display:flex;justify-content:space-between;align-items:baseline;}
+  .progress-label{font:700 14pt/1.3 Arial,sans-serif;color:var(--main);}
+  .progress-value{font:700 14pt/1 Georgia,serif;color:var(--maroon);}
+  .progress-track{height:24pt;background:var(--zone2);border-radius:12pt;overflow:hidden;position:relative;}
+  .progress-fill{height:100%;background:linear-gradient(90deg, var(--maroon) 0%, #A94545 100%);border-radius:12pt;}
+  .progress-desc{font:400 12pt/1.4 Arial,sans-serif;color:var(--meta);}
+
+  /* ========== SLIDE 4: Three Pillars (no cards) ========== */
+  .pillars{display:flex;gap:24pt;height:100%;}
+  .pillar{flex:1;display:flex;flex-direction:column;}
+  .pillar-header{background:var(--maroon);color:#fff;padding:16pt;font:700 16pt/1.3 Arial,sans-serif;text-align:center;}
+  .pillar:nth-child(2) .pillar-header{background:#A94545;}
+  .pillar:nth-child(3) .pillar-header{background:#C06060;}
+  .pillar-body{flex:1;background:var(--zone1);padding:18pt;display:flex;flex-direction:column;gap:14pt;border:1px solid var(--border);border-top:none;}
+  .pillar-body p{margin:0;font:400 12pt/1.55 Arial,sans-serif;color:var(--secondary);}
+  .pillar-stat{margin-top:auto;padding-top:12pt;border-top:1px solid var(--border);font:700 24pt/1 Georgia,serif;color:var(--maroon);text-align:center;}
+
+  /* ========== SLIDE 5: Two Column Text ========== */
+  .two-col-text{display:flex;gap:40pt;height:100%;}
+  .text-col{flex:1;display:flex;flex-direction:column;gap:16pt;}
+  .text-col h3{margin:0;font:700 18pt/1.3 Arial,sans-serif;color:var(--main);padding-bottom:10pt;border-bottom:3pt solid var(--maroon);}
+  .text-col ul{margin:0;padding:0 0 0 20pt;display:flex;flex-direction:column;gap:12pt;}
+  .text-col li{font:400 13pt/1.55 Arial,sans-serif;color:var(--secondary);}
+  .text-col li strong{color:var(--main);}
+
+  /* ========== SLIDE 6: Timeline Milestones ========== */
+  .timeline-milestones{display:flex;flex-direction:column;gap:0;height:100%;position:relative;}
+  .timeline-line{position:absolute;top:25pt;left:60pt;width:calc(100% - 120pt);height:4pt;background:var(--rose);}
+  .milestones-row{display:flex;justify-content:space-between;position:relative;z-index:1;}
+  .milestone{display:flex;flex-direction:column;align-items:center;width:160pt;}
+  .milestone-dot{width:50pt;height:50pt;border-radius:50%;background:var(--maroon);display:flex;align-items:center;justify-content:center;font:700 16pt/1 Arial,sans-serif;color:#fff;}
+  .milestone-year{margin-top:12pt;font:700 20pt/1 Georgia,serif;color:var(--maroon);}
+  .milestone-title{margin-top:8pt;font:700 13pt/1.3 Arial,sans-serif;color:var(--main);text-align:center;}
+  .milestone-desc{margin-top:6pt;font:400 11pt/1.4 Arial,sans-serif;color:var(--meta);text-align:center;max-width:140pt;}
+
+  /* ========== SLIDE 7: Call to Action ========== */
+  .cta-slide{display:flex;flex-direction:column;justify-content:center;align-items:center;height:100%;text-align:center;}
+  .cta-big-text{font:400 36pt/1.4 Georgia,serif;color:var(--main);max-width:700pt;margin-bottom:30pt;}
+  .cta-highlight{color:var(--maroon);font-weight:400;}
+  .cta-actions{display:flex;gap:30pt;margin-top:20pt;}
+  .cta-action{padding:20pt 30pt;border:2pt solid var(--maroon);background:transparent;}
+  .cta-action:first-child{background:var(--maroon);color:#fff;}
+  .cta-action-text{font:700 14pt/1.3 Arial,sans-serif;color:var(--maroon);}
+  .cta-action:first-child .cta-action-text{color:#fff;}
+
+  .controls{position:fixed;bottom:20px;right:30px;display:flex;gap:12px;align-items:center;z-index:1000;}
+  button{background:#8E1E1E;color:white;border:none;padding:14px 28px;font-size:14px;cursor:pointer;border-radius:5px;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.25);transition:all 0.2s;}
+  button:hover{background-color:#6d1515;transform:translateY(-2px);}
+  button:disabled{background-color:#ccc;cursor:not-allowed;transform:none;}
+  .slide-count{font-size:11px;color:var(--meta);background:white;padding:6px 12px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+</style>
+</head>
+<body>
+<div class="controls">
+  <span class="slide-count">7 slides ready for export</span>
+  <button id="dl-btn" onclick="generatePPTX()">Download Slides (.pptx)</button>
+</div>
+<main class="deck">
+
+  <!-- Slide 1: Cover -->
+  <div class="slide-section">
+    <div class="slide-label">Cover</div>
+    <div class="slide cover-slide">
+      <div class="frame">
+        <div class="cover-category">Sustainability & ESG</div>
+        <div class="cover-title">Net Zero Pathway: Decarbonization Strategy for Industrial Leaders</div>
+      </div>
+      <div class="cover-branding">Strategy&</div>
+      <div class="cover-date">December 2025</div>
+    </div>
+  </div>
+
+  <!-- Slide 2: Big Stat with Donut Visual -->
+  <div class="slide-section">
+    <div class="slide-label">Current Emissions</div>
+    <div class="slide">
+      <h1 class="title">Operations account for 75% of total carbon footprint</h1>
+      <h2 class="subtitle">Emissions Breakdown</h2>
+      <div class="frame">
+        <div class="stat-donut">
+          <div class="donut-visual">
+            <div class="donut-center">75%</div>
+          </div>
+          <div class="stat-details">
+            <div class="stat-detail-item">
+              <h4>Scope 1: Direct Emissions</h4>
+              <p>On-site fuel combustion, company vehicles, and process emissions from manufacturing operations.</p>
+            </div>
+            <div class="stat-detail-item">
+              <h4>Scope 2: Purchased Energy</h4>
+              <p>Electricity and steam purchased from utilities for facility operations across 12 sites.</p>
+            </div>
+            <div class="stat-detail-item">
+              <h4>Scope 3: Value Chain</h4>
+              <p>Upstream suppliers and downstream logistics represent the remaining 25% of emissions.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>2 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 3: Stacked Progress Bars -->
+  <div class="slide-section">
+    <div class="slide-label">Reduction Targets</div>
+    <div class="slide">
+      <h1 class="title">Science-based targets define aggressive but achievable reduction path</h1>
+      <h2 class="subtitle">Decarbonization Goals</h2>
+      <div class="frame">
+        <div class="progress-stack">
+          <div class="progress-row">
+            <div class="progress-header">
+              <span class="progress-label">Scope 1 Emissions (Direct)</span>
+              <span class="progress-value">70% reduction by 2030</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" style="width:70%"></div></div>
+            <span class="progress-desc">Electrification of fleet and process heat; fuel switching to green hydrogen</span>
+          </div>
+          <div class="progress-row">
+            <div class="progress-header">
+              <span class="progress-label">Scope 2 Emissions (Energy)</span>
+              <span class="progress-value">100% renewable by 2028</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" style="width:100%"></div></div>
+            <span class="progress-desc">Power purchase agreements and on-site solar cover all electricity needs</span>
+          </div>
+          <div class="progress-row">
+            <div class="progress-header">
+              <span class="progress-label">Scope 3 Emissions (Supply Chain)</span>
+              <span class="progress-value">50% reduction by 2035</span>
+            </div>
+            <div class="progress-track"><div class="progress-fill" style="width:50%"></div></div>
+            <span class="progress-desc">Supplier engagement program and sustainable procurement requirements</span>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>3 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 4: Three Pillars -->
+  <div class="slide-section">
+    <div class="slide-label">Strategic Framework</div>
+    <div class="slide">
+      <h1 class="title">Three strategic pillars drive the net zero transformation</h1>
+      <h2 class="subtitle">Transformation Levers</h2>
+      <div class="frame">
+        <div class="pillars">
+          <div class="pillar">
+            <div class="pillar-header">ENERGY TRANSITION</div>
+            <div class="pillar-body">
+              <p>Renewable power purchase agreements covering 100% of electricity demand</p>
+              <p>On-site solar installations at 8 facilities generating 45MW capacity</p>
+              <p>Electrification of heating systems and industrial processes</p>
+              <div class="pillar-stat">45%</div>
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="pillar-header">PROCESS INNOVATION</div>
+            <div class="pillar-body">
+              <p>Green hydrogen pilots replacing natural gas in thermal processes</p>
+              <p>Carbon capture retrofits for hard-to-abate emission sources</p>
+              <p>Circular manufacturing reducing virgin material requirements</p>
+              <div class="pillar-stat">25%</div>
+            </div>
+          </div>
+          <div class="pillar">
+            <div class="pillar-header">SUPPLY CHAIN</div>
+            <div class="pillar-body">
+              <p>Top 50 suppliers engaged on science-based targets</p>
+              <p>Sustainable procurement criteria in all new contracts</p>
+              <p>Logistics optimization reducing transportation emissions</p>
+              <div class="pillar-stat">10%</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>4 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 5: Two Column Text -->
+  <div class="slide-section">
+    <div class="slide-label">Business Case</div>
+    <div class="slide">
+      <h1 class="title">Sustainability investments deliver compelling financial returns</h1>
+      <h2 class="subtitle">Value Creation</h2>
+      <div class="frame">
+        <div class="two-col-text">
+          <div class="text-col">
+            <h3>Cost Reduction: $130M</h3>
+            <ul>
+              <li><strong>Energy savings:</strong> Renewable PPAs lock in rates 20% below current grid prices</li>
+              <li><strong>Efficiency gains:</strong> Process optimization reduces energy intensity by 25%</li>
+              <li><strong>Carbon costs avoided:</strong> Proactive reductions avoid $45M in projected carbon taxes</li>
+              <li><strong>Insurance premiums:</strong> Climate risk mitigation reduces property insurance 15%</li>
+            </ul>
+          </div>
+          <div class="text-col">
+            <h3>Revenue Growth: $50M</h3>
+            <ul>
+              <li><strong>Green premium:</strong> Low-carbon products command 8-12% higher prices</li>
+              <li><strong>Market access:</strong> Sustainability credentials required for key customer contracts</li>
+              <li><strong>New markets:</strong> Carbon credit generation from verified emission reductions</li>
+              <li><strong>Brand value:</strong> ESG leadership strengthens customer and talent attraction</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>5 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 6: Timeline Milestones -->
+  <div class="slide-section">
+    <div class="slide-label">Implementation Roadmap</div>
+    <div class="slide">
+      <h1 class="title">Phased approach delivers continuous progress toward net zero</h1>
+      <h2 class="subtitle">Key Milestones</h2>
+      <div class="frame">
+        <div class="timeline-milestones">
+          <div class="timeline-line"></div>
+          <div class="milestones-row">
+            <div class="milestone">
+              <div class="milestone-dot">1</div>
+              <div class="milestone-year">2025</div>
+              <div class="milestone-title">Foundation</div>
+              <div class="milestone-desc">Complete emissions inventory and SBTi target validation</div>
+            </div>
+            <div class="milestone">
+              <div class="milestone-dot">2</div>
+              <div class="milestone-year">2028</div>
+              <div class="milestone-title">Renewable Energy</div>
+              <div class="milestone-desc">100% renewable electricity achieved</div>
+            </div>
+            <div class="milestone">
+              <div class="milestone-dot">3</div>
+              <div class="milestone-year">2030</div>
+              <div class="milestone-title">50% Reduction</div>
+              <div class="milestone-desc">Interim target met across Scope 1-2</div>
+            </div>
+            <div class="milestone">
+              <div class="milestone-dot">4</div>
+              <div class="milestone-year">2040</div>
+              <div class="milestone-title">Net Zero</div>
+              <div class="milestone-desc">Full value chain decarbonization</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>6 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 7: Call to Action -->
+  <div class="slide-section">
+    <div class="slide-label">Next Steps</div>
+    <div class="slide">
+      <h2 class="subtitle" style="top:var(--title-y);">Board Decision Required</h2>
+      <div class="frame">
+        <div class="cta-slide">
+          <div class="cta-big-text">The <span class="cta-highlight">$120M investment</span> over five years delivers <span class="cta-highlight">$180M in value</span> while positioning the company as an industry sustainability leader.</div>
+          <div class="cta-actions">
+            <div class="cta-action">
+              <div class="cta-action-text">Approve Full Program</div>
+            </div>
+            <div class="cta-action">
+              <div class="cta-action-text">Phase 1 Only</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>7 / 7</span></footer>
+    </div>
+  </div>
+
+</main>
+<script>
+  const slidesData=[
+    {type:"cover",category:"SUSTAINABILITY & ESG",mainTitle:"Net Zero Pathway: Decarbonization Strategy for Industrial Leaders",branding:"Strategy&",date:"December 2025"},
+    {type:"stat-donut",headline:"Operations account for 75% of total carbon footprint",subtitle:"Emissions Breakdown",stat:"75%",details:[{title:"Scope 1: Direct Emissions",text:"On-site fuel combustion, company vehicles, and process emissions from manufacturing operations."},{title:"Scope 2: Purchased Energy",text:"Electricity and steam purchased from utilities for facility operations across 12 sites."},{title:"Scope 3: Value Chain",text:"Upstream suppliers and downstream logistics represent the remaining 25% of emissions."}]},
+    {type:"progress-bars",headline:"Science-based targets define aggressive but achievable reduction path",subtitle:"Decarbonization Goals",bars:[{label:"Scope 1 Emissions (Direct)",value:70,target:"70% reduction by 2030",desc:"Electrification of fleet and process heat; fuel switching to green hydrogen"},{label:"Scope 2 Emissions (Energy)",value:100,target:"100% renewable by 2028",desc:"Power purchase agreements and on-site solar cover all electricity needs"},{label:"Scope 3 Emissions (Supply Chain)",value:50,target:"50% reduction by 2035",desc:"Supplier engagement program and sustainable procurement requirements"}]},
+    {type:"pillars",headline:"Three strategic pillars drive the net zero transformation",subtitle:"Transformation Levers",pillars:[{header:"ENERGY TRANSITION",items:["Renewable power purchase agreements covering 100% of electricity demand","On-site solar installations at 8 facilities generating 45MW capacity","Electrification of heating systems and industrial processes"],stat:"45%"},{header:"PROCESS INNOVATION",items:["Green hydrogen pilots replacing natural gas in thermal processes","Carbon capture retrofits for hard-to-abate emission sources","Circular manufacturing reducing virgin material requirements"],stat:"25%"},{header:"SUPPLY CHAIN",items:["Top 50 suppliers engaged on science-based targets","Sustainable procurement criteria in all new contracts","Logistics optimization reducing transportation emissions"],stat:"10%"}]},
+    {type:"two-col-text",headline:"Sustainability investments deliver compelling financial returns",subtitle:"Value Creation",cols:[{header:"Cost Reduction: $130M",items:["Energy savings: Renewable PPAs lock in rates 20% below current grid prices","Efficiency gains: Process optimization reduces energy intensity by 25%","Carbon costs avoided: Proactive reductions avoid $45M in projected carbon taxes","Insurance premiums: Climate risk mitigation reduces property insurance 15%"]},{header:"Revenue Growth: $50M",items:["Green premium: Low-carbon products command 8-12% higher prices","Market access: Sustainability credentials required for key customer contracts","New markets: Carbon credit generation from verified emission reductions","Brand value: ESG leadership strengthens customer and talent attraction"]}]},
+    {type:"timeline-milestones",headline:"Phased approach delivers continuous progress toward net zero",subtitle:"Key Milestones",milestones:[{num:"1",year:"2025",title:"Foundation",desc:"Complete emissions inventory and SBTi target validation"},{num:"2",year:"2028",title:"Renewable Energy",desc:"100% renewable electricity achieved"},{num:"3",year:"2030",title:"50% Reduction",desc:"Interim target met across Scope 1-2"},{num:"4",year:"2040",title:"Net Zero",desc:"Full value chain decarbonization"}]},
+    {type:"cta",subtitle:"Board Decision Required",text:"The $120M investment over five years delivers $180M in value while positioning the company as an industry sustainability leader.",actions:["Approve Full Program","Phase 1 Only"]}
+  ];
+  async function generatePPTX(){
+    const btn=document.getElementById('dl-btn');const orig=btn.innerText;
+    try{
+      btn.disabled=true;btn.innerText='Generating...';
+      let pptx=new PptxGenJS();pptx.defineLayout({name:'STRAT',width:13.333,height:7.5});pptx.layout='STRAT';
+      const c={bg:'FFFFFF',main:'111111',red:'A32020',maroon:'8E1E1E',zone1:'F7F9FB',zone2:'EEF2F6',meta:'4A4F57',rose:'F8E3E3',coal:'4B4F55',border:'E6E9EE',secondary:'222222'};
+      const total=slidesData.length;
+      function footer(s,n){s.addText('Strategy&',{x:0.48,y:7.05,w:2,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta});s.addText(n+' / '+total,{x:11.5,y:7.05,w:1.3,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta,align:'right'});}
+      function masterTitle(s,d){s.addText(d.headline,{x:0.48,y:0.42,w:12.36,h:0.8,fontFace:'Georgia',fontSize:28,color:c.main});s.addText(d.subtitle,{x:0.48,y:1.40,w:12.36,h:0.4,fontFace:'Arial',fontSize:18,color:c.red,bold:true});}
+      function cover(s,d){s.addText(d.category,{x:0.48,y:1.94,w:10,h:0.35,fontFace:'Arial',fontSize:18,color:c.red,bold:true});s.addText(d.mainTitle,{x:0.48,y:2.5,w:9.7,h:1.2,fontFace:'Georgia',fontSize:42,color:c.main});s.addText(d.branding,{x:0.48,y:6.8,w:3,h:0.3,fontFace:'Arial',fontSize:16,color:c.meta,bold:true});s.addText(d.date,{x:10.9,y:7.05,w:1.9,h:0.25,fontFace:'Arial',fontSize:13,color:c.meta,align:'right'});}
+
+      function statDonut(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        // Donut visual approximation with shapes
+        s.addShape('ellipse',{x:0.8,y:2.4,w:2.8,h:2.8,fill:c.maroon});
+        s.addShape('ellipse',{x:1.4,y:3.0,w:1.6,h:1.6,fill:c.bg});
+        s.addText(d.stat,{x:0.8,y:3.3,w:2.8,h:1,fontFace:'Georgia',fontSize:48,color:c.maroon,bold:true,align:'center'});
+        const detailX=4.2;
+        d.details.forEach((det,i)=>{
+          const y=2.2+(i*1.4);
+          s.addText(det.title,{x:detailX,y,w:8.5,h:0.4,fontFace:'Arial',fontSize:16,color:c.main,bold:true});
+          s.addText(det.text,{x:detailX,y:y+0.45,w:8.5,h:0.8,fontFace:'Arial',fontSize:13,color:c.secondary,valign:'top',lineSpacing:19});
+          if(i<d.details.length-1)s.addShape('line',{x:detailX,y:y+1.3,w:8.5,h:0,line:{color:c.border,width:1}});
+        });
+      }
+
+      function progressBars(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const startY=2.1,rowH=1.4;
+        d.bars.forEach((bar,i)=>{
+          const y=startY+(i*rowH);
+          s.addText(bar.label,{x:0.48,y,w:7,h:0.35,fontFace:'Arial',fontSize:14,color:c.main,bold:true});
+          s.addText(bar.target,{x:8,y,w:4.8,h:0.35,fontFace:'Georgia',fontSize:14,color:c.maroon,bold:true,align:'right'});
+          s.addShape('roundRect',{x:0.48,y:y+0.4,w:12.36,h:0.35,fill:c.zone2,rectRadius:0.15});
+          s.addShape('roundRect',{x:0.48,y:y+0.4,w:12.36*(bar.value/100),h:0.35,fill:c.maroon,rectRadius:0.15});
+          s.addText(bar.desc,{x:0.48,y:y+0.85,w:12.36,h:0.35,fontFace:'Arial',fontSize:12,color:c.meta});
+        });
+      }
+
+      function pillars(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const colors=[c.maroon,'A94545','C06060'];
+        const startX=0.48,pillarW=3.95,gap=0.25,pillarY=1.95;
+        d.pillars.forEach((p,i)=>{
+          const x=startX+(i*(pillarW+gap));
+          s.addShape('rect',{x,y:pillarY,w:pillarW,h:0.6,fill:colors[i]});
+          s.addText(p.header,{x,y:pillarY+0.1,w:pillarW,h:0.5,fontFace:'Arial',fontSize:14,color:'FFFFFF',bold:true,align:'center'});
+          s.addShape('roundRect',{x,y:pillarY+0.6,w:pillarW,h:4.0,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+          let itemY=pillarY+0.85;
+          p.items.forEach((item)=>{
+            s.addText('• '+item,{x:x+0.2,y:itemY,w:pillarW-0.4,h:0.9,fontFace:'Arial',fontSize:11,color:c.secondary,valign:'top',lineSpacing:15});
+            itemY+=0.95;
+          });
+          s.addShape('line',{x:x+0.2,y:pillarY+3.9,w:pillarW-0.4,h:0,line:{color:c.border,width:1}});
+          s.addText(p.stat,{x,y:pillarY+4.05,w:pillarW,h:0.5,fontFace:'Georgia',fontSize:24,color:c.maroon,bold:true,align:'center'});
+        });
+      }
+
+      function twoColText(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const colW=5.9,gap=0.5;
+        d.cols.forEach((col,i)=>{
+          const x=0.48+(i*(colW+gap));
+          s.addText(col.header,{x,y:2.0,w:colW,h:0.5,fontFace:'Arial',fontSize:18,color:c.main,bold:true});
+          s.addShape('rect',{x,y:2.5,w:colW,h:0.05,fill:c.maroon});
+          let itemY=2.75;
+          col.items.forEach((item)=>{
+            s.addText('• '+item,{x,y:itemY,w:colW,h:0.75,fontFace:'Arial',fontSize:12,color:c.secondary,valign:'top',lineSpacing:17});
+            itemY+=0.85;
+          });
+        });
+      }
+
+      function timelineMilestones(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        // Horizontal line
+        s.addShape('rect',{x:1.2,y:2.5,w:10.9,h:0.06,fill:c.rose});
+        const startX=0.8,mileW=3.0;
+        d.milestones.forEach((m,i)=>{
+          const x=startX+(i*mileW);
+          s.addShape('ellipse',{x:x+0.95,y:2.2,w:0.7,h:0.7,fill:c.maroon});
+          s.addText(m.num,{x:x+0.95,y:2.3,w:0.7,h:0.5,fontFace:'Arial',fontSize:16,color:'FFFFFF',bold:true,align:'center'});
+          s.addText(m.year,{x:x,y:3.1,w:2.6,h:0.5,fontFace:'Georgia',fontSize:20,color:c.maroon,bold:true,align:'center'});
+          s.addText(m.title,{x:x,y:3.65,w:2.6,h:0.4,fontFace:'Arial',fontSize:13,color:c.main,bold:true,align:'center'});
+          s.addText(m.desc,{x:x,y:4.1,w:2.6,h:0.9,fontFace:'Arial',fontSize:11,color:c.meta,align:'center',valign:'top',lineSpacing:15});
+        });
+      }
+
+      function cta(s,d,n){
+        s.addText(d.subtitle,{x:0.48,y:0.42,w:12.36,h:0.4,fontFace:'Arial',fontSize:18,color:c.red,bold:true});
+        footer(s,n);
+        // Split text with highlights
+        s.addText('The ',{x:1.5,y:2.5,w:10,h:2,fontFace:'Georgia',fontSize:36,color:c.main,valign:'top'});
+        s.addText('$120M investment over five years delivers $180M in value while positioning the company as an industry sustainability leader.',{x:1.5,y:2.5,w:10,h:2.5,fontFace:'Georgia',fontSize:36,color:c.main,valign:'top',lineSpacing:50});
+        // Buttons
+        s.addShape('roundRect',{x:3.5,y:5.3,w:2.8,h:0.7,fill:c.maroon,rectRadius:0.05});
+        s.addText('Approve Full Program',{x:3.5,y:5.4,w:2.8,h:0.5,fontFace:'Arial',fontSize:12,color:'FFFFFF',bold:true,align:'center'});
+        s.addShape('roundRect',{x:6.8,y:5.3,w:2.8,h:0.7,fill:c.bg,line:{color:c.maroon,pt:2},rectRadius:0.05});
+        s.addText('Phase 1 Only',{x:6.8,y:5.4,w:2.8,h:0.5,fontFace:'Arial',fontSize:12,color:c.maroon,bold:true,align:'center'});
+      }
+
+      slidesData.forEach((d,i)=>{const s=pptx.addSlide(),n=i+1;
+        if(d.type==='cover')cover(s,d);
+        else if(d.type==='stat-donut')statDonut(s,d,n);
+        else if(d.type==='progress-bars')progressBars(s,d,n);
+        else if(d.type==='pillars')pillars(s,d,n);
+        else if(d.type==='two-col-text')twoColText(s,d,n);
+        else if(d.type==='timeline-milestones')timelineMilestones(s,d,n);
+        else if(d.type==='cta')cta(s,d,n);
+      });
+      await pptx.writeFile({fileName:'Sustainability_ESG_Strategy.pptx'});btn.disabled=false;btn.innerText=orig;
+    }catch(e){console.error(e);alert('Error: '+e.message);btn.disabled=false;btn.innerText='Retry';}
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,818 @@
+[
+  {
+    "id": "cover",
+    "title": "Cover Slide",
+    "category": "Opening",
+    "master": "cover",
+    "best_for": "Opening title slide — deck title, category tag, company branding, and date",
+    "flex": "1-1"
+  },
+  {
+    "id": "executiveSummary",
+    "title": "Executive Summary",
+    "category": "Opening",
+    "master": "standard",
+    "best_for": "2x2 grid of key themes — each cell has a burgundy title and 2-3 sentence insight; ideal for exec briefings",
+    "flex": "2-6"
+  },
+  {
+    "id": "executiveSummaryHorizontal",
+    "title": "Executive Summary (Horizontal)",
+    "category": "Opening",
+    "master": "standard",
+    "best_for": "3-4 numbered horizontal rows stacked vertically — each row is a key theme with title and detail text",
+    "flex": "2-4"
+  },
+  {
+    "id": "executiveSummaryVertical",
+    "title": "Executive Summary (Vertical)",
+    "category": "Opening",
+    "master": "standard",
+    "best_for": "3-4 tall numbered columns side by side — each column is a key theme with title and narrative",
+    "flex": "2-4"
+  },
+  {
+    "id": "nextSteps",
+    "title": "Next Steps",
+    "category": "Opening",
+    "master": "standard",
+    "best_for": "Action tracker table — rows with action, owner, deadline, and status; ideal for meeting follow-ups",
+    "flex": "fixed"
+  },
+  {
+    "id": "sectionDivider",
+    "title": "Section Divider",
+    "category": "Opening",
+    "master": "blank",
+    "best_for": "Section break — large number + bold title to separate major deck sections",
+    "flex": "1-1"
+  },
+  {
+    "id": "thankYou",
+    "title": "Thank You",
+    "category": "Opening",
+    "master": "cover",
+    "best_for": "Closing slide — thank-you message, contact info, and call to action",
+    "flex": "1-1"
+  },
+  {
+    "id": "visionMission",
+    "title": "Vision & Mission",
+    "category": "Opening",
+    "master": "standard",
+    "best_for": "Aspirational opener — centered vision statement with 3-5 supporting mission pillars or values",
+    "flex": "3-5"
+  },
+  {
+    "id": "beforeAfter",
+    "title": "Before & After",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Before/After comparison — left column (✗ pain points) vs right column (✓ improvements) with arrow between",
+    "flex": "fixed"
+  },
+  {
+    "id": "bulletPoints",
+    "title": "Key Points",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "4-7 numbered horizontal boxes — each with title + description; for key points or recommendations",
+    "flex": "4-7"
+  },
+  {
+    "id": "bulletPointsChecks",
+    "title": "Key Points (Checkmarks)",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "4-7 check items with green circles — simple checklist layout for requirements or criteria",
+    "flex": "4-7"
+  },
+  {
+    "id": "bulletPointsIconGrid",
+    "title": "Key Points (Icon Grid)",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Strict 2x2 grid (4 items only) — numbered circle badges with title + description",
+    "flex": "4-4"
+  },
+  {
+    "id": "bulletPointsLetters",
+    "title": "Key Points (Letter Icons)",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "3-5 lettered items (A, B, C) — square badges with title + description for ordered arguments",
+    "flex": "3-5"
+  },
+  {
+    "id": "bulletPointsTwoCol",
+    "title": "Key Points (Two-Column)",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Two columns of numbered points — compact layout for 6-10 items split evenly",
+    "flex": "3-5"
+  },
+  {
+    "id": "bulletPointsVertical",
+    "title": "Key Points (Vertical)",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "4-7 tall vertical cards in a row — each numbered with title and short text",
+    "flex": "4-7"
+  },
+  {
+    "id": "bulletsDense",
+    "title": "Dense Card Grid",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "High-density 3-column grid of 8-15 compact numbered cards — for long lists of brief items",
+    "flex": "8-15"
+  },
+  {
+    "id": "capabilityMap",
+    "title": "Capability Map",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Capability model — business capabilities grouped by domain with maturity indicators",
+    "flex": "fixed"
+  },
+  {
+    "id": "caseStudy",
+    "title": "Case Study",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Case study layout — overview panel (left) with 2x2 grid for Challenge, Solution, Results, Impact (right)",
+    "flex": "fixed"
+  },
+  {
+    "id": "checklist",
+    "title": "Checklist",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Organized checklist with sections — checkboxes grouped under category headers",
+    "flex": "fixed"
+  },
+  {
+    "id": "comparisonTable",
+    "title": "Comparison Table",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Data table with headers and colored scores — for structured multi-criteria comparisons",
+    "flex": "2-4"
+  },
+  {
+    "id": "consultantResume",
+    "title": "Consultant Resume",
+    "category": "Content",
+    "master": "blank",
+    "best_for": "Full-bleed two-panel consultant resume — photo/info on left, experience/skills on right",
+    "flex": "fixed"
+  },
+  {
+    "id": "currentFutureState",
+    "title": "Current vs Future State",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Current state pain points vs future state benefits — two contrasting columns",
+    "flex": "fixed"
+  },
+  {
+    "id": "decisionRights",
+    "title": "Decision Rights Matrix",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Decision authority matrix — decision types mapped to stakeholder roles (approve/consult/inform)",
+    "flex": "fixed"
+  },
+  {
+    "id": "fourCards",
+    "title": "Four Cards",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Four compact cards — icon, title, body; for 4-part breakdowns or quadruple comparisons",
+    "flex": "3-5"
+  },
+  {
+    "id": "governanceStructure",
+    "title": "Governance Structure",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Layered governance model — steering committee, working groups, and reporting relationships",
+    "flex": "fixed"
+  },
+  {
+    "id": "grid2x2",
+    "title": "2x2 Grid",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "2x2 equal quadrants — each with heading and paragraph; for categorized information or frameworks",
+    "flex": "4-6"
+  },
+  {
+    "id": "grid2x2Rows",
+    "title": "2x2 Grid (Rows)",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "4 full-width numbered rows — each with title and description; for sequential or ranked items",
+    "flex": "4-6"
+  },
+  {
+    "id": "grid2x3",
+    "title": "2×3 Grid",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "2 columns × 3 rows grid — each cell has heading + short text; for 6-item categorized content",
+    "flex": "4-6"
+  },
+  {
+    "id": "grid3x2",
+    "title": "3×2 Grid",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "3 columns × 2 rows grid — compact cells with heading + text; for 6-item comparisons",
+    "flex": "4-6"
+  },
+  {
+    "id": "grid3x3",
+    "title": "3×3 Grid",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "3×3 grid (9 cells) — very compact, title + one line each; for capability maps or matrices",
+    "flex": "6-9"
+  },
+  {
+    "id": "iconGrid2x3",
+    "title": "Icon Grid (2x3)",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Strict 2x3 grid (6 items only) — numbered circle badges with title + description",
+    "flex": "6-6"
+  },
+  {
+    "id": "initiativeCharter",
+    "title": "Initiative Charter",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Full initiative charter — description, objectives, cost/benefit, timeline, risks, and dependencies",
+    "flex": "1-1"
+  },
+  {
+    "id": "initiativePrioritization",
+    "title": "Initiative Prioritization",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "2x2 prioritization matrix — initiatives plotted by impact vs effort with wave color coding",
+    "flex": "5-10"
+  },
+  {
+    "id": "initiativesLongList",
+    "title": "Initiatives Long List",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Master initiative list — rows organized by strategic theme with descriptions and tags",
+    "flex": "5-10"
+  },
+  {
+    "id": "insightToAction",
+    "title": "Insights to Recommendations",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Bridge slide — insights column leads to recommendations column with impact/effort/timing summary",
+    "flex": "fixed"
+  },
+  {
+    "id": "issueTree",
+    "title": "Issue Tree",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Issue tree — problem statement branching into drivers/hypotheses with sub-analyses",
+    "flex": "fixed"
+  },
+  {
+    "id": "nineBoxMatrix",
+    "title": "Nine-Box Matrix",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "9-box portfolio grid — for plotting entities across two dimensions (e.g., performance vs potential)",
+    "flex": "fixed"
+  },
+  {
+    "id": "operatingModel",
+    "title": "Operating Model Overview",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Operating model canvas — people, process, technology, and governance dimensions",
+    "flex": "fixed"
+  },
+  {
+    "id": "operatingModelDetailed",
+    "title": "Detailed Operating Model",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Detailed operating model — strategy, capabilities, processes, and enablers in layers",
+    "flex": "fixed"
+  },
+  {
+    "id": "optionsRecommendation",
+    "title": "Options & Recommendation",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "3 option columns compared across criteria rows — recommended option visually highlighted",
+    "flex": "fixed"
+  },
+  {
+    "id": "orgCorporate",
+    "title": "Corporate Org Chart",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "3-layer corporate org chart — CEO, VPs, and Directors/Managers hierarchy",
+    "flex": "fixed"
+  },
+  {
+    "id": "orgDepartment",
+    "title": "Department Structure",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Department deep-dive — team structure with role descriptions and responsibilities",
+    "flex": "fixed"
+  },
+  {
+    "id": "orgExecutive",
+    "title": "Executive Org Chart",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Simple 2-layer org chart — CEO at top with C-suite direct reports",
+    "flex": "fixed"
+  },
+  {
+    "id": "orgFlat",
+    "title": "Flat Team Structure",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Flat org — team lead with equal-level team members, no hierarchy",
+    "flex": "fixed"
+  },
+  {
+    "id": "orgFunctional",
+    "title": "Functional Breakdown",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Single function deep-dive — roles, responsibilities, and metrics for one department",
+    "flex": "fixed"
+  },
+  {
+    "id": "orgHierarchyLarge",
+    "title": "Large Hierarchy Chart",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Dense org chart (15+ boxes) — full reporting structure with multiple layers",
+    "flex": "fixed"
+  },
+  {
+    "id": "orgMatrix",
+    "title": "Matrix Organization",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Matrix org — dual reporting lines showing functional and project/product dimensions",
+    "flex": "fixed"
+  },
+  {
+    "id": "priorityMatrix",
+    "title": "2x2 Priority Matrix",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "2x2 prioritization framework — axis labels and quadrant names for categorizing items by two dimensions",
+    "flex": "fixed"
+  },
+  {
+    "id": "problemSolution",
+    "title": "Problem & Solution",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Split layout — 3 numbered problems with impact metric on left, 3 numbered solutions with outcome on right",
+    "flex": "fixed"
+  },
+  {
+    "id": "processMap",
+    "title": "Process Map",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Swim lane process diagram — activities organized by role or department across phases",
+    "flex": "fixed"
+  },
+  {
+    "id": "prosAndCons",
+    "title": "Pros & Cons",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Two balanced columns — positives (+) vs negatives (−) with titles and descriptions",
+    "flex": "2-2"
+  },
+  {
+    "id": "qualSlide",
+    "title": "Qualification / Case Study",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Qualification slide — Situation, How We Helped, Impact in three columns",
+    "flex": "fixed"
+  },
+  {
+    "id": "raciMatrix",
+    "title": "RACI Matrix",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "RACI chart — activities mapped to roles with R/A/C/I assignments",
+    "flex": "fixed"
+  },
+  {
+    "id": "recommendationSummary",
+    "title": "Recommendation Summary",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "3 horizontal recommendation cards — each with title, rationale, and expected impact",
+    "flex": "fixed"
+  },
+  {
+    "id": "riskMatrix",
+    "title": "Risk Matrix",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Risk assessment 3x3 matrix — color-coded cells (green/yellow/red) for likelihood vs impact",
+    "flex": "4-4"
+  },
+  {
+    "id": "serviceCatalog",
+    "title": "Service Catalog",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Service catalog table — offerings with descriptions, SLAs, and service levels",
+    "flex": "fixed"
+  },
+  {
+    "id": "sipocDiagram",
+    "title": "SIPOC Diagram",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "SIPOC high-level process view — Suppliers, Inputs, Process, Outputs, Customers",
+    "flex": "fixed"
+  },
+  {
+    "id": "strategicThemes",
+    "title": "Strategic Themes",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "3-4 strategic theme cards — each with name, description, and key objectives",
+    "flex": "3-4"
+  },
+  {
+    "id": "strategicThemesVisual",
+    "title": "Strategic Themes Visual",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Pyramid or layered view — how strategic themes connect and build on each other",
+    "flex": "2-4"
+  },
+  {
+    "id": "strategyQuadrant",
+    "title": "Strategy Quadrant",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Strategy quadrant with center element — 4 sections radiating from a central concept",
+    "flex": "fixed"
+  },
+  {
+    "id": "swotAnalysis",
+    "title": "SWOT Analysis",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Classic SWOT 2x2 — four color-coded quadrants (Strengths, Weaknesses, Opportunities, Threats) with bullet lists",
+    "flex": "4-4"
+  },
+  {
+    "id": "teamShowcase",
+    "title": "Team Showcase",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "4-person team grid — avatar placeholder, name, role title, and short bio for each",
+    "flex": "fixed"
+  },
+  {
+    "id": "threeCards",
+    "title": "Three Cards",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Three column cards — icon, number, heading, body, and impact metric; for frameworks, pillars, or phases",
+    "flex": "2-4"
+  },
+  {
+    "id": "threeColumnBoxes",
+    "title": "Three Column Boxes",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Three columns with 5-10 stacked label boxes each — for three-way groupings",
+    "flex": "5-10"
+  },
+  {
+    "id": "twoCards",
+    "title": "Two Cards",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Two side-by-side cards — icon, title, body text, and metric; for comparisons or dual concepts",
+    "flex": "2-3"
+  },
+  {
+    "id": "twoColumnBoxes",
+    "title": "Two Column Boxes",
+    "category": "Content",
+    "master": "standard",
+    "best_for": "Two columns with 5-10 stacked label boxes each — for grouped lists or category breakdowns",
+    "flex": "5-10"
+  },
+  {
+    "id": "barChartExhibit",
+    "title": "Bar Chart Exhibit",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Horizontal bar chart with dark insight panel on left — for ranked data with narrative",
+    "flex": "4-8"
+  },
+  {
+    "id": "baselineAssessment",
+    "title": "Baseline Assessment",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Current performance baseline — 5-6 dimensions with visual scores and findings",
+    "flex": "4-6"
+  },
+  {
+    "id": "bigNumber",
+    "title": "Big Number",
+    "category": "Data & Metrics",
+    "master": "titleOnly",
+    "best_for": "Full-slide focus on one massive number — maximum visual impact for a single metric",
+    "flex": "1-2"
+  },
+  {
+    "id": "competitiveBenchmark",
+    "title": "Competitive Scorecard",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Scorecard grid — entities vs dimensions with dot/circle ratings for competitive comparison",
+    "flex": "fixed"
+  },
+  {
+    "id": "denseTable",
+    "title": "Dense Data Table",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "High-density data table (9-10px font) — for detailed data with many rows and 4-6 columns",
+    "flex": "8-15"
+  },
+  {
+    "id": "dualCharts",
+    "title": "Dual Charts",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Two side-by-side SVG bar charts — each with a commentary box below for key takeaways",
+    "flex": "2-2"
+  },
+  {
+    "id": "financialSummary",
+    "title": "Financial Summary",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Financial overview — total investment, expected returns, and 2-3 key financial metrics",
+    "flex": "2-3"
+  },
+  {
+    "id": "financialWaterfall",
+    "title": "Financial Waterfall",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Waterfall chart — shows how initiatives build to a financial total with additions and subtractions",
+    "flex": "5-9"
+  },
+  {
+    "id": "funnel",
+    "title": "Funnel",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "5-stage funnel visualization — showing conversion or narrowing flow with percentages",
+    "flex": "4-6"
+  },
+  {
+    "id": "gapAnalysis",
+    "title": "Gap Analysis",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Visual gap bars — current vs target per metric with gap quantification",
+    "flex": "fixed"
+  },
+  {
+    "id": "graphInsights",
+    "title": "Graph + Insights",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "SVG bar chart (left 60%) with 3-4 numbered insights (right 40%) — data + commentary combo",
+    "flex": "3-4"
+  },
+  {
+    "id": "groupedColumnChart",
+    "title": "Grouped Column Chart",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Vertical grouped bars — 3-5 category groups with 2-3 colored series per group",
+    "flex": "3-5"
+  },
+  {
+    "id": "indexBenchmark",
+    "title": "Index Performance Benchmark",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Horizontal grouped bars — returns or performance vs a benchmark across time periods",
+    "flex": "fixed"
+  },
+  {
+    "id": "kpiMetrics",
+    "title": "KPI Metrics",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Two columns — 3 large KPI values with labels on left, 3 detail explanations on right",
+    "flex": "2-4"
+  },
+  {
+    "id": "maturityBenchmark",
+    "title": "Maturity Model Benchmark",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Capability maturity model — 5-level track per dimension with current vs target markers",
+    "flex": "fixed"
+  },
+  {
+    "id": "metricDashboard",
+    "title": "Metric Dashboard",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Dashboard 2x3 grid of 4-6 metric blocks — each with value, label, and trend indicator",
+    "flex": "3-5"
+  },
+  {
+    "id": "multiLineChart",
+    "title": "Multi-Line Chart",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Multiple trend lines with legend — for comparing 2-4 series over time periods",
+    "flex": "2-4"
+  },
+  {
+    "id": "peerBenchmark",
+    "title": "Peer Comparison Benchmark",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Your entity vs peers — visual performance indicators across key metrics",
+    "flex": "fixed"
+  },
+  {
+    "id": "percentileBenchmark",
+    "title": "Percentile Ranking Benchmark",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Percentile position bars — showing rank within peer group distribution per metric",
+    "flex": "fixed"
+  },
+  {
+    "id": "scorecard",
+    "title": "Scorecard / Heatmap",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Evaluation matrix — entities as rows, criteria as columns with scores; for performance tracking",
+    "flex": "3-5"
+  },
+  {
+    "id": "stackedBarChart",
+    "title": "Stacked Bar Chart",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Horizontal stacked bars — showing composition breakdown across 4-5 categories",
+    "flex": "fixed"
+  },
+  {
+    "id": "statHighlight",
+    "title": "Stat Highlight",
+    "category": "Data & Metrics",
+    "master": "titleOnly",
+    "best_for": "Giant centered number with 2-3 supporting metrics below — for hero statistics",
+    "flex": "2-4"
+  },
+  {
+    "id": "strategicBenchmark",
+    "title": "Strategic Benchmark",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Competitive positioning comparison — bar or radar-style across multiple dimensions",
+    "flex": "3-5"
+  },
+  {
+    "id": "verticalBarChartExhibit",
+    "title": "Vertical Bar Chart Exhibit",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Vertical column chart with dark insight panel on left — for time-series or category data",
+    "flex": "4-8"
+  },
+  {
+    "id": "waterfallChart",
+    "title": "Waterfall Chart",
+    "category": "Data & Metrics",
+    "master": "standard",
+    "best_for": "Waterfall bars — showing how individual factors contribute to change from start to end value",
+    "flex": "fixed"
+  },
+  {
+    "id": "chevronFlow",
+    "title": "Chevron Process with Sub-Steps",
+    "category": "Process & Time",
+    "master": "standard",
+    "best_for": "Two-level hierarchy — chevron phases on top with sub-activities listed below each",
+    "flex": "3-5"
+  },
+  {
+    "id": "customerJourney",
+    "title": "Customer Journey",
+    "category": "Process & Time",
+    "master": "standard",
+    "best_for": "Horizontal journey stages — each with header, touchpoints, and sentiment indicator",
+    "flex": "4-6"
+  },
+  {
+    "id": "outcomeApproach",
+    "title": "Outcome Approach",
+    "category": "Process & Time",
+    "master": "standard",
+    "best_for": "Outcome-driven layout — main steps on left with sub-outcomes branching right",
+    "flex": "fixed"
+  },
+  {
+    "id": "processFlow",
+    "title": "Process Flow",
+    "category": "Process & Time",
+    "master": "standard",
+    "best_for": "Horizontal process with 3-5 numbered steps and arrows — for workflows or methodologies",
+    "flex": "3-5"
+  },
+  {
+    "id": "projectStepDetail",
+    "title": "Project Step Detail",
+    "category": "Process & Time",
+    "master": "standard",
+    "best_for": "Numbered activities (left column) with checkmarked deliverables (right column)",
+    "flex": "fixed"
+  },
+  {
+    "id": "roadmapTimeline",
+    "title": "Roadmap Timeline",
+    "category": "Process & Time",
+    "master": "standard",
+    "best_for": "Horizontal roadmap with 3-5 connected phase cards — dates and milestones for project planning",
+    "flex": "3-5"
+  },
+  {
+    "id": "timeline",
+    "title": "Timeline",
+    "category": "Process & Time",
+    "master": "standard",
+    "best_for": "Vertical timeline with 2-4 period markers — each with date, title, and description",
+    "flex": "2-4"
+  },
+  {
+    "id": "workplan",
+    "title": "Workplan",
+    "category": "Process & Time",
+    "master": "standard",
+    "best_for": "Project gantt-style timeline — workstream rows × week columns with milestones and owners",
+    "flex": "3-5"
+  },
+  {
+    "id": "keyFinding",
+    "title": "Key Finding",
+    "category": "Emphasis",
+    "master": "standard",
+    "best_for": "Main finding or recommendation hero — central insight with 3 supporting evidence points and metrics",
+    "flex": "fixed"
+  },
+  {
+    "id": "quote",
+    "title": "Quote",
+    "category": "Emphasis",
+    "master": "standard",
+    "best_for": "Centered quote box with large quote text and author attribution",
+    "flex": "1-1"
+  },
+  {
+    "id": "valueProposition",
+    "title": "Value Proposition",
+    "category": "Emphasis",
+    "master": "titleOnly",
+    "best_for": "Hero statement at top with 3 numbered benefit pillars below — for pitching value",
+    "flex": "fixed"
+  }
+]

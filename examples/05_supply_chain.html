@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Supply Chain Optimization — Strategy&</title>
+<script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+<style>
+  :root{--slide-w:960pt;--slide-min-h:540pt;--left-x:34.58pt;--title-w:890.08pt;--subtitle-w:890.08pt;--title-y:30.33pt;--subtitle-y:100.91pt;--frame-y:136.91pt;--frame-w:890.08pt;--bg:#fff;--main:#111111;--secondary:#222222;--meta:#4A4F57;--red:#A32020;--zone1:#F7F9FB;--zone2:#EEF2F6;--maroon:#8E1E1E;--rose:#F8E3E3;--coal:#4B4F55;--gH:16pt;--gV:12pt;--radius:4pt;--border:#E6E9EE;}
+  html,body{margin:0;background:#e0e0e0;color:var(--main);font-family:Arial,sans-serif;}
+  .deck{display:flex;flex-direction:column;gap:30pt;padding:30pt;padding-bottom:100px;max-width:1020pt;margin:0 auto;}
+  .slide-section{display:flex;flex-direction:column;gap:10pt;}
+  .slide-label{font-size:11pt;color:var(--meta);font-weight:bold;text-transform:uppercase;letter-spacing:1pt;padding-left:5pt;}
+  .slide{position:relative;width:var(--slide-w);height:var(--slide-min-h);margin:0 auto;border:1px solid var(--border);background:var(--bg);box-sizing:border-box;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,0.12);border-radius:4pt;}
+  .title{position:absolute;left:var(--left-x);top:var(--title-y);width:var(--title-w);font:400 28pt/1.2 Georgia,serif;color:var(--main);}
+  .subtitle{position:absolute;left:var(--left-x);top:var(--subtitle-y);width:var(--subtitle-w);font:700 18pt/1.2 Arial,sans-serif;color:var(--red);}
+  .frame{position:absolute;left:var(--left-x);top:var(--frame-y);width:var(--frame-w);height:352.91pt;display:flex;flex-direction:column;}
+  footer.footer{position:absolute;bottom:0;left:var(--left-x);width:890.08pt;padding-bottom:14pt;display:flex;justify-content:space-between;font-size:10pt;color:var(--meta);}
+  .cover-slide .frame{top:140pt;height:auto;display:flex;flex-direction:column;gap:16pt;}
+  .cover-category{font:700 18pt/1.2 Arial,sans-serif;color:var(--red);text-transform:uppercase;letter-spacing:1pt;}
+  .cover-title{font:400 42pt/1.15 Georgia,serif;color:var(--main);max-width:700pt;}
+  .cover-branding{position:absolute;left:var(--left-x);bottom:50pt;font:700 16pt/1 Arial,sans-serif;color:var(--meta);}
+  .cover-date{position:absolute;right:var(--left-x);bottom:14pt;font:400 13pt/1 Arial,sans-serif;color:var(--meta);}
+
+  /* ========== SLIDE 2: Vertical Flow Diagram ========== */
+  .vertical-flow{display:flex;gap:40pt;height:100%;}
+  .flow-left{flex:0 0 280pt;display:flex;flex-direction:column;gap:0;position:relative;}
+  .flow-line{position:absolute;left:20pt;top:25pt;bottom:25pt;width:4pt;background:linear-gradient(180deg, var(--maroon) 0%, var(--rose) 100%);}
+  .flow-step{display:flex;gap:16pt;align-items:flex-start;position:relative;z-index:1;}
+  .flow-dot{width:44pt;height:44pt;background:var(--maroon);border-radius:50%;display:flex;align-items:center;justify-content:center;font:700 18pt/1 Arial,sans-serif;color:#fff;flex-shrink:0;}
+  .flow-step:nth-child(2) .flow-dot{background:#A94545;}
+  .flow-step:nth-child(3) .flow-dot{background:#B55555;}
+  .flow-step:nth-child(4) .flow-dot{background:#C06060;}
+  .flow-text h4{margin:0 0 4pt 0;font:700 14pt/1.3 Arial,sans-serif;color:var(--main);}
+  .flow-text p{margin:0;font:400 11pt/1.5 Arial,sans-serif;color:var(--secondary);}
+  .flow-right{flex:1;background:var(--maroon);border-radius:var(--radius);padding:30pt;display:flex;flex-direction:column;justify-content:center;color:#fff;}
+  .flow-right .big-stat{font:700 64pt/1 Georgia,serif;}
+  .flow-right .stat-label{font:400 16pt/1.4 Arial,sans-serif;color:var(--rose);margin-top:16pt;}
+  .flow-right .stat-detail{font:400 13pt/1.5 Arial,sans-serif;color:rgba(255,255,255,0.8);margin-top:20pt;}
+
+  /* ========== SLIDE 3: Dashboard Metrics ========== */
+  .dashboard{display:grid;grid-template-columns:1fr 1fr 1fr;grid-template-rows:1fr 1fr;gap:14pt;height:100%;}
+  .dash-card{background:var(--zone1);border-radius:var(--radius);padding:16pt;border:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
+  .dash-card.large{grid-column:span 2;}
+  .dash-card.accent{background:var(--maroon);border-color:var(--maroon);}
+  .dash-card.accent h4,.dash-card.accent p{color:#fff;}
+  .dash-card.accent .dash-value{color:#fff;}
+  .dash-value{font:700 40pt/1 Georgia,serif;color:var(--maroon);}
+  .dash-label{font:700 13pt/1.3 Arial,sans-serif;color:var(--main);margin-top:10pt;}
+  .dash-card.accent .dash-label{color:var(--rose);}
+  .dash-trend{font:400 11pt/1.3 Arial,sans-serif;color:var(--meta);margin-top:6pt;}
+  .dash-card.accent .dash-trend{color:rgba(255,255,255,0.7);}
+
+  /* ========== SLIDE 4: Regional Split ========== */
+  .regional{display:flex;gap:16pt;height:100%;}
+  .region-card{flex:1;background:var(--zone1);border-radius:var(--radius);padding:20pt;border:1px solid var(--border);display:flex;flex-direction:column;}
+  .region-header{display:flex;justify-content:space-between;align-items:center;padding-bottom:14pt;border-bottom:3pt solid var(--maroon);margin-bottom:14pt;}
+  .region-name{font:700 16pt/1 Arial,sans-serif;color:var(--main);}
+  .region-share{font:700 20pt/1 Georgia,serif;color:var(--maroon);}
+  .region-stats{display:flex;flex-direction:column;gap:12pt;flex:1;}
+  .region-stat{display:flex;justify-content:space-between;align-items:center;}
+  .region-stat-label{font:400 11pt/1.3 Arial,sans-serif;color:var(--secondary);}
+  .region-stat-value{font:700 13pt/1 Arial,sans-serif;color:var(--main);}
+  .region-bar{height:6pt;background:var(--zone2);border-radius:3pt;margin-top:8pt;}
+  .region-bar-fill{height:100%;background:var(--maroon);border-radius:3pt;}
+
+  /* ========== SLIDE 5: Risk Matrix ========== */
+  .risk-matrix{display:grid;grid-template-columns:auto 1fr 1fr 1fr;grid-template-rows:auto 1fr 1fr 1fr;gap:8pt;height:100%;}
+  .matrix-corner{background:transparent;}
+  .matrix-col-header{background:var(--maroon);color:#fff;font:700 12pt/1 Arial,sans-serif;padding:12pt;text-align:center;border-radius:var(--radius);}
+  .matrix-row-header{background:var(--zone2);font:700 11pt/1 Arial,sans-serif;color:var(--main);padding:12pt;writing-mode:vertical-rl;text-orientation:mixed;transform:rotate(180deg);text-align:center;border-radius:var(--radius);}
+  .matrix-cell{background:var(--zone1);border-radius:var(--radius);padding:10pt;border:1px solid var(--border);display:flex;flex-direction:column;justify-content:center;}
+  .matrix-cell.high{background:var(--rose);border-color:var(--maroon);}
+  .matrix-cell.med{background:#FFF5E6;border-color:#E8C99B;}
+  .matrix-cell h5{margin:0 0 4pt 0;font:700 11pt/1.2 Arial,sans-serif;color:var(--main);}
+  .matrix-cell p{margin:0;font:400 10pt/1.4 Arial,sans-serif;color:var(--secondary);}
+
+  /* ========== SLIDE 6: Waterfall ========== */
+  .waterfall{display:flex;flex-direction:column;gap:16pt;height:100%;}
+  .waterfall-bars{display:flex;align-items:flex-end;justify-content:space-around;flex:1;padding-bottom:40pt;border-bottom:2pt solid var(--border);}
+  .waterfall-bar{display:flex;flex-direction:column;align-items:center;width:100pt;}
+  .bar-rect{width:70pt;background:var(--maroon);border-radius:4pt 4pt 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:10pt;}
+  .bar-rect.negative{background:#C06060;}
+  .bar-rect.total{background:var(--zone2);border:2pt solid var(--maroon);}
+  .bar-rect.total .bar-value{color:var(--maroon);}
+  .bar-value{font:700 14pt/1 Arial,sans-serif;color:#fff;}
+  .bar-label{font:400 11pt/1.3 Arial,sans-serif;color:var(--main);text-align:center;margin-top:8pt;}
+  .waterfall-legend{display:flex;gap:30pt;justify-content:center;padding-top:10pt;}
+  .legend-item{display:flex;align-items:center;gap:8pt;font:400 11pt/1 Arial,sans-serif;color:var(--meta);}
+  .legend-dot{width:12pt;height:12pt;border-radius:2pt;}
+  .legend-dot.add{background:var(--maroon);}
+  .legend-dot.sub{background:#C06060;}
+
+  /* ========== SLIDE 7: Summary Recommendations ========== */
+  .summary{display:flex;gap:30pt;height:100%;}
+  .summary-left{flex:0 0 350pt;background:var(--zone1);border-radius:var(--radius);padding:24pt;border:1px solid var(--border);}
+  .summary-title{font:700 16pt/1.3 Arial,sans-serif;color:var(--maroon);margin-bottom:16pt;padding-bottom:12pt;border-bottom:2pt solid var(--maroon);}
+  .summary-list{display:flex;flex-direction:column;gap:14pt;}
+  .summary-item{display:flex;gap:12pt;align-items:flex-start;}
+  .summary-bullet{flex:0 0 8pt;height:8pt;background:var(--maroon);border-radius:50%;margin-top:5pt;}
+  .summary-item p{margin:0;font:400 13pt/1.5 Arial,sans-serif;color:var(--secondary);}
+  .summary-right{flex:1;display:flex;flex-direction:column;gap:14pt;}
+  .summary-card{background:var(--rose);border-radius:var(--radius);padding:20pt;flex:1;display:flex;flex-direction:column;justify-content:center;}
+  .summary-card h4{margin:0 0 8pt 0;font:700 14pt/1.3 Arial,sans-serif;color:var(--maroon);}
+  .summary-card p{margin:0;font:400 12pt/1.5 Arial,sans-serif;color:var(--secondary);}
+  .summary-card .value{font:700 28pt/1 Georgia,serif;color:var(--maroon);margin-bottom:8pt;}
+
+  .controls{position:fixed;bottom:20px;right:30px;display:flex;gap:12px;align-items:center;z-index:1000;}
+  button{background:#8E1E1E;color:white;border:none;padding:14px 28px;font-size:14px;cursor:pointer;border-radius:5px;font-weight:bold;box-shadow:0 4px 12px rgba(0,0,0,0.25);transition:all 0.2s;}
+  button:hover{background-color:#6d1515;transform:translateY(-2px);}
+  button:disabled{background-color:#ccc;cursor:not-allowed;transform:none;}
+  .slide-count{font-size:11px;color:var(--meta);background:white;padding:6px 12px;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,0.1);}
+</style>
+</head>
+<body>
+<div class="controls">
+  <span class="slide-count">7 slides ready for export</span>
+  <button id="dl-btn" onclick="generatePPTX()">Download Slides (.pptx)</button>
+</div>
+<main class="deck">
+
+  <!-- Slide 1: Cover -->
+  <div class="slide-section">
+    <div class="slide-label">Cover</div>
+    <div class="slide cover-slide">
+      <div class="frame">
+        <div class="cover-category">Supply Chain</div>
+        <div class="cover-title">Resilient Supply Chain: Building Agility in an Uncertain World</div>
+      </div>
+      <div class="cover-branding">Strategy&</div>
+      <div class="cover-date">December 2025</div>
+    </div>
+  </div>
+
+  <!-- Slide 2: Vertical Flow -->
+  <div class="slide-section">
+    <div class="slide-label">Risk Assessment</div>
+    <div class="slide">
+      <h1 class="title">Four critical vulnerabilities require immediate attention</h1>
+      <h2 class="subtitle">Current Challenges</h2>
+      <div class="frame">
+        <div class="vertical-flow">
+          <div class="flow-left">
+            <div class="flow-line"></div>
+            <div class="flow-step">
+              <div class="flow-dot">1</div>
+              <div class="flow-text">
+                <h4>Single-Source Dependency</h4>
+                <p>78% of critical components from single suppliers</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-dot">2</div>
+              <div class="flow-text">
+                <h4>Visibility Blind Spots</h4>
+                <p>No real-time tracking beyond Tier 1 suppliers</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-dot">3</div>
+              <div class="flow-text">
+                <h4>Inventory Imbalance</h4>
+                <p>$180M excess stock in wrong locations</p>
+              </div>
+            </div>
+            <div class="flow-step">
+              <div class="flow-dot">4</div>
+              <div class="flow-text">
+                <h4>Manual Processes</h4>
+                <p>85% of planning done in spreadsheets</p>
+              </div>
+            </div>
+          </div>
+          <div class="flow-right">
+            <div class="big-stat">$184B</div>
+            <div class="stat-label">Global annual cost of supply chain disruptions</div>
+            <div class="stat-detail">Organizations that proactively address these vulnerabilities recover 3x faster from disruptions and achieve 40% lower total supply chain costs.</div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>2 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 3: Dashboard Metrics -->
+  <div class="slide-section">
+    <div class="slide-label">Current Performance</div>
+    <div class="slide">
+      <h1 class="title">Performance gaps versus best-in-class require urgent action</h1>
+      <h2 class="subtitle">Key Metrics Dashboard</h2>
+      <div class="frame">
+        <div class="dashboard">
+          <div class="dash-card accent">
+            <div class="dash-value">23</div>
+            <div class="dash-label">Days Average Recovery Time</div>
+            <div class="dash-trend">vs. 5 days for leaders</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-value">62%</div>
+            <div class="dash-label">Visibility Gap</div>
+            <div class="dash-trend">Tier 2+ suppliers not tracked</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-value">87%</div>
+            <div class="dash-label">OTIF Performance</div>
+            <div class="dash-trend">Target: 98%</div>
+          </div>
+          <div class="dash-card">
+            <div class="dash-value">4.2x</div>
+            <div class="dash-label">Disruption Increase</div>
+            <div class="dash-trend">Since 2019</div>
+          </div>
+          <div class="dash-card large">
+            <div class="dash-value">$45M</div>
+            <div class="dash-label">Annual Excess Inventory Carrying Cost</div>
+            <div class="dash-trend">Opportunity through demand sensing and network optimization</div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>3 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 4: Regional Split -->
+  <div class="slide-section">
+    <div class="slide-label">Network Analysis</div>
+    <div class="slide">
+      <h1 class="title">Regional diversification reduces concentration risk</h1>
+      <h2 class="subtitle">Geographic Footprint</h2>
+      <div class="frame">
+        <div class="regional">
+          <div class="region-card">
+            <div class="region-header">
+              <div class="region-name">AMERICAS</div>
+              <div class="region-share">35%</div>
+            </div>
+            <div class="region-stats">
+              <div class="region-stat">
+                <span class="region-stat-label">Suppliers</span>
+                <span class="region-stat-value">142</span>
+              </div>
+              <div class="region-stat">
+                <span class="region-stat-label">Distribution Centers</span>
+                <span class="region-stat-value">8</span>
+              </div>
+              <div class="region-stat">
+                <span class="region-stat-label">Lead Time</span>
+                <span class="region-stat-value">12 days</span>
+              </div>
+              <div class="region-bar"><div class="region-bar-fill" style="width:35%"></div></div>
+            </div>
+          </div>
+          <div class="region-card">
+            <div class="region-header">
+              <div class="region-name">EUROPE</div>
+              <div class="region-share">25%</div>
+            </div>
+            <div class="region-stats">
+              <div class="region-stat">
+                <span class="region-stat-label">Suppliers</span>
+                <span class="region-stat-value">98</span>
+              </div>
+              <div class="region-stat">
+                <span class="region-stat-label">Distribution Centers</span>
+                <span class="region-stat-value">5</span>
+              </div>
+              <div class="region-stat">
+                <span class="region-stat-label">Lead Time</span>
+                <span class="region-stat-value">8 days</span>
+              </div>
+              <div class="region-bar"><div class="region-bar-fill" style="width:25%"></div></div>
+            </div>
+          </div>
+          <div class="region-card">
+            <div class="region-header">
+              <div class="region-name">ASIA-PACIFIC</div>
+              <div class="region-share">40%</div>
+            </div>
+            <div class="region-stats">
+              <div class="region-stat">
+                <span class="region-stat-label">Suppliers</span>
+                <span class="region-stat-value">215</span>
+              </div>
+              <div class="region-stat">
+                <span class="region-stat-label">Distribution Centers</span>
+                <span class="region-stat-value">6</span>
+              </div>
+              <div class="region-stat">
+                <span class="region-stat-label">Lead Time</span>
+                <span class="region-stat-value">28 days</span>
+              </div>
+              <div class="region-bar"><div class="region-bar-fill" style="width:40%"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>4 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 5: Risk Matrix -->
+  <div class="slide-section">
+    <div class="slide-label">Risk Prioritization</div>
+    <div class="slide">
+      <h1 class="title">Risk matrix identifies highest-priority mitigation actions</h1>
+      <h2 class="subtitle">Impact vs. Likelihood</h2>
+      <div class="frame">
+        <div class="risk-matrix">
+          <div class="matrix-corner"></div>
+          <div class="matrix-col-header">LOW LIKELIHOOD</div>
+          <div class="matrix-col-header">MEDIUM</div>
+          <div class="matrix-col-header">HIGH LIKELIHOOD</div>
+
+          <div class="matrix-row-header">HIGH IMPACT</div>
+          <div class="matrix-cell med">
+            <h5>Natural Disasters</h5>
+            <p>Regional facility disruption</p>
+          </div>
+          <div class="matrix-cell high">
+            <h5>Geopolitical Events</h5>
+            <p>Trade policy changes</p>
+          </div>
+          <div class="matrix-cell high">
+            <h5>Supplier Failure</h5>
+            <p>Single-source dependency</p>
+          </div>
+
+          <div class="matrix-row-header">MEDIUM</div>
+          <div class="matrix-cell">
+            <h5>Cyber Attack</h5>
+            <p>Systems downtime</p>
+          </div>
+          <div class="matrix-cell med">
+            <h5>Quality Issues</h5>
+            <p>Product recalls</p>
+          </div>
+          <div class="matrix-cell high">
+            <h5>Demand Volatility</h5>
+            <p>Forecast accuracy</p>
+          </div>
+
+          <div class="matrix-row-header">LOW IMPACT</div>
+          <div class="matrix-cell">
+            <h5>Currency Shifts</h5>
+            <p>FX hedging gaps</p>
+          </div>
+          <div class="matrix-cell">
+            <h5>Labor Disputes</h5>
+            <p>Localized strikes</p>
+          </div>
+          <div class="matrix-cell med">
+            <h5>Logistics Delays</h5>
+            <p>Port congestion</p>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>5 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 6: Waterfall -->
+  <div class="slide-section">
+    <div class="slide-label">Value Creation</div>
+    <div class="slide">
+      <h1 class="title">$95M annual savings through targeted interventions</h1>
+      <h2 class="subtitle">Value Bridge</h2>
+      <div class="frame">
+        <div class="waterfall">
+          <div class="waterfall-bars">
+            <div class="waterfall-bar">
+              <div class="bar-rect total" style="height:200pt"><span class="bar-value">$0</span></div>
+              <div class="bar-label">Baseline</div>
+            </div>
+            <div class="waterfall-bar">
+              <div class="bar-rect" style="height:95pt"><span class="bar-value">+$45M</span></div>
+              <div class="bar-label">Inventory<br/>Optimization</div>
+            </div>
+            <div class="waterfall-bar">
+              <div class="bar-rect" style="height:63pt"><span class="bar-value">+$30M</span></div>
+              <div class="bar-label">Logistics<br/>Efficiency</div>
+            </div>
+            <div class="waterfall-bar">
+              <div class="bar-rect" style="height:42pt"><span class="bar-value">+$20M</span></div>
+              <div class="bar-label">Procurement<br/>Savings</div>
+            </div>
+            <div class="waterfall-bar">
+              <div class="bar-rect negative" style="height:30pt"><span class="bar-value">-$15M</span></div>
+              <div class="bar-label">Technology<br/>Investment</div>
+            </div>
+            <div class="waterfall-bar">
+              <div class="bar-rect total" style="height:200pt"><span class="bar-value">$80M</span></div>
+              <div class="bar-label">Net Annual<br/>Impact</div>
+            </div>
+          </div>
+          <div class="waterfall-legend">
+            <div class="legend-item"><div class="legend-dot add"></div>Value Adds</div>
+            <div class="legend-item"><div class="legend-dot sub"></div>Investments</div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>6 / 7</span></footer>
+    </div>
+  </div>
+
+  <!-- Slide 7: Summary Recommendations -->
+  <div class="slide-section">
+    <div class="slide-label">Recommendations</div>
+    <div class="slide">
+      <h1 class="title">Three strategic priorities drive supply chain transformation</h1>
+      <h2 class="subtitle">Path Forward</h2>
+      <div class="frame">
+        <div class="summary">
+          <div class="summary-left">
+            <div class="summary-title">Immediate Actions (90 Days)</div>
+            <div class="summary-list">
+              <div class="summary-item">
+                <div class="summary-bullet"></div>
+                <p>Deploy control tower platform with Tier 1 supplier integration</p>
+              </div>
+              <div class="summary-item">
+                <div class="summary-bullet"></div>
+                <p>Identify and qualify alternate sources for top 20 critical components</p>
+              </div>
+              <div class="summary-item">
+                <div class="summary-bullet"></div>
+                <p>Launch inventory rebalancing program across regional DCs</p>
+              </div>
+              <div class="summary-item">
+                <div class="summary-bullet"></div>
+                <p>Establish cross-functional risk governance committee</p>
+              </div>
+              <div class="summary-item">
+                <div class="summary-bullet"></div>
+                <p>Begin demand sensing pilot with AI/ML vendor</p>
+              </div>
+            </div>
+          </div>
+          <div class="summary-right">
+            <div class="summary-card">
+              <div class="value">$80M</div>
+              <h4>Annual Net Savings</h4>
+              <p>After technology investments</p>
+            </div>
+            <div class="summary-card">
+              <div class="value">99.2%</div>
+              <h4>Target OTIF</h4>
+              <p>Industry-leading delivery</p>
+            </div>
+            <div class="summary-card">
+              <div class="value">5 days</div>
+              <h4>Recovery Time</h4>
+              <p>Best-in-class resilience</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer class="footer"><span>Strategy&</span><span>7 / 7</span></footer>
+    </div>
+  </div>
+
+</main>
+<script>
+  const slidesData=[
+    {type:"cover",category:"SUPPLY CHAIN",mainTitle:"Resilient Supply Chain: Building Agility in an Uncertain World",branding:"Strategy&",date:"December 2025"},
+    {type:"vertical-flow",headline:"Four critical vulnerabilities require immediate attention",subtitle:"Current Challenges",steps:[{num:"1",title:"Single-Source Dependency",text:"78% of critical components from single suppliers"},{num:"2",title:"Visibility Blind Spots",text:"No real-time tracking beyond Tier 1 suppliers"},{num:"3",title:"Inventory Imbalance",text:"$180M excess stock in wrong locations"},{num:"4",title:"Manual Processes",text:"85% of planning done in spreadsheets"}],bigStat:"$184B",statLabel:"Global annual cost of supply chain disruptions",statDetail:"Organizations that proactively address these vulnerabilities recover 3x faster from disruptions and achieve 40% lower total supply chain costs."},
+    {type:"dashboard",headline:"Performance gaps versus best-in-class require urgent action",subtitle:"Key Metrics Dashboard",metrics:[{value:"23",label:"Days Average Recovery Time",trend:"vs. 5 days for leaders",accent:true},{value:"62%",label:"Visibility Gap",trend:"Tier 2+ suppliers not tracked"},{value:"87%",label:"OTIF Performance",trend:"Target: 98%"},{value:"4.2x",label:"Disruption Increase",trend:"Since 2019"},{value:"$45M",label:"Annual Excess Inventory Carrying Cost",trend:"Opportunity through demand sensing and network optimization",large:true}]},
+    {type:"regional",headline:"Regional diversification reduces concentration risk",subtitle:"Geographic Footprint",regions:[{name:"AMERICAS",share:"35%",suppliers:"142",dcs:"8",lead:"12 days"},{name:"EUROPE",share:"25%",suppliers:"98",dcs:"5",lead:"8 days"},{name:"ASIA-PACIFIC",share:"40%",suppliers:"215",dcs:"6",lead:"28 days"}]},
+    {type:"risk-matrix",headline:"Risk matrix identifies highest-priority mitigation actions",subtitle:"Impact vs. Likelihood",cols:["LOW LIKELIHOOD","MEDIUM","HIGH LIKELIHOOD"],rows:["HIGH IMPACT","MEDIUM","LOW IMPACT"],cells:[[{title:"Natural Disasters",text:"Regional facility disruption",level:"med"},{title:"Geopolitical Events",text:"Trade policy changes",level:"high"},{title:"Supplier Failure",text:"Single-source dependency",level:"high"}],[{title:"Cyber Attack",text:"Systems downtime",level:"low"},{title:"Quality Issues",text:"Product recalls",level:"med"},{title:"Demand Volatility",text:"Forecast accuracy",level:"high"}],[{title:"Currency Shifts",text:"FX hedging gaps",level:"low"},{title:"Labor Disputes",text:"Localized strikes",level:"low"},{title:"Logistics Delays",text:"Port congestion",level:"med"}]]},
+    {type:"waterfall",headline:"$95M annual savings through targeted interventions",subtitle:"Value Bridge",bars:[{label:"Baseline",value:"$0",type:"total"},{label:"Inventory\nOptimization",value:"+$45M",type:"add",h:95},{label:"Logistics\nEfficiency",value:"+$30M",type:"add",h:63},{label:"Procurement\nSavings",value:"+$20M",type:"add",h:42},{label:"Technology\nInvestment",value:"-$15M",type:"sub",h:30},{label:"Net Annual\nImpact",value:"$80M",type:"total"}]},
+    {type:"summary",headline:"Three strategic priorities drive supply chain transformation",subtitle:"Path Forward",actions:["Deploy control tower platform with Tier 1 supplier integration","Identify and qualify alternate sources for top 20 critical components","Launch inventory rebalancing program across regional DCs","Establish cross-functional risk governance committee","Begin demand sensing pilot with AI/ML vendor"],results:[{value:"$80M",title:"Annual Net Savings",text:"After technology investments"},{value:"99.2%",title:"Target OTIF",text:"Industry-leading delivery"},{value:"5 days",title:"Recovery Time",text:"Best-in-class resilience"}]}
+  ];
+  async function generatePPTX(){
+    const btn=document.getElementById('dl-btn');const orig=btn.innerText;
+    try{
+      btn.disabled=true;btn.innerText='Generating...';
+      let pptx=new PptxGenJS();pptx.defineLayout({name:'STRAT',width:13.333,height:7.5});pptx.layout='STRAT';
+      const c={bg:'FFFFFF',main:'111111',red:'A32020',maroon:'8E1E1E',zone1:'F7F9FB',zone2:'EEF2F6',meta:'4A4F57',rose:'F8E3E3',coal:'4B4F55',border:'E6E9EE',secondary:'222222'};
+      const total=slidesData.length;
+      function footer(s,n){s.addText('Strategy&',{x:0.48,y:7.05,w:2,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta});s.addText(n+' / '+total,{x:11.5,y:7.05,w:1.3,h:0.25,fontFace:'Arial',fontSize:10,color:c.meta,align:'right'});}
+      function masterTitle(s,d){s.addText(d.headline,{x:0.48,y:0.42,w:12.36,h:0.8,fontFace:'Georgia',fontSize:28,color:c.main});s.addText(d.subtitle,{x:0.48,y:1.40,w:12.36,h:0.4,fontFace:'Arial',fontSize:18,color:c.red,bold:true});}
+      function cover(s,d){s.addText(d.category,{x:0.48,y:1.94,w:10,h:0.35,fontFace:'Arial',fontSize:18,color:c.red,bold:true});s.addText(d.mainTitle,{x:0.48,y:2.5,w:9.7,h:1.2,fontFace:'Georgia',fontSize:42,color:c.main});s.addText(d.branding,{x:0.48,y:6.8,w:3,h:0.3,fontFace:'Arial',fontSize:16,color:c.meta,bold:true});s.addText(d.date,{x:10.9,y:7.05,w:1.9,h:0.25,fontFace:'Arial',fontSize:13,color:c.meta,align:'right'});}
+
+      function verticalFlow(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const colors=[c.maroon,'A94545','B55555','C06060'];
+        // Left side with flow
+        s.addShape('rect',{x:0.8,y:2.35,w:0.06,h:4.2,fill:c.rose});
+        const stepH=1.05;
+        d.steps.forEach((st,i)=>{
+          const y=2.2+(i*stepH);
+          s.addShape('ellipse',{x:0.5,y,w:0.65,h:0.65,fill:colors[i]});
+          s.addText(st.num,{x:0.5,y:y+0.1,w:0.65,h:0.45,fontFace:'Arial',fontSize:18,color:'FFFFFF',bold:true,align:'center'});
+          s.addText(st.title,{x:1.35,y:y+0.05,w:3.5,h:0.35,fontFace:'Arial',fontSize:14,color:c.main,bold:true});
+          s.addText(st.text,{x:1.35,y:y+0.4,w:3.5,h:0.5,fontFace:'Arial',fontSize:11,color:c.secondary});
+        });
+        // Right side maroon card
+        s.addShape('roundRect',{x:5.5,y:2.0,w:7.3,h:4.6,fill:c.maroon,rectRadius:0.05});
+        s.addText(d.bigStat,{x:5.8,y:2.5,w:6.7,h:1.3,fontFace:'Georgia',fontSize:64,color:'FFFFFF',bold:true});
+        s.addText(d.statLabel,{x:5.8,y:3.9,w:6.7,h:0.6,fontFace:'Arial',fontSize:16,color:c.rose,lineSpacing:24});
+        s.addText(d.statDetail,{x:5.8,y:4.7,w:6.7,h:1.5,fontFace:'Arial',fontSize:13,color:'FFFFFF80',valign:'top',lineSpacing:20});
+      }
+
+      function dashboard(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const grid=[[0,1,2],[3,4]];
+        const metrics=d.metrics;
+        // First row
+        const rowY=[2.0,4.4],cardH=2.25,cardW=4.0,gap=0.2;
+        // Accent card (large)
+        s.addShape('roundRect',{x:0.48,y:rowY[0],w:cardW,h:cardH,fill:c.maroon,rectRadius:0.05});
+        s.addText(metrics[0].value,{x:0.7,y:rowY[0]+0.3,w:3.5,h:0.9,fontFace:'Georgia',fontSize:40,color:'FFFFFF',bold:true});
+        s.addText(metrics[0].label,{x:0.7,y:rowY[0]+1.2,w:3.5,h:0.5,fontFace:'Arial',fontSize:13,color:c.rose,bold:true});
+        s.addText(metrics[0].trend,{x:0.7,y:rowY[0]+1.7,w:3.5,h:0.4,fontFace:'Arial',fontSize:11,color:'FFFFFF80'});
+        // Other first row
+        for(let i=1;i<3;i++){
+          const x=0.48+((i)*(cardW+gap));
+          s.addShape('roundRect',{x,y:rowY[0],w:cardW,h:cardH,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+          s.addText(metrics[i].value,{x:x+0.2,y:rowY[0]+0.3,w:3.5,h:0.9,fontFace:'Georgia',fontSize:40,color:c.maroon,bold:true});
+          s.addText(metrics[i].label,{x:x+0.2,y:rowY[0]+1.2,w:3.5,h:0.5,fontFace:'Arial',fontSize:13,color:c.main,bold:true});
+          s.addText(metrics[i].trend,{x:x+0.2,y:rowY[0]+1.7,w:3.5,h:0.4,fontFace:'Arial',fontSize:11,color:c.meta});
+        }
+        // Second row
+        const m3=metrics[3],m4=metrics[4];
+        s.addShape('roundRect',{x:0.48,y:rowY[1],w:cardW,h:cardH,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+        s.addText(m3.value,{x:0.68,y:rowY[1]+0.3,w:3.5,h:0.9,fontFace:'Georgia',fontSize:40,color:c.maroon,bold:true});
+        s.addText(m3.label,{x:0.68,y:rowY[1]+1.2,w:3.5,h:0.5,fontFace:'Arial',fontSize:13,color:c.main,bold:true});
+        s.addText(m3.trend,{x:0.68,y:rowY[1]+1.7,w:3.5,h:0.4,fontFace:'Arial',fontSize:11,color:c.meta});
+        // Large card spans 2
+        s.addShape('roundRect',{x:0.48+cardW+gap,y:rowY[1],w:cardW*2+gap,h:cardH,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+        s.addText(m4.value,{x:0.48+cardW+gap+0.2,y:rowY[1]+0.3,w:7,h:0.9,fontFace:'Georgia',fontSize:40,color:c.maroon,bold:true});
+        s.addText(m4.label,{x:0.48+cardW+gap+0.2,y:rowY[1]+1.2,w:7,h:0.5,fontFace:'Arial',fontSize:13,color:c.main,bold:true});
+        s.addText(m4.trend,{x:0.48+cardW+gap+0.2,y:rowY[1]+1.7,w:7,h:0.4,fontFace:'Arial',fontSize:11,color:c.meta});
+      }
+
+      function regional(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const cardW=4.0,gap=0.2,startX=0.48,y=2.0,h=4.6;
+        d.regions.forEach((r,i)=>{
+          const x=startX+(i*(cardW+gap));
+          s.addShape('roundRect',{x,y,w:cardW,h,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+          s.addText(r.name,{x:x+0.2,y:y+0.2,w:2.5,h:0.4,fontFace:'Arial',fontSize:16,color:c.main,bold:true});
+          s.addText(r.share,{x:x+cardW-1.2,y:y+0.15,w:1,h:0.5,fontFace:'Georgia',fontSize:20,color:c.maroon,bold:true,align:'right'});
+          s.addShape('rect',{x:x+0.2,y:y+0.7,w:cardW-0.4,h:0.05,fill:c.maroon});
+          const stats=[{l:'Suppliers',v:r.suppliers},{l:'Distribution Centers',v:r.dcs},{l:'Lead Time',v:r.lead}];
+          stats.forEach((st,si)=>{
+            const sy=y+1.0+(si*0.8);
+            s.addText(st.l,{x:x+0.2,y:sy,w:2.5,h:0.35,fontFace:'Arial',fontSize:11,color:c.secondary});
+            s.addText(st.v,{x:x+cardW-1.4,y:sy,w:1.2,h:0.35,fontFace:'Arial',fontSize:13,color:c.main,bold:true,align:'right'});
+          });
+          const pct=parseInt(r.share)/100;
+          s.addShape('roundRect',{x:x+0.2,y:y+3.8,w:cardW-0.4,h:0.1,fill:c.zone2,rectRadius:0.05});
+          s.addShape('roundRect',{x:x+0.2,y:y+3.8,w:(cardW-0.4)*pct,h:0.1,fill:c.maroon,rectRadius:0.05});
+        });
+      }
+
+      function riskMatrix(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const colors={low:c.zone1,med:'FFF5E6',high:c.rose};
+        const startX=1.5,startY=2.2,colW=3.5,rowH=1.5,headerW=1.0;
+        // Column headers
+        d.cols.forEach((col,i)=>{
+          s.addShape('roundRect',{x:startX+(i*colW),y:startY,w:colW-0.1,h:0.5,fill:c.maroon,rectRadius:0.05});
+          s.addText(col,{x:startX+(i*colW),y:startY+0.1,w:colW-0.1,h:0.35,fontFace:'Arial',fontSize:11,color:'FFFFFF',bold:true,align:'center'});
+        });
+        // Row headers and cells
+        d.rows.forEach((row,ri)=>{
+          const ry=startY+0.6+(ri*rowH);
+          s.addShape('roundRect',{x:0.48,y:ry,w:headerW,h:rowH-0.1,fill:c.zone2,rectRadius:0.05});
+          s.addText(row,{x:0.48,y:ry+0.3,w:headerW,h:rowH-0.6,fontFace:'Arial',fontSize:10,color:c.main,bold:true,align:'center',valign:'middle'});
+          d.cells[ri].forEach((cell,ci)=>{
+            const cx=startX+(ci*colW);
+            s.addShape('roundRect',{x:cx,y:ry,w:colW-0.1,h:rowH-0.1,fill:colors[cell.level],line:{color:cell.level==='high'?c.maroon:cell.level==='med'?'E8C99B':c.border,width:1},rectRadius:0.05});
+            s.addText(cell.title,{x:cx+0.1,y:ry+0.15,w:colW-0.3,h:0.35,fontFace:'Arial',fontSize:11,color:c.main,bold:true});
+            s.addText(cell.text,{x:cx+0.1,y:ry+0.5,w:colW-0.3,h:0.7,fontFace:'Arial',fontSize:10,color:c.secondary,valign:'top'});
+          });
+        });
+      }
+
+      function waterfall(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        const barW=1.0,gap=1.0,startX=0.9,baseY=6.0,maxH=3.5;
+        d.bars.forEach((bar,i)=>{
+          const x=startX+(i*(barW+gap));
+          const h=bar.type==='total'?maxH:(bar.h/200)*maxH;
+          const fill=bar.type==='sub'?'C06060':bar.type==='total'?c.zone2:c.maroon;
+          const y=baseY-h;
+          if(bar.type==='total'){
+            s.addShape('roundRect',{x,y,w:barW,h,fill,line:{color:c.maroon,pt:2},rectRadius:0.05});
+            s.addText(bar.value,{x,y:y+0.2,w:barW,h:0.5,fontFace:'Arial',fontSize:14,color:c.maroon,bold:true,align:'center'});
+          }else{
+            s.addShape('roundRect',{x,y,w:barW,h,fill,rectRadius:0.05});
+            s.addText(bar.value,{x,y:y+0.15,w:barW,h:0.4,fontFace:'Arial',fontSize:12,color:'FFFFFF',bold:true,align:'center'});
+          }
+          s.addText(bar.label,{x:x-0.2,y:baseY+0.15,w:barW+0.4,h:0.7,fontFace:'Arial',fontSize:10,color:c.main,align:'center',lineSpacing:14});
+        });
+        // Legend
+        s.addShape('rect',{x:4.5,y:6.8,w:0.2,h:0.2,fill:c.maroon});
+        s.addText('Value Adds',{x:4.8,y:6.8,w:1.5,h:0.2,fontFace:'Arial',fontSize:10,color:c.meta});
+        s.addShape('rect',{x:6.8,y:6.8,w:0.2,h:0.2,fill:'C06060'});
+        s.addText('Investments',{x:7.1,y:6.8,w:1.5,h:0.2,fontFace:'Arial',fontSize:10,color:c.meta});
+      }
+
+      function summary(s,d,n){
+        masterTitle(s,d);footer(s,n);
+        // Left side
+        s.addShape('roundRect',{x:0.48,y:2.0,w:5.0,h:4.6,fill:c.zone1,line:{color:c.border,width:1},rectRadius:0.05});
+        s.addText('Immediate Actions (90 Days)',{x:0.7,y:2.2,w:4.5,h:0.4,fontFace:'Arial',fontSize:16,color:c.maroon,bold:true});
+        s.addShape('rect',{x:0.7,y:2.7,w:2.5,h:0.04,fill:c.maroon});
+        d.actions.forEach((action,i)=>{
+          const y=3.0+(i*0.75);
+          s.addShape('ellipse',{x:0.7,y:y+0.1,w:0.12,h:0.12,fill:c.maroon});
+          s.addText(action,{x:0.95,y,w:4.3,h:0.7,fontFace:'Arial',fontSize:12,color:c.secondary,valign:'top',lineSpacing:17});
+        });
+        // Right side cards
+        const cardX=5.8,cardW=6.8,cardH=1.4;
+        d.results.forEach((r,i)=>{
+          const y=2.0+(i*cardH)+i*0.15;
+          s.addShape('roundRect',{x:cardX,y,w:cardW,h:cardH,fill:c.rose,rectRadius:0.05});
+          s.addText(r.value,{x:cardX+0.25,y:y+0.15,w:2,h:0.6,fontFace:'Georgia',fontSize:28,color:c.maroon,bold:true});
+          s.addText(r.title,{x:cardX+2.5,y:y+0.2,w:4,h:0.35,fontFace:'Arial',fontSize:14,color:c.maroon,bold:true});
+          s.addText(r.text,{x:cardX+2.5,y:y+0.6,w:4,h:0.5,fontFace:'Arial',fontSize:12,color:c.secondary});
+        });
+      }
+
+      slidesData.forEach((d,i)=>{const s=pptx.addSlide(),n=i+1;
+        if(d.type==='cover')cover(s,d);
+        else if(d.type==='vertical-flow')verticalFlow(s,d,n);
+        else if(d.type==='dashboard')dashboard(s,d,n);
+        else if(d.type==='regional')regional(s,d,n);
+        else if(d.type==='risk-matrix')riskMatrix(s,d,n);
+        else if(d.type==='waterfall')waterfall(s,d,n);
+        else if(d.type==='summary')summary(s,d,n);
+      });
+      await pptx.writeFile({fileName:'Supply_Chain_Strategy.pptx'});btn.disabled=false;btn.innerText=orig;
+    }catch(e){console.error(e);alert('Error: '+e.message);btn.disabled=false;btn.innerText='Retry';}
+  }
+</script>
+</body>
+</html>

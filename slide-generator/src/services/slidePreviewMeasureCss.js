@@ -1,0 +1,312 @@
+/**
+ * CSS fragments shared by SlidePreview and export-time measurement DOM.
+ * The actual slide system is still the global slides.css import; these
+ * fragments provide only the preview container and client chrome wrappers.
+ */
+
+export function getSlideMeasureContainerCss() {
+  return `
+/* Container sizing only - slides.css handles all .slide content styling */
+.slide-render-container {
+  width: 960px;
+  height: 540px;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Fallback for content without .slide wrapper */
+.slide-render-container:not(:has(.slide)) {
+  background: #fff;
+  padding: 35px;
+  font-family: Arial, sans-serif;
+  color: #111111;
+}
+`;
+}
+
+export function getSlideMeasureClientChromeCss() {
+  return `
+.slide[data-client-profile="stc"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="stc"] .client-chrome-stc-logo {
+  left: 14px;
+  top: 2px;
+  width: 35px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.slide[data-client-profile="stc"] .client-chrome-stc-wordmark {
+  left: 14px;
+  top: 2px;
+  width: 35px;
+  height: 18px;
+  font: 700 16px/1 "STC Forward", Arial, sans-serif;
+  color: var(--accent);
+  letter-spacing: -1px;
+}
+
+.slide[data-client-profile="pif"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="pif"] .client-chrome-pif-logo {
+  left: 35px;
+  top: 23px;
+  width: 80px;
+  height: 36px;
+  object-fit: contain;
+}
+
+.slide[data-client-profile="pif"] .client-chrome-pif-wordmark {
+  left: 35px;
+  top: 23px;
+  width: 80px;
+  height: 36px;
+  font: 400 24px/1 "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #005C4D;
+}
+
+.slide[data-client-profile="tdredc"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Hide stray header logos from generated HTML; bundled lockup is injected via chrome */
+.slide[data-client-profile="tdredc"] > img:not(.client-chrome-tdredc-logo) {
+  display: none !important;
+}
+
+.slide[data-client-profile="tdredc"] .title img,
+.slide[data-client-profile="tdredc"] .frame > img[class*="logo" i],
+.slide[data-client-profile="tdredc"] .frame > img[alt*="logo" i],
+.slide[data-client-profile="tdredc"] .frame > img[alt*="PIF" i],
+.slide[data-client-profile="tdredc"] .frame > img[alt*="TDREDC" i] {
+  display: none !important;
+}
+
+.slide[data-client-profile="tdredc"].cover-slide .client-chrome-tdredc-logo {
+  left: 33px;
+  top: 18px;
+  width: 234px;
+  height: 82px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="tdredc"]:not(.cover-slide):not(.master-cover) .client-chrome-tdredc-logo,
+.slide[data-client-profile="tdredc"]:not(.cover-slide):not(.master-cover) .client-chrome-tdredc-wordmark {
+  display: none !important;
+}
+
+.slide[data-client-profile="tdredc"].cover-slide .client-chrome-tdredc-wordmark {
+  left: 33px;
+  top: 18px;
+  width: 234px;
+  height: 82px;
+  font: 400 24px/1 "Fund Light", "Fund Regular", Arial, sans-serif;
+  color: #005C4D;
+}
+
+.slide[data-client-profile="npc"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Hide stray header logos from generated HTML; bundled lockup is injected via chrome */
+.slide[data-client-profile="npc"] > img:not(.client-chrome-npc-logo) {
+  display: none !important;
+}
+
+.slide[data-client-profile="npc"] .title img,
+.slide[data-client-profile="npc"] .frame > img[class*="logo" i],
+.slide[data-client-profile="npc"] .frame > img[alt*="logo" i],
+.slide[data-client-profile="npc"] .frame > img[alt*="NPC" i] {
+  display: none !important;
+}
+
+.slide[data-client-profile="npc"].cover-slide .client-chrome-npc-logo {
+  left: 697px;
+  top: 21px;
+  width: 233px;
+  height: 68px;
+  object-fit: contain;
+  object-position: right center;
+}
+
+.slide[data-client-profile="npc"]:not(.cover-slide):not(.master-cover) .client-chrome-npc-logo,
+.slide[data-client-profile="npc"]:not(.cover-slide):not(.master-cover) .client-chrome-npc-wordmark {
+  display: none !important;
+}
+
+.slide[data-client-profile="npc"].cover-slide .client-chrome-npc-wordmark {
+  left: 697px;
+  top: 21px;
+  width: 233px;
+  height: 68px;
+  font: 700 20px/1 Calibri, Arial, sans-serif;
+  color: #89143C;
+}
+
+.slide[data-client-profile="dge"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="dge"] .client-chrome-dge-logo {
+  left: 763px;
+  top: 31px;
+  width: 164px;
+  height: 38px;
+  object-fit: contain;
+  object-position: right center;
+}
+
+.slide[data-client-profile="dge"] .client-chrome-dge-wordmark {
+  left: 763px;
+  top: 31px;
+  width: 164px;
+  height: 38px;
+  font: 600 12px/1.1 "Noto Sans", "Segoe UI", Arial, sans-serif;
+  color: #005393;
+  text-align: right;
+}
+
+.slide[data-client-profile="fya"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="fya"] .client-chrome-fya-logo {
+  left: 26px;
+  top: 500px;
+  width: 139px;
+  height: 26px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="fya"] .client-chrome-fya-wordmark {
+  left: 26px;
+  top: 500px;
+  width: 139px;
+  height: 26px;
+  font: 600 10px/1.1 Poppins, Arial, sans-serif;
+  color: #111111;
+}
+
+.slide[data-client-profile="mos"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="mos"] .client-chrome-mos-logo {
+  left: 18px;
+  top: 510px;
+  width: 95px;
+  height: 25px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="mos"] .client-chrome-mos-wordmark {
+  left: 18px;
+  top: 510px;
+  width: 95px;
+  height: 25px;
+  font: 700 10px/1 "Sakkal Majalla", Arial, sans-serif;
+  color: #FFFFFF;
+}
+
+.slide[data-client-profile="se"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="se"] .client-chrome-se-logo {
+  left: 35px;
+  top: 500px;
+  width: 139px;
+  height: 26px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="se"] .client-chrome-se-wordmark {
+  left: 35px;
+  top: 500px;
+  width: 139px;
+  height: 26px;
+  font: 500 12px/1 "SE Medium", "SE", Arial, sans-serif;
+  color: #001F5E;
+}
+
+.slide[data-client-profile="neom"] .client-chrome {
+  position: absolute;
+  z-index: 8;
+  pointer-events: none;
+  user-select: none;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-icon {
+  left: 5px;
+  top: 509px;
+  width: 27px;
+  height: 26px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-logo {
+  left: 35px;
+  top: 517px;
+  width: 45px;
+  height: 12px;
+  object-fit: contain;
+  object-position: left center;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-wordmark {
+  left: 35px;
+  top: 517px;
+  width: 45px;
+  height: 12px;
+  font: 700 8px/1 Arial, Helvetica, sans-serif;
+  color: #13100D;
+  text-transform: uppercase;
+}
+
+.slide[data-client-profile="neom"] .client-chrome-neom-pagenum {
+  left: var(--slide-num-x);
+  top: var(--slide-num-y);
+  width: var(--slide-num-w);
+  height: var(--slide-num-h);
+  line-height: 1;
+  text-align: right;
+  color: #13100D;
+  font: 400 8px/1 Arial, Helvetica, sans-serif;
+  white-space: nowrap;
+  z-index: 12;
+}
+`;
+}

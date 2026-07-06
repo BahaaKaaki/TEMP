@@ -1,0 +1,43 @@
+{
+  "name": "slide-generator",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "test:sources": "node --test src/utils/sourceRendering.test.js",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^5.6.3",
+    "@azure/msal-react": "^5.2.1",
+    "@monaco-editor/react": "^4.7.0",
+    "file-saver": "^2.0.5",
+    "frontend-comps": "^0.3.3",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.4",
+    "jszip": "^3.10.1",
+    "lucide-react": "^1.7.0",
+    "mammoth": "^1.11.0",
+    "pdfjs-dist": "^5.4.530",
+    "pptxgenjs": "^4.0.1",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.13.2",
+    "uuid": "^13.0.0",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/react": "^19.2.5",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^5.1.1",
+    "eslint": "^9.39.1",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.4.24",
+    "globals": "^16.5.0",
+    "vite": "^7.2.4"
+  }
+}
